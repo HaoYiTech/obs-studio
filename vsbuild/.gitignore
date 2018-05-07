@@ -1,0 +1,4 @@
+*.db
+CMakeFiles
+blake2.dir
+file-updater.dir
