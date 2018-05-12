@@ -199,10 +199,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Project>{A6D3D7F0-02D2-3323-867A-02ACAD96EBCA}</Project>
       <Name>graphics-hook</Name>
     </ProjectReference>
-    <ProjectReference Include="E:\obs-studio\vsbuild\plugins\image-source\image-source.vcxproj">
-      <Project>{E0428690-6824-35B1-B21D-EC1C92E35DAA}</Project>
-      <Name>image-source</Name>
-    </ProjectReference>
     <ProjectReference Include="E:\obs-studio\vsbuild\plugins\win-capture\inject-helper\inject-helper.vcxproj">
       <Project>{09367B3B-D474-3FA9-82F6-05CB698100C4}</Project>
       <Name>inject-helper</Name>
@@ -263,10 +259,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Project>{29540155-7594-380F-8C6F-1941C337A471}</Project>
       <Name>obs-scripting</Name>
     </ProjectReference>
-    <ProjectReference Include="E:\obs-studio\vsbuild\plugins\obs-text\obs-text.vcxproj">
-      <Project>{C18A1E4B-DB5F-3C25-B480-FF00915FCD26}</Project>
-      <Name>obs-text</Name>
-    </ProjectReference>
     <ProjectReference Include="E:\obs-studio\vsbuild\plugins\obs-transitions\obs-transitions.vcxproj">
       <Project>{F996BCCC-A1C3-3931-A250-4F7A84D1E035}</Project>
       <Name>obs-transitions</Name>
@@ -282,14 +274,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ProjectReference Include="E:\obs-studio\vsbuild\plugins\rtmp-services\rtmp-services.vcxproj">
       <Project>{65966832-2F02-3895-9AEE-EC3CB18639D3}</Project>
       <Name>rtmp-services</Name>
-    </ProjectReference>
-    <ProjectReference Include="E:\obs-studio\vsbuild\test\test-input\test-input.vcxproj">
-      <Project>{3D318DBA-AB5D-3D87-8837-039C4B8300BC}</Project>
-      <Name>test-input</Name>
-    </ProjectReference>
-    <ProjectReference Include="E:\obs-studio\vsbuild\plugins\text-freetype2\text-freetype2.vcxproj">
-      <Project>{EE89C1BA-2970-383B-B6FB-1909675DE37B}</Project>
-      <Name>text-freetype2</Name>
     </ProjectReference>
     <ProjectReference Include="E:\obs-studio\vsbuild\deps\w32-pthreads\w32-pthreads.vcxproj">
       <Project>{F0673D42-0362-3741-8D65-8764B4948E1F}</Project>

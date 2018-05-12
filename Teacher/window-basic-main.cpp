@@ -1515,6 +1515,9 @@ void OBSBasic::OBSInit()
 	ui->mixerDock->setMinimumSize(300, 200);
 	// 设置选中记录背景色，避免预览框里选中时看不清的问题...
 	ui->sources->setStyleSheet("QListView::item:selected {background: #4FC3F7;}");
+	// 强制禁用一些用不到的数据源，避免干扰，混乱...
+	obs_enable_source_type("game_capture", false);
+	obs_enable_source_type("wasapi_output_capture", false);
 
 	SystemTray(true);
 
@@ -4041,7 +4044,8 @@ QMenu *OBSBasic::CreateAddSourcePopupMenu()
 		foundValues = true;
 	}
 
-	addSource(popup, "scene", Str("Basic.Scene"));
+	// 去掉场景叠加功能，只用数据源的组合功能...
+	//addSource(popup, "scene", Str("Basic.Scene"));
 
 	if (!foundDeprecated) {
 		delete deprecated;
