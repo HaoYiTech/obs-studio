@@ -120,6 +120,12 @@
     <ClCompile Include="window-basic-main-transitions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="window-basic-status-bar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="window-basic-source-select.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="crash-report.hpp">
@@ -188,11 +194,14 @@
     <QtMoc Include="menu-button.hpp">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="window-basic-status-bar.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="window-basic-source-select.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
-    <QtRcc Include="Teacher.qrc">
-      <Filter>Resource Files</Filter>
-    </QtRcc>
     <QtRcc Include="forms\obs.qrc">
       <Filter>Form Files</Filter>
     </QtRcc>
@@ -219,6 +228,18 @@
     <ClInclude Include="slider-absoluteset-style.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="GeneratedFiles\ui_NameDialog.h">
+      <Filter>Generated Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneratedFiles\ui_OBSBasic.h">
+      <Filter>Generated Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneratedFiles\ui_OBSBasicInteraction.h">
+      <Filter>Generated Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="forms\NameDialog.ui">
@@ -230,10 +251,7 @@
     <QtUic Include="forms\OBSBasicInteraction.ui">
       <Filter>Form Files</Filter>
     </QtUic>
-    <QtUic Include="forms\Preview.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
-    <QtUic Include="forms\Teacher.ui">
+    <QtUic Include="forms\OBSBasicSourceSelect.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>
@@ -313,5 +331,13 @@
     <Image Include="forms\images\settings\preferences-desktop-keyboard-shortcuts.png">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="HaoYi.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Teacher.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>

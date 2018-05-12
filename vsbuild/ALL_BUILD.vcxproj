@@ -303,6 +303,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Project>{AACEBDB6-F9EC-3DFF-9667-018120206707}</Project>
       <Name>win-decklink</Name>
     </ProjectReference>
+    <ProjectReference Include="E:\obs-studio\vsbuild\plugins\win-dshow\win-dshow.vcxproj">
+      <Project>{F760BB77-EF3D-3CA9-BB1C-08791F29BF43}</Project>
+      <Name>win-dshow</Name>
+    </ProjectReference>
     <ProjectReference Include="E:\obs-studio\vsbuild\plugins\win-mf\win-mf.vcxproj">
       <Project>{86E20EFA-56BF-3198-9491-C0F6215E5561}</Project>
       <Name>win-mf</Name>

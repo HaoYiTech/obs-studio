@@ -306,6 +306,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "win-wasapi", "plugins\win-w
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Teacher", "..\Teacher\Teacher.vcxproj", "{B12702AD-ABFB-343A-A199-8E24837244A3}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "win-dshow", "plugins\win-dshow\win-dshow.vcxproj", "{F760BB77-EF3D-3CA9-BB1C-08791F29BF43}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -650,6 +652,14 @@ Global
 		{B12702AD-ABFB-343A-A199-8E24837244A3}.Release|Win32.Build.0 = Release|Win32
 		{B12702AD-ABFB-343A-A199-8E24837244A3}.RelWithDebInfo|Win32.ActiveCfg = Release|Win32
 		{B12702AD-ABFB-343A-A199-8E24837244A3}.RelWithDebInfo|Win32.Build.0 = Release|Win32
+		{F760BB77-EF3D-3CA9-BB1C-08791F29BF43}.Debug|Win32.ActiveCfg = Debug|Win32
+		{F760BB77-EF3D-3CA9-BB1C-08791F29BF43}.Debug|Win32.Build.0 = Debug|Win32
+		{F760BB77-EF3D-3CA9-BB1C-08791F29BF43}.MinSizeRel|Win32.ActiveCfg = MinSizeRel|Win32
+		{F760BB77-EF3D-3CA9-BB1C-08791F29BF43}.MinSizeRel|Win32.Build.0 = MinSizeRel|Win32
+		{F760BB77-EF3D-3CA9-BB1C-08791F29BF43}.Release|Win32.ActiveCfg = Release|Win32
+		{F760BB77-EF3D-3CA9-BB1C-08791F29BF43}.Release|Win32.Build.0 = Release|Win32
+		{F760BB77-EF3D-3CA9-BB1C-08791F29BF43}.RelWithDebInfo|Win32.ActiveCfg = RelWithDebInfo|Win32
+		{F760BB77-EF3D-3CA9-BB1C-08791F29BF43}.RelWithDebInfo|Win32.Build.0 = RelWithDebInfo|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

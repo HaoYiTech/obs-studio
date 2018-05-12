@@ -341,7 +341,9 @@ static void do_log(int log_level, const char *msg, va_list args, void *param)
 #endif
 }
 
-#define DEFAULT_LANG "en-US"
+// 修改默认语言 => zh-CN
+#define DEFAULT_LANG "zh-CN"
+//#define DEFAULT_LANG "en-US"
 
 bool OBSApp::InitGlobalConfigDefaults()
 {
@@ -351,7 +353,7 @@ bool OBSApp::InitGlobalConfigDefaults()
 	config_set_default_string(globalConfig, "General", "ProcessPriority",
 		"Normal");
 	config_set_default_bool(globalConfig, "General", "EnableAutoUpdates",
-		true);
+		false);
 
 #if _WIN32
 	config_set_default_string(globalConfig, "Video", "Renderer",
@@ -397,7 +399,7 @@ bool OBSApp::InitGlobalConfigDefaults()
 
 	if (!config_get_bool(globalConfig, "General", "Pre21Defaults")) {
 		config_set_default_string(globalConfig, "General",
-			"CurrentTheme", "Dark");
+			"CurrentTheme", "Default");
 	}
 
 #ifdef _WIN32
@@ -1896,6 +1898,7 @@ int main(int argc, char *argv[])
 
 	base_get_log_handler(&def_log_handler, nullptr);
 
+	// 从配置读取上次设置的配置信息...
 	upgrade_settings();
 
 	fstream logFile;

@@ -19,10 +19,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{D1A22911-048D-3BB1-B683-5C9252B142F7}</ProjectGuid>
+    <ProjectGuid>{711D1003-F3D9-3D46-A7F2-342EAEB73EF8}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <Platform>Win32</Platform>
-    <ProjectName>PACKAGE</ProjectName>
+    <ProjectName>ALL_BUILD</ProjectName>
     <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -69,22 +69,6 @@
       <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
-    <PostBuildEvent>
-      <Message></Message>
-      <Command>setlocal
-cd E:\obs-studio\vsbuild
-if %errorlevel% neq 0 goto :cmEnd
-E:
-if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cpack.exe -C $(Configuration) --config ./CPackConfig.cmake
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Midl>
@@ -95,22 +79,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
-    <PostBuildEvent>
-      <Message></Message>
-      <Command>setlocal
-cd E:\obs-studio\vsbuild
-if %errorlevel% neq 0 goto :cmEnd
-E:
-if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cpack.exe -C $(Configuration) --config ./CPackConfig.cmake
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">
     <Midl>
@@ -121,22 +89,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
-    <PostBuildEvent>
-      <Message></Message>
-      <Command>setlocal
-cd E:\obs-studio\vsbuild
-if %errorlevel% neq 0 goto :cmEnd
-E:
-if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cpack.exe -C $(Configuration) --config ./CPackConfig.cmake
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">
     <Midl>
@@ -147,28 +99,12 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
-    <PostBuildEvent>
-      <Message></Message>
-      <Command>setlocal
-cd E:\obs-studio\vsbuild
-if %errorlevel% neq 0 goto :cmEnd
-E:
-if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cpack.exe -C $(Configuration) --config ./CPackConfig.cmake
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CustomBuild Include="E:\obs-studio\vsbuild\CMakeFiles\16711e51b173d52b0be88e170b910283\PACKAGE_force.rule">
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> </Message>
+    <CustomBuild Include="E:\obs-studio\plugins\win-dshow\CMakeLists.txt">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Building Custom Rule E:/obs-studio/plugins/win-dshow/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">setlocal
-cd .
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -HE:/obs-studio -BE:/obs-studio/vsbuild --check-stamp-file E:/obs-studio/vsbuild/plugins/win-dshow/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -176,12 +112,12 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">E:/obs-studio/vsbuild/CMakeFiles/16711e51b173d52b0be88e170b910283/PACKAGE_force.rule;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">E:\obs-studio\vsbuild\plugins\win-dshow\CMakeFiles\PACKAGE_force</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">E:/obs-studio/plugins/win-dshow/CMakeLists.txt;E:\obs-studio\plugins\win-dshow\CMakeLists.txt;E:\obs-studio\cmake\Modules\FindFFmpeg.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPkgConfig.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageHandleStandardArgs.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageMessage.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageHandleStandardArgs.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageMessage.cmake;E:\obs-studio\plugins\win-dshow\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">E:\obs-studio\vsbuild\plugins\win-dshow\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> </Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Building Custom Rule E:/obs-studio/plugins/win-dshow/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">setlocal
-cd .
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -HE:/obs-studio -BE:/obs-studio/vsbuild --check-stamp-file E:/obs-studio/vsbuild/plugins/win-dshow/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -189,12 +125,12 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">E:/obs-studio/vsbuild/CMakeFiles/16711e51b173d52b0be88e170b910283/PACKAGE_force.rule;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">E:\obs-studio\vsbuild\plugins\win-dshow\CMakeFiles\PACKAGE_force</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">E:/obs-studio/plugins/win-dshow/CMakeLists.txt;E:\obs-studio\plugins\win-dshow\CMakeLists.txt;E:\obs-studio\cmake\Modules\FindFFmpeg.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPkgConfig.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageHandleStandardArgs.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageMessage.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageHandleStandardArgs.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageMessage.cmake;E:\obs-studio\plugins\win-dshow\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">E:\obs-studio\vsbuild\plugins\win-dshow\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'"> </Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">Building Custom Rule E:/obs-studio/plugins/win-dshow/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">setlocal
-cd .
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -HE:/obs-studio -BE:/obs-studio/vsbuild --check-stamp-file E:/obs-studio/vsbuild/plugins/win-dshow/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -202,12 +138,12 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">E:/obs-studio/vsbuild/CMakeFiles/16711e51b173d52b0be88e170b910283/PACKAGE_force.rule;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">E:\obs-studio\vsbuild\plugins\win-dshow\CMakeFiles\PACKAGE_force</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">E:/obs-studio/plugins/win-dshow/CMakeLists.txt;E:\obs-studio\plugins\win-dshow\CMakeLists.txt;E:\obs-studio\cmake\Modules\FindFFmpeg.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPkgConfig.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageHandleStandardArgs.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageMessage.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageHandleStandardArgs.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageMessage.cmake;E:\obs-studio\plugins\win-dshow\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">E:\obs-studio\vsbuild\plugins\win-dshow\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'"> </Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">Building Custom Rule E:/obs-studio/plugins/win-dshow/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">setlocal
-cd .
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -HE:/obs-studio -BE:/obs-studio/vsbuild --check-stamp-file E:/obs-studio/vsbuild/plugins/win-dshow/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -215,19 +151,21 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">E:/obs-studio/vsbuild/CMakeFiles/16711e51b173d52b0be88e170b910283/PACKAGE_force.rule;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">E:\obs-studio\vsbuild\plugins\win-dshow\CMakeFiles\PACKAGE_force</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">E:/obs-studio/plugins/win-dshow/CMakeLists.txt;E:\obs-studio\plugins\win-dshow\CMakeLists.txt;E:\obs-studio\cmake\Modules\FindFFmpeg.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPkgConfig.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageHandleStandardArgs.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageMessage.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageHandleStandardArgs.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageMessage.cmake;E:\obs-studio\plugins\win-dshow\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">E:\obs-studio\vsbuild\plugins\win-dshow\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">false</LinkObjects>
     </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="E:\obs-studio\vsbuild\ZERO_CHECK.vcxproj">
       <Project>{BA947A84-0290-3579-9863-BA9A70F590C1}</Project>
       <Name>ZERO_CHECK</Name>
     </ProjectReference>
-    <ProjectReference Include="E:\obs-studio\vsbuild\plugins\win-dshow\ALL_BUILD.vcxproj">
-      <Project>{711D1003-F3D9-3D46-A7F2-342EAEB73EF8}</Project>
-      <Name>ALL_BUILD</Name>
+    <ProjectReference Include="E:\obs-studio\vsbuild\plugins\win-dshow\win-dshow.vcxproj">
+      <Project>{F760BB77-EF3D-3CA9-BB1C-08791F29BF43}</Project>
+      <Name>win-dshow</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -42,7 +42,7 @@
 //#include "window-basic-settings.hpp"
 #include "window-namedialog.hpp"
 //#include "window-basic-auto-config.hpp"
-//#include "window-basic-source-select.hpp"
+#include "window-basic-source-select.hpp"
 #include "window-basic-main.hpp"
 #include "window-basic-stats.hpp"
 #include "window-basic-main-outputs.hpp"
@@ -142,7 +142,7 @@ OBSBasic::OBSBasic(QWidget *parent)
 	setAcceptDrops(true);
 
 	ui->setupUi(this);
-	//ui->previewDisabledLabel->setVisible(false);
+	ui->previewDisabledLabel->setVisible(false);
 
 	startingDockLayout = saveState();
 
@@ -210,8 +210,8 @@ OBSBasic::OBSBasic(QWidget *parent)
 
 	cpuUsageInfo = os_cpu_usage_info_start();
 	cpuUsageTimer = new QTimer(this);
-	//connect(cpuUsageTimer, SIGNAL(timeout()),
-	//		ui->statusbar, SLOT(UpdateCPUUsage()));
+	connect(cpuUsageTimer, SIGNAL(timeout()),
+			ui->statusbar, SLOT(UpdateCPUUsage()));
 	cpuUsageTimer->start(3000);
 
 #ifdef __APPLE__
@@ -260,14 +260,14 @@ OBSBasic::OBSBasic(QWidget *parent)
 	assignDockToggle(ui->scenesDock, ui->toggleScenes);
 	assignDockToggle(ui->sourcesDock, ui->toggleSources);
 	assignDockToggle(ui->mixerDock, ui->toggleMixer);
-	assignDockToggle(ui->transitionsDock, ui->toggleTransitions);
+	//assignDockToggle(ui->transitionsDock, ui->toggleTransitions);
 	//assignDockToggle(ui->controlsDock, ui->toggleControls);
 
 	//hide all docking panes
 	ui->toggleScenes->setChecked(false);
 	ui->toggleSources->setChecked(false);
 	ui->toggleMixer->setChecked(false);
-	ui->toggleTransitions->setChecked(false);
+	//ui->toggleTransitions->setChecked(false);
 	ui->toggleControls->setChecked(false);
 
 	//restore parent window geometry
@@ -460,7 +460,7 @@ obs_data_array_t *OBSBasic::SaveProjectors()
 
 void OBSBasic::Save(const char *file)
 {
-	/*OBSScene scene = GetCurrentScene();
+	OBSScene scene = GetCurrentScene();
 	OBSSource curProgramScene = OBSGetStrongRef(programScene);
 	if (!curProgramScene)
 		curProgramScene = obs_scene_get_source(scene);
@@ -497,7 +497,7 @@ void OBSBasic::Save(const char *file)
 	obs_data_array_release(sceneOrder);
 	obs_data_array_release(quickTrData);
 	obs_data_array_release(transitions);
-	obs_data_array_release(savedProjectorList);*/
+	obs_data_array_release(savedProjectorList);
 }
 
 void OBSBasic::DeferSaveBegin()
@@ -840,6 +840,9 @@ retryScene:
 	int scalingLevel = (int)obs_data_get_int(data, "scaling_level");
 	float scrollOffX = (float)obs_data_get_double(data, "scaling_off_x");
 	float scrollOffY = (float)obs_data_get_double(data, "scaling_off_y");
+
+	// 强制预览框使用锁定缩放模式...
+	fixedScaling = false;
 
 	if (fixedScaling) {
 		ui->preview->SetScalingLevel(scalingLevel);
@@ -1493,15 +1496,25 @@ void OBSBasic::OBSInit()
 			on_resetUI_triggered();
 	}
 
+	// 强制锁定所有的停靠窗...
 	config_set_default_bool(App()->GlobalConfig(), "BasicWindow",
 			"DocksLocked", true);
-
 	bool docksLocked = config_get_bool(App()->GlobalConfig(),
 			"BasicWindow", "DocksLocked");
 	on_lockUI_toggled(docksLocked);
+	// 将锁定状态更新到菜单当中...
 	ui->lockUI->blockSignals(true);
 	ui->lockUI->setChecked(docksLocked);
 	ui->lockUI->blockSignals(false);
+
+	// 强制隐藏场景和变换...
+	ui->scenesDock->setVisible(false);
+	ui->transitionsDock->setVisible(false);
+	// 强制设置来源和混音停靠窗的大小...
+	ui->sourcesDock->setMinimumSize(300, 200);
+	ui->mixerDock->setMinimumSize(300, 200);
+	// 设置选中记录背景色，避免预览框里选中时看不清的问题...
+	ui->sources->setStyleSheet("QListView::item:selected {background: #4FC3F7;}");
 
 	SystemTray(true);
 
@@ -1519,7 +1532,8 @@ void OBSBasic::OBSInit()
 		config_save_safe(App()->GlobalConfig(), "tmp", nullptr);
 	}
 
-	if (!first_run && !has_last_version && !Active()) {
+	// 去掉自动向导配置功能，全部采用手动配置...
+	/*if (!first_run && !has_last_version && !Active()) {
 		QString msg;
 		msg = QTStr("Basic.FirstStartup.RunWizard");
 		msg += "\n\n";
@@ -1536,7 +1550,7 @@ void OBSBasic::OBSInit()
 			OBSMessageBox::information(this,
 					QTStr("Basic.AutoConfig"), msg);
 		}
-	}
+	}*/
 
 	if (config_get_bool(basicConfig, "General", "OpenStatsOnStartup"))
 		on_stats_triggered();
@@ -2044,12 +2058,12 @@ void OBSBasic::CreateInteractionWindow(obs_source_t *source)
 
 void OBSBasic::CreatePropertiesWindow(obs_source_t *source)
 {
-	/*if (properties)
+	if (properties)
 		properties->close();
 
 	properties = new OBSBasicProperties(this, source);
 	properties->Init();
-	properties->setAttribute(Qt::WA_DeleteOnClose, true);*/
+	properties->setAttribute(Qt::WA_DeleteOnClose, true);
 }
 
 void OBSBasic::CreateFiltersWindow(obs_source_t *source)
@@ -3316,11 +3330,20 @@ void OBSBasic::ClearSceneData()
 
 void OBSBasic::closeEvent(QCloseEvent *event)
 {
-	if (isVisible())
-		config_set_string(App()->GlobalConfig(),
-				"BasicWindow", "geometry",
-				saveGeometry().toBase64().constData());
+	// 弹出退出询问框...
+	QMessageBox::StandardButton button = OBSMessageBox::question(
+		this, QTStr("ConfirmExit.Title"),
+		QTStr("ConfirmExit.Quit"));
+	if (button == QMessageBox::No) {
+		event->ignore();
+		return;
+	}
 
+	if (isVisible()) {
+		config_set_string(App()->GlobalConfig(),
+			"BasicWindow", "geometry",
+			saveGeometry().toBase64().constData());
+	}
 	config_set_string(App()->GlobalConfig(),
 			"BasicWindow", "DockState",
 			saveState().toBase64().constData());
@@ -3328,7 +3351,7 @@ void OBSBasic::closeEvent(QCloseEvent *event)
 	if (outputHandler && outputHandler->Active()) {
 		SetShowing(true);
 
-		QMessageBox::StandardButton button = OBSMessageBox::question(
+		button = OBSMessageBox::question(
 				this, QTStr("ConfirmExit.Title"),
 				QTStr("ConfirmExit.Text"));
 
@@ -3837,16 +3860,16 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 	//ui->actionCopyFilters->setEnabled(false);
 	//ui->actionCopySource->setEnabled(false);
 
-	popup.addSeparator();
+	//popup.addSeparator();
 	//popup.addAction(ui->actionCopySource);
 	//popup.addAction(ui->actionPasteRef);
 	//popup.addAction(ui->actionPasteDup);
-	popup.addSeparator();
+	//popup.addSeparator();
 
-	popup.addSeparator();
+	//popup.addSeparator();
 	//popup.addAction(ui->actionCopyFilters);
 	//popup.addAction(ui->actionPasteFilters);
-	popup.addSeparator();
+	//popup.addSeparator();
 
 	if (item) {
 		if (addSourceMenu)
@@ -3861,9 +3884,9 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 			OBS_SOURCE_AUDIO;
 		QAction *action;
 
-		popup.addAction(QTStr("Rename"), this,
+		popup.addAction(QTStr("RenameSource"), this,
 				SLOT(EditSceneItemName()));
-		popup.addAction(QTStr("Remove"), this,
+		popup.addAction(QTStr("RemoveSource"), this,
 				SLOT(on_actionRemoveSource_triggered()));
 		popup.addSeparator();
 		//popup.addMenu(ui->orderMenu);
@@ -3901,14 +3924,14 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 		popup.addAction(sourceWindow);
 		popup.addSeparator();
 
-		action = popup.addAction(QTStr("Interact"), this,
+		// 屏蔽 交互 | 滤镜 菜单...
+		/*action = popup.addAction(QTStr("Interact"), this,
 				SLOT(on_actionInteract_triggered()));
-
 		action->setEnabled(obs_source_get_output_flags(source) &
 				OBS_SOURCE_INTERACTION);
-
 		popup.addAction(QTStr("Filters"), this,
-				SLOT(OpenFilters()));
+				SLOT(OpenFilters()));*/
+
 		popup.addAction(QTStr("Properties"), this,
 				SLOT(on_actionSourceProperties_triggered()));
 
@@ -3959,12 +3982,12 @@ void OBSBasic::on_scenes_itemDoubleClicked(QListWidgetItem *witem)
 
 void OBSBasic::AddSource(const char *id)
 {
-	/*if (id && *id) {
+	if (id && *id) {
 		OBSBasicSourceSelect sourceSelect(this, id);
 		sourceSelect.exec();
 		if (sourceSelect.newSource)
 			CreatePropertiesWindow(sourceSelect.newSource);
-	}*/
+	}
 }
 
 QMenu *OBSBasic::CreateAddSourcePopupMenu()
@@ -3974,7 +3997,7 @@ QMenu *OBSBasic::CreateAddSourcePopupMenu()
 	bool foundDeprecated = false;
 	size_t idx = 0;
 
-	QMenu *popup = new QMenu(QTStr("Add"), this);
+	QMenu *popup = new QMenu(QTStr("AddSource"), this);
 	QMenu *deprecated = new QMenu(QTStr("Deprecated"), popup);
 
 	auto getActionAfter = [] (QMenu *menu, const QString &name)
@@ -4187,7 +4210,7 @@ static BPtr<char> ReadLogFile(const char *subdir, const char *log)
 
 void OBSBasic::UploadLog(const char *subdir, const char *file)
 {
-	BPtr<char> fileString{ReadLogFile(subdir, file)};
+	/*BPtr<char> fileString{ReadLogFile(subdir, file)};
 
 	if (!fileString)
 		return;
@@ -4208,7 +4231,7 @@ void OBSBasic::UploadLog(const char *subdir, const char *file)
 		delete logUploadThread;
 	}
 
-	/*RemoteTextThread *thread = new RemoteTextThread(
+	RemoteTextThread *thread = new RemoteTextThread(
 			"https://hastebin.com/documents",
 			"text/plain", ss.str().c_str());
 
@@ -4357,7 +4380,8 @@ void OBSBasic::SceneItemNameEdited(QWidget *editor,
 	obs_source_t *source = obs_sceneitem_get_source(item);
 	RenameListItem(this, ui->sources, source, text);
 
-	QListWidgetItem *listItem = ui->sources->currentItem();
+	// 这里不能用currentItem，如果从预览到达的重命名，有可能当前Item不是选中Item...
+	QListWidgetItem *listItem = this->GetTopSelectedSourceItem(); //ui->sources->currentItem();
 	listItem->setText(QString());
 	SetupVisibilityItem(ui->sources, listItem, item);
 
@@ -5455,7 +5479,7 @@ void OBSBasic::EnablePreviewDisplay(bool enable)
 {
 	obs_display_set_enabled(ui->preview->GetDisplay(), enable);
 	ui->preview->setVisible(enable);
-	//ui->previewDisabledLabel->setVisible(!enable);
+	ui->previewDisabledLabel->setVisible(!enable);
 }
 
 void OBSBasic::TogglePreview()
@@ -5527,16 +5551,24 @@ OBSProjector *OBSBasic::OpenProjector(obs_source_t *source, int monitor,
 			}
 		}
 
-		if (projector)
+		if (projector) {
 			windowProjectors.push_back(projector);
+		} else {
+			// 将现有的窗口赋给显示对象...
+			if (windowProjectors.length() > 0) {
+				projector = static_cast<OBSProjector *>(windowProjectors.front().data());
+			}
+		}
 	} else {
 		delete projectors[monitor];
 		projectors[monitor].clear();
 
 		projectors[monitor] = projector;
 	}
-
-	projector->Init();
+	// 需要进行有效性判断...
+	if( projector != NULL ) {
+		projector->Init();
+	}
 	return projector;
 }
 
@@ -5711,8 +5743,12 @@ void OBSBasic::UpdateTitleBar()
 
 	name << " - " << Str("TitleBar.Profile") << ": " << profile;
 	name << " - " << Str("TitleBar.Scenes") << ": " << sceneCollection;
+	
+	//setWindowTitle(QT_UTF8(name.str().c_str()));
 
-	setWindowTitle(QT_UTF8(name.str().c_str()));
+	// 对窗口标题进行修改 => 简化...
+	QString theTitle = QString::fromLocal8Bit("云教室 - 老师端");
+	this->setWindowTitle(theTitle);
 }
 
 int OBSBasic::GetProfilePath(char *path, size_t size, const char *file) const
@@ -5805,10 +5841,10 @@ void OBSBasic::on_toggleListboxToolbars_toggled(bool visible)
 
 void OBSBasic::on_toggleStatusBar_toggled(bool visible)
 {
-	/*ui->statusbar->setVisible(visible);
+	ui->statusbar->setVisible(visible);
 
 	config_set_bool(App()->GlobalConfig(), "BasicWindow",
-			"ShowStatusBar", visible);*/
+			"ShowStatusBar", visible);
 }
 
 void OBSBasic::on_actionLockPreview_triggered()
@@ -6076,14 +6112,14 @@ void OBSBasic::on_actionCopySource_triggered()
 
 void OBSBasic::on_actionPasteRef_triggered()
 {
-//	OBSBasicSourceSelect::SourcePaste(copyString, copyVisible, false);
-//	on_actionPasteTransform_triggered();
+	OBSBasicSourceSelect::SourcePaste(copyString, copyVisible, false);
+	on_actionPasteTransform_triggered();
 }
 
 void OBSBasic::on_actionPasteDup_triggered()
 {
-//	OBSBasicSourceSelect::SourcePaste(copyString, copyVisible, true);
-//	on_actionPasteTransform_triggered();
+	OBSBasicSourceSelect::SourcePaste(copyString, copyVisible, true);
+	on_actionPasteTransform_triggered();
 }
 
 void OBSBasic::on_actionCopyFilters_triggered()
