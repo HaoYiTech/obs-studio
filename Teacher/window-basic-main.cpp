@@ -1542,6 +1542,17 @@ void OBSBasic::OBSInit()
 	ui->controlsDock->setMinimumSize(300, 100);
 	// 设置选中记录背景色，避免预览框里选中时看不清的问题...
 	ui->sources->setStyleSheet("QListView::item:selected {background: #4FC3F7;}");
+	// 设置开始推流背景色，增加按钮高度...
+	ui->streamButton->setStyleSheet("QPushButton{background-color: #FFA500; height: 35px; font-size: 20px; color: black;}"
+									"QPushButton:hover{background-color:#FF8C00; color: #E0FFFF;}"
+									"QPushButton:checked{color: #1E90FF;}");
+	ui->streamButton->setCursor(QCursor(Qt::PointingHandCursor));
+	ui->exitButton->setStyleSheet("QPushButton{height: 20px; font-size: 14px;}");
+	ui->exitButton->setCursor(QCursor(Qt::PointingHandCursor));
+	ui->settingsButton->setStyleSheet("QPushButton{height: 20px; font-size: 14px;}");
+	ui->settingsButton->setCursor(QCursor(Qt::PointingHandCursor));
+	ui->statsButton->setStyleSheet("QPushButton{height: 20px; font-size: 14px;}");
+	ui->statsButton->setCursor(QCursor(Qt::PointingHandCursor));
 	// 强制禁用一些用不到的数据源，避免干扰，混乱...
 	obs_enable_source_type("game_capture", false);
 	obs_enable_source_type("wasapi_output_capture", false);

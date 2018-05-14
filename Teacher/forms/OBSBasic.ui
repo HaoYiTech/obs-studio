@@ -557,7 +557,7 @@
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QVBoxLayout" name="buttonsVLayout">
      <property name="spacing">
-      <number>2</number>
+      <number>4</number>
      </property>
      <property name="leftMargin">
       <number>4</number>
