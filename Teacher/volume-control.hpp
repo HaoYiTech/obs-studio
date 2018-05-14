@@ -7,8 +7,6 @@
 #include <QMutex>
 #include <QList>
 
-#include <QPushButton>
-
 class QPushButton;
 class VolumeMeterTimer;
 
@@ -192,6 +190,7 @@ public:
 	void setPeakHoldDuration(qreal v);
 	qreal getInputPeakHoldDuration() const;
 	void setInputPeakHoldDuration(qreal v);
+	void setPeakMeterType(enum obs_peak_meter_type peakMeterType);
 
 protected:
 	void paintEvent(QPaintEvent *event);
@@ -261,4 +260,5 @@ public:
 	void SetName(const QString &newName);
 
 	void SetMeterDecayRate(qreal q);
+	void setPeakMeterType(enum obs_peak_meter_type peakMeterType);
 };

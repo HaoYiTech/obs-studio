@@ -6,6 +6,9 @@
 #include <QResizeEvent>
 #include <QShowEvent>
 
+#include "window-basic-main.hpp"
+#include "obs-app.hpp"
+
 OBSQTDisplay::OBSQTDisplay(QWidget *parent, Qt::WindowFlags flags)
 	: QWidget(parent, flags)
 {
@@ -85,4 +88,11 @@ void OBSQTDisplay::paintEvent(QPaintEvent *event)
 QPaintEngine *OBSQTDisplay::paintEngine() const
 {
 	return nullptr;
+}
+
+void OBSQTDisplay::mouseDoubleClickEvent(QMouseEvent *event)
+{
+	// 双击全屏当前选中的数据源显示对象...
+	OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	main->DoDisplayDbClicked();
 }

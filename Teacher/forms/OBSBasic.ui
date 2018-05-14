@@ -8,7 +8,7 @@
     <x>0</x>
     <y>0</y>
     <width>701</width>
-    <height>764</height>
+    <height>939</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -114,6 +114,48 @@
      </layout>
     </item>
    </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>701</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="transformMenu">
+    <property name="title">
+     <string>Basic.MainMenu.Edit.Transform</string>
+    </property>
+    <addaction name="actionEditTransform"/>
+    <addaction name="actionCopyTransform"/>
+    <addaction name="actionPasteTransform"/>
+    <addaction name="actionResetTransform"/>
+    <addaction name="separator"/>
+    <addaction name="actionRotate90CW"/>
+    <addaction name="actionRotate90CCW"/>
+    <addaction name="actionRotate180"/>
+    <addaction name="separator"/>
+    <addaction name="actionFlipHorizontal"/>
+    <addaction name="actionFlipVertical"/>
+    <addaction name="separator"/>
+    <addaction name="actionFitToScreen"/>
+    <addaction name="actionStretchToScreen"/>
+    <addaction name="actionCenterToScreen"/>
+   </widget>
+   <widget class="QMenu" name="orderMenu">
+    <property name="title">
+     <string>Basic.MainMenu.Edit.Order</string>
+    </property>
+    <addaction name="actionMoveUp"/>
+    <addaction name="actionMoveDown"/>
+    <addaction name="separator"/>
+    <addaction name="actionMoveToTop"/>
+    <addaction name="actionMoveToBottom"/>
+   </widget>
+   <addaction name="transformMenu"/>
+   <addaction name="orderMenu"/>
   </widget>
   <widget class="OBSBasicStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="scenesDock">
@@ -495,6 +537,110 @@
         </layout>
        </widget>
       </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="controlsDock">
+   <property name="contextMenuPolicy">
+    <enum>Qt::CustomContextMenu</enum>
+   </property>
+   <property name="features">
+    <set>QDockWidget::AllDockWidgetFeatures</set>
+   </property>
+   <property name="windowTitle">
+    <string>Basic.Main.Controls</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_3">
+    <layout class="QVBoxLayout" name="buttonsVLayout">
+     <property name="spacing">
+      <number>2</number>
+     </property>
+     <property name="leftMargin">
+      <number>4</number>
+     </property>
+     <property name="topMargin">
+      <number>4</number>
+     </property>
+     <property name="rightMargin">
+      <number>4</number>
+     </property>
+     <property name="bottomMargin">
+      <number>4</number>
+     </property>
+     <item>
+      <widget class="QPushButton" name="streamButton">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Basic.Main.StartStreaming</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="settingsButton">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Settings</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="statsButton">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Basic.Stats</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="exitButton">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Exit</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="expVSpacer">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+      </spacer>
      </item>
     </layout>
    </widget>
@@ -1344,6 +1490,22 @@
     <hint type="destinationlabel">
      <x>463</x>
      <y>351</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>exitButton</sender>
+   <signal>clicked()</signal>
+   <receiver>OBSBasic</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>585</x>
+     <y>720</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>350</x>
+     <y>456</y>
     </hint>
    </hints>
   </connection>

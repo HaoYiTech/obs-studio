@@ -126,6 +126,21 @@
     <ClCompile Include="window-basic-source-select.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="window-basic-transform.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="window-basic-settings.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hotkey-edit.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source-label.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\deps\libff\libff\ff-util.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="crash-report.hpp">
@@ -200,6 +215,18 @@
     <QtMoc Include="window-basic-source-select.hpp">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="window-basic-transform.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="window-basic-settings.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="hotkey-edit.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="source-label.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="forms\obs.qrc">
@@ -240,6 +267,9 @@
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\deps\libff\libff\ff-util.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="forms\NameDialog.ui">
@@ -252,6 +282,12 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="forms\OBSBasicSourceSelect.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="forms\OBSBasicTransform.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="forms\OBSBasicSettings.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>

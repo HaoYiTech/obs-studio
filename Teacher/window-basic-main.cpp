@@ -39,7 +39,7 @@
 #include "platform.hpp"
 #include "visibility-item-widget.hpp"
 #include "item-widget-helpers.hpp"
-//#include "window-basic-settings.hpp"
+#include "window-basic-settings.hpp"
 #include "window-namedialog.hpp"
 //#include "window-basic-auto-config.hpp"
 #include "window-basic-source-select.hpp"
@@ -142,6 +142,9 @@ OBSBasic::OBSBasic(QWidget *parent)
 	setAcceptDrops(true);
 
 	ui->setupUi(this);
+
+	// 强制隐藏菜单栏和预览禁止...
+	ui->menubar->setVisible(false);
 	ui->previewDisabledLabel->setVisible(false);
 
 	startingDockLayout = saveState();
@@ -260,14 +263,14 @@ OBSBasic::OBSBasic(QWidget *parent)
 	assignDockToggle(ui->scenesDock, ui->toggleScenes);
 	assignDockToggle(ui->sourcesDock, ui->toggleSources);
 	assignDockToggle(ui->mixerDock, ui->toggleMixer);
-	//assignDockToggle(ui->transitionsDock, ui->toggleTransitions);
-	//assignDockToggle(ui->controlsDock, ui->toggleControls);
+	assignDockToggle(ui->controlsDock, ui->toggleControls);
+	assignDockToggle(ui->transitionsDock, ui->toggleTransitions);
 
 	//hide all docking panes
 	ui->toggleScenes->setChecked(false);
 	ui->toggleSources->setChecked(false);
 	ui->toggleMixer->setChecked(false);
-	//ui->toggleTransitions->setChecked(false);
+	ui->toggleTransitions->setChecked(false);
 	ui->toggleControls->setChecked(false);
 
 	//restore parent window geometry
@@ -389,6 +392,29 @@ void OBSBasic::UpdateVolumeControlsDecayRate()
 
 	for (size_t i = 0; i < volumes.size(); i++) {
 		volumes[i]->SetMeterDecayRate(meterDecayRate);
+	}
+}
+
+void OBSBasic::UpdateVolumeControlsPeakMeterType()
+{
+	uint32_t peakMeterTypeIdx = config_get_uint(basicConfig, "Audio",
+		"PeakMeterType");
+
+	enum obs_peak_meter_type peakMeterType;
+	switch (peakMeterTypeIdx) {
+	case 0:
+		peakMeterType = SAMPLE_PEAK_METER;
+		break;
+	case 1:
+		peakMeterType = TRUE_PEAK_METER;
+		break;
+	default:
+		peakMeterType = SAMPLE_PEAK_METER;
+		break;
+	}
+
+	for (size_t i = 0; i < volumes.size(); i++) {
+		volumes[i]->setPeakMeterType(peakMeterType);
 	}
 }
 
@@ -1513,6 +1539,7 @@ void OBSBasic::OBSInit()
 	// 强制设置来源和混音停靠窗的大小...
 	ui->sourcesDock->setMinimumSize(300, 200);
 	ui->mixerDock->setMinimumSize(300, 200);
+	ui->controlsDock->setMinimumSize(300, 100);
 	// 设置选中记录背景色，避免预览框里选中时看不清的问题...
 	ui->sources->setStyleSheet("QListView::item:selected {background: #4FC3F7;}");
 	// 强制禁用一些用不到的数据源，避免干扰，混乱...
@@ -1863,17 +1890,17 @@ OBSBasic::~OBSBasic()
 	service = nullptr;
 	outputHandler.reset();
 
-	/*if (interaction)
+	if (interaction)
 		delete interaction;
 
 	if (properties)
 		delete properties;
 
-	if (filters)
-		delete filters;
-
 	if (transformWindow)
 		delete transformWindow;
+
+	/*if (filters)
+		delete filters;
 
 	if (advAudioWindow)
 		delete advAudioWindow;*/
@@ -2051,12 +2078,12 @@ void OBSBasic::InsertSceneItem(obs_sceneitem_t *item)
 
 void OBSBasic::CreateInteractionWindow(obs_source_t *source)
 {
-	/*if (interaction)
+	if (interaction)
 		interaction->close();
 
 	interaction = new OBSBasicInteraction(this, source);
 	interaction->Init();
-	interaction->setAttribute(Qt::WA_DeleteOnClose, true);*/
+	interaction->setAttribute(Qt::WA_DeleteOnClose, true);
 }
 
 void OBSBasic::CreatePropertiesWindow(obs_source_t *source)
@@ -3424,9 +3451,9 @@ void OBSBasic::on_actionRemux_triggered()
 
 void OBSBasic::on_action_Settings_triggered()
 {
-//	OBSBasicSettings settings(this);
-//	settings.exec();
-//	SystemTray(false);
+	OBSBasicSettings settings(this);
+	settings.exec();
+	SystemTray(false);
 }
 
 void OBSBasic::on_actionAdvAudioProperties_triggered()
@@ -3892,8 +3919,10 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 		popup.addAction(QTStr("RemoveSource"), this,
 				SLOT(on_actionRemoveSource_triggered()));
 		popup.addSeparator();
-		//popup.addMenu(ui->orderMenu);
-		//popup.addMenu(ui->transformMenu);
+
+		// 加入排序和变换菜单...
+		popup.addMenu(ui->orderMenu);
+		popup.addMenu(ui->transformMenu);
 
 		sourceProjector = new QMenu(QTStr("SourceProjector"));
 		AddProjectorMenuMonitors(sourceProjector, this,
@@ -4423,7 +4452,7 @@ void OBSBasic::OpenSceneFilters()
 
 void OBSBasic::StartStreaming()
 {
-	/*if (outputHandler->StreamingActive())
+	if (outputHandler->StreamingActive())
 		return;
 	if (disableOutputsRef)
 		return;
@@ -4465,7 +4494,7 @@ void OBSBasic::StartStreaming()
 	bool replayBufferWhileStreaming = config_get_bool(GetGlobalConfig(),
 		"BasicWindow", "ReplayBufferWhileStreaming");
 	if (replayBufferWhileStreaming)
-		StartReplayBuffer();*/
+		StartReplayBuffer();
 }
 
 #ifdef _WIN32
@@ -4565,7 +4594,7 @@ void OBSBasic::ForceStopStreaming()
 
 void OBSBasic::StreamDelayStarting(int sec)
 {
-	/*ui->streamButton->setText(QTStr("Basic.Main.StopStreaming"));
+	ui->streamButton->setText(QTStr("Basic.Main.StopStreaming"));
 	ui->streamButton->setEnabled(true);
 	ui->streamButton->setChecked(true);
 
@@ -4586,12 +4615,12 @@ void OBSBasic::StreamDelayStarting(int sec)
 
 	ui->statusbar->StreamDelayStarting(sec);
 
-	OnActivate();*/
+	OnActivate();
 }
 
 void OBSBasic::StreamDelayStopping(int sec)
 {
-	/*ui->streamButton->setText(QTStr("Basic.Main.StartStreaming"));
+	ui->streamButton->setText(QTStr("Basic.Main.StartStreaming"));
 	ui->streamButton->setEnabled(true);
 	ui->streamButton->setChecked(false);
 
@@ -4610,12 +4639,12 @@ void OBSBasic::StreamDelayStopping(int sec)
 			this, SLOT(ForceStopStreaming()));
 	ui->streamButton->setMenu(startStreamMenu);
 
-	ui->statusbar->StreamDelayStopping(sec);*/
+	ui->statusbar->StreamDelayStopping(sec);
 }
 
 void OBSBasic::StreamingStart()
 {
-	/*ui->streamButton->setText(QTStr("Basic.Main.StopStreaming"));
+	ui->streamButton->setText(QTStr("Basic.Main.StopStreaming"));
 	ui->streamButton->setEnabled(true);
 	ui->streamButton->setChecked(true);
 	ui->statusbar->StreamStarted(outputHandler->streamOutput);
@@ -4630,19 +4659,19 @@ void OBSBasic::StreamingStart()
 
 	OnActivate();
 
-	blog(LOG_INFO, STREAMING_START);*/
+	blog(LOG_INFO, STREAMING_START);
 }
 
 void OBSBasic::StreamStopping()
 {
-	/*ui->streamButton->setText(QTStr("Basic.Main.StoppingStreaming"));
+	ui->streamButton->setText(QTStr("Basic.Main.StoppingStreaming"));
 
 	if (sysTrayStream)
 		sysTrayStream->setText(ui->streamButton->text());
 
 	streamingStopping = true;
 	if (api)
-		api->on_event(OBS_FRONTEND_EVENT_STREAMING_STOPPING);*/
+		api->on_event(OBS_FRONTEND_EVENT_STREAMING_STOPPING);
 }
 
 void OBSBasic::StreamingStop(int code, QString last_error)
@@ -4684,7 +4713,7 @@ void OBSBasic::StreamingStop(int code, QString last_error)
 	else
 		dstr_copy(errorMessage, errorDescription);
 
-	/*ui->statusbar->StreamStopped();
+	ui->statusbar->StreamStopped();
 
 	ui->streamButton->setText(QTStr("Basic.Main.StartStreaming"));
 	ui->streamButton->setEnabled(true);
@@ -4715,7 +4744,7 @@ void OBSBasic::StreamingStop(int code, QString last_error)
 		ui->streamButton->setMenu(nullptr);
 		startStreamMenu->deleteLater();
 		startStreamMenu = nullptr;
-	}*/
+	}
 }
 
 void OBSBasic::StartRecording()
@@ -4956,6 +4985,11 @@ void OBSBasic::ReplayBufferStop(int code)
 		api->on_event(OBS_FRONTEND_EVENT_REPLAY_BUFFER_STOPPED);
 
 	OnDeactivate();
+}
+
+void OBSBasic::on_statsButton_clicked()
+{
+	on_stats_triggered();
 }
 
 void OBSBasic::on_streamButton_clicked()
@@ -5199,12 +5233,12 @@ config_t *OBSBasic::Config() const
 
 void OBSBasic::on_actionEditTransform_triggered()
 {
-/*	if (transformWindow)
+	if (transformWindow)
 		transformWindow->close();
 
 	transformWindow = new OBSBasicTransform(this);
 	transformWindow->show();
-	transformWindow->setAttribute(Qt::WA_DeleteOnClose, true);*/
+	transformWindow->setAttribute(Qt::WA_DeleteOnClose, true);
 }
 
 static obs_transform_info copiedTransformInfo;
@@ -5599,6 +5633,26 @@ void OBSBasic::OpenSourceProjector()
 			ProjectorType::Source);
 }
 
+/*void OBSBasic::OpenSourceMonitor()
+{
+	int monitor = 0;
+	OBSSceneItem item = this->GetCurrentSceneItem();
+	if (!item)
+		return;
+	OpenProjector(obs_sceneitem_get_source(item), monitor, nullptr,
+		ProjectorType::Source);
+}*/
+
+void OBSBasic::DoDisplayDbClicked()
+{
+	// 先将当前预览框移动到最上层...
+	on_actionMoveToTop_triggered();
+	// 再将当前预览框适配到全屏...
+	on_actionFitToScreen_triggered();
+	// 再将当前预览框拉伸到全屏...
+	//on_actionStretchToScreen_triggered();
+}
+
 void OBSBasic::OpenMultiviewProjector()
 {
 	int monitor = sender()->property("monitor").toInt();
@@ -5799,7 +5853,7 @@ void OBSBasic::on_resetUI_triggered()
 		ui->sourcesDock,
 		ui->mixerDock,
 		ui->transitionsDock,
-		//ui->controlsDock
+		ui->controlsDock
 	};
 
 	QList<int> sizes {
@@ -5814,7 +5868,7 @@ void OBSBasic::on_resetUI_triggered()
 	ui->sourcesDock->setVisible(true);
 	ui->mixerDock->setVisible(true);
 	ui->transitionsDock->setVisible(true);
-	//ui->controlsDock->setVisible(true);
+	ui->controlsDock->setVisible(true);
 
 	resizeDocks(docks, {cy, cy, cy, cy, cy}, Qt::Vertical);
 	resizeDocks(docks, sizes, Qt::Horizontal);
@@ -5831,7 +5885,7 @@ void OBSBasic::on_lockUI_toggled(bool lock)
 	ui->sourcesDock->setFeatures(features);
 	ui->mixerDock->setFeatures(features);
 	ui->transitionsDock->setFeatures(features);
-	//ui->controlsDock->setFeatures(features);
+	ui->controlsDock->setFeatures(features);
 }
 
 void OBSBasic::on_toggleListboxToolbars_toggled(bool visible)
@@ -5979,7 +6033,7 @@ void OBSBasic::SystemTrayInit()
 {
 	trayIcon = new QSystemTrayIcon(QIcon(":/res/images/obs.png"),
 			this);
-	trayIcon->setToolTip("OBS Studio");
+	trayIcon->setToolTip("Teacher");
 
 	showHide = new QAction(QTStr("Basic.SystemTray.Show"),
 			trayIcon);
@@ -6043,7 +6097,7 @@ void OBSBasic::SysTrayNotify(const QString &text,
 	if (QSystemTrayIcon::supportsMessages()) {
 		QSystemTrayIcon::MessageIcon icon =
 				QSystemTrayIcon::MessageIcon(n);
-		trayIcon->showMessage("OBS Studio", text, icon, 10000);
+		trayIcon->showMessage("Teacher", text, icon, 10000);
 	}
 }
 

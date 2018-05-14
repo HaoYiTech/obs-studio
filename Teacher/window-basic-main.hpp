@@ -26,7 +26,7 @@
 #include "window-main.hpp"
 #include "window-basic-interaction.hpp"
 #include "window-basic-properties.hpp"
-//#include "window-basic-transform.hpp"
+#include "window-basic-transform.hpp"
 //#include "window-basic-adv-audio.hpp"
 //#include "window-basic-filters.hpp"
 #include "window-projector.hpp"
@@ -138,9 +138,9 @@ private:
 	QPointer<QThread> updateCheckThread;
 	QPointer<QThread> logUploadThread;
 
-	//QPointer<OBSBasicInteraction> interaction;
+	QPointer<OBSBasicInteraction> interaction;
 	QPointer<OBSBasicProperties> properties;
-	//QPointer<OBSBasicTransform> transformWindow;
+	QPointer<OBSBasicTransform> transformWindow;
 	//QPointer<OBSBasicAdvAudio> advAudioWindow;
 	//QPointer<OBSBasicFilters> filters;
 
@@ -198,6 +198,7 @@ private:
 	void          CreateDefaultScene(bool firstStart);
 
 	void          UpdateVolumeControlsDecayRate();
+	void          UpdateVolumeControlsPeakMeterType();
 	void          ClearVolumeControls();
 
 	void          UploadLog(const char *subdir, const char *file);
@@ -560,7 +561,7 @@ public:
 	void SystemTray(bool firstStarted);
 
 	void OpenSavedProjectors();
-
+	void DoDisplayDbClicked();
 protected:
 	virtual void closeEvent(QCloseEvent *event) override;
 	virtual void changeEvent(QEvent *event) override;
@@ -625,6 +626,7 @@ private slots:
 	void on_actionScaleCanvas_triggered();
 	void on_actionScaleOutput_triggered();
 
+	void on_statsButton_clicked();
 	void on_streamButton_clicked();
 	void on_recordButton_clicked();
 	void on_settingsButton_clicked();
