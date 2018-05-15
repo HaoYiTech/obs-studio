@@ -7,6 +7,7 @@
 
 class QFormLayout;
 class OBSPropertiesView;
+class QListWidget;
 class QLabel;
 
 typedef obs_properties_t *(*PropertiesReloadCallback)(void *obj);
@@ -83,6 +84,8 @@ private:
 	std::string                              lastFocused;
 	QWidget                                  *lastWidget = nullptr;
 	bool                                     deferUpdate;
+	bool									 bUseFFmpeg = false;
+	QListWidget                              *listCamera = nullptr;
 
 	QWidget *NewWidget(obs_property_t *prop, QWidget *widget,
 			const char *signal);
@@ -109,8 +112,8 @@ private:
 
 	void GetScrollPos(int &h, int &v);
 	void SetScrollPos(int h, int v);
-
 public slots:
+	void onItemSelectionChanged();
 	void ReloadProperties();
 	void RefreshProperties();
 	void SignalChanged();
@@ -123,6 +126,7 @@ public:
 	OBSPropertiesView(OBSData settings, void *obj,
 			PropertiesReloadCallback reloadCallback,
 			PropertiesUpdateCallback callback,
+			bool inFFmpeg = false,
 			int minSize = 0);
 	OBSPropertiesView(OBSData settings, const char *type,
 			PropertiesReloadCallback reloadCallback,

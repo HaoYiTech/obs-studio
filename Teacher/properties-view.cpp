@@ -116,6 +116,7 @@ void OBSPropertiesView::RefreshProperties()
 
 	QFormLayout *layout = new QFormLayout;
 	layout->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+	//layout->setMargin(0);
 	widget->setLayout(layout);
 
 	QSizePolicy mainPolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -137,6 +138,32 @@ void OBSPropertiesView::RefreshProperties()
 	SetScrollPos(h, v);
 	setSizePolicy(mainPolicy);
 
+	// 如果是ffmpeg数据源，进行特殊处理...
+	if( bUseFFmpeg ) {
+		// 添加选择摄像头的提示信息框...
+		QLabel * selectLabel = new QLabel(QTStr("Basic.PropertiesWindow.SelectCamera"));
+		layout->addWidget(selectLabel);
+		// 添加自定义列表框...
+		listCamera = new QListWidget();
+		listCamera->setResizeMode(QListView::Adjust);
+		listCamera->setMinimumSize(100, 480);
+		listCamera->setSizePolicy(mainPolicy);
+		layout->addWidget(listCamera);
+		// 添加数据内容...
+		QIcon theIcon = QIcon(QStringLiteral(":/res/images/camera.png"));
+		QListWidgetItem *listItem = nullptr;
+		listItem = new QListWidgetItem(theIcon, QString("Jackey"));
+		listCamera->insertItem(0, listItem);
+		listItem = new QListWidgetItem(theIcon, QString("Hello"));
+		listCamera->insertItem(0, listItem);
+		// 单选模式，设置关联信号槽，这样可以简化很多判断操作...
+		listCamera->setSelectionMode(QAbstractItemView::SingleSelection);
+		connect(listCamera, SIGNAL(itemSelectionChanged()), this, SLOT(onItemSelectionChanged()));
+		// 设置选中记录的背景色，选中第一条记录...
+		listCamera->setStyleSheet("QListView::item:selected {background: #4FC3F7;}");
+		listCamera->setCurrentRow(0);
+	}
+
 	lastFocused.clear();
 	if (lastWidget) {
 		lastWidget->setFocus(Qt::OtherFocusReason);
@@ -147,6 +174,12 @@ void OBSPropertiesView::RefreshProperties()
 		QLabel *noPropertiesLabel = new QLabel(NO_PROPERTIES_STRING);
 		layout->addWidget(noPropertiesLabel);
 	}
+}
+
+void OBSPropertiesView::onItemSelectionChanged()
+{
+	QString theText = listCamera->currentItem()->text();
+	obs_data_set_string(this->GetSettings(), "input", theText.toStdString().c_str());
 }
 
 void OBSPropertiesView::SetScrollPos(int h, int v)
@@ -175,14 +208,16 @@ void OBSPropertiesView::GetScrollPos(int &h, int &v)
 
 OBSPropertiesView::OBSPropertiesView(OBSData settings_, void *obj_,
 		PropertiesReloadCallback reloadCallback,
-		PropertiesUpdateCallback callback_, int minSize_)
+		PropertiesUpdateCallback callback_, 
+		bool inFFmpeg, int minSize_)
 	: VScrollArea    (nullptr),
 	  properties     (nullptr, obs_properties_destroy),
 	  settings       (settings_),
 	  obj            (obj_),
 	  reloadCallback (reloadCallback),
 	  callback       (callback_),
-	  minSize        (minSize_)
+	  minSize        (minSize_),
+	  bUseFFmpeg     (inFFmpeg)
 {
 	setFrameShape(QFrame::NoFrame);
 	ReloadProperties();

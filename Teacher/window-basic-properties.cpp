@@ -57,8 +57,7 @@ OBSBasicProperties::OBSBasicProperties(QWidget *parent, OBSSource source_)
 
 	buttonBox->button(QDialogButtonBox::Ok)->setText(QTStr("OK"));
 	buttonBox->button(QDialogButtonBox::Cancel)->setText(QTStr("Cancel"));
-	buttonBox->button(QDialogButtonBox::RestoreDefaults)->
-		setText(QTStr("Defaults"));
+	buttonBox->button(QDialogButtonBox::RestoreDefaults)->setText(QTStr("Defaults"));
 
 	if (cx > 400 && cy > 400)
 		resize(cx, cy);
@@ -74,14 +73,25 @@ OBSBasicProperties::OBSBasicProperties(QWidget *parent, OBSSource source_)
 	obs_data_apply(oldSettings, settings);
 	obs_data_release(settings);
 
+	// 判断是否是ffmpeg数据源类型标志...
+	const char *id = obs_source_get_id(source);
+	bool bUseFFmpeg = ((astrcmpi(id, "ffmpeg_source") == 0) ? true : false);
+
 	view = new OBSPropertiesView(settings, source,
 			(PropertiesReloadCallback)obs_source_properties,
-			(PropertiesUpdateCallback)obs_source_update);
+			(PropertiesUpdateCallback)obs_source_update, bUseFFmpeg);
+	view->setSizePolicy(QSizePolicy::Expanding,	QSizePolicy::Expanding);
 	view->setMinimumHeight(150);
 
-	preview->setMinimumSize(20, 150);
-	preview->setSizePolicy(QSizePolicy(QSizePolicy::Expanding,
-				QSizePolicy::Expanding));
+	preview->setMinimumSize(50, 150);
+	preview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+	// 如果是ffmpeg数据源，隐藏预览窗口对象，隐藏恢复默认按钮...
+	if( bUseFFmpeg ) {
+		preview->setVisible(false);
+		view->setMinimumSize(50, 520);
+		buttonBox->button(QDialogButtonBox::RestoreDefaults)->setVisible(false);
+	}
 
 	// Create a QSplitter to keep a unified workflow here.
 	windowSplitter = new QSplitter(Qt::Orientation::Vertical, this);
@@ -163,8 +173,9 @@ void OBSBasicProperties::on_buttonBox_clicked(QAbstractButton *button)
 		acceptClicked = true;
 		close();
 
-		if (view->DeferUpdate())
+		if (view->DeferUpdate()) {
 			view->UpdateSettings();
+		}
 
 	} else if (val == QDialogButtonBox::RejectRole) {
 		obs_data_t *settings = obs_source_get_settings(source);
