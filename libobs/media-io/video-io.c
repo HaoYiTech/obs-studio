@@ -112,6 +112,247 @@ static inline bool scale_video_output(struct video_input *input,
 	return success;
 }
 
+/*
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libswscale/swscale.h>
+
+static bool FFmpegSaveJpeg(AVCodecContext * pOrigCodecCtx, AVFrame * pOrigFrame, char * lpszJpgName)
+{
+	AVOutputFormat * avOutputFormat = av_guess_format("mjpeg", NULL, NULL); //av_guess_format(0, lpszJpgName, 0);
+	AVCodec * pOutAVCodec = avcodec_find_encoder(avOutputFormat->video_codec);
+	if (pOutAVCodec == NULL)
+		return false;
+	bool bReturn = false;
+	AVCodecContext * pOutCodecCtx = NULL;
+	do {
+		pOutCodecCtx = avcodec_alloc_context3(pOutAVCodec);
+		if (pOutCodecCtx == NULL)
+			break;
+		// 准备数据结构需要的参数...
+		pOutCodecCtx->bit_rate = pOrigCodecCtx->bit_rate;
+		pOutCodecCtx->width = pOrigCodecCtx->width;
+		pOutCodecCtx->height = pOrigCodecCtx->height;
+		// 注意：没有使用适配方式，适配出来格式有可能不是YUVJ420P，造成压缩器崩溃，因为传递的数据已经固定成YUVJ420P了...
+		pOutCodecCtx->pix_fmt = avcodec_find_best_pix_fmt_of_list(pOutAVCodec->pix_fmts, -1, 1, 0); //AV_PIX_FMT_YUVJ420P;
+		pOutCodecCtx->codec_id = avOutputFormat->video_codec; //AV_CODEC_ID_MJPEG;  
+		pOutCodecCtx->codec_type = pOrigCodecCtx->codec_type; //AVMEDIA_TYPE_VIDEO;  
+		pOutCodecCtx->time_base.num = 1; //pOrigCodecCtx->time_base.num;  
+		pOutCodecCtx->time_base.den = 25; //pOrigCodecCtx->time_base.den;
+		// 打开 ffmpeg 压缩器...
+		if (avcodec_open2(pOutCodecCtx, pOutAVCodec, 0) < 0)
+			break;
+		// 设置图像质量，默认是0.5，修改为0.8...
+		pOutCodecCtx->qcompress = 0.8f;
+		// 准备接收缓存，开始压缩jpg数据...
+		int got_pic = 0;
+		int nResult = 0;
+		AVPacket pkt = { 0 };
+		// 采用新的压缩函数...
+		nResult = avcodec_encode_video2(pOutCodecCtx, &pkt, pOrigFrame, &got_pic);
+		// 解码失败或没有得到完整图像，继续解析...
+		if (nResult < 0 || !got_pic)
+			break;
+		// 打开jpg文件句柄...
+		FILE * pFile = fopen(lpszJpgName, "wb");
+		// 打开jpg失败，注意释放资源...
+		if (pFile == NULL) {
+			av_packet_unref(&pkt);
+			break;
+		}
+		// 保存到磁盘，并释放资源...
+		fwrite(pkt.data, 1, pkt.size, pFile);
+		av_packet_unref(&pkt);
+		// 释放文件句柄，返回成功...
+		fclose(pFile); pFile = NULL;
+		bReturn = true;
+	} while (false);
+	// 清理中间产生的对象...
+	if (pOutCodecCtx != NULL) {
+		avcodec_close(pOutCodecCtx);
+		av_free(pOutCodecCtx);
+	}
+	return bReturn;
+}
+
+static bool YUVToJpeg(AVCodecContext * pOrigCodecCtx, AVFrame * pOrigFrame, char * lpszJpgName)
+{
+	AVFormatContext * pFormatCtx;
+	AVOutputFormat * fmt;
+	AVCodecContext * pCodecCtx;
+
+	//int nResult = avformat_alloc_output_context2(&pFormatCtx, NULL, NULL, lpszJpgName);
+	//fmt = pFormatCtx->oformat;
+
+	pFormatCtx = avformat_alloc_context();
+	fmt = av_guess_format("mjpeg", NULL, NULL);
+	pFormatCtx->oformat = fmt;
+	if (avio_open(&pFormatCtx->pb, lpszJpgName, AVIO_FLAG_READ_WRITE) < 0)
+		return false;
+	
+	AVStream * video_st = avformat_new_stream(pFormatCtx, 0);
+	pCodecCtx = video_st->codec;
+
+	AVCodec * pOutAVCodec = avcodec_find_encoder(fmt->video_codec);
+	if (pOutAVCodec == NULL)
+		return false;
+
+	pCodecCtx = video_st->codec;
+	pCodecCtx->codec_id = fmt->video_codec;
+	pCodecCtx->codec_type = AVMEDIA_TYPE_VIDEO;
+	pCodecCtx->pix_fmt = AV_PIX_FMT_YUVJ420P;
+
+	pCodecCtx->width = pOrigCodecCtx->width;
+	pCodecCtx->height = pOrigCodecCtx->height;
+
+	pCodecCtx->time_base.num = 1;
+	pCodecCtx->time_base.den = 25;
+
+	av_dump_format(pFormatCtx, 0, lpszJpgName, 1);
+	
+	if (avcodec_open2(pCodecCtx, pOutAVCodec, NULL) < 0)
+		return false;
+	avformat_write_header(pFormatCtx, NULL);
+	AVPacket pkt = { 0 };
+	int got_picture = 0;
+	int ret = avcodec_encode_video2(pCodecCtx, &pkt, pOrigFrame, &got_picture);
+	if (got_picture == 1) {
+		pkt.stream_index = video_st->index;
+		ret = av_write_frame(pFormatCtx, &pkt);
+	}
+	av_free_packet(&pkt);
+	av_write_trailer(pFormatCtx);
+	avcodec_close(video_st->codec);
+	avio_close(pFormatCtx->pb);
+	avformat_free_context(pFormatCtx);
+	return true;
+}
+
+void my_av_logoutput(void* ptr, int level, const char* fmt, va_list vl) {
+	FILE *fp = fopen("d:/111.log", "a+");
+	if (fp) {
+		vfprintf(fp, fmt, vl);
+		fflush(fp);
+		fclose(fp);
+	}
+}
+
+static inline enum AVPixelFormat obs_to_ffmpeg_video_format(enum video_format format)
+{
+	switch (format) {
+	case VIDEO_FORMAT_NONE: return AV_PIX_FMT_NONE;
+	case VIDEO_FORMAT_I444: return AV_PIX_FMT_YUV444P;
+	case VIDEO_FORMAT_I420: return AV_PIX_FMT_YUV420P;
+	case VIDEO_FORMAT_NV12: return AV_PIX_FMT_NV12;
+	case VIDEO_FORMAT_YVYU: return AV_PIX_FMT_NONE;
+	case VIDEO_FORMAT_YUY2: return AV_PIX_FMT_YUYV422;
+	case VIDEO_FORMAT_UYVY: return AV_PIX_FMT_UYVY422;
+	case VIDEO_FORMAT_RGBA: return AV_PIX_FMT_RGBA;
+	case VIDEO_FORMAT_BGRA: return AV_PIX_FMT_BGRA;
+	case VIDEO_FORMAT_BGRX: return AV_PIX_FMT_BGRA;
+	case VIDEO_FORMAT_Y800: return AV_PIX_FMT_GRAY8;
+	}
+	return AV_PIX_FMT_NONE;
+}
+
+static bool DoProcSaveJpeg(struct video_output * video, struct video_data * frame, char * lpszJpgName)
+{
+	/////////////////////////////////////////////////////////////////////////
+	// 注意：input->conversion 是需要变换的格式，
+	// 因此，应该从 video->info 当中获取原始数据信息...
+	// 同时，sws_getContext 需要AVPixelFormat而不是video_format格式...
+	/////////////////////////////////////////////////////////////////////////
+	// 设置ffmpeg的日志回调函数...
+	av_log_set_level(AV_LOG_VERBOSE);
+	av_log_set_callback(my_av_logoutput);
+	// 统一数据源输入格式，找到压缩器需要的像素格式...
+	enum AVPixelFormat nDestFormat = AV_PIX_FMT_YUV420P;
+	enum AVPixelFormat nSrcFormat = obs_to_ffmpeg_video_format(video->info.format);
+	int nSrcWidth = video->info.width;
+	int nSrcHeight = video->info.height;
+	// 不管什么格式，都需要进行像素格式的转换...
+	AVFrame * pDestFrame = av_frame_alloc();
+	int nDestBufSize = avpicture_get_size(nDestFormat, nSrcWidth, nSrcHeight);
+	uint8_t * pDestOutBuf = (uint8_t *)av_malloc(nDestBufSize);
+	avpicture_fill((AVPicture *)pDestFrame, pDestOutBuf, nDestFormat, nSrcWidth, nSrcHeight);
+
+	// 注意：这里不用libyuv的原因是，使用sws更简单，不用根据不同像素格式调用不同接口...
+	// ffmpeg自带的sws_scale转换也是没有问题的，之前有问题是由于sws_getContext的输入源需要格式AVPixelFormat，写成了video_format，造成的格式错位问题...
+	// 注意：目的像素格式不能为AV_PIX_FMT_YUVJ420P，会提示警告信息，但并不影响格式转换，因此，还是使用不会警告的AV_PIX_FMT_YUV420P格式...
+	struct SwsContext * img_convert_ctx = sws_getContext(nSrcWidth, nSrcHeight, nSrcFormat, nSrcWidth, nSrcHeight, nDestFormat, SWS_BICUBIC, NULL, NULL, NULL);
+	int nReturn = sws_scale(img_convert_ctx, (const uint8_t* const*)frame->data, frame->linesize, 0, nSrcHeight, pDestFrame->data, pDestFrame->linesize);
+	sws_freeContext(img_convert_ctx);
+
+	// 设置转换后的数据帧内容...
+	pDestFrame->width = nSrcWidth;
+	pDestFrame->height = nSrcHeight;
+	pDestFrame->format = nDestFormat;
+
+	// 将转换后的 YUV 数据存盘成 jpg 文件...
+	AVCodecContext * pOutCodecCtx = NULL;
+	bool bRetSave = false;
+	do {
+		// 预先查找jpeg压缩器需要的输入数据格式...
+		AVOutputFormat * avOutputFormat = av_guess_format("mjpeg", NULL, NULL); //av_guess_format(0, lpszJpgName, 0);
+		AVCodec * pOutAVCodec = avcodec_find_encoder(avOutputFormat->video_codec);
+		if (pOutAVCodec == NULL)
+			break;
+		// 创建ffmpeg压缩器的场景对象...
+		pOutCodecCtx = avcodec_alloc_context3(pOutAVCodec);
+		if (pOutCodecCtx == NULL)
+			break;
+		// 准备数据结构需要的参数...
+		pOutCodecCtx->bit_rate = 200000;
+		pOutCodecCtx->width = nSrcWidth;
+		pOutCodecCtx->height = nSrcHeight;
+		// 注意：没有使用适配方式，适配出来格式有可能不是YUVJ420P，造成压缩器崩溃，因为传递的数据已经固定成YUV420P...
+		// 注意：输入像素是YUV420P格式，压缩器像素是YUVJ420P格式...
+		pOutCodecCtx->pix_fmt = avcodec_find_best_pix_fmt_of_list(pOutAVCodec->pix_fmts, -1, 1, 0); //AV_PIX_FMT_YUVJ420P;
+		pOutCodecCtx->codec_id = avOutputFormat->video_codec; //AV_CODEC_ID_MJPEG;  
+		pOutCodecCtx->codec_type = AVMEDIA_TYPE_VIDEO;  
+		pOutCodecCtx->time_base.num = 1;
+		pOutCodecCtx->time_base.den = 25;
+		 // 打开 ffmpeg 压缩器...
+		if (avcodec_open2(pOutCodecCtx, pOutAVCodec, 0) < 0)
+			break;
+		// 设置图像质量，默认是0.5，修改为0.8(图片太大,0.5刚刚好)...
+		pOutCodecCtx->qcompress = 0.5f;
+		// 准备接收缓存，开始压缩jpg数据...
+		int got_pic = 0;
+		int nResult = 0;
+		AVPacket pkt = { 0 };
+		// 采用新的压缩函数...
+		nResult = avcodec_encode_video2(pOutCodecCtx, &pkt, pDestFrame, &got_pic);
+		// 解码失败或没有得到完整图像，继续解析...
+		if (nResult < 0 || !got_pic)
+			break;
+		// 打开jpg文件句柄...
+		FILE * pFile = fopen(lpszJpgName, "wb");
+		// 打开jpg失败，注意释放资源...
+		if (pFile == NULL) {
+			av_packet_unref(&pkt);
+			break;
+		}
+		// 保存到磁盘，并释放资源...
+		fwrite(pkt.data, 1, pkt.size, pFile);
+		av_packet_unref(&pkt);
+		// 释放文件句柄，返回成功...
+		fclose(pFile); pFile = NULL;
+		bRetSave = true;
+	} while (false);
+	// 清理中间产生的对象...
+	if (pOutCodecCtx != NULL) {
+		avcodec_close(pOutCodecCtx);
+		av_free(pOutCodecCtx);
+	}
+
+	// 释放临时分配的数据空间...
+	av_frame_free(&pDestFrame);
+	av_free(pDestOutBuf);
+
+	return bRetSave;
+}*/
+
 static inline bool video_output_cur_frame(struct video_output *video)
 {
 	struct cached_frame_info *frame_info;
@@ -133,6 +374,9 @@ static inline bool video_output_cur_frame(struct video_output *video)
 	for (size_t i = 0; i < video->inputs.num; i++) {
 		struct video_input *input = video->inputs.array+i;
 		struct video_data frame = frame_info->frame;
+
+		// 将原始数据存盘成JPEG文件...
+		//DoProcSaveJpeg(video, &frame, "d:/111.jpg");
 
 		if (scale_video_output(input, &frame))
 			input->callback(input->param, &frame);
