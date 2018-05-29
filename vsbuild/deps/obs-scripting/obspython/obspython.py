@@ -3869,6 +3869,10 @@ def obs_get_source_output_flags(id: 'char const *') -> "uint32_t":
     return _obspython.obs_get_source_output_flags(id)
 obs_get_source_output_flags = _obspython.obs_get_source_output_flags
 
+def obs_enable_source_type(name: 'char const *', enable: 'bool') -> "void":
+    return _obspython.obs_enable_source_type(name, enable)
+obs_enable_source_type = _obspython.obs_enable_source_type
+
 def obs_get_source_defaults(id: 'char const *') -> "obs_data_t *":
     return _obspython.obs_get_source_defaults(id)
 obs_get_source_defaults = _obspython.obs_get_source_defaults

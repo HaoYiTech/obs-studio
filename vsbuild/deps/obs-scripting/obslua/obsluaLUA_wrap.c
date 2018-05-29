@@ -29450,6 +29450,28 @@ fail:
 }
 
 
+static int _wrap_obs_enable_source_type(lua_State* L) {
+  int SWIG_arg = 0;
+  char *arg1 = (char *) 0 ;
+  bool arg2 ;
+  
+  SWIG_check_num_args("obs_enable_source_type",2,2)
+  if(!SWIG_lua_isnilstring(L,1)) SWIG_fail_arg("obs_enable_source_type",1,"char const *");
+  if(!lua_isboolean(L,2)) SWIG_fail_arg("obs_enable_source_type",2,"bool");
+  arg1 = (char *)lua_tostring(L, 1);
+  arg2 = (lua_toboolean(L, 2)!=0);
+  obs_enable_source_type((char const *)arg1,arg2);
+  
+  return SWIG_arg;
+  
+  if(0) SWIG_fail;
+  
+fail:
+  lua_error(L);
+  return SWIG_arg;
+}
+
+
 static int _wrap_obs_get_source_defaults(lua_State* L) {
   int SWIG_arg = 0;
   char *arg1 = (char *) 0 ;
@@ -40607,6 +40629,7 @@ static swig_lua_method swig_SwigModule_methods[]= {
     { "obs_source_removed", _wrap_obs_source_removed},
     { "obs_source_get_output_flags", _wrap_obs_source_get_output_flags},
     { "obs_get_source_output_flags", _wrap_obs_get_source_output_flags},
+    { "obs_enable_source_type", _wrap_obs_enable_source_type},
     { "obs_get_source_defaults", _wrap_obs_get_source_defaults},
     { "obs_get_source_properties", _wrap_obs_get_source_properties},
     { "obs_is_source_configurable", _wrap_obs_is_source_configurable},

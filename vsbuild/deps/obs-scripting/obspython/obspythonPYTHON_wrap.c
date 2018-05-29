@@ -31165,6 +31165,39 @@ fail:
 }
 
 
+SWIGINTERN PyObject *_wrap_obs_enable_source_type(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  char *arg1 = (char *) 0 ;
+  bool arg2 ;
+  int res1 ;
+  char *buf1 = 0 ;
+  int alloc1 = 0 ;
+  bool val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:obs_enable_source_type",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_AsCharPtrAndSize(obj0, &buf1, NULL, &alloc1);
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "obs_enable_source_type" "', argument " "1"" of type '" "char const *""'");
+  }
+  arg1 = (char *)(buf1);
+  ecode2 = SWIG_AsVal_bool(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "obs_enable_source_type" "', argument " "2"" of type '" "bool""'");
+  } 
+  arg2 = (bool)(val2);
+  obs_enable_source_type((char const *)arg1,arg2);
+  resultobj = SWIG_Py_Void();
+  if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
+  return resultobj;
+fail:
+  if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
+  return NULL;
+}
+
+
 SWIGINTERN PyObject *_wrap_obs_get_source_defaults(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   char *arg1 = (char *) 0 ;
@@ -42706,6 +42739,7 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"obs_source_removed", _wrap_obs_source_removed, METH_VARARGS, NULL},
 	 { (char *)"obs_source_get_output_flags", _wrap_obs_source_get_output_flags, METH_VARARGS, NULL},
 	 { (char *)"obs_get_source_output_flags", _wrap_obs_get_source_output_flags, METH_VARARGS, NULL},
+	 { (char *)"obs_enable_source_type", _wrap_obs_enable_source_type, METH_VARARGS, NULL},
 	 { (char *)"obs_get_source_defaults", _wrap_obs_get_source_defaults, METH_VARARGS, NULL},
 	 { (char *)"obs_get_source_properties", _wrap_obs_get_source_properties, METH_VARARGS, NULL},
 	 { (char *)"obs_is_source_configurable", _wrap_obs_is_source_configurable, METH_VARARGS, NULL},
