@@ -25,9 +25,11 @@
 //#include "window-license-agreement.hpp"
 #include "crash-report.hpp"
 #include "platform.hpp"
+#include "FastSession.h"
 
 #include <fstream>
 #include <curl/curl.h>
+#include <jansson.h>
 
 #include <QtCore/qfile.h>
 
@@ -760,6 +762,10 @@ OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
 	: QApplication(argc, argv),
 	profilerNameStore(store)
 {
+	m_nFastTimer   = -1;
+	m_nActiveTimer = -1;
+	m_TrackerSession = NULL;
+	m_StorageSession = NULL;
 	sleepInhibitor = os_inhibit_sleep_create("OBS Video/audio");
 }
 
@@ -946,8 +952,7 @@ bool OBSApp::OBSInit()
 		if (!StartupOBS(locale.c_str(), GetProfilerNameStore()))
 			return false;
 
-		blog(LOG_INFO, "Portable mode: %s",
-			portable_mode ? "true" : "false");
+		blog(LOG_INFO, "Portable mode: %s", portable_mode ? "true" : "false");
 
 		setQuitOnLastWindowClosed(false);
 
@@ -970,6 +975,492 @@ bool OBSApp::OBSInit()
 	}
 	else {
 		return false;
+	}
+}
+//
+// 处理网站反馈接口函数...
+size_t appPostCurl(void *ptr, size_t size, size_t nmemb, void *stream)
+{
+	OBSApp * lpApp = (OBSApp*)stream;
+	lpApp->doPostCurl((char*)ptr, size * nmemb);
+	return size * nmemb;
+}
+//
+// 将每次反馈的数据进行累加 => 有可能一次请求的数据是分开发送的...
+void OBSApp::doPostCurl(char *pData, size_t nSize)
+{
+	m_strUTF8Data.append(pData, nSize);
+}
+//
+// 从网站服务器获取在线的摄像头列表...
+void OBSApp::doGetCameraList(QListWidget * lpListView, int inSelCameraID)
+{
+	if (lpListView == NULL)
+		return;
+	// 获取云教室号码的配置对象...
+	const char * lpLiveRoomID = config_get_string(this->GlobalConfig(), "General", "LiveRoomID");
+	if (lpLiveRoomID == NULL)
+		return;
+	// 先将缓冲区进行清空处理...
+	m_strUTF8Data.clear();
+	// 准备登出需要的云教室号码缓冲区...
+	char   szPost[MAX_PATH] = { 0 };
+	char * lpStrUrl = "http://edu.ihaoyi.cn/wxapi.php/Gather/getRoomCameraList";
+	sprintf(szPost, "room_id=%s", lpLiveRoomID);
+	// 调用Curl接口，汇报采集端信息...
+	CURLcode res = CURLE_OK;
+	CURL  *  curl = curl_easy_init();
+	do {
+		if (curl == NULL)
+			break;
+		// 设定curl参数，采用post模式，设置5秒超时...
+		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
+		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, szPost);
+		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(szPost));
+		res = curl_easy_setopt(curl, CURLOPT_HEADER, false);
+		res = curl_easy_setopt(curl, CURLOPT_POST, true);
+		res = curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
+		res = curl_easy_setopt(curl, CURLOPT_URL, lpStrUrl);
+		res = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, appPostCurl);
+		res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)this);
+		res = curl_easy_perform(curl);
+	} while (false);
+	// 释放资源...
+	if (curl != NULL) {
+		curl_easy_cleanup(curl);
+	}
+	// 如果返回的数据为空，提示错误...
+	if (m_strUTF8Data.size() <= 0)
+		return;
+	// 开始解析传递过来的 json 数据包...
+	json_error_t theError = { 0 };
+	json_t * theRoot = json_loads(m_strUTF8Data.c_str(), 0, &theError);
+	json_t * theCode = json_object_get(theRoot, "err_code");
+	json_t * theMsg = json_object_get(theRoot, "err_msg");
+	json_t * theCamera = json_object_get(theRoot, "camera");
+	const char * lpStrMsg = json_string_value(theMsg);
+	if (theCode == NULL || theMsg == NULL || lpStrMsg == NULL) {
+		blog(LOG_ERROR, "getRoomCameraList failed => json error");
+		json_decref(theRoot);
+		return;
+	}
+	// 发生错误的处理 => 打印错误信息...
+	if (theCode->type == JSON_TRUE) {
+		QString strErrMsg = QString::fromUtf8(lpStrMsg);
+		blog(LOG_ERROR, "getRoomCameraList failed => %s", strErrMsg.toStdString().c_str());
+		json_decref(theRoot);
+		return;
+	}
+	// 如果在线通道列表为空 或 不是数组，直接返回...
+	if (theCamera == NULL || theCamera->type != JSON_ARRAY) {
+		json_decref(theRoot);
+		return;
+	}
+	// 遍历在线摄像头通道，写入列表框当中...
+	QListWidgetItem * theSelectItem = nullptr;
+	size_t nSize = json_array_size(theCamera);
+	for (size_t i = 0; i < nSize; ++i) {
+		json_t * lpItem = json_array_get(theCamera, i);
+		if (lpItem == NULL || lpItem->type != JSON_OBJECT)
+			continue;
+		// 解析每条记录的详细内容...
+		int nCameraID = 0;
+		json_t * lpValue = NULL;
+		const char * lpKey = NULL;
+		string strCameraName, strNameSet, strNamePC;
+		json_object_foreach(lpItem, lpKey, lpValue) {
+			if (stricmp(lpKey, "camera_id") == 0) {
+				if (lpValue->type == JSON_INTEGER) {
+					nCameraID = json_integer_value(lpValue);
+				} else if (lpValue->type == JSON_STRING) {
+					nCameraID = atoi(json_string_value(lpValue));
+				}
+			} else if (stricmp(lpKey, "camera_name") == 0) {
+				strCameraName.assign(json_string_value(lpValue), json_string_length(lpValue));
+			} else if (stricmp(lpKey, "name_pc") == 0) {
+				strNamePC.assign(json_string_value(lpValue), json_string_length(lpValue));
+			} else if (stricmp(lpKey, "name_set") == 0) {
+				strNameSet.assign(json_string_value(lpValue), json_string_length(lpValue));
+			}
+		}
+		// 如果摄像头编号无效，继续下一条记录...
+		if (nCameraID <= 0) continue;
+		// 组合需要的记录内容...
+		string strItemValue;
+		if (strNameSet.size() > 0) {
+			strItemValue.append(strNameSet);
+		}
+		if (strNamePC.size() > 0) {
+			strItemValue.append(" - ");
+			strItemValue.append(strNamePC);
+		}
+		if (strCameraName.size() > 0) {
+			strItemValue.append(" - ");
+			strItemValue.append(strCameraName);
+		}
+		QListWidgetItem * theListItem = nullptr;
+		QIcon theIcon = QIcon(QStringLiteral(":/res/images/camera.png"));
+		theListItem = new QListWidgetItem(theIcon, QString::fromUtf8(strItemValue.c_str()));
+		theListItem->setData(Qt::UserRole, nCameraID);
+		lpListView->insertItem(0, theListItem);
+		// 如果选中摄像头与当前条目一致，保存选中条目...
+		theSelectItem = (inSelCameraID == nCameraID) ? theListItem : theSelectItem;
+	}
+	// 数据处理完毕，释放json数据包...
+	json_decref(theRoot);
+	// 如果行数不为0，选中第一行内容...
+	if (theSelectItem != nullptr) {
+		lpListView->setCurrentItem(theSelectItem);
+	} else {
+		lpListView->setCurrentRow(0);
+	}
+}
+//
+// 从网站获取指定摄像头的 rtmp 地址...
+void OBSApp::doGetCameraUrl(int nCameraID, obs_data_t * lpSettings)
+{
+	// 先将缓冲区进行清空处理...
+	m_strUTF8Data.clear();
+	// 准备登出需要的云教室号码缓冲区...
+	char   szPost[MAX_PATH] = { 0 };
+	char * lpStrUrl = "http://edu.ihaoyi.cn/wxapi.php/Gather/getRoomCameraUrl";
+	sprintf(szPost, "camera_id=%d", nCameraID);
+	// 调用Curl接口，汇报采集端信息...
+	CURLcode res = CURLE_OK;
+	CURL  *  curl = curl_easy_init();
+	do {
+		if (curl == NULL)
+			break;
+		// 设定curl参数，采用post模式，设置5秒超时...
+		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
+		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, szPost);
+		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(szPost));
+		res = curl_easy_setopt(curl, CURLOPT_HEADER, false);
+		res = curl_easy_setopt(curl, CURLOPT_POST, true);
+		res = curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
+		res = curl_easy_setopt(curl, CURLOPT_URL, lpStrUrl);
+		res = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, appPostCurl);
+		res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)this);
+		res = curl_easy_perform(curl);
+	} while (false);
+	// 释放资源...
+	if (curl != NULL) {
+		curl_easy_cleanup(curl);
+	}
+	// 如果返回的数据为空，提示错误...
+	if (m_strUTF8Data.size() <= 0)
+		return;
+	// 开始解析传递过来的 json 数据包...
+	int nPlayerID = 0;
+	json_error_t theError = { 0 };
+	json_t * theRoot = json_loads(m_strUTF8Data.c_str(), 0, &theError);
+	json_t * theCode = json_object_get(theRoot, "err_code");
+	json_t * theMsg = json_object_get(theRoot, "err_msg");
+	json_t * theRtmpUrl = json_object_get(theRoot, "rtmp_url");
+	json_t * thePlayerID = json_object_get(theRoot, "player_id");
+	const char * lpStrMsg = json_string_value(theMsg);
+	if (theCode == NULL || theMsg == NULL || lpStrMsg == NULL) {
+		blog(LOG_ERROR, "getRoomCameraUrl failed => json error");
+		json_decref(theRoot);
+		return;
+	}
+	// 发生错误的处理 => 打印错误信息...
+	if (theCode->type == JSON_TRUE) {
+		QString strErrMsg = QString::fromUtf8(lpStrMsg);
+		blog(LOG_ERROR, "getRoomCameraUrl failed => %s", strErrMsg.toStdString().c_str());
+		json_decref(theRoot);
+		return;
+	}
+	// 判断获取的url地址是否有效...
+	const char * lpRtmpUrl = json_string_value(theRtmpUrl);
+	if (lpRtmpUrl == NULL || json_string_length(theRtmpUrl) <= 0) {
+		blog(LOG_ERROR, "getRoomCameraUrl failed => rtmp_url is null");
+		json_decref(theRoot);
+		return;
+	}
+	// 解析网站反馈的直播用户编号...
+	if (thePlayerID->type == JSON_INTEGER) {
+		nPlayerID = json_integer_value(thePlayerID);
+	} else if (thePlayerID->type == JSON_STRING) {
+		nPlayerID = atoi(json_string_value(thePlayerID));
+	}
+	// 将 rtmp 地址赋值给 ffmpeg 输入配置当中...
+	obs_data_set_string(lpSettings, "input", lpRtmpUrl);
+	obs_data_set_int(lpSettings, "camera_id", nCameraID);
+	obs_data_set_int(lpSettings, "player_id", nPlayerID);
+	// 数据处理完毕，释放json数据包...
+	json_decref(theRoot);
+}
+//
+// 向中转服务器发送在线状态通知...
+void OBSApp::doVerifyEvent(obs_data_t * lpSettings)
+{
+	// 判断输入参数是否有效...
+	if (lpSettings == NULL)	return;
+	// 获取预先存储的camera_id和player_id，并判断有效性...
+	int nCameraID = obs_data_get_int(lpSettings, "camera_id");
+	int nPlayerID = obs_data_get_int(lpSettings, "player_id");
+	if (nCameraID <= 0 || nPlayerID <= 0)
+		return;
+	// 先将缓冲区进行清空处理...
+	m_strUTF8Data.clear();
+	// 准备登出需要的云教室号码缓冲区...
+	// player_type => 0 => flash player => rtmp...
+	// player_type => 1 => html5 player => hls/flv...
+	char   szPost[MAX_PATH] = { 0 };
+	char * lpStrUrl = "http://edu.ihaoyi.cn/wxapi.php/RTMP/verify";
+	sprintf(szPost, "rtmp_live=%d&player_id=%d&player_type=0&player_active=1", nCameraID, nPlayerID);
+	// 打印在线通知内容信息...
+	blog(LOG_INFO, szPost);
+	// 调用Curl接口，汇报采集端信息...
+	CURLcode res = CURLE_OK;
+	CURL  *  curl = curl_easy_init();
+	do {
+		if (curl == NULL)
+			break;
+		// 设定curl参数，采用post模式，设置5秒超时...
+		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
+		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, szPost);
+		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(szPost));
+		res = curl_easy_setopt(curl, CURLOPT_HEADER, false);
+		res = curl_easy_setopt(curl, CURLOPT_POST, true);
+		res = curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
+		res = curl_easy_setopt(curl, CURLOPT_URL, lpStrUrl);
+		res = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, appPostCurl);
+		res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)this);
+		res = curl_easy_perform(curl);
+	} while (false);
+	// 释放资源...
+	if (curl != NULL) {
+		curl_easy_cleanup(curl);
+	}
+	// 如果返回的数据为空，提示错误...
+	if (m_strUTF8Data.size() <= 0)
+		return;
+	// 开始解析传递过来的 json 数据包...
+	json_error_t theError = { 0 };
+	json_t * theRoot = json_loads(m_strUTF8Data.c_str(), 0, &theError);
+	json_t * theCode = json_object_get(theRoot, "err_code");
+	json_t * theMsg = json_object_get(theRoot, "err_msg");
+	const char * lpStrMsg = json_string_value(theMsg);
+	if (theCode == NULL || theMsg == NULL || lpStrMsg == NULL) {
+		blog(LOG_ERROR, "RTMP/verify failed => json error");
+		json_decref(theRoot);
+		return;
+	}
+	// 获取错误编号 => 这里必须进行严格的格式判断...
+	int nErrCode = 0;
+	if (theCode->type == JSON_TRUE) {
+		nErrCode = true;
+	} else if (theCode->type == JSON_INTEGER) {
+		nErrCode = json_integer_value(theCode);
+	}
+	// 发生错误，重置资源配置项...
+	if (nErrCode > 0) {
+		QString strErrMsg = QString::fromUtf8(lpStrMsg);
+		blog(LOG_ERROR, "RTMP/verify failed => %s", strErrMsg.toStdString().c_str());
+		json_decref(theRoot);
+		// 重置资源的配置项，不再发起在线通知...
+		obs_data_set_int(lpSettings, "camera_id", 0);
+		obs_data_set_int(lpSettings, "player_id", 0);
+		return;
+	}
+	// 数据处理完毕，释放json数据包...
+	json_decref(theRoot);
+}
+//
+// 处理讲师端退出事件通知...
+void OBSApp::doLogoutEvent()
+{
+	// 释放存储会话对象...
+	if (m_TrackerSession != NULL) {
+		delete m_TrackerSession;
+		m_TrackerSession = NULL;
+	}
+	if (m_StorageSession != NULL) {
+		delete m_StorageSession;
+		m_StorageSession = NULL;
+	}
+	// 获取云教室号码的配置对象...
+	const char * lpLiveRoomID = config_get_string(this->GlobalConfig(), "General", "LiveRoomID");
+	if (lpLiveRoomID == NULL)
+		return;
+	// 准备登出需要的云教室号码缓冲区...
+	char   szPost[MAX_PATH] = { 0 };
+	char * lpStrUrl = "http://edu.ihaoyi.cn/wxapi.php/Gather/logoutLiveRoom";
+	sprintf(szPost, "room_id=%s", lpLiveRoomID);
+	// 调用Curl接口，汇报采集端信息...
+	CURLcode res = CURLE_OK;
+	CURL  *  curl = curl_easy_init();
+	do {
+		if (curl == NULL)
+			break;
+		// 设定curl参数，采用post模式，设置5秒超时...
+		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
+		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, szPost);
+		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(szPost));
+		res = curl_easy_setopt(curl, CURLOPT_HEADER, false);
+		res = curl_easy_setopt(curl, CURLOPT_POST, true);
+		res = curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
+		res = curl_easy_setopt(curl, CURLOPT_URL, lpStrUrl);
+		res = curl_easy_perform(curl);
+	} while (false);
+	// 释放资源...
+	if (curl != NULL) {
+		curl_easy_cleanup(curl);
+	}
+}
+//
+// 创建并初始化登录窗口...
+void OBSApp::doLoginInit()
+{
+	// 创建登录窗口，显示登录窗口...
+	loginWindow = new LoginWindow();
+	loginWindow->show();
+	// 建立登录窗口与应用对象的信号槽关联函数...
+	connect(loginWindow, SIGNAL(loginSuccess()), this, SLOT(doLoginSuccess()));
+}
+//
+// 处理登录成功之后的信号槽事件...
+void OBSApp::doLoginSuccess()
+{
+	// 先关闭登录窗口...
+	loginWindow->close();
+	// 创建主窗口...
+	this->OBSInit();
+	// 开启一个定时通知时钟 => 每隔15秒发送一次...
+	m_nActiveTimer = this->startTimer(15 * 1000);
+	// 开启一个定时上传检测时钟 => 每隔5秒执行一次...
+	m_nFastTimer = this->startTimer(5 * 1000);
+}
+//
+// 时钟定时执行过程...
+void OBSApp::timerEvent(QTimerEvent *inEvent)
+{
+	int nTimerID = inEvent->timerId();
+	if (nTimerID == m_nActiveTimer) {
+		mainWindow->doCameraVerify();
+	} else if(nTimerID == m_nFastTimer) {
+		this->doCheckFDFS();
+	}
+}
+//
+// 检测是否需要进行数据上传...
+void OBSApp::doCheckFDFS()
+{
+	this->doCheckTracker();
+	this->doCheckStorage();
+}
+//
+// 自动检测并创建TrackerSession...
+void OBSApp::doCheckTracker()
+{
+	// 如果对象已经创建，直接返回...
+	if (m_TrackerSession != NULL)
+		return;
+	// 判断存储服务器地址是否有效...
+	const char * lpTrackerAddr = config_get_string(App()->GlobalConfig(), "General", "TrackerAddr");
+	const char * lpTrackerPort = config_get_string(App()->GlobalConfig(), "General", "TrackerPort");
+	if (lpTrackerAddr == NULL || lpTrackerPort == NULL)
+		return;
+	// 初始化存储上传会话对象...
+	m_TrackerSession = new CTrackerSession();
+	m_TrackerSession->InitSession(lpTrackerAddr, atoi(lpTrackerPort));
+}
+//
+// 自动检测并创建StorageSession...
+void OBSApp::doCheckStorage()
+{
+	// 首先判断一些参数的有效性...
+	if (m_TrackerSession == NULL)
+		return;
+	// 跟踪服务器已链接，存储服务器地址已获取...
+	StorageServer & theStorage = m_TrackerSession->GetStorageServer();
+	if (!m_TrackerSession->IsConnected() || theStorage.port <= 0)
+		return;
+	// 在指定目录下查找.jpg和.mp4文件...
+	char szFile[MAX_PATH] = { 0 };
+	if (!this->doFindOneFile(szFile, MAX_PATH, "*.jpg") && !this->doFindOneFile(szFile, MAX_PATH, "*.mp4"))
+		return;
+	// 如果存储会话已经存在，正在上传中，直接返回...
+	if (m_StorageSession != NULL && !m_StorageSession->IsCanReBuild())
+		return;
+	// 如果会话有效，先删除之...
+	if (m_StorageSession != NULL) {
+		delete m_StorageSession;
+		m_StorageSession = NULL;
+	}
+	// 创建存储上传会话对象...
+	m_StorageSession = new CStorageSession();
+	m_StorageSession->ReBuildSession(&theStorage, szFile);
+}
+//
+// 在指定目录查找.jpg和.mp4文件...
+bool OBSApp::doFindOneFile(char * inPath, int inSize, const char * inExtend)
+{
+	if (inPath == NULL || inSize <= 0 || inExtend == NULL)
+		return false;
+	char szName[MAX_PATH] = { 0 };
+	char szPath[MAX_PATH] = { 0 };
+	char szFind[MAX_PATH] = { 0 };
+	if (os_get_config_path(szPath, sizeof(szPath), "obs-studio") <= 0)
+		return false;
+	HANDLE               handle = NULL;
+	wchar_t           *  w_path = NULL;
+	WIN32_FIND_DATA      wfd = { 0 };
+	sprintf(szFind, "%s/%s", szPath, inExtend);
+	if (os_utf8_to_wcs_ptr(szFind, 0, &w_path) <= 0)
+		return false;
+	// 找到第一个指定文件全路径...
+	handle = FindFirstFileW(w_path, &wfd);
+	if (handle == INVALID_HANDLE_VALUE) {
+		bfree(w_path);
+		return false;
+	}
+	// 释放查找句柄...
+	FindClose(handle);
+	// 将文件名转换成utf8格式，并进行组合输出...
+	if (os_wcs_to_utf8(wfd.cFileName, 0, szName, MAX_PATH) <= 0) {
+		bfree(w_path);
+		return false;
+	}
+	// 释放空间，返回查找文件结果...
+	sprintf(inPath, "%s/%s", szPath, szName);
+	bfree(w_path);
+	return true;
+}
+//
+// 向网站汇报上传文件结果...
+void OBSApp::doWebSaveFDFS(char * lpFileName, char * lpPathFDFS, int64_t llFileSize)
+{
+	char szExt[32] = { 0 };
+	char szDriver[32] = { 0 };
+	char szDir[MAX_PATH] = { 0 };
+	char szSrcName[MAX_PATH] = { 0 };
+	_splitpath(lpFileName, szDriver, szDir, szSrcName, szExt);
+	// 准备汇报需要的缓冲区...
+	char   szPost[MAX_PATH] = { 0 };
+	char * lpStrUrl = "http://edu.ihaoyi.cn/wxapi.php/Gather/liveFDFS";
+	sprintf(szPost, "ext=%s&file_src=%s&file_fdfs=%s&file_size=%I64d", szExt, szSrcName, lpPathFDFS, llFileSize);
+	// 调用Curl接口，汇报采集端信息...
+	CURLcode res = CURLE_OK;
+	CURL  *  curl = curl_easy_init();
+	do {
+		if (curl == NULL)
+			break;
+		// 设定curl参数，采用post模式，设置5秒超时...
+		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
+		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, szPost);
+		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(szPost));
+		res = curl_easy_setopt(curl, CURLOPT_HEADER, false);
+		res = curl_easy_setopt(curl, CURLOPT_POST, true);
+		res = curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
+		res = curl_easy_setopt(curl, CURLOPT_URL, lpStrUrl);
+		res = curl_easy_perform(curl);
+	} while (false);
+	// 释放资源...
+	if (curl != NULL) {
+		curl_easy_cleanup(curl);
 	}
 }
 
@@ -1363,8 +1854,6 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		program.installTranslator(&translator);
 
 #ifdef _WIN32
-		/* --------------------------------------- */
-		/* check and warn if already running       */
 
 		bool cancel_launch = false;
 		bool already_running = false;
@@ -1411,7 +1900,6 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 				"instances of OBS!");
 		}
 
-		/* --------------------------------------- */
 	run:
 #endif
 
@@ -1429,13 +1917,15 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 			blog(LOG_INFO, "Command Line Arguments: %s", stor.str().c_str());
 		}
 
-		if (!program.OBSInit())
-			return 0;
+		// 等登录成功之后再调用...
+		//if (!program.OBSInit())
+		//	return 0;
+
+		// 初始化登录窗口...
+		program.doLoginInit();
 
 		prof.Stop();
-
 		return program.exec();
-
 	}
 	catch (const char *error) {
 		blog(LOG_ERROR, "%s", error);
@@ -1902,7 +2392,6 @@ int main(int argc, char *argv[])
 	upgrade_settings();
 
 	fstream logFile;
-
 	curl_global_init(CURL_GLOBAL_ALL);
 	int ret = run_program(logFile, argc, argv);
 

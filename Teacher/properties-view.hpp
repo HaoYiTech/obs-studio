@@ -84,8 +84,9 @@ private:
 	std::string                              lastFocused;
 	QWidget                                  *lastWidget = nullptr;
 	bool                                     deferUpdate;
-	bool									 bUseFFmpeg = false;
-	QListWidget                              *listCamera = nullptr;
+
+	bool									 m_bUseFFmpeg = false;
+	QListWidget                            * m_listCamera = nullptr;
 
 	QWidget *NewWidget(obs_property_t *prop, QWidget *widget,
 			const char *signal);
@@ -113,7 +114,6 @@ private:
 	void GetScrollPos(int &h, int &v);
 	void SetScrollPos(int h, int v);
 public slots:
-	void onItemSelectionChanged();
 	void ReloadProperties();
 	void RefreshProperties();
 	void SignalChanged();
@@ -131,9 +131,10 @@ public:
 	OBSPropertiesView(OBSData settings, const char *type,
 			PropertiesReloadCallback reloadCallback,
 			int minSize = 0);
-
+	
+	void doUpdateFFmpegInput();
+	
 	inline obs_data_t *GetSettings() const {return settings;}
-
 	inline void UpdateSettings() {callback(obj, settings);}
 	inline bool DeferUpdate() const {return deferUpdate;}
 };

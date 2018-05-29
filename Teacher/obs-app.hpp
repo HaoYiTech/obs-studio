@@ -16,6 +16,7 @@
 #include <deque>
 
 #include "window-main.hpp"
+#include "window-login-main.h"
 
 std::string CurrentTimeString();
 std::string CurrentDateTimeString();
@@ -41,16 +42,26 @@ public:
 		const char *disambiguation, int n) const override;
 };
 
+class QListWidget;
+class CTrackerSession;
+class CStorageSession;
 class OBSApp : public QApplication {
 	Q_OBJECT
 
 private:
+	int                            m_nFastTimer;
+	int                            m_nActiveTimer;
+	std::string                    m_strUTF8Data;
 	std::string                    locale;
 	std::string	                   theme;
 	ConfigFile                     globalConfig;
 	TextLookup                     textLookup;
 	OBSContext                     obsContext;
 	QPointer<OBSMainWindow>        mainWindow;
+	QPointer<LoginWindow>          loginWindow;
+	QPointer<CTrackerSession>      m_TrackerSession;
+	QPointer<CStorageSession>      m_StorageSession;
+
 	profiler_name_store_t          *profilerNameStore = nullptr;
 
 	os_inhibit_t                   *sleepInhibitor = nullptr;
@@ -62,16 +73,30 @@ private:
 	bool InitGlobalConfigDefaults();
 	bool InitLocale();
 	bool InitTheme();
-
+public slots:
+	void doLoginSuccess();
 public:
 	OBSApp(int &argc, char **argv, profiler_name_store_t *store);
 	~OBSApp();
 
 	void AppInit();
 	bool OBSInit();
+	
+	void doLoginInit();
+	void doLogoutEvent();
+	void doPostCurl(char *pData, size_t nSize);
+	void doGetCameraList(QListWidget * lpListView, int inSelCameraID);
+	void doGetCameraUrl(int nCameraID, obs_data_t * lpSettings);
+	void doVerifyEvent(obs_data_t * lpSettings);
+	void doCheckTracker();
+	void doCheckStorage();
+	void doCheckFDFS();
+	bool doFindOneFile(char * inPath, int inSize, const char * inExtend);
+	void doWebSaveFDFS(char * lpFileName, char * lpPathFDFS, int64_t llFileSize);
+
+	void timerEvent(QTimerEvent * inEvent);
 
 	inline QMainWindow *GetMainWindow() const { return mainWindow.data(); }
-
 	inline config_t *GlobalConfig() const { return globalConfig; }
 
 	inline const char *GetLocale() const

@@ -172,6 +172,9 @@ void OBSBasicProperties::on_buttonBox_clicked(QAbstractButton *button)
 	if (val == QDialogButtonBox::AcceptRole) {
 		acceptClicked = true;
 		close();
+		
+		// 检测ffmpeg资源是否有效...
+		view->doUpdateFFmpegInput();
 
 		if (view->DeferUpdate()) {
 			view->UpdateSettings();

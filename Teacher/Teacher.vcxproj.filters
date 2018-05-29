@@ -28,6 +28,9 @@
       <Extensions>moc;h;cpp</Extensions>
       <SourceControlFiles>False</SourceControlFiles>
     </Filter>
+    <Filter Include="FastDFS Files">
+      <UniqueIdentifier>{2175dafa-d609-432a-8399-6e4c6f722355}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="obs-app.cpp">
@@ -141,6 +144,18 @@
     <ClCompile Include="..\deps\libff\libff\ff-util.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="window-login-base.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="window-login-title.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="window-login-main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="fastdfs\FastSession.cpp">
+      <Filter>FastDFS Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="crash-report.hpp">
@@ -227,11 +242,18 @@
     <QtMoc Include="source-label.hpp">
       <Filter>Header Files</Filter>
     </QtMoc>
-  </ItemGroup>
-  <ItemGroup>
-    <QtRcc Include="forms\obs.qrc">
-      <Filter>Form Files</Filter>
-    </QtRcc>
+    <QtMoc Include="window-login-base.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="window-login-title.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="window-login-main.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="fastdfs\FastSession.h">
+      <Filter>FastDFS Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="platform.hpp">
@@ -270,6 +292,9 @@
     <ClInclude Include="..\deps\libff\libff\ff-util.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="fastdfs\fastdfs.h">
+      <Filter>FastDFS Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="forms\NameDialog.ui">
@@ -288,6 +313,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="forms\OBSBasicSettings.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="forms\LoginWindow.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>
@@ -370,10 +398,26 @@
     <Image Include="HaoYi.ico">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="forms\images\camera.png">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Teacher.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="forms\css\LoginWindow.css">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="forms\css\MyTitle.css">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <QtRcc Include="forms\obs.qrc">
+      <Filter>Resource Files</Filter>
+    </QtRcc>
   </ItemGroup>
 </Project>

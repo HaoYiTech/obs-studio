@@ -917,14 +917,45 @@ retryScene:
 
 #define SERVICE_PATH "service.json"
 
+// 将获取的云教室直播地址更新到service.json当中...
+void OBSBasic::doUpdateService()
+{
+	// 必须在读取配置之前操作...
+	if (service != NULL)
+		return;
+	// 从已经加载的全局配置当中获取直播地址...
+	const char * lpLiveRoomKey = config_get_string(App()->GlobalConfig(), "General", "LiveRoomKey");
+	const char * lpLiveRoomServer = config_get_string(App()->GlobalConfig(), "General", "LiveRoomServer");
+	if (lpLiveRoomKey == NULL || lpLiveRoomServer == NULL)
+		return;
+	// 获取存盘目录地址...
+	char serviceJsonPath[512];
+	int ret = this->GetProfilePath(serviceJsonPath, sizeof(serviceJsonPath), SERVICE_PATH);
+	if (ret <= 0)
+		return;
+	// 完全重新准备存盘需要的数据...
+	obs_data_t * dataSave = obs_data_create();
+	obs_data_t * settings = obs_data_create();
+	obs_data_set_string(settings, "key", lpLiveRoomKey);
+	obs_data_set_string(settings, "server", lpLiveRoomServer);
+	obs_data_set_obj(dataSave, "settings", settings);
+	obs_data_set_string(dataSave, "type", "rtmp_custom");
+	// 调用存盘接口进行存盘操作...
+	if (!obs_data_save_json_safe(dataSave, serviceJsonPath, "tmp", "bak")) {
+		blog(LOG_WARNING, "Failed to save service");
+	}
+	// 减少引用计数，释放资源 => 注意：相互引用指针，释放顺序不受影响...
+	obs_data_release(dataSave);
+	obs_data_release(settings);
+}
+
 void OBSBasic::SaveService()
 {
 	if (!service)
 		return;
 
 	char serviceJsonPath[512];
-	int ret = GetProfilePath(serviceJsonPath, sizeof(serviceJsonPath),
-			SERVICE_PATH);
+	int ret = GetProfilePath(serviceJsonPath, sizeof(serviceJsonPath), SERVICE_PATH);
 	if (ret <= 0)
 		return;
 
@@ -1425,8 +1456,12 @@ void OBSBasic::OBSInit()
 	ResetOutputs();
 	CreateHotkeys();
 
-	if (!InitService())
+	// 将获取的云教室直播地址更新到service.json当中...
+	this->doUpdateService();
+
+	if (!InitService()) {
 		throw "Failed to initialize service";
+	}
 
 	InitPrimitives();
 
@@ -1880,8 +1915,14 @@ void OBSBasic::ClearHotkeys()
 
 OBSBasic::~OBSBasic()
 {
-	if (updateCheckThread && updateCheckThread->isRunning())
+	if (updateCheckThread && updateCheckThread->isRunning()) {
 		updateCheckThread->wait();
+		delete updateCheckThread;
+	}
+	if (logUploadThread && logUploadThread->isRunning()) {
+		logUploadThread->wait();
+		delete logUploadThread;
+	}
 
 	delete programOptions;
 	delete program;
@@ -3426,6 +3467,9 @@ void OBSBasic::closeEvent(QCloseEvent *event)
 	 * sources, etc) so that all references are released before shutdown */
 	ClearSceneData();
 
+	// 调用退出事件通知...
+	App()->doLogoutEvent();
+	// 调用关闭退出接口...
 	App()->quit();
 }
 
@@ -5816,8 +5860,10 @@ void OBSBasic::UpdateTitleBar()
 	//setWindowTitle(QT_UTF8(name.str().c_str()));
 
 	// 对窗口标题进行修改 => 简化...
-	QString theTitle = QString::fromLocal8Bit("云教室 - 老师端");
-	this->setWindowTitle(theTitle);
+	char szTitle[260] = { 0 };
+	const char * lpLiveRoomID = config_get_string(App()->GlobalConfig(), "General", "LiveRoomID");
+	sprintf(szTitle, "云教室 - 讲师端 - 已登录云教室号码：%s", lpLiveRoomID);
+	this->setWindowTitle(QString::fromLocal8Bit(szTitle));
 }
 
 int OBSBasic::GetProfilePath(char *path, size_t size, const char *file) const
@@ -6239,4 +6285,21 @@ void OBSBasic::on_stats_triggered()
 	statsDlg = new OBSBasicStats(nullptr);
 	statsDlg->show();
 	stats = statsDlg;
+}
+//
+// 遍历sources里面的ffmpeg_source，发送在线状态通知...
+void OBSBasic::doCameraVerify()
+{
+	for (int i = 0; i < ui->sources->count(); i++) {
+		QListWidgetItem * listItem = ui->sources->item(i);
+		OBSSceneItem theItem = this->GetSceneItem(listItem);
+		OBSSource theSource = obs_sceneitem_get_source(theItem);
+		if (theSource == NULL) continue;
+		obs_data_t * lpSettings = obs_source_get_settings(theSource);
+		// 判断是否是ffmpeg数据源类型标志...
+		const char * lpID = obs_source_get_id(theSource);
+		if (astrcmpi(lpID, "ffmpeg_source") != 0) continue;
+		// 调用App接口，向网站发送在线状态通知...
+		App()->doVerifyEvent(lpSettings);
+	}
 }

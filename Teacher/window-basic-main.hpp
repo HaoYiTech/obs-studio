@@ -538,6 +538,8 @@ public:
 	void SaveService();
 	bool LoadService();
 
+	void doUpdateService();
+
 	inline void EnableOutputs(bool enable)
 	{
 		if (enable) {
@@ -727,9 +729,9 @@ public:
 
 	virtual config_t *Config() const override;
 
-	virtual int GetProfilePath(char *path, size_t size, const char *file)
-		const override;
+	virtual int GetProfilePath(char *path, size_t size, const char *file) const override;
 
+	virtual void doCameraVerify() override;
 private:
 	std::unique_ptr<Ui::OBSBasic> ui;
 };

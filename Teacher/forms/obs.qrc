@@ -29,4 +29,14 @@
     <file>images/settings/network-bluetooth.png</file>
     <file>images/settings/preferences-desktop-keyboard-shortcuts.png</file>
   </qresource>
+  <qresource prefix="/login">
+    <file>css/MyTitle.css</file>
+    <file>css/LoginWindow.css</file>
+    <file>images/login/back.jpg</file>
+    <file>images/login/min.png</file>
+    <file>images/login/close.png</file>
+    <file>images/login/arrowback.png</file>
+    <file>images/login/deleteAccount.png</file>
+    <file>images/login/drop_down_Button.png</file>
+  </qresource>
 </RCC>

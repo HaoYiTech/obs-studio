@@ -139,29 +139,24 @@ void OBSPropertiesView::RefreshProperties()
 	setSizePolicy(mainPolicy);
 
 	// 如果是ffmpeg数据源，进行特殊处理...
-	if( bUseFFmpeg ) {
+	if( m_bUseFFmpeg ) {
 		// 添加选择摄像头的提示信息框...
 		QLabel * selectLabel = new QLabel(QTStr("Basic.PropertiesWindow.SelectCamera"));
 		layout->addWidget(selectLabel);
 		// 添加自定义列表框...
-		listCamera = new QListWidget();
-		listCamera->setResizeMode(QListView::Adjust);
-		listCamera->setMinimumSize(100, 480);
-		listCamera->setSizePolicy(mainPolicy);
-		layout->addWidget(listCamera);
-		// 添加数据内容...
-		QIcon theIcon = QIcon(QStringLiteral(":/res/images/camera.png"));
-		QListWidgetItem *listItem = nullptr;
-		listItem = new QListWidgetItem(theIcon, QString("Jackey"));
-		listCamera->insertItem(0, listItem);
-		listItem = new QListWidgetItem(theIcon, QString("Hello"));
-		listCamera->insertItem(0, listItem);
-		// 单选模式，设置关联信号槽，这样可以简化很多判断操作...
-		listCamera->setSelectionMode(QAbstractItemView::SingleSelection);
-		connect(listCamera, SIGNAL(itemSelectionChanged()), this, SLOT(onItemSelectionChanged()));
-		// 设置选中记录的背景色，选中第一条记录...
-		listCamera->setStyleSheet("QListView::item:selected {background: #4FC3F7;}");
-		listCamera->setCurrentRow(0);
+		m_listCamera = new QListWidget();
+		m_listCamera->setResizeMode(QListView::Adjust);
+		m_listCamera->setMinimumSize(100, 480);
+		m_listCamera->setSizePolicy(mainPolicy);
+		layout->addWidget(m_listCamera);
+		// 设置单选模式，设置选中记录的背景色...
+		m_listCamera->setSelectionMode(QAbstractItemView::SingleSelection);
+		m_listCamera->setStyleSheet("QListView::item:selected {background: #4FC3F7;}");
+		// 设置关联信号槽，这样可以简化很多判断操作 => 点击确认再获取摄像头地址...
+		//connect(m_listCamera, SIGNAL(itemSelectionChanged()), this, SLOT(onItemSelectionChanged()));
+		int nSelCameraID = obs_data_get_int(this->GetSettings(), "camera_id");
+		// 调用App的接口，从网站服务器获取在线的摄像头列表...
+		App()->doGetCameraList(m_listCamera, nSelCameraID);
 	}
 
 	lastFocused.clear();
@@ -175,11 +170,26 @@ void OBSPropertiesView::RefreshProperties()
 		layout->addWidget(noPropertiesLabel);
 	}
 }
-
-void OBSPropertiesView::onItemSelectionChanged()
+//
+// 处理选中摄像头发生变化的事件处理...
+/*void OBSPropertiesView::onItemSelectionChanged()
 {
-	QString theText = listCamera->currentItem()->text();
+	if (m_listCamera == NULL) return;
+	QString theText = m_listCamera->currentItem()->text();
+	int nCameraID = m_listCamera->currentItem()->data(Qt::UserRole).toInt();
 	obs_data_set_string(this->GetSettings(), "input", theText.toStdString().c_str());
+}*/
+//
+// 从网站获取当前选定摄像头的直播地址，并发起推流...
+void OBSPropertiesView::doUpdateFFmpegInput()
+{
+	if (!m_bUseFFmpeg || m_listCamera == NULL)
+		return;
+	QListWidgetItem * lpCurItem = m_listCamera->currentItem();
+	if (lpCurItem == NULL)
+		return;
+	int nCameraID = lpCurItem->data(Qt::UserRole).toInt();
+	App()->doGetCameraUrl(nCameraID, this->GetSettings());
 }
 
 void OBSPropertiesView::SetScrollPos(int h, int v)
@@ -217,8 +227,9 @@ OBSPropertiesView::OBSPropertiesView(OBSData settings_, void *obj_,
 	  reloadCallback (reloadCallback),
 	  callback       (callback_),
 	  minSize        (minSize_),
-	  bUseFFmpeg     (inFFmpeg)
+	  m_bUseFFmpeg   (inFFmpeg)
 {
+	m_listCamera = NULL;
 	setFrameShape(QFrame::NoFrame);
 	ReloadProperties();
 }
@@ -232,6 +243,8 @@ OBSPropertiesView::OBSPropertiesView(OBSData settings_, const char *type_,
 	  reloadCallback (reloadCallback_),
 	  minSize        (minSize_)
 {
+	m_listCamera = NULL;
+	m_bUseFFmpeg = false;
 	setFrameShape(QFrame::NoFrame);
 	ReloadProperties();
 }
