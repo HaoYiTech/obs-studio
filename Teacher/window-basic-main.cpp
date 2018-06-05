@@ -1952,10 +1952,10 @@ OBSBasic::~OBSBasic()
 		delete transformWindow;
 
 	/*if (filters)
-		delete filters;
+		delete filters;*/
 
 	if (advAudioWindow)
-		delete advAudioWindow;*/
+		delete advAudioWindow;
 
 	obs_display_remove_draw_callback(ui->preview->GetDisplay(),
 			OBSBasic::RenderMain, this);
@@ -3513,7 +3513,7 @@ void OBSBasic::on_action_Settings_triggered()
 
 void OBSBasic::on_actionAdvAudioProperties_triggered()
 {
-/*	if (advAudioWindow != nullptr) {
+	if (advAudioWindow != nullptr) {
 		advAudioWindow->raise();
 		return;
 	}
@@ -3523,7 +3523,7 @@ void OBSBasic::on_actionAdvAudioProperties_triggered()
 	advAudioWindow->setAttribute(Qt::WA_DeleteOnClose, true);
 
 	connect(advAudioWindow, SIGNAL(destroyed()),
-		this, SLOT(on_advAudioProps_destroyed()));*/
+		this, SLOT(on_advAudioProps_destroyed()));
 }
 
 void OBSBasic::on_advAudioProps_clicked()
@@ -3533,7 +3533,7 @@ void OBSBasic::on_advAudioProps_clicked()
 
 void OBSBasic::on_advAudioProps_destroyed()
 {
-//	advAudioWindow = nullptr;
+	advAudioWindow = nullptr;
 }
 
 void OBSBasic::on_scenes_currentItemChanged(QListWidgetItem *current,

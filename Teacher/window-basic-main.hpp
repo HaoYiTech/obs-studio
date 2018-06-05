@@ -27,7 +27,7 @@
 #include "window-basic-interaction.hpp"
 #include "window-basic-properties.hpp"
 #include "window-basic-transform.hpp"
-//#include "window-basic-adv-audio.hpp"
+#include "window-basic-adv-audio.hpp"
 //#include "window-basic-filters.hpp"
 #include "window-projector.hpp"
 
@@ -141,7 +141,7 @@ private:
 	QPointer<OBSBasicInteraction> interaction;
 	QPointer<OBSBasicProperties> properties;
 	QPointer<OBSBasicTransform> transformWindow;
-	//QPointer<OBSBasicAdvAudio> advAudioWindow;
+	QPointer<OBSBasicAdvAudio> advAudioWindow;
 	//QPointer<OBSBasicFilters> filters;
 
 	QPointer<QTimer>    cpuUsageTimer;

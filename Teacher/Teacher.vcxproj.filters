@@ -156,6 +156,12 @@
     <ClCompile Include="fastdfs\FastSession.cpp">
       <Filter>FastDFS Files</Filter>
     </ClCompile>
+    <ClCompile Include="window-basic-adv-audio.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="adv-audio-control.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="crash-report.hpp">
@@ -253,6 +259,12 @@
     </QtMoc>
     <QtMoc Include="fastdfs\FastSession.h">
       <Filter>FastDFS Files</Filter>
+    </QtMoc>
+    <QtMoc Include="window-basic-adv-audio.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="adv-audio-control.hpp">
+      <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
