@@ -535,10 +535,9 @@ int os_mkdir(const char *path)
 	success = CreateDirectory(path_utf16, NULL);
 	bfree(path_utf16);
 
-	if (!success)
-		return (GetLastError() == ERROR_ALREADY_EXISTS) ?
-			MKDIR_EXISTS : MKDIR_ERROR;
-
+	if (!success && GetLastError() != 0 ) {
+		return (GetLastError() == ERROR_ALREADY_EXISTS) ? MKDIR_EXISTS : MKDIR_ERROR;
+	}
 	return MKDIR_SUCCESS;
 }
 

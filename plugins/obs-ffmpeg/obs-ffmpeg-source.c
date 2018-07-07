@@ -74,24 +74,21 @@ static bool is_local_file_modified(obs_properties_t *props,
 	obs_property_t *close = obs_properties_get(props, "close_when_inactive");
 	obs_property_t *seekable = obs_properties_get(props, "seekable");
 	obs_property_t *speed = obs_properties_get(props, "speed_percent");
-
-	// 已经进行了全部元素的默认隐藏处理...
-	/*obs_property_set_visible(input, !enabled);
+	obs_property_set_visible(input, !enabled);
 	obs_property_set_visible(input_format, !enabled);
 	obs_property_set_visible(buffering, !enabled);
 	obs_property_set_visible(close, enabled);
 	obs_property_set_visible(local_file, enabled);
 	obs_property_set_visible(looping, enabled);
 	obs_property_set_visible(speed, enabled);
-	obs_property_set_visible(seekable, !enabled);*/
+	obs_property_set_visible(seekable, !enabled);
 
 	return true;
 }
 
 static void ffmpeg_source_defaults(obs_data_t *settings)
 {
-	// 默认修改为非本地文件模式...
-	obs_data_set_default_bool(settings, "is_local_file", false);
+	obs_data_set_default_bool(settings, "is_local_file", true);
 	obs_data_set_default_bool(settings, "looping", false);
 	obs_data_set_default_bool(settings, "clear_on_media_end", true);
 	obs_data_set_default_bool(settings, "restart_on_activate", true);
@@ -125,9 +122,6 @@ static obs_properties_t *ffmpeg_source_getproperties(void *data)
 	prop = obs_properties_add_bool(props, "is_local_file",
 			obs_module_text("LocalFile"));
 
-	// 默认隐藏本地文件配置项，始终用网络流...
-	obs_property_set_visible(prop, false);
-
 	obs_property_set_modified_callback(prop, is_local_file_modified);
 
 	dstr_copy(&filter, obs_module_text("MediaFileFilter.AllMediaFiles"));
@@ -149,58 +143,40 @@ static obs_properties_t *ffmpeg_source_getproperties(void *data)
 			dstr_resize(&path, slash - path.array + 1);
 	}
 
-	prop = obs_properties_add_path(props, "local_file",
+	obs_properties_add_path(props, "local_file",
 			obs_module_text("LocalFile"), OBS_PATH_FILE,
 			filter.array, path.array);
 	dstr_free(&filter);
 	dstr_free(&path);
-	// 默认隐藏属性元素...
-	obs_property_set_visible(prop, false);
 
 	prop = obs_properties_add_bool(props, "looping",
 			obs_module_text("Looping"));
-	// 默认隐藏属性元素...
-	obs_property_set_visible(prop, false);
 
-	prop = obs_properties_add_bool(props, "restart_on_activate",
+	obs_properties_add_bool(props, "restart_on_activate",
 			obs_module_text("RestartWhenActivated"));
-	// 默认隐藏属性元素...
-	obs_property_set_visible(prop, false);
 
-	prop = obs_properties_add_text(props, "input",
+	obs_properties_add_text(props, "input",
 			obs_module_text("Input"), OBS_TEXT_DEFAULT);
-	// 默认隐藏属性元素...
-	obs_property_set_visible(prop, false);
 
-	prop = obs_properties_add_text(props, "input_format",
+	obs_properties_add_text(props, "input_format",
 			obs_module_text("InputFormat"), OBS_TEXT_DEFAULT);
-	// 默认隐藏属性元素...
-	obs_property_set_visible(prop, false);
 
 #ifndef __APPLE__
-	prop = obs_properties_add_bool(props, "hw_decode",
+	obs_properties_add_bool(props, "hw_decode",
 			obs_module_text("HardwareDecode"));
-	// 默认隐藏属性元素...
-	obs_property_set_visible(prop, false);
 #endif
 
-	prop = obs_properties_add_bool(props, "clear_on_media_end",
+	obs_properties_add_bool(props, "clear_on_media_end",
 			obs_module_text("ClearOnMediaEnd"));
-	// 默认隐藏属性元素...
-	obs_property_set_visible(prop, false);
 
 	prop = obs_properties_add_bool(props, "close_when_inactive",
 			obs_module_text("CloseFileWhenInactive"));
-	// 默认隐藏属性元素...
-	obs_property_set_visible(prop, false);
 
 	obs_property_set_long_description(prop,
 			obs_module_text("CloseFileWhenInactive.ToolTip"));
 
-	prop = obs_properties_add_int_slider(props, "speed_percent",
+	obs_properties_add_int_slider(props, "speed_percent",
 			obs_module_text("SpeedPercentage"), 1, 200, 1);
-	// 默认隐藏属性元素...
-	obs_property_set_visible(prop, false);
 
 	prop = obs_properties_add_list(props, "color_range",
 			obs_module_text("ColorRange"), OBS_COMBO_TYPE_LIST,
@@ -211,12 +187,8 @@ static obs_properties_t *ffmpeg_source_getproperties(void *data)
 			VIDEO_RANGE_PARTIAL);
 	obs_property_list_add_int(prop, obs_module_text("ColorRange.Full"),
 			VIDEO_RANGE_FULL);
-	// 默认隐藏属性元素...
-	obs_property_set_visible(prop, false);
 
-	prop = obs_properties_add_bool(props, "seekable", obs_module_text("Seekable"));
-	// 默认隐藏属性元素...
-	obs_property_set_visible(prop, false);
+	obs_properties_add_bool(props, "seekable", obs_module_text("Seekable"));
 
 	return props;
 }

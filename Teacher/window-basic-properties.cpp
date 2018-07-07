@@ -87,11 +87,11 @@ OBSBasicProperties::OBSBasicProperties(QWidget *parent, OBSSource source_)
 	preview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
 	// 如果是ffmpeg数据源，隐藏预览窗口对象，隐藏恢复默认按钮...
-	if( bUseFFmpeg ) {
+	/*if( bUseFFmpeg ) {
 		preview->setVisible(false);
 		view->setMinimumSize(50, 520);
 		buttonBox->button(QDialogButtonBox::RestoreDefaults)->setVisible(false);
-	}
+	}*/
 
 	// Create a QSplitter to keep a unified workflow here.
 	windowSplitter = new QSplitter(Qt::Orientation::Vertical, this);
@@ -174,8 +174,9 @@ void OBSBasicProperties::on_buttonBox_clicked(QAbstractButton *button)
 		close();
 		
 		// 检测ffmpeg资源是否有效...
-		view->doUpdateFFmpegInput();
+		//view->doUpdateFFmpegInput();
 
+		// 调用接口告诉资源配置改变...
 		if (view->DeferUpdate()) {
 			view->UpdateSettings();
 		}

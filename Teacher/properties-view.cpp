@@ -139,7 +139,7 @@ void OBSPropertiesView::RefreshProperties()
 	setSizePolicy(mainPolicy);
 
 	// 如果是ffmpeg数据源，进行特殊处理...
-	if( m_bUseFFmpeg ) {
+	/*if( m_bUseFFmpeg ) {
 		// 添加选择摄像头的提示信息框...
 		QLabel * selectLabel = new QLabel(QTStr("Basic.PropertiesWindow.SelectCamera"));
 		layout->addWidget(selectLabel);
@@ -157,7 +157,7 @@ void OBSPropertiesView::RefreshProperties()
 		int nSelCameraID = obs_data_get_int(this->GetSettings(), "camera_id");
 		// 调用App的接口，从网站服务器获取在线的摄像头列表...
 		App()->doGetCameraList(m_listCamera, nSelCameraID);
-	}
+	}*/
 
 	lastFocused.clear();
 	if (lastWidget) {

@@ -111,7 +111,8 @@
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>											</Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/libobs/Debug/obs.dll E:/obs-studio/vsbuild/rundir/Debug/bin/32bit/obs.dll
 if %errorlevel% neq 0 goto :cmEnd
@@ -267,7 +268,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>											</Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/libobs/Release/obs.dll E:/obs-studio/vsbuild/rundir/Release/bin/32bit/obs.dll
 if %errorlevel% neq 0 goto :cmEnd
@@ -423,7 +425,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>											</Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/libobs/MinSizeRel/obs.dll E:/obs-studio/vsbuild/rundir/MinSizeRel/bin/32bit/obs.dll
 if %errorlevel% neq 0 goto :cmEnd
@@ -578,7 +581,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>											</Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/libobs/RelWithDebInfo/obs.dll E:/obs-studio/vsbuild/rundir/RelWithDebInfo/bin/32bit/obs.dll
 if %errorlevel% neq 0 goto :cmEnd

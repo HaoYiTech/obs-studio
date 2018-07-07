@@ -1328,10 +1328,13 @@ void OBSApp::doLoginSuccess()
 	loginWindow->close();
 	// 创建主窗口...
 	this->OBSInit();
+	////////////////////////////////////////////////////
+	// 2018.07.07 - by jackey => 新模式，暂时关闭...
 	// 开启一个定时通知时钟 => 每隔15秒发送一次...
-	m_nActiveTimer = this->startTimer(15 * 1000);
+	/*m_nActiveTimer = this->startTimer(15 * 1000);
 	// 开启一个定时上传检测时钟 => 每隔5秒执行一次...
-	m_nFastTimer = this->startTimer(5 * 1000);
+	m_nFastTimer = this->startTimer(5 * 1000);*/
+	////////////////////////////////////////////////////
 }
 //
 // 时钟定时执行过程...
@@ -1820,7 +1823,8 @@ static auto ProfilerFree = [](void *)
 	profiler_print(snap.get());
 	profiler_print_time_between_calls(snap.get());
 
-	SaveProfilerData(snap);
+	//屏蔽存盘操作，不直观，存放到日志文件...
+	//SaveProfilerData(snap);
 
 	profiler_free();
 };
@@ -2380,6 +2384,9 @@ static void upgrade_settings(void)
 
 int main(int argc, char *argv[])
 {
+	// 初始化内存泄漏检测器...
+	bmem_init();
+
 #ifdef _WIN32
 	SetErrorMode(SEM_FAILCRITICALERRORS);
 	load_debug_privilege();
@@ -2396,6 +2403,11 @@ int main(int argc, char *argv[])
 	int ret = run_program(logFile, argc, argv);
 
 	blog(LOG_INFO, "Number of memory leaks: %ld", bnum_allocs());
+
+	// 释放内存泄漏检测器...
+	bmem_free();
+
+	// 最后才设置错误打印句柄，否则无法打印...
 	base_set_log_handler(nullptr, nullptr);
 	return ret;
 }

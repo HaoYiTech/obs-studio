@@ -556,7 +556,8 @@ static void gather_stats(uint64_t expected_time_between_calls,
 	*percent_within_bounds = (1. - (double)accu / calls) * 100;
 }
 
-#define G_MS "g\xC2\xA0ms"
+//#define G_MS "g\xC2\xA0ms"
+#define G_MS "g ms"
 
 static void profile_print_entry(profiler_snapshot_entry_t *entry,
 		struct dstr *indent_buffer, struct dstr *output_buffer,
@@ -1004,7 +1005,7 @@ static void profiler_snapshot_dump(const profiler_snapshot_t *snap,
 	struct dstr buffer = {0};
 
 	dstr_init_copy(&buffer, "id,parent_id,name_id,parent_name_id,name,"
-			"time_between_calls,time_delta_µs,count\n");
+			"time_between_calls,time_delta_us,count\n");
 	func(data, &buffer);
 
 	for (size_t i = 0; i < snap->roots.num; i++)
