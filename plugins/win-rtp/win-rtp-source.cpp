@@ -4,7 +4,7 @@
 static const char *rtp_source_getname(void *unused)
 {
 	UNUSED_PARAMETER(unused);
-	return obs_module_text("rtpSource");
+	return obs_module_text("RTPSource");
 }
 
 static void *rtp_source_create(obs_data_t *settings, obs_source_t *source)
@@ -27,9 +27,9 @@ static obs_properties_t *rtp_source_getproperties(void *data)
 	//struct ffmpeg_room *s = data;
 	UNUSED_PARAMETER(data);
 
-	obs_properties_t *props = obs_properties_create();
-
-	return props;
+	//obs_properties_t *props = obs_properties_create();
+	//return props;
+	return NULL;
 }
 
 static void rtp_source_activate(void *data)
@@ -75,6 +75,7 @@ void RegisterWinRtpSource()
 	rtp_source.deactivate      = rtp_source_deactivate;
 	rtp_source.video_tick      = rtp_source_tick;
 	rtp_source.update          = rtp_source_update;
+	obs_register_source(&rtp_source);
 }
 
 void RegisterWinRtpOutput()

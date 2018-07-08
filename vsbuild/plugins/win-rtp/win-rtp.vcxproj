@@ -57,7 +57,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_WINDOWS;DEBUG=1;_DEBUG=1;UNICODE;_UNICODE;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;HAVE_OBSCONFIG_H;CMAKE_INTDIR="Debug";win_rtp_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>common;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <MinimalRebuild>false</MinimalRebuild>
@@ -70,7 +70,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>Debug</GenerateDebugInformation>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>..\..\libobs\Debug\obs.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalDependencies>..\..\libobs\Debug\obs.lib;Ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ProgramDatabaseFile>E:/obs-studio/vsbuild/plugins/win-rtp/Debug/win-rtp.pdb</ProgramDatabaseFile>
       <ImportLibrary>E:/obs-studio/vsbuild/plugins/win-rtp/Debug/win-rtp.lib</ImportLibrary>
@@ -136,8 +136,27 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\plugins\win-rtp\common\OSMutex.cpp" />
+    <ClCompile Include="..\..\..\plugins\win-rtp\common\OSThread.cpp" />
+    <ClCompile Include="..\..\..\plugins\win-rtp\common\Socket.cpp" />
+    <ClCompile Include="..\..\..\plugins\win-rtp\common\SocketUtils.cpp" />
+    <ClCompile Include="..\..\..\plugins\win-rtp\common\StrPtrLen.cpp" />
+    <ClCompile Include="..\..\..\plugins\win-rtp\common\UDPRecvThread.cpp" />
+    <ClCompile Include="..\..\..\plugins\win-rtp\common\UDPSocket.cpp" />
     <ClCompile Include="..\..\..\plugins\win-rtp\win-rtp-source.cpp" />
     <ClCompile Include="..\..\..\plugins\win-rtp\win-rtp.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\plugins\win-rtp\common\GMError.h" />
+    <ClInclude Include="..\..\..\plugins\win-rtp\common\HYDefine.h" />
+    <ClInclude Include="..\..\..\plugins\win-rtp\common\OSMutex.h" />
+    <ClInclude Include="..\..\..\plugins\win-rtp\common\OSThread.h" />
+    <ClInclude Include="..\..\..\plugins\win-rtp\common\rtp.h" />
+    <ClInclude Include="..\..\..\plugins\win-rtp\common\Socket.h" />
+    <ClInclude Include="..\..\..\plugins\win-rtp\common\SocketUtils.h" />
+    <ClInclude Include="..\..\..\plugins\win-rtp\common\StrPtrLen.h" />
+    <ClInclude Include="..\..\..\plugins\win-rtp\common\UDPRecvThread.h" />
+    <ClInclude Include="..\..\..\plugins\win-rtp\common\UDPSocket.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
