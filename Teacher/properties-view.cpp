@@ -138,8 +138,8 @@ void OBSPropertiesView::RefreshProperties()
 	SetScrollPos(h, v);
 	setSizePolicy(mainPolicy);
 
-	// 如果是ffmpeg数据源，进行特殊处理...
-	/*if( m_bUseFFmpeg ) {
+	// 如果是rtp数据源，进行特殊处理...
+	if( m_bUseRtpSource ) {
 		// 添加选择摄像头的提示信息框...
 		QLabel * selectLabel = new QLabel(QTStr("Basic.PropertiesWindow.SelectCamera"));
 		layout->addWidget(selectLabel);
@@ -152,12 +152,12 @@ void OBSPropertiesView::RefreshProperties()
 		// 设置单选模式，设置选中记录的背景色...
 		m_listCamera->setSelectionMode(QAbstractItemView::SingleSelection);
 		m_listCamera->setStyleSheet("QListView::item:selected {background: #4FC3F7;}");
-		// 设置关联信号槽，这样可以简化很多判断操作 => 点击确认再获取摄像头地址...
+		// 设置关联信号槽，这样可以简化很多判断操作 => 最终还是采用点击确认再获取摄像头地址...
 		//connect(m_listCamera, SIGNAL(itemSelectionChanged()), this, SLOT(onItemSelectionChanged()));
 		int nSelCameraID = obs_data_get_int(this->GetSettings(), "camera_id");
 		// 调用App的接口，从网站服务器获取在线的摄像头列表...
-		App()->doGetCameraList(m_listCamera, nSelCameraID);
-	}*/
+		App()->doCameraGetOnLineList(m_listCamera, nSelCameraID);
+	}
 
 	lastFocused.clear();
 	if (lastWidget) {
@@ -165,7 +165,8 @@ void OBSPropertiesView::RefreshProperties()
 		lastWidget = nullptr;
 	}
 
-	if (hasNoProperties) {
+	// 如果没有属性，并且不是rtp数据源，才显示没有属性标签...
+	if (hasNoProperties && !m_bUseRtpSource) {
 		QLabel *noPropertiesLabel = new QLabel(NO_PROPERTIES_STRING);
 		layout->addWidget(noPropertiesLabel);
 	}
@@ -181,15 +182,15 @@ void OBSPropertiesView::RefreshProperties()
 }*/
 //
 // 从网站获取当前选定摄像头的直播地址，并发起推流...
-void OBSPropertiesView::doUpdateFFmpegInput()
+void OBSPropertiesView::doUpdateRtpSource()
 {
-	if (!m_bUseFFmpeg || m_listCamera == NULL)
+	if (!m_bUseRtpSource || m_listCamera == NULL)
 		return;
 	QListWidgetItem * lpCurItem = m_listCamera->currentItem();
 	if (lpCurItem == NULL)
 		return;
 	int nCameraID = lpCurItem->data(Qt::UserRole).toInt();
-	App()->doGetCameraUrl(nCameraID, this->GetSettings());
+	App()->doCameraGetRtmpUrl(nCameraID, this->GetSettings());
 }
 
 void OBSPropertiesView::SetScrollPos(int h, int v)
@@ -219,7 +220,7 @@ void OBSPropertiesView::GetScrollPos(int &h, int &v)
 OBSPropertiesView::OBSPropertiesView(OBSData settings_, void *obj_,
 		PropertiesReloadCallback reloadCallback,
 		PropertiesUpdateCallback callback_, 
-		bool inFFmpeg, int minSize_)
+		bool inUseRtpSource, int minSize_)
 	: VScrollArea    (nullptr),
 	  properties     (nullptr, obs_properties_destroy),
 	  settings       (settings_),
@@ -227,7 +228,7 @@ OBSPropertiesView::OBSPropertiesView(OBSData settings_, void *obj_,
 	  reloadCallback (reloadCallback),
 	  callback       (callback_),
 	  minSize        (minSize_),
-	  m_bUseFFmpeg   (inFFmpeg)
+	  m_bUseRtpSource(inUseRtpSource)
 {
 	m_listCamera = NULL;
 	setFrameShape(QFrame::NoFrame);
@@ -244,7 +245,7 @@ OBSPropertiesView::OBSPropertiesView(OBSData settings_, const char *type_,
 	  minSize        (minSize_)
 {
 	m_listCamera = NULL;
-	m_bUseFFmpeg = false;
+	m_bUseRtpSource = false;
 	setFrameShape(QFrame::NoFrame);
 	ReloadProperties();
 }

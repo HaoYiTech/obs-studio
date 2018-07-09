@@ -14,5 +14,5 @@ public:
 	virtual void OBSInit()=0;
 
 	virtual int GetProfilePath(char *path, size_t size, const char *file) const=0;
-	virtual void doCameraVerify() = 0;
+	virtual void doCameraVerifyEvent() = 0;
 };

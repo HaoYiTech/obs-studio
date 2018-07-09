@@ -85,9 +85,11 @@ public:
 	void doLoginInit();
 	void doLogoutEvent();
 	void doPostCurl(char *pData, size_t nSize);
-	void doGetCameraList(QListWidget * lpListView, int inSelCameraID);
-	void doGetCameraUrl(int nCameraID, obs_data_t * lpSettings);
-	void doVerifyEvent(obs_data_t * lpSettings);
+	
+	void doCameraGetOnLineList(QListWidget * lpListView, int inSelCameraID);
+	void doCameraGetRtmpUrl(int nCameraID, obs_data_t * lpSettings);
+	void doCameraVerifyEvent(obs_data_t * lpSettings);
+
 	void doCheckTracker();
 	void doCheckStorage();
 	void doCheckFDFS();

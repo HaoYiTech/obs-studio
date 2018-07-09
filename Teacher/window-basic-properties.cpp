@@ -73,25 +73,25 @@ OBSBasicProperties::OBSBasicProperties(QWidget *parent, OBSSource source_)
 	obs_data_apply(oldSettings, settings);
 	obs_data_release(settings);
 
-	// 判断是否是ffmpeg数据源类型标志...
+	// 判断是否是rtp数据源类型标志...
 	const char *id = obs_source_get_id(source);
-	bool bUseFFmpeg = ((astrcmpi(id, "ffmpeg_source") == 0) ? true : false);
+	bool bUseRtpSource = ((astrcmpi(id, "rtp_source") == 0) ? true : false);
 
 	view = new OBSPropertiesView(settings, source,
 			(PropertiesReloadCallback)obs_source_properties,
-			(PropertiesUpdateCallback)obs_source_update, bUseFFmpeg);
+			(PropertiesUpdateCallback)obs_source_update, bUseRtpSource);
 	view->setSizePolicy(QSizePolicy::Expanding,	QSizePolicy::Expanding);
 	view->setMinimumHeight(150);
 
 	preview->setMinimumSize(50, 150);
 	preview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-	// 如果是ffmpeg数据源，隐藏预览窗口对象，隐藏恢复默认按钮...
-	/*if( bUseFFmpeg ) {
+	// 如果是rtp数据源，隐藏预览窗口对象，隐藏恢复默认按钮...
+	if( bUseRtpSource ) {
 		preview->setVisible(false);
 		view->setMinimumSize(50, 520);
 		buttonBox->button(QDialogButtonBox::RestoreDefaults)->setVisible(false);
-	}*/
+	}
 
 	// Create a QSplitter to keep a unified workflow here.
 	windowSplitter = new QSplitter(Qt::Orientation::Vertical, this);
@@ -173,11 +173,11 @@ void OBSBasicProperties::on_buttonBox_clicked(QAbstractButton *button)
 		acceptClicked = true;
 		close();
 		
-		// 检测ffmpeg资源是否有效...
-		//view->doUpdateFFmpegInput();
+		// 通知推流端开始推送rtp数据...
+		view->doUpdateRtpSource();
 
-		// 调用接口告诉资源配置改变...
-		if (view->DeferUpdate()) {
+		// 如果配置发生变化，或是rtp资源，直接将更新消息通知到插件层...
+		if( view->DeferUpdate() || view->IsUseRtpSource() ) {
 			view->UpdateSettings();
 		}
 

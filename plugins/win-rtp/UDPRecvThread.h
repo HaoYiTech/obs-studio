@@ -5,16 +5,20 @@
 #include "OSThread.h"
 #include "rtp.h"
 
+class CPlaySDL;
 class UDPSocket;
 class CUDPRecvThread : public OSThread
 {
 public:
-	CUDPRecvThread(int nDBRoomID, int nDBCameraID);
+	CUDPRecvThread(int nDBRoomID, int nDBLiveID);
 	virtual ~CUDPRecvThread();
 	virtual void Entry();
 public:
-	GM_Error		InitThread();
-	void			ReInitSDLWindow();
+	GM_Error		InitThread(obs_source_t * lpObsSource);
+	bool            IsLoginTimeout();
+	int				GetRoomID() { return m_nRoomID; }
+	int				GetLiveID() { return m_nLiveID; }
+	bool            IsReloadFlag() { return m_bReloadFlag; }
 private:
 	void			ClosePlayer();
 	void			CloseSocket();
@@ -43,19 +47,23 @@ private:
 	enum {
 		kCmdSendCreate	= 0,				// 开始发送 => 创建命令状态
 		kCmdSendReady	= 1,				// 开始发送 => 准备就绪命令状态 => 已经开始接收音视频数据了
-		kCmdConnetOK	= 2,				// 接入交互完毕，只是做为一个阻止继续发送准备就绪命令的标志
+		kCmdConnectOK	= 2,				// 接入交互完毕，只是做为一个阻止继续发送准备就绪命令的标志
 	} m_nCmdState;							// 命令状态变量...
 
 	string			m_strSPS;				// 视频sps
 	string			m_strPPS;				// 视频pps
 
 	OSMutex			m_Mutex;				// 互斥对象
-	UDPSocket	*	m_lpUDPSocket;			// UDP对象
-  
+	UDPSocket    *  m_lpUDPSocket;			// UDP对象
+	obs_source_t *  m_lpObsSource;			// obs资源对象
+
 	uint16_t		m_HostServerPort;		// 服务器端口 => host
 	uint32_t	    m_HostServerAddr;		// 服务器地址 => host
 
+	int				m_nRoomID;				// 房间编号
+	int				m_nLiveID;				// 摄像头编号
 	bool			m_bNeedSleep;			// 休息标志 => 只要有发包或收包就不能休息...
+	bool            m_bReloadFlag;          // 是否收到系统重载命令...
 	int				m_dt_to_dir;			// 发包路线方向 => TO_SERVER | TO_P2P
 	int				m_p2p_rtt_ms;			// P2P    => 网络往返延迟值 => 毫秒
 	int				m_p2p_rtt_var_ms;		// P2P    => 网络抖动时间差 => 毫秒
@@ -74,6 +82,7 @@ private:
 	rtp_ready_t		m_rtp_ready;			// RTP准备继续结构体 => 接收 => 来自推流端...
 	rtp_reload_t	m_rtp_reload;			// RTP重建命令结构体 => 接收 => 来自服务器...
 
+	int64_t			m_login_zero_ns;		// 系统登录计时0点时刻...
 	int64_t			m_sys_zero_ns;			// 系统计时零点 => 第一个数据包到达的系统时刻点 => 纳秒...
 	int64_t			m_next_create_ns;		// 下次发送创建命令时间戳 => 纳秒 => 每隔100毫秒发送一次...
 	int64_t			m_next_detect_ns;		// 下次发送探测包的时间戳 => 纳秒 => 每隔1秒发送一次...
@@ -89,4 +98,6 @@ private:
 
 	GM_MapLose		m_AudioMapLose;			// 音频检测到的丢包集合队列...
 	GM_MapLose		m_VideoMapLose;			// 视频检测到的丢包集合队列...
+	
+	CPlaySDL    *   m_lpPlaySDL;            // SDL播放管理器...
 };

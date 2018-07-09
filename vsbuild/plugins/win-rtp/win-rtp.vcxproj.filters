@@ -5,7 +5,7 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Common Files">
+    <Filter Include="Header Files">
       <UniqueIdentifier>{418212df-6d80-421b-85e5-7e592170e0b0}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -16,58 +16,67 @@
     <ClCompile Include="..\..\..\plugins\win-rtp\win-rtp-source.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\plugins\win-rtp\common\OSMutex.cpp">
-      <Filter>Common Files</Filter>
+    <ClCompile Include="..\..\..\plugins\win-rtp\win-rtp-output.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\plugins\win-rtp\common\OSThread.cpp">
-      <Filter>Common Files</Filter>
+    <ClCompile Include="..\..\..\plugins\win-rtp\OSMutex.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\plugins\win-rtp\common\Socket.cpp">
-      <Filter>Common Files</Filter>
+    <ClCompile Include="..\..\..\plugins\win-rtp\OSThread.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\plugins\win-rtp\common\SocketUtils.cpp">
-      <Filter>Common Files</Filter>
+    <ClCompile Include="..\..\..\plugins\win-rtp\Socket.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\plugins\win-rtp\common\StrPtrLen.cpp">
-      <Filter>Common Files</Filter>
+    <ClCompile Include="..\..\..\plugins\win-rtp\SocketUtils.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\plugins\win-rtp\common\UDPSocket.cpp">
-      <Filter>Common Files</Filter>
+    <ClCompile Include="..\..\..\plugins\win-rtp\StrPtrLen.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\plugins\win-rtp\common\UDPRecvThread.cpp">
-      <Filter>Common Files</Filter>
+    <ClCompile Include="..\..\..\plugins\win-rtp\UDPRecvThread.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\plugins\win-rtp\UDPSocket.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\plugins\win-rtp\UDPPlayThread.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\plugins\win-rtp\common\GMError.h">
-      <Filter>Common Files</Filter>
+    <ClInclude Include="..\..\..\plugins\win-rtp\GMError.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\plugins\win-rtp\common\HYDefine.h">
-      <Filter>Common Files</Filter>
+    <ClInclude Include="..\..\..\plugins\win-rtp\HYDefine.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\plugins\win-rtp\common\OSMutex.h">
-      <Filter>Common Files</Filter>
+    <ClInclude Include="..\..\..\plugins\win-rtp\OSMutex.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\plugins\win-rtp\common\OSThread.h">
-      <Filter>Common Files</Filter>
+    <ClInclude Include="..\..\..\plugins\win-rtp\OSThread.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\plugins\win-rtp\common\Socket.h">
-      <Filter>Common Files</Filter>
+    <ClInclude Include="..\..\..\plugins\win-rtp\rtp.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\plugins\win-rtp\common\SocketUtils.h">
-      <Filter>Common Files</Filter>
+    <ClInclude Include="..\..\..\plugins\win-rtp\Socket.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\plugins\win-rtp\common\StrPtrLen.h">
-      <Filter>Common Files</Filter>
+    <ClInclude Include="..\..\..\plugins\win-rtp\SocketUtils.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\plugins\win-rtp\common\UDPSocket.h">
-      <Filter>Common Files</Filter>
+    <ClInclude Include="..\..\..\plugins\win-rtp\StrPtrLen.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\plugins\win-rtp\common\UDPRecvThread.h">
-      <Filter>Common Files</Filter>
+    <ClInclude Include="..\..\..\plugins\win-rtp\UDPRecvThread.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\plugins\win-rtp\common\rtp.h">
-      <Filter>Common Files</Filter>
+    <ClInclude Include="..\..\..\plugins\win-rtp\UDPSocket.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\plugins\win-rtp\UDPPlayThread.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

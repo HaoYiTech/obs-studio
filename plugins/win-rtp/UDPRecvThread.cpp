@@ -2,12 +2,18 @@
 #include "UDPSocket.h"
 #include "SocketUtils.h"
 #include "UDPRecvThread.h"
+#include "UDPPlayThread.h"
 
-CUDPRecvThread::CUDPRecvThread(int nDBRoomID, int nDBCameraID)
+CUDPRecvThread::CUDPRecvThread(int nDBRoomID, int nDBLiveID)
   : m_lpUDPSocket(NULL)
+  , m_lpObsSource(NULL)
+  , m_lpPlaySDL(NULL)
+  , m_nLiveID(nDBLiveID)
+  , m_nRoomID(nDBRoomID)
   , m_bNeedSleep(false)
   , m_HostServerPort(0)
   , m_HostServerAddr(0)
+  , m_bReloadFlag(false)
   , m_bFirstAudioSeq(false)
   , m_bFirstVideoSeq(false)
   , m_nAudioMaxPlaySeq(0)
@@ -16,6 +22,7 @@ CUDPRecvThread::CUDPRecvThread(int nDBRoomID, int nDBCameraID)
   , m_next_create_ns(-1)
   , m_next_detect_ns(-1)
   , m_next_ready_ns(-1)
+  , m_login_zero_ns(-1)
   , m_sys_zero_ns(-1)
   , m_server_cache_time_ms(-1)
   , m_server_rtt_var_ms(-1)
@@ -52,9 +59,9 @@ CUDPRecvThread::CUDPRecvThread(int nDBRoomID, int nDBCameraID)
 	m_rtp_supply.pt = PT_TAG_SUPPLY;
 	// 填充房间号和直播通道号...
 	m_rtp_create.roomID = nDBRoomID;
-	m_rtp_create.liveID = nDBCameraID;
+	m_rtp_create.liveID = nDBLiveID;
 	m_rtp_delete.roomID = nDBRoomID;
-	m_rtp_delete.liveID = nDBCameraID;
+	m_rtp_delete.liveID = nDBLiveID;
 }
 
 CUDPRecvThread::~CUDPRecvThread()
@@ -76,10 +83,10 @@ CUDPRecvThread::~CUDPRecvThread()
 
 void CUDPRecvThread::ClosePlayer()
 {
-	/*if( m_lpPlaySDL != NULL ) {
+	if( m_lpPlaySDL != NULL ) {
 		delete m_lpPlaySDL;
 		m_lpPlaySDL = NULL;
-	}*/
+	}
 }
 
 void CUDPRecvThread::CloseSocket()
@@ -91,8 +98,10 @@ void CUDPRecvThread::CloseSocket()
 	}
 }
 
-GM_Error CUDPRecvThread::InitThread()
+GM_Error CUDPRecvThread::InitThread(obs_source_t * lpObsSource)
 {
+	// 保存obs资源对象...
+	m_lpObsSource = lpObsSource;
 	// 首先，关闭socket...
 	this->CloseSocket();
 	// 再新建socket...
@@ -116,8 +125,8 @@ GM_Error CUDPRecvThread::InitThread()
 	// 设置TTL网络穿越数值...
 	m_lpUDPSocket->SetTtl(32);
 	// 获取服务器地址信息 => 假设输入信息就是一个IPV4域名...
-	//const char * lpszAddr = "192.168.1.70";
-	const char * lpszAddr = DEF_UDP_HOME;
+	const char * lpszAddr = "192.168.1.70";
+	//const char * lpszAddr = DEF_UDP_HOME;
 	hostent * lpHost = gethostbyname(lpszAddr);
 	if( lpHost != NULL && lpHost->h_addr_list != NULL ) {
 		lpszAddr = inet_ntoa(*(in_addr*)lpHost->h_addr_list[0]);
@@ -127,6 +136,8 @@ GM_Error CUDPRecvThread::InitThread()
 	// 服务器地址和端口转换成host格式，保存起来...
 	m_HostServerPort = DEF_UDP_PORT;
 	m_HostServerAddr = ntohl(inet_addr(lpszAddr));
+	// 设定系统登录计时0点位置...
+	m_login_zero_ns = os_gettime_ns();
 	// 启动组播接收线程...
 	this->Start();
 	// 返回执行结果...
@@ -454,8 +465,8 @@ void CUDPRecvThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
 	// 打印收到序列头结构体信息...
 	blog(LOG_INFO, "[Teacher-Looker] Recv Header SPS: %d, PPS: %d", m_strSPS.size(), m_strPPS.size());
 	// 如果播放器已经创建，直接返回...
-	//if( m_lpPlaySDL != NULL || m_lpPushThread == NULL )
-	//	return;
+	if( m_lpPlaySDL != NULL )
+		return;
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 开始重建本地播放器对象，设定观看端的0点时刻...
 	// 注意：这里非常重要，服务器开始转发推流者音视频数据了，必须设定观看者的系统计时起点，0点时刻...
@@ -474,21 +485,20 @@ void CUDPRecvThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
 	m_server_cache_time_ms = 1000 / ((m_rtp_header.fpsNum > 0) ? m_rtp_header.fpsNum : 25); 
 	m_p2p_cache_time_ms = m_server_cache_time_ms; 
 	// 新建播放器，初始化音视频线程...
-	/*m_lpPlaySDL = new CPlaySDL(m_sys_zero_ns);
+	m_lpPlaySDL = new CPlaySDL(m_lpObsSource, m_sys_zero_ns);
 	// 如果有视频，初始化视频线程...
 	if( m_rtp_header.hasVideo ) {
 		int nPicFPS = m_rtp_header.fpsNum;
 		int nPicWidth = m_rtp_header.picWidth;
 		int nPicHeight = m_rtp_header.picHeight;
-		CRenderWnd * lpRenderWnd = m_lpPushThread->GetRenderWnd();
-		m_lpPlaySDL->InitVideo(lpRenderWnd, m_strSPS, m_strPPS, nPicWidth, nPicHeight, nPicFPS);
+		m_lpPlaySDL->InitVideo(m_strSPS, m_strPPS, nPicWidth, nPicHeight, nPicFPS);
 	} 
 	// 如果有音频，初始化音频线程...
 	if( m_rtp_header.hasAudio ) {
 		int nRateIndex = m_rtp_header.rateIndex;
 		int nChannelNum = m_rtp_header.channelNum;
 		m_lpPlaySDL->InitAudio(nRateIndex, nChannelNum);
-	}*/
+	}
 }
 //
 // 注意：观看端必须收到服务器转发的准备就绪命令之后，才能停止发送准备就绪命令，因为要获取到推流者的映射地址和映射端口...
@@ -510,71 +520,33 @@ void CUDPRecvThread::doProcServerReady(char * lpBuffer, int inRecvLen)
 	if( tmTag != TM_TAG_STUDENT || idTag != ID_TAG_PUSHER )
 		return;
 	// 修改命令状态 => 接入完毕，不要再发生准备就绪命令了...
-	m_nCmdState = kCmdConnetOK;
+	m_nCmdState = kCmdConnectOK;
 	// 保存学生推流端发送的准备就绪数据包内容...
 	memcpy(&m_rtp_ready, lpBuffer, sizeof(m_rtp_ready));
 	// 打印收到准备就绪命令包 => 将地址转换成字符串...
 	string strAddr = SocketUtils::ConvertAddrToString(m_rtp_ready.recvAddr);
 	blog(LOG_INFO, "[Teacher-Looker] Recv Ready from %s:%d", strAddr.c_str(), m_rtp_ready.recvPort);
 }
+
+bool CUDPRecvThread::IsLoginTimeout()
+{
+	OSMutexLocker theLock(&m_Mutex);
+	// 如果已经是登录成功状态，直接返回...
+	if (m_nCmdState == kCmdConnectOK)
+		return false;
+	ASSERT(m_nCmdState != kCmdConnectOK);
+	// 计算已尝试登录时间，如果超时返回true...
+	uint32_t cur_elapse_ms = (uint32_t)((os_gettime_ns() - m_login_zero_ns) / 1000000);
+	return ((cur_elapse_ms >= DEF_TIMEOUT_MS) ? true : false);
+}
 //
 // 处理服务器发送过来的重建命令...
 void CUDPRecvThread::doProcServerReload(char * lpBuffer, int inRecvLen)
 {
-	/*if( m_lpUDPSocket == NULL || lpBuffer == NULL || inRecvLen <= 0 || inRecvLen < sizeof(rtp_reload_t) )
+	if( m_lpUDPSocket == NULL || lpBuffer == NULL || inRecvLen <= 0 || inRecvLen < sizeof(rtp_reload_t) )
 		return;
-    // 通过第一个字节的低2位，判断终端类型...
-    uint8_t tmTag = lpBuffer[0] & 0x03;
-    // 获取第一个字节的中2位，得到终端身份...
-    uint8_t idTag = (lpBuffer[0] >> 2) & 0x03;
-    // 获取第一个字节的高4位，得到数据包类型...
-    uint8_t ptTag = (lpBuffer[0] >> 4) & 0x0F;
-	// 如果不是服务器端发送的重建命令，直接返回...
-	if( tmTag != TM_TAG_SERVER || idTag != ID_TAG_SERVER )
-		return;
-	// 如果不是第一次重建，重建命令必须间隔20秒以上...
-	if( m_rtp_reload.reload_time > 0 ) {
-		uint32_t cur_time_sec = (uint32_t)(CUtilTool::os_gettime_ns()/1000000000);
-		uint32_t load_time_sec = m_rtp_reload.reload_time/1000;
-		// 如果重建命令间隔不到20秒，直接返回...
-		if( (cur_time_sec - load_time_sec) < RELOAD_TIME_OUT )
-			return;
-	}
-	// 删除音视频播放线程...
-	this->ClosePlayer();
-	// 保存服务器传递的重建命令...
-	m_rtp_reload.tm = tmTag;
-	m_rtp_reload.id = idTag;
-	m_rtp_reload.pt = ptTag;
-	// 记录本地重建信息...
-	m_rtp_reload.reload_time = (uint32_t)(CUtilTool::os_gettime_ns()/1000000);
-	++m_rtp_reload.reload_count;
-	// 打印收到服务器重建命令...
-	log_trace("[Teacher-Looker] Server Reload Count: %d", m_rtp_reload.reload_count);
-	// 重置相关命令包...
-	memset(&m_rtp_header, 0, sizeof(m_rtp_header));
-	memset(&m_rtp_ready, 0, sizeof(m_rtp_ready));
-	m_rtp_supply.suSize = 0;
-	// 清空补包集合队列...
-	m_MapLose.clear();
-	// 释放环形队列空间...
-	circlebuf_free(&m_circle);
-	// 初始化环形队列，预分配空间...
-	circlebuf_init(&m_circle);
-	circlebuf_reserve(&m_circle, DEF_CIRCLE_SIZE);
-	// 重置相关变量...
-	m_nCmdState = kCmdSendCreate;
-	m_next_create_ns = -1;
-	m_next_detect_ns = -1;
-	m_next_ready_ns = -1;
-	// 重新开始探测网络...
-	m_rtp_detect.tsSrc = 0;
-	m_rtp_detect.dtNum = 0;
-	m_rtt_var_ms = -1;
-	m_rtt_ms = -1;
-	// 重置视频序列头...
-	m_strSPS.clear();
-	m_strPPS.clear();*/
+	// 直接设定重建标志，等待上层读取...
+	m_bReloadFlag = true;
 }
 
 /*void CUDPRecvThread::doProcJamSeq(bool bIsAudio, uint32_t inJamSeq)
@@ -849,7 +821,7 @@ void CUDPRecvThread::doParseFrame(bool bIsAudio)
 	ASSERT( lpFrontHeader->pst );
 	// 开始正式从环形队列中抽取音视频数据帧...
 	int         pt_type = lpFrontHeader->pt;
-	BOOL        is_key = lpFrontHeader->pk;
+	bool        is_key = ((lpFrontHeader->pk > 0) ? true : false);
 	uint32_t    ts_ms = lpFrontHeader->ts;
 	uint32_t    min_seq = lpFrontHeader->seq;
 	uint32_t    cur_seq = lpFrontHeader->seq;
@@ -888,8 +860,8 @@ void CUDPRecvThread::doParseFrame(bool bIsAudio)
 		// 如果又发现了帧开始标记 => 清空已解析数据帧 => 这个数据帧不完整，需要丢弃...
 		// 同时，需要更新临时存放的数据帧相关信息，重新开始组帧...
 		if( lpCurHeader->pst > 0 ) {
+			is_key = ((lpCurHeader->pk > 0) ? true : false);
 			pt_type = lpCurHeader->pt;
-			is_key = lpCurHeader->pk;
 			ts_ms = lpCurHeader->ts;
 			strFrame.clear();
 		}
@@ -933,9 +905,9 @@ void CUDPRecvThread::doParseFrame(bool bIsAudio)
 	// 需要对网络缓冲评估延时时间进行线路选择 => TO_SERVER or TO_P2P...
 	int cur_cache_ms = ((m_dt_to_dir == DT_TO_SERVER) ? m_server_cache_time_ms : m_p2p_cache_time_ms);
 	// 将解析到的有效数据帧推入播放对象当中...
-	//if( m_lpPlaySDL != NULL ) {
-	//	m_lpPlaySDL->PushFrame(cur_cache_ms, strFrame, pt_type, is_key, ts_ms);
-	//}
+	if( m_lpPlaySDL != NULL ) {
+		m_lpPlaySDL->PushFrame(cur_cache_ms, strFrame, pt_type, is_key, ts_ms);
+	}
 	// 打印已投递的完整数据帧信息...
 	//blog(LOG_INFO, "[Teacher-Looker] Frame => Type: %d, Key: %d, PTS: %lu, Size: %d, PlaySeq: %lu, CircleSize: %d", 
 	//	   pt_type, is_key, ts_ms, strFrame.size(), m_nMaxPlaySeq, m_circle.size/nPerPackSize );
@@ -1151,11 +1123,4 @@ void CUDPRecvThread::doSleepTo()
 	uint64_t cur_time_ns = os_gettime_ns();
 	// 调用系统工具函数，进行sleep休息...
 	os_sleepto_ns(cur_time_ns + delta_ns);
-}
-
-void CUDPRecvThread::ReInitSDLWindow()
-{
-	/*if( m_lpPlaySDL == NULL )
-		return;
-	m_lpPlaySDL->ReInitSDLWindow();*/
 }

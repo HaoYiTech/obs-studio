@@ -85,7 +85,7 @@ private:
 	QWidget                                  *lastWidget = nullptr;
 	bool                                     deferUpdate;
 
-	bool									 m_bUseFFmpeg = false;
+	bool									 m_bUseRtpSource = false;
 	QListWidget                            * m_listCamera = nullptr;
 
 	QWidget *NewWidget(obs_property_t *prop, QWidget *widget,
@@ -132,7 +132,8 @@ public:
 			PropertiesReloadCallback reloadCallback,
 			int minSize = 0);
 	
-	void doUpdateFFmpegInput();
+	void doUpdateRtpSource();
+	bool IsUseRtpSource() { return m_bUseRtpSource; }
 	
 	inline obs_data_t *GetSettings() const {return settings;}
 	inline void UpdateSettings() {callback(obj, settings);}

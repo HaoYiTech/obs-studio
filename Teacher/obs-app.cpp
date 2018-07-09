@@ -993,7 +993,7 @@ void OBSApp::doPostCurl(char *pData, size_t nSize)
 }
 //
 // 从网站服务器获取在线的摄像头列表...
-void OBSApp::doGetCameraList(QListWidget * lpListView, int inSelCameraID)
+void OBSApp::doCameraGetOnLineList(QListWidget * lpListView, int inSelCameraID)
 {
 	if (lpListView == NULL)
 		return;
@@ -1117,7 +1117,7 @@ void OBSApp::doGetCameraList(QListWidget * lpListView, int inSelCameraID)
 }
 //
 // 从网站获取指定摄像头的 rtmp 地址...
-void OBSApp::doGetCameraUrl(int nCameraID, obs_data_t * lpSettings)
+void OBSApp::doCameraGetRtmpUrl(int nCameraID, obs_data_t * lpSettings)
 {
 	// 先将缓冲区进行清空处理...
 	m_strUTF8Data.clear();
@@ -1184,8 +1184,12 @@ void OBSApp::doGetCameraUrl(int nCameraID, obs_data_t * lpSettings)
 	} else if (thePlayerID->type == JSON_STRING) {
 		nPlayerID = atoi(json_string_value(thePlayerID));
 	}
-	// 将 rtmp 地址赋值给 ffmpeg 输入配置当中...
+	// 获取房间号码，转换成数字...
+	const char * lpLiveRoomID = config_get_string(this->GlobalConfig(), "General", "LiveRoomID");
+	int nLiveRoomID = ((lpLiveRoomID != NULL) ? atoi(lpLiveRoomID) : 0);
+	// 将 rtmp 地址赋值给 rtp 输入配置当中...
 	obs_data_set_string(lpSettings, "input", lpRtmpUrl);
+	obs_data_set_int(lpSettings, "room_id", nLiveRoomID);
 	obs_data_set_int(lpSettings, "camera_id", nCameraID);
 	obs_data_set_int(lpSettings, "player_id", nPlayerID);
 	// 数据处理完毕，释放json数据包...
@@ -1193,7 +1197,7 @@ void OBSApp::doGetCameraUrl(int nCameraID, obs_data_t * lpSettings)
 }
 //
 // 向中转服务器发送在线状态通知...
-void OBSApp::doVerifyEvent(obs_data_t * lpSettings)
+void OBSApp::doCameraVerifyEvent(obs_data_t * lpSettings)
 {
 	// 判断输入参数是否有效...
 	if (lpSettings == NULL)	return;
@@ -1328,13 +1332,10 @@ void OBSApp::doLoginSuccess()
 	loginWindow->close();
 	// 创建主窗口...
 	this->OBSInit();
-	////////////////////////////////////////////////////
-	// 2018.07.07 - by jackey => 新模式，暂时关闭...
 	// 开启一个定时通知时钟 => 每隔15秒发送一次...
-	/*m_nActiveTimer = this->startTimer(15 * 1000);
+	m_nActiveTimer = this->startTimer(15 * 1000);
 	// 开启一个定时上传检测时钟 => 每隔5秒执行一次...
-	m_nFastTimer = this->startTimer(5 * 1000);*/
-	////////////////////////////////////////////////////
+	m_nFastTimer = this->startTimer(5 * 1000);
 }
 //
 // 时钟定时执行过程...
@@ -1342,7 +1343,7 @@ void OBSApp::timerEvent(QTimerEvent *inEvent)
 {
 	int nTimerID = inEvent->timerId();
 	if (nTimerID == m_nActiveTimer) {
-		mainWindow->doCameraVerify();
+		mainWindow->doCameraVerifyEvent();
 	} else if(nTimerID == m_nFastTimer) {
 		this->doCheckFDFS();
 	}
