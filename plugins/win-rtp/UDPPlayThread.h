@@ -8,11 +8,9 @@ extern "C"
 {
 #include "libavcodec/avcodec.h"
 #include "libavformat/avformat.h"
+#include "libavutil/imgutils.h"
 #include "libswscale/swscale.h"
 #include "libswresample/swresample.h"
-#include "libavutil/imgutils.h"
-#include "libavutil/error.h"
-#include "libavutil/opt.h"
 };
 
 typedef	map<int64_t, AVPacket>		GM_MapPacket;	// DTS => AVPacket  => 解码前的数据帧 => 毫秒 => 1/1000
@@ -34,8 +32,10 @@ protected:
 	AVCodecContext  *   m_lpDecoder;		// 解码器描述...
 	GM_MapPacket		m_MapPacket;		// 解码前的数据帧...
 	GM_MapFrame			m_MapFrame;			// 解码后的数据帧....
-	int64_t				m_play_next_ns;		// 下一个要播放帧的系统纳秒值...
+	CPlaySDL        *   m_lpPlaySDL;		// 播放控制
+	OSMutex	            m_Mutex;			// 互斥对象
 	bool				m_bNeedSleep;		// 休息标志 => 只要有解码或播放就不能休息...
+	int64_t				m_play_next_ns;		// 下一个要播放帧的系统纳秒值...
 };
 
 class CVideoThread : public CDecoder, public OSThread
@@ -49,20 +49,14 @@ public:
 	void	doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, int inOffset);
 private:
 	void	doDecodeFrame();
-	void	doDisplaySDL();
+	void	doDisplayFrame();
 private:
-	int				m_nDstFPS;
-	int				m_nDstWidth;
-	int				m_nDstHeight;
-	string			m_strSPS;
-	string			m_strPPS;
-
-	OSMutex	         m_Mutex;			// 互斥对象
-	CPlaySDL    *    m_lpPlaySDL;		// 播放控制
-	obs_source_frame m_obs_frame;		// obs数据帧
-
-	uint8_t      *  m_img_buffer_ptr;   // 单帧图像输出空间
-	int             m_img_buffer_size;  // 单帧图像输出大小
+	int					m_nDstFPS;			// 视频帧率
+	int					m_nDstWidth;		// 视频宽度
+	int					m_nDstHeight;		// 视频高度
+	string				m_strSPS;			// 视频SPS
+	string				m_strPPS;			// 视频PPS
+	obs_source_frame	m_obs_frame;		// obs数据帧
 };
 
 class CAudioThread : public CDecoder, public OSThread
@@ -76,21 +70,11 @@ public:
 	void	doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, int inOffset);
 private:
 	void	doDecodeFrame();
-	void	doDisplaySDL();
+	void	doDisplayFrame();
 private:
-	int					m_audio_rate_index;
-	int					m_audio_channel_num;
-	int				    m_audio_sample_rate;
-	int					m_nSampleDuration;
-
-	SwrContext   *		m_au_convert_ctx;	// 音频格式转换
-	uint8_t		 *		m_out_buffer_ptr;	// 单帧输出空间
-	int					m_out_buffer_size;	// 单帧输出大小
-
-	circlebuf			m_circle;			// PCM数据环形队列
-
-	OSMutex				m_Mutex;			// 互斥对象
-	CPlaySDL	 *		m_lpPlaySDL;		// 播放控制
+	int		m_audio_rate_index;
+	int		m_audio_channel_num;
+	int		m_audio_sample_rate;
 };
 
 class CPlaySDL

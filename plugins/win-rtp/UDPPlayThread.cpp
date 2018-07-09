@@ -121,6 +121,7 @@ CDecoder::CDecoder()
   : m_lpCodec(NULL)
   , m_lpDFrame(NULL)
   , m_lpDecoder(NULL)
+  , m_lpPlaySDL(NULL)
   , m_play_next_ns(-1)
   , m_bNeedSleep(false)
 {
@@ -184,14 +185,11 @@ void CDecoder::doSleepTo()
 }
 
 CVideoThread::CVideoThread(CPlaySDL * lpPlaySDL)
-  : m_lpPlaySDL(lpPlaySDL)
-  , m_img_buffer_ptr(NULL)
-  , m_img_buffer_size(0)
-  , m_nDstHeight(0)
+  : m_nDstHeight(0)
   , m_nDstWidth(0)
   , m_nDstFPS(0)
 {
-	ASSERT(m_lpPlaySDL != NULL);
+	m_lpPlaySDL = lpPlaySDL;
 	memset(&m_obs_frame, 0, sizeof(m_obs_frame));
 }
 
@@ -199,11 +197,6 @@ CVideoThread::~CVideoThread()
 {
 	// 等待线程退出...
 	this->StopAndWaitForThread();
-	// 释放单帧图像转换空间...
-	if( m_img_buffer_ptr != NULL ) {
-		av_free(m_img_buffer_ptr);
-		m_img_buffer_ptr = NULL;
-	}
 }
 
 BOOL CVideoThread::InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS)
@@ -243,14 +236,6 @@ BOOL CVideoThread::InitVideo(string & inSPS, string & inPPS, int nWidth, int nHe
 	// 准备一个全局的解码结构体 => 解码数据帧是相互关联的...
 	m_lpDFrame = av_frame_alloc();
 	ASSERT( m_lpDFrame != NULL );
-
-	// 分配单帧图像转换空间...
-	int nDstWidth = m_nDstWidth;
-	int nDstHeight = m_nDstHeight;
-	enum AVPixelFormat nDestFormat = AV_PIX_FMT_YUV420P;
-	m_img_buffer_size = av_image_get_buffer_size(nDestFormat, nDstWidth, nDstHeight, 1);
-	m_img_buffer_ptr = (uint8_t *)av_malloc(m_img_buffer_size);
-
 	// 启动线程开始运转...
 	this->Start();
 	return true;
@@ -264,7 +249,7 @@ void CVideoThread::Entry()
 		// 解码一帧视频...
 		this->doDecodeFrame();
 		// 显示一帧视频...
-		this->doDisplaySDL();
+		this->doDisplayFrame();
 		// 进行sleep等待...
 		this->doSleepTo();
 	}
@@ -309,7 +294,7 @@ void CVideoThread::doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, in
 }
 //
 // 取出一帧解码后的视频，比对系统时间，看看能否播放...
-void CVideoThread::doDisplaySDL()
+void CVideoThread::doDisplayFrame()
 {
 	OSMutexLocker theLock(&m_Mutex);
 	// 如果没有已解码数据帧，直接返回休息最大毫秒数...
@@ -326,7 +311,6 @@ void CVideoThread::doDisplaySDL()
 	// 取出第一个已解码数据帧 => 时间最小的数据帧...
 	GM_MapFrame::iterator itorItem = m_MapFrame.begin();
 	obs_source_frame * lpObsFrame = &m_obs_frame;
-	obs_source_t * lpObsSource = m_lpPlaySDL->GetObsSource();
 	AVFrame * lpSrcFrame = itorItem->second;
 	int64_t   frame_pts_ms = itorItem->first;
 	// 当前帧的显示时间还没有到 => 直接休息差值...
@@ -335,6 +319,13 @@ void CVideoThread::doDisplaySDL()
 		//blog(LOG_INFO, "[Video] Advance => PTS: %I64d, Delay: %I64d ms, AVPackSize: %d, AVFrameSize: %d", frame_pts_ms + inStartPtsMS, frame_pts_ms - sys_cur_ms, m_MapPacket.size(), m_MapFrame.size());
 		return;
 	}
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// 注意：视频延时帧（落后帧），不能丢弃，必须继续显示，视频消耗速度相对较快，除非时间戳给错了，会造成播放问题。
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// 将数据转换成jpg...
+	//DoProcSaveJpeg(lpSrcFrame, m_lpDecoder->pix_fmt, frame_pts, "F:/MP4/Dst");
+	// 打印正在播放的解码后视频数据...
+	//blog(LOG_INFO, "[Video] Player => PTS: %I64d ms, Delay: %I64d ms, AVPackSize: %d, AVFrameSize: %d", frame_pts_ms + inStartPtsMS, sys_cur_ms - frame_pts_ms, m_MapPacket.size(), m_MapFrame.size());
 	// 判断视频数据是否需要翻转处理...
 	bool bFlip = ((lpSrcFrame->linesize[0] < 0) && (lpSrcFrame->linesize[1] == 0));
 	// 将数据指针复制到obs结构体当中...
@@ -372,47 +363,6 @@ void CVideoThread::doDisplaySDL()
 	m_MapFrame.erase(itorItem);
 	// 修改休息状态 => 已经有播放，不能休息...
 	m_bNeedSleep = false;
-	/*// 将数据转换成jpg...
-	//DoProcSaveJpeg(lpSrcFrame, m_lpDecoder->pix_fmt, frame_pts, "F:/MP4/Dst");
-	// 打印正在播放的解码后视频数据...
-	//blog(LOG_INFO, "[Video] Player => PTS: %I64d ms, Delay: %I64d ms, AVPackSize: %d, AVFrameSize: %d", frame_pts_ms + inStartPtsMS, sys_cur_ms - frame_pts_ms, m_MapPacket.size(), m_MapFrame.size());
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// 注意：视频延时帧（落后帧），不能丢弃，必须继续显示，视频消耗速度相对较快，除非时间戳给错了，会造成播放问题。
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// 准备需要转换的格式信息...
-	enum AVPixelFormat nDestFormat = AV_PIX_FMT_YUV420P;
-	enum AVPixelFormat nSrcFormat = m_lpDecoder->pix_fmt;
-	// 解码后的高宽，可能与预设的高宽不一致...
-	int nSrcWidth = m_lpDecoder->width;
-	int nSrcHeight = m_lpDecoder->height;
-	int nDstWidth = m_nDstWidth;
-	int nDstHeight = m_nDstHeight;
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// 注意：解码后的高宽，可能与预设高宽不一致...
-	// 注意：不管什么格式，都需要进行像素格式的转换...
-	// 注意：必须按照预设图像的高宽进行转换，预先分配转换空间，避免来回创建释放临时空间...
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	AVFrame pDestFrame = {0};
-	av_image_fill_arrays(pDestFrame.data, pDestFrame.linesize, m_img_buffer_ptr, nDestFormat, nDstWidth, nDstHeight, 1);
-	// 另一种方法：临时分配图像格式转换空间的方法...
-	//int nDestBufSize = avpicture_get_size(nDestFormat, nDstWidth, nDstHeight);
-	//uint8_t * pDestOutBuf = (uint8_t *)av_malloc(nDestBufSize);
-	//avpicture_fill(&pDestFrame, pDestOutBuf, nDestFormat, nDstWidth, nDstHeight);
-	// 调用ffmpeg的格式转换接口函数...
-	struct SwsContext * img_convert_ctx = sws_getContext(nSrcWidth, nSrcHeight, nSrcFormat, nDstWidth, nDstHeight, nDestFormat, SWS_BICUBIC, NULL, NULL, NULL);
-	int nReturn = sws_scale(img_convert_ctx, (const uint8_t* const*)lpSrcFrame->data, lpSrcFrame->linesize, 0, nSrcHeight, pDestFrame.data, pDestFrame.linesize);
-	sws_freeContext(img_convert_ctx);
-	// 计算解码后的数据帧的时间戳 => 将毫秒转换成纳秒...
-	AVRational base_pack  = {1, 1000};
-	AVRational base_frame = {1, 1000000000};
-	int64_t frame_pts_ns = av_rescale_q(frame_pts_ms, base_pack, base_frame);
-	// 释放临时分配的数据空间...
-	//av_free(pDestOutBuf);
-	// 释放并删除已经使用完毕原始数据块...
-	av_frame_free(&lpSrcFrame);
-	m_MapFrame.erase(itorItem);
-	// 修改休息状态 => 已经有播放，不能休息...
-	m_bNeedSleep = false;*/
 }
 
 #ifdef DEBUG_DECODE
@@ -482,9 +432,9 @@ void CVideoThread::doDecodeFrame()
 	// 非常关键的操作 => m_lpDFrame 千万不能释放，继续灌AVPacket就能解码出图像...
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	if( nResult < 0 || !got_picture ) {
-		// 保存解码失败的情况...
 		// 打印解码失败信息，显示坏帧的个数...
-		//log_trace("[Video] %s Error => decode_frame failed, BFrame: %d, PTS: %I64d, DecodeSize: %d, PacketSize: %d", (m_lpRenderWnd != NULL) ? "net" : "loc", m_lpDecoder->has_b_frames, thePacket.pts + inStartPtsMS, nResult, thePacket.size);
+		blog(LOG_INFO, "[Video] Error => decode_frame failed, BFrame: %d, PTS: %I64d, DecodeSize: %d, PacketSize: %d", 
+			 m_lpDecoder->has_b_frames, thePacket.pts + inStartPtsMS, nResult, thePacket.size);
 		// 这里非常关键，告诉解码器不要缓存坏帧(B帧)，一旦有解码错误，直接扔掉，这就是低延时解码模式...
 		m_lpDecoder->has_b_frames = 0;
 		// 丢掉解码失败的数据帧...
@@ -509,44 +459,20 @@ void CVideoThread::doDecodeFrame()
 	m_MapPacket.erase(itorItem);
 	// 修改休息状态 => 已经有解码，不能休息...
 	m_bNeedSleep = false;
-
-	/*// 计算解码后的数据帧的时间戳 => 将毫秒转换成纳秒...
-	AVRational base_pack  = {1, 1000};
-	AVRational base_frame = {1, 1000000000};
-	int64_t frame_pts = av_rescale_q(lpFrame->best_effort_timestamp, base_pack, base_frame);*/
 }
 
 CAudioThread::CAudioThread(CPlaySDL * lpPlaySDL)
 {
-	m_nSampleDuration = 0;
 	m_lpPlaySDL = lpPlaySDL;
 	m_audio_sample_rate = 0;
 	m_audio_rate_index = 0;
 	m_audio_channel_num = 0;
-	m_out_buffer_ptr = NULL;
-	m_au_convert_ctx = NULL;
-	m_out_buffer_size = 0;
-	// 初始化PCM数据环形队列...
-	circlebuf_init(&m_circle);
-	circlebuf_reserve(&m_circle, DEF_CIRCLE_SIZE/4);
 }
 
 CAudioThread::~CAudioThread()
 {
 	// 等待线程退出...
 	this->StopAndWaitForThread();
-	// 关闭缓冲区...
-	if( m_out_buffer_ptr != NULL ) {
-		av_free(m_out_buffer_ptr);
-		m_out_buffer_ptr = NULL;
-	}
-	// 关闭音频播放对象...
-	if( m_au_convert_ctx != NULL ) {
-		swr_free(&m_au_convert_ctx);
-		m_au_convert_ctx = NULL;
-	}
-	// 释放音频环形队列...
-	circlebuf_free(&m_circle);
 }
 
 void CAudioThread::doDecodeFrame()
@@ -571,18 +497,14 @@ void CAudioThread::doDecodeFrame()
 	// 非常关键的操作 => m_lpDFrame 千万不能释放，继续灌AVPacket就能解码出图像...
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	if( nResult < 0 || !got_picture ) {
-		blog(LOG_INFO, "[Audio] Error => decode_audio failed, PTS: %I64d, DecodeSize: %d, PacketSize: %d", thePacket.pts + inStartPtsMS, nResult, thePacket.size);
-		if( nResult < 0 ) {
-			static char szErrBuf[64] = {0};
-			av_strerror(nResult, szErrBuf, 64);
-			blog(LOG_INFO, "[Audio] Error => %s ", szErrBuf);
-		}
+		blog(LOG_INFO, "[Audio] Error => decode_audio failed, PTS: %I64d, DecodeSize: %d, PacketSize: %d", 
+			 thePacket.pts + inStartPtsMS, nResult, thePacket.size);
 		av_packet_unref(&thePacket);
 		m_MapPacket.erase(itorItem);
 		return;
 	}
 	// 打印解码之后的数据帧信息...
-	//log_trace( "[Audio] Decode => PTS: %I64d, pkt_dts: %I64d, pkt_pts: %I64d, Type: %d, DecodeSize: %d, PacketSize: %d",
+	//blog(LOG_INFO, "[Audio] Decode => PTS: %I64d, pkt_dts: %I64d, pkt_pts: %I64d, Type: %d, DecodeSize: %d, PacketSize: %d",
 	//		m_lpDFrame->best_effort_timestamp + inStartPtsMS, m_lpDFrame->pkt_dts + inStartPtsMS, m_lpDFrame->pkt_pts + inStartPtsMS,
 	//		m_lpDFrame->pict_type, nResult, thePacket.size );
 	////////////////////////////////////////////////////////////////////////////////////////////
@@ -597,27 +519,10 @@ void CAudioThread::doDecodeFrame()
 	m_MapPacket.erase(itorItem);
 	// 修改休息状态 => 已经有解码，不能休息...
 	m_bNeedSleep = false;
-
-	/*// 对解码后的音频进行类型转换...
-	memset(m_out_buffer_ptr, 0, m_out_buffer_size);
-	nResult = swr_convert(m_au_convert_ctx, &m_out_buffer_ptr, m_out_buffer_size, (const uint8_t **)m_lpDFrame->data , m_lpDFrame->nb_samples);
-	// 转换后的数据存放到环形队列当中...
-	if( nResult > 0 ) {
-		circlebuf_push_back(&m_circle, &frame_pts_ms, sizeof(int64_t));
-		circlebuf_push_back(&m_circle, m_out_buffer_ptr, m_out_buffer_size);
-	}
-	// 这里是引用，必须先free再erase...
-	av_packet_unref(&thePacket);
-	m_MapPacket.erase(itorItem);
-	// 修改休息状态 => 已经有播放，不能休息...
-	m_bNeedSleep = false;*/
 }
 
-void CAudioThread::doDisplaySDL()
+void CAudioThread::doDisplayFrame()
 {
-	//////////////////////////////////////////////////////////////////
-	// 注意：使用主动投递方式，可以有效降低回调造成的延时...
-	//////////////////////////////////////////////////////////////////
 	OSMutexLocker theLock(&m_Mutex);
 	// 如果没有已解码数据帧，直接返回休息最大毫秒数...
 	if (m_MapFrame.size() <= 0) {
@@ -632,96 +537,35 @@ void CAudioThread::doDisplaySDL()
 	sys_cur_ms -= m_lpPlaySDL->GetZeroDelayMS();
 	// 取出第一个已解码数据帧 => 时间最小的数据帧...
 	GM_MapFrame::iterator itorItem = m_MapFrame.begin();
-	obs_source_audio audio = { 0 };
-	obs_source_t * lpObsSource = m_lpPlaySDL->GetObsSource();
+	obs_source_audio theObsAudio = { 0 };
 	AVFrame * lpSrcFrame = itorItem->second;
 	int64_t   frame_pts_ms = itorItem->first;
 	// 当前帧的显示时间还没有到 => 直接休息差值...
 	if (frame_pts_ms > sys_cur_ms) {
 		m_play_next_ns = os_gettime_ns() + (frame_pts_ms - sys_cur_ms) * 1000000;
-		//blog(LOG_INFO, "[Video] Advance => PTS: %I64d, Delay: %I64d ms, AVPackSize: %d, AVFrameSize: %d", frame_pts_ms + inStartPtsMS, frame_pts_ms - sys_cur_ms, m_MapPacket.size(), m_MapFrame.size());
+		//blog(LOG_INFO, "[Audio] Advance => PTS: %I64d, Delay: %I64d ms, AVPackSize: %d, AVFrameSize: %d", frame_pts_ms + inStartPtsMS, frame_pts_ms - sys_cur_ms, m_MapPacket.size(), m_MapFrame.size());
 		return;
 	}
 	// 将音频数据指针复制到obs结构体当中...
 	for (size_t i = 0; i < MAX_AV_PLANES; i++) {
-		audio.data[i] = lpSrcFrame->data[i];
+		theObsAudio.data[i] = lpSrcFrame->data[i];
 	}
 	// 计算并设置音频相关信息 => 可以控制播放速度...
-	audio.samples_per_sec = lpSrcFrame->sample_rate; // *m->speed / 100;
-	audio.speakers = convert_speaker_layout(lpSrcFrame->channels);
-	audio.format = convert_sample_format(lpSrcFrame->format);
-	audio.frames = lpSrcFrame->nb_samples;
+	theObsAudio.samples_per_sec = lpSrcFrame->sample_rate; // *m->speed / 100;
+	theObsAudio.speakers = convert_speaker_layout(lpSrcFrame->channels);
+	theObsAudio.format = convert_sample_format(lpSrcFrame->format);
+	theObsAudio.frames = lpSrcFrame->nb_samples;
 	// 设置obs数据帧的时间戳 => 将毫秒转换成纳秒...
 	AVRational base_pack = { 1, 1000 };
 	AVRational base_frame = { 1, 1000000000 };
-	audio.timestamp = av_rescale_q(frame_pts_ms, base_pack, base_frame);
+	theObsAudio.timestamp = av_rescale_q(frame_pts_ms, base_pack, base_frame);
 	// 将填充后的obs数据帧，进行数据投递工作...
-	obs_source_output_audio(m_lpPlaySDL->GetObsSource(), &audio);
+	obs_source_output_audio(m_lpPlaySDL->GetObsSource(), &theObsAudio);
 	// 释放并删除已经使用完毕原始数据块...
 	av_frame_free(&lpSrcFrame);
 	m_MapFrame.erase(itorItem);
 	// 修改休息状态 => 已经有播放，不能休息...
 	m_bNeedSleep = false;
-
-	/*////////////////////////////////////////////////////////////////
-	// 测试：这里可以明显看出，网络抖动之后，后面数据一下子就被灌入，
-	// 但是，音频播放并不会因此加速播放，卡顿时间被累积，音频被拉长，
-	// 后续数据就发生堆积，累积延时增大，引发音频清理，造成咔哒声音，
-	// 因此，需要找到能够精确控制音频播放的工具，不能只是扔给硬件了事
-	//////////////////////////////////////////////////////////////////
-	if( m_nDeviceID > 0 ) {
-		log_debug("[Audio] QueueBytes => %d, circle: %lu", SDL_GetQueuedAudioSize(m_nDeviceID), m_circle.size);
-	}*/
-
-	/*// 如果没有已解码数据帧，直接返回最大休息毫秒数...
-	if( m_circle.size <= 0 ) {
-		m_play_next_ns = os_gettime_ns() + MAX_SLEEP_MS * 1000000;
-		return;
-	}
-	// 这是为了测试原始PTS而获取的初始PTS值 => 只在打印调试信息时使用...
-	int64_t inStartPtsMS = m_lpPlaySDL->GetStartPtsMS();
-	// 计算当前时间与0点位置的时间差 => 转换成毫秒...
-	int64_t sys_cur_ms = (os_gettime_ns() - m_lpPlaySDL->GetSysZeroNS())/1000000;
-	// 累加人为设定的延时毫秒数 => 相减...
-	sys_cur_ms -= m_lpPlaySDL->GetZeroDelayMS();
-	// 获取第一个已解码数据帧 => 时间最小的数据帧...
-	int64_t frame_pts_ms = 0;
-	//int nQueueBytes = SDL_GetQueuedAudioSize(m_nDeviceID);
-	int frame_per_size = sizeof(int64_t) + m_out_buffer_size;
-	circlebuf_peek_front(&m_circle, &frame_pts_ms, sizeof(int64_t));
-	// 不能超前投递数据，会造成硬件层数据堆积，造成缓存积压，引发缓存清理...
-	if( frame_pts_ms > sys_cur_ms ) {
-		m_play_next_ns = os_gettime_ns() + (frame_pts_ms - sys_cur_ms)*1000000;
-		//blog(LOG_INFO, "[Audio] Advance => PTS: %I64d ms, Delay: %I64d ms, AudioSize: %d, QueueBytes: %d", frame_pts_ms + inStartPtsMS, frame_pts_ms - sys_cur_ms, m_circle.size/frame_per_size, nQueueBytes);
-		return;
-	}
-	// 当前帧长度从环形队列当中移除 => 后面就是音频数据帧...
-	circlebuf_pop_front(&m_circle, NULL, sizeof(int64_t));
-	// 从环形队列当中，取出音频数据帧内容，固定长度...
-	memset(m_out_buffer_ptr, 0, m_out_buffer_size);
-	circlebuf_peek_front(&m_circle, m_out_buffer_ptr, m_out_buffer_size);
-	///////////////////////////////////////////////////////////////////////////////////////////
-	// 注意：必须对音频播放内部的缓存做定期伐值清理 => CPU过高时，DirectSound会堆积缓存...
-	// 投递数据前，先查看正在排队的音频数据 => 缓存超过500毫秒就清理...
-	///////////////////////////////////////////////////////////////////////////////////////////
-	int nAllowQueueSize = (int)(500.0f / m_nSampleDuration * m_out_buffer_size);
-	// 清理之后，立即继续灌音频数据，避免数据进一步堆积...
-	if( nQueueBytes > nAllowQueueSize ) {
-		log_trace("[Audio] Clear Audio Buffer, QueueBytes: %d, AVPacket: %d, AVFrame: %d", nQueueBytes, m_MapPacket.size(), m_circle.size/frame_per_size);
-		SDL_ClearQueuedAudio(m_nDeviceID);
-	}
-	// 注意：失败也不要返回，继续执行，目的是移除缓存...
-	// 将音频解码后的数据帧投递给音频设备...
-	if( SDL_QueueAudio(m_nDeviceID, m_out_buffer_ptr, m_out_buffer_size) < 0 ) {
-		log_trace("[Audio] Failed to queue audio: %s", SDL_GetError());
-	}
-	// 打印已经投递的音频数据信息...
-	//nQueueBytes = SDL_GetQueuedAudioSize(m_nDeviceID);
-	//log_debug("[Audio] Player => PTS: %I64d ms, Delay: %I64d ms, AVPackSize: %d, AudioSize: %d, QueueBytes: %d", frame_pts_ms + inStartPtsMS, sys_cur_ms - frame_pts_ms, m_MapPacket.size(), m_circle.size/frame_per_size, nQueueBytes);
-	// 删除已经使用的音频数据 => 从环形队列中移除...
-	circlebuf_pop_front(&m_circle, NULL, m_out_buffer_size);
-	// 修改休息状态 => 已经有播放，不能休息...
-	m_bNeedSleep = false;*/
 }
 
 BOOL CAudioThread::InitAudio(int nRateIndex, int nChannelNum)
@@ -758,61 +602,11 @@ BOOL CAudioThread::InitAudio(int nRateIndex, int nChannelNum)
 	// 打开获取到的解码器...
 	if( avcodec_open2(m_lpDecoder, m_lpCodec, NULL) != 0 )
 		return false;
-	// 输入声道和输出声道是一样的...
-	int in_audio_channel_num = m_audio_channel_num;
-	int out_audio_channel_num = m_audio_channel_num;
-	int64_t in_channel_layout = av_get_default_channel_layout(in_audio_channel_num);
-	int64_t out_channel_layout = (out_audio_channel_num <= 1) ? AV_CH_LAYOUT_MONO : AV_CH_LAYOUT_STEREO;
-	// 输出音频采样格式...
-	AVSampleFormat out_sample_fmt = AV_SAMPLE_FMT_S16;
-	// out_nb_samples: AAC-1024 MP3-1152
-	int out_nb_samples = 1024;
-	// 设置输入输出采样率 => 不变...
-	int in_sample_rate = m_audio_sample_rate;
-	int out_sample_rate = m_audio_sample_rate;
-
-	/*//SDL_AudioSpec => 不能使用系统推荐参数 => 不用回调模式，主动投递...
-	SDL_AudioSpec audioSpec = {0};
-	audioSpec.freq = out_sample_rate; 
-	audioSpec.format = AUDIO_S16SYS; //m_lpDecoder->sample_fmt => AV_SAMPLE_FMT_FLTP
-	audioSpec.channels = out_audio_channel_num; 
-	audioSpec.samples = out_nb_samples;
-	audioSpec.callback = NULL; 
-	audioSpec.userdata = NULL;
-	audioSpec.silence = 0;
-
-	// 打开SDL音频设备 => 只能打开一个设备...
-	if( SDL_OpenAudio(&audioSpec, NULL) != 0 ) {
-		//SDL_Log("[Audio] Failed to open audio: %s", SDL_GetError());
-		log_trace("[Audio] Failed to open audio: %s", SDL_GetError());
-		return false;
-	}*/
-
 	// 准备一个全局的解码结构体 => 解码数据帧是相互关联的...
 	m_lpDFrame = av_frame_alloc();
 	ASSERT( m_lpDFrame != NULL );
-
-	// 计算每帧间隔时间 => 毫秒...
-	m_nSampleDuration = out_nb_samples * 1000 / out_sample_rate;
-	// 设置打开的主设备编号...
-	//m_nDeviceID = 1;
-	// 获取音频解码后输出的缓冲区大小...
-	m_out_buffer_size = av_samples_get_buffer_size(NULL, out_audio_channel_num, out_nb_samples, out_sample_fmt, 1);
-	m_out_buffer_ptr = (uint8_t *)av_malloc(m_out_buffer_size);
-	
-	// 分配并初始化转换器...
-	m_au_convert_ctx = swr_alloc();
-	m_au_convert_ctx = swr_alloc_set_opts(m_au_convert_ctx, out_channel_layout, out_sample_fmt, out_sample_rate,
-										  in_channel_layout, m_lpDecoder->sample_fmt, in_sample_rate, 0, NULL);
-	swr_init(m_au_convert_ctx);
-
-	// 开始播放 => 使用默认主设备...
-	//SDL_PauseAudioDevice(m_nDeviceID, 0);
-	//SDL_ClearQueuedAudio(m_nDeviceID);
-
 	// 启动线程...
 	this->Start();
-
 	return true;
 }
 
@@ -821,7 +615,7 @@ void CAudioThread::Entry()
 	// 注意：提高线程优先级，并不能解决音频受系统干扰问题...
 	// 设置线程优先级 => 最高级，防止外部干扰...
 	//if( !::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_HIGHEST) ) {
-	//	log_trace("[Audio] SetThreadPriority to THREAD_PRIORITY_HIGHEST failed.");
+	//	blog(LOG_INFO, "[Audio] SetThreadPriority to THREAD_PRIORITY_HIGHEST failed.");
 	//}
 	while( !this->IsStopRequested() ) {
 		// 设置休息标志 => 只要有解码或播放就不能休息...
@@ -829,7 +623,7 @@ void CAudioThread::Entry()
 		// 解码一帧视频...
 		this->doDecodeFrame();
 		// 显示一帧视频...
-		this->doDisplaySDL();
+		this->doDisplayFrame();
 		// 进行sleep等待...
 		this->doSleepTo();
 	}

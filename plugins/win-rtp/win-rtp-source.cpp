@@ -115,18 +115,6 @@ static void rtp_source_deactivate(void *data)
 {
 }
 
-/*static void get_frame(void *opaque, struct obs_source_frame *f)
-{
-	//struct ffmpeg_source *s = opaque;
-	//obs_source_output_video(s->source, f);
-}
-
-static void get_audio(void *opaque, struct obs_source_audio *a)
-{
-	//struct ffmpeg_source *s = opaque;
-	//obs_source_output_audio(s->source, a);
-}*/
-
 void RegisterWinRtpSource()
 {
 	obs_source_info rtp_source = {};
