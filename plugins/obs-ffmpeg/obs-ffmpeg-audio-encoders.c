@@ -340,7 +340,8 @@ static bool enc_encode(void *data, struct encoder_frame *frame,
 
 static void enc_defaults(obs_data_t *settings)
 {
-	obs_data_set_default_int(settings, "bitrate", 128);
+	// 2018.07.10 - by jackey => 128 => 32
+	obs_data_set_default_int(settings, "bitrate", 32);
 }
 
 static obs_properties_t *enc_properties(void *unused)
@@ -348,8 +349,8 @@ static obs_properties_t *enc_properties(void *unused)
 	UNUSED_PARAMETER(unused);
 
 	obs_properties_t *props = obs_properties_create();
-	obs_properties_add_int(props, "bitrate",
-			obs_module_text("Bitrate"), 64, 1024, 32);
+	// 2018.07.10 - by jackey => 64,1024,32 => 16,256,16
+	obs_properties_add_int(props, "bitrate", obs_module_text("Bitrate"), 16, 256, 16);
 	return props;
 }
 

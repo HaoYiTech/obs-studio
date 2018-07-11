@@ -59,6 +59,9 @@ EXPORT void obs_extract_avc_headers(const uint8_t *packet, size_t size,
 		uint8_t **new_packet_data, size_t *new_packet_size,
 		uint8_t **header_data, size_t *header_size,
 		uint8_t **sei_data, size_t *sei_size);
+EXPORT bool obs_get_sps_pps(const uint8_t *data, size_t size,
+		uint8_t **sps, size_t *sps_size,
+		uint8_t **pps, size_t *pps_size);
 
 #ifdef __cplusplus
 }

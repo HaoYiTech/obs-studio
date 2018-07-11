@@ -64,7 +64,7 @@
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <AssemblerListingLocation>Debug/</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
-      <DisableSpecificWarnings>4127;4201;4456;4457;4458;4459;4595</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4127;4201;4456;4457;4458;4459;4595;4819</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -143,6 +143,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="..\..\..\plugins\win-rtp\StrPtrLen.cpp" />
     <ClCompile Include="..\..\..\plugins\win-rtp\UDPPlayThread.cpp" />
     <ClCompile Include="..\..\..\plugins\win-rtp\UDPRecvThread.cpp" />
+    <ClCompile Include="..\..\..\plugins\win-rtp\UDPSendThread.cpp" />
     <ClCompile Include="..\..\..\plugins\win-rtp\UDPSocket.cpp" />
     <ClCompile Include="..\..\..\plugins\win-rtp\win-rtp-output.cpp" />
     <ClCompile Include="..\..\..\plugins\win-rtp\win-rtp-source.cpp" />
@@ -159,6 +160,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="..\..\..\plugins\win-rtp\StrPtrLen.h" />
     <ClInclude Include="..\..\..\plugins\win-rtp\UDPPlayThread.h" />
     <ClInclude Include="..\..\..\plugins\win-rtp\UDPRecvThread.h" />
+    <ClInclude Include="..\..\..\plugins\win-rtp\UDPSendThread.h" />
     <ClInclude Include="..\..\..\plugins\win-rtp\UDPSocket.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

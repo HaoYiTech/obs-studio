@@ -651,9 +651,15 @@ bool SimpleOutput::StartStreaming(obs_service_t *service)
 
 	/* --------------------- */
 
+	// 注意：这里直接指定使用rtp输出流...
+	const char * type = "rtp_output";
+
+	////////////////////////////////////////////////////////////////////
+	/*// obs采用默认的rtmp输出流...
 	const char *type = obs_service_get_output_type(service);
 	if (!type)
-		type = "rtmp_output";
+		type = "rtmp_output";*/
+	////////////////////////////////////////////////////////////////////
 
 	/* XXX: this is messy and disgusting and should be refactored */
 	if (outputType != type) {
@@ -1414,9 +1420,15 @@ bool AdvancedOutput::StartStreaming(obs_service_t *service)
 	int trackIndex = config_get_int(main->Config(), "AdvOut",
 			"TrackIndex");
 
+	// 注意：这里直接指定使用rtp输出流...
+	const char * type = "rtp_output";
+
+	////////////////////////////////////////////////////////////////////
+	/*// obs采用默认的rtmp输出流...
 	const char *type = obs_service_get_output_type(service);
 	if (!type)
-		type = "rtmp_output";
+		type = "rtmp_output";*/
+	////////////////////////////////////////////////////////////////////
 
 	/* XXX: this is messy and disgusting and should be refactored */
 	if (outputType != type) {
@@ -1487,26 +1499,27 @@ bool AdvancedOutput::StartStreaming(obs_service_t *service)
 	bool reconnect = config_get_bool(main->Config(), "Output", "Reconnect");
 	int retryDelay = config_get_int(main->Config(), "Output", "RetryDelay");
 	int maxRetries = config_get_int(main->Config(), "Output", "MaxRetries");
-	bool useDelay = config_get_bool(main->Config(), "Output",
-			"DelayEnable");
-	int delaySec = config_get_int(main->Config(), "Output",
-			"DelaySec");
-	bool preserveDelay = config_get_bool(main->Config(), "Output",
-			"DelayPreserve");
-	const char *bindIP = config_get_string(main->Config(), "Output",
-			"BindIP");
-	bool enableNewSocketLoop = config_get_bool(main->Config(), "Output",
-			"NewSocketLoopEnable");
-	bool enableLowLatencyMode = config_get_bool(main->Config(), "Output",
-			"LowLatencyEnable");
+	bool useDelay = config_get_bool(main->Config(), "Output", "DelayEnable");
+	int delaySec = config_get_int(main->Config(), "Output",	"DelaySec");
+	bool preserveDelay = config_get_bool(main->Config(), "Output", "DelayPreserve");
+	const char *bindIP = config_get_string(main->Config(), "Output", "BindIP");
+	bool enableNewSocketLoop = config_get_bool(main->Config(), "Output", "NewSocketLoopEnable");
+	bool enableLowLatencyMode = config_get_bool(main->Config(), "Output", "LowLatencyEnable");
 
+	// 创建输出配置结构体对象...
 	obs_data_t *settings = obs_data_create();
 	obs_data_set_string(settings, "bind_ip", bindIP);
-	obs_data_set_bool(settings, "new_socket_loop_enabled",
-			enableNewSocketLoop);
-	obs_data_set_bool(settings, "low_latency_mode_enabled",
-			enableLowLatencyMode);
+	obs_data_set_bool(settings, "new_socket_loop_enabled", enableNewSocketLoop);
+	obs_data_set_bool(settings, "low_latency_mode_enabled", enableLowLatencyMode);
+	// 设置rtp推流输出需要的特殊变量信息 => 房间号 => 推流到哪个房间...
+	const char * lpLiveRoomID = config_get_string(App()->GlobalConfig(), "General", "LiveRoomID");
+	int nLiveRoomID = ((lpLiveRoomID != NULL) ? atoi(lpLiveRoomID) : 0);
+	obs_data_set_int(settings, "room_id", nLiveRoomID);
+	// rtp模式下阻止重连，重连次数修改为0...
+	reconnect = false; maxRetries = 0;
+	// 将新的输出配置应用到当前输出对象当中...
 	obs_output_update(streamOutput, settings);
+	// 释放输出配置结构体对象...
 	obs_data_release(settings);
 
 	if (!reconnect)
@@ -1515,8 +1528,7 @@ bool AdvancedOutput::StartStreaming(obs_service_t *service)
 	obs_output_set_delay(streamOutput, useDelay ? delaySec : 0,
 			preserveDelay ? OBS_OUTPUT_DELAY_PRESERVE : 0);
 
-	obs_output_set_reconnect_settings(streamOutput, maxRetries,
-			retryDelay);
+	obs_output_set_reconnect_settings(streamOutput, maxRetries,	retryDelay);
 
 	if (obs_output_start(streamOutput)) {
 		return true;

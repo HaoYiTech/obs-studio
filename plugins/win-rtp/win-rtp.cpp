@@ -14,7 +14,9 @@ void RegisterWinRtpOutput();
 
 bool obs_module_load(void)
 {
+	// 初始化模块...
 	InitModule();
+	// 注册数据源和输出...
 	RegisterWinRtpSource();
 	RegisterWinRtpOutput();
 	return true;

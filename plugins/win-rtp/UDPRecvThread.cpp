@@ -66,7 +66,7 @@ CUDPRecvThread::CUDPRecvThread(int nDBRoomID, int nDBLiveID)
 
 CUDPRecvThread::~CUDPRecvThread()
 {
-	blog(LOG_INFO, "== [~CUDPRecvThread Thread] - Exit Start ==");
+	blog(LOG_INFO, "%s == [~CUDPRecvThread Thread] - Exit Start ==", TM_RECV_NAME);
 
 	// 停止线程，等待退出...
 	this->StopAndWaitForThread();
@@ -78,7 +78,7 @@ CUDPRecvThread::~CUDPRecvThread()
 	circlebuf_free(&m_audio_circle);
 	circlebuf_free(&m_video_circle);
 
-	blog(LOG_INFO, "== [~CUDPRecvThread Thread] - Exit End ==");
+	blog(LOG_INFO, "%s == [~CUDPRecvThread Thread] - Exit End ==", TM_RECV_NAME);
 }
 
 void CUDPRecvThread::ClosePlayer()
@@ -183,7 +183,7 @@ void CUDPRecvThread::doSendDeleteCmd()
 	theErr = m_lpUDPSocket->SendTo((void*)&m_rtp_delete, sizeof(m_rtp_delete));
 	(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
 	// 打印已发送删除命令包...
-	blog(LOG_INFO, "[Teacher-Looker] Send Delete RoomID: %lu, LiveID: %d", m_rtp_delete.roomID, m_rtp_delete.liveID);
+	blog(LOG_INFO, "%s Send Delete RoomID: %lu, LiveID: %d", TM_RECV_NAME, m_rtp_delete.roomID, m_rtp_delete.liveID);
 }
 
 void CUDPRecvThread::doSendCreateCmd()
@@ -203,7 +203,7 @@ void CUDPRecvThread::doSendCreateCmd()
 	GM_Error theErr = m_lpUDPSocket->SendTo((void*)&m_rtp_create, sizeof(m_rtp_create));
 	(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
 	// 打印已发送创建命令包 => 第一个包有可能没有发送出去，也返回正常...
-	blog(LOG_INFO, "[Teacher-Looker] Send Create RoomID: %lu, LiveID: %d", m_rtp_create.roomID, m_rtp_create.liveID);
+	blog(LOG_INFO, "%s Send Create RoomID: %lu, LiveID: %d", TM_RECV_NAME, m_rtp_create.roomID, m_rtp_create.liveID);
 	// 计算下次发送创建命令的时间戳...
 	m_next_create_ns = os_gettime_ns() + period_ns;
 	// 修改休息状态 => 已经有发包，不能休息...
@@ -214,7 +214,7 @@ void CUDPRecvThread::doSendCreateCmd()
 	// 相当于在发出创建命令就认为是第一帧数据已经准备好可以播放的时刻点，这样受网络波动延时的影响最小；
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	m_sys_zero_ns = os_gettime_ns();
-	blog(LOG_INFO, "[Teacher-Looker] Set System Zero Time By Create => %I64d ms", m_sys_zero_ns/1000000);
+	blog(LOG_INFO, "%s Set System Zero Time By Create => %I64d ms", TM_RECV_NAME, m_sys_zero_ns/1000000);
 }
 
 void CUDPRecvThread::doSendDetectCmd()
@@ -250,7 +250,7 @@ void CUDPRecvThread::doSendDetectCmd()
 		(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
 	}
 	// 打印已发送探测命令包...
-	//blog(LOG_INFO, "[Teacher-Looker] Send Detect dtNum: %d, MaxConSeq: %lu", m_rtp_detect.dtNum, m_rtp_detect.maxConSeq);
+	//blog(LOG_INFO, "%s Send Detect dtNum: %d, MaxConSeq: %lu", TM_RECV_NAME, m_rtp_detect.dtNum, m_rtp_detect.maxConSeq);
 	// 计算下次发送探测命令的时间戳...
 	m_next_detect_ns = os_gettime_ns() + period_ns;
 	// 修改休息状态 => 已经有发包，不能休息...
@@ -305,7 +305,7 @@ void CUDPRecvThread::doSendReadyCmd()
 	GM_Error theErr = m_lpUDPSocket->SendTo((void*)&rtpReady, sizeof(rtpReady));
 	(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
 	// 打印已发送准备就绪命令包...
-	blog(LOG_INFO, "[Teacher-Looker] Send Ready command");
+	blog(LOG_INFO, "%s Send Ready command", TM_RECV_NAME);
 	// 计算下次发送创建命令的时间戳...
 	m_next_ready_ns = os_gettime_ns() + period_ns;
 	// 修改休息状态 => 已经有发包，不能休息...
@@ -386,7 +386,7 @@ void CUDPRecvThread::doSendSupplyCmd(bool bIsAudio)
 	// 修改休息状态 => 已经有发包，不能休息...
 	m_bNeedSleep = false;
 	// 打印已发送补包命令...
-	blog(LOG_INFO, "[Teacher-Looker] Supply Send => Dir: %d, Count: %d", m_dt_to_dir, m_rtp_supply.suSize/sizeof(uint32_t));
+	blog(LOG_INFO, "%s Supply Send => Dir: %d, Count: %d", TM_RECV_NAME, m_dt_to_dir, m_rtp_supply.suSize/sizeof(uint32_t));
 }
 
 void CUDPRecvThread::doRecvPacket()
@@ -445,7 +445,7 @@ void CUDPRecvThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
 	memcpy(&m_rtp_header, lpBuffer, sizeof(m_rtp_header));
 	int nNeedSize = m_rtp_header.spsSize + m_rtp_header.ppsSize + sizeof(m_rtp_header);
 	if( nNeedSize != inRecvLen ) {
-		blog(LOG_INFO, "[Teacher-Looker] Recv Header error, RecvLen: %d", inRecvLen);
+		blog(LOG_INFO, "%s Recv Header error, RecvLen: %d", TM_RECV_NAME, inRecvLen);
 		memset(&m_rtp_header, 0, sizeof(m_rtp_header));
 		return;
 	}
@@ -463,7 +463,7 @@ void CUDPRecvThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
 	// 修改命令状态 => 开始向服务器准备就绪命令包...
 	m_nCmdState = kCmdSendReady;
 	// 打印收到序列头结构体信息...
-	blog(LOG_INFO, "[Teacher-Looker] Recv Header SPS: %d, PPS: %d", m_strSPS.size(), m_strPPS.size());
+	blog(LOG_INFO, "%s Recv Header SPS: %d, PPS: %d", TM_RECV_NAME, m_strSPS.size(), m_strPPS.size());
 	// 如果播放器已经创建，直接返回...
 	if( m_lpPlaySDL != NULL )
 		return;
@@ -478,8 +478,8 @@ void CUDPRecvThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
 	// 有可能第一个数据包还没有到达，就立即用当前系统时刻做为0点时刻...
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/*if( m_sys_zero_ns < 0 ) {
-		m_sys_zero_ns = CUtilTool::os_gettime_ns() - 100 * 1000000;
-		log_trace("[Teacher-Looker] Set System Zero Time By Header => %I64d ms", m_sys_zero_ns/1000000);
+		m_sys_zero_ns = os_gettime_ns() - 100 * 1000000;
+		blog("%s Set System Zero Time By Header => %I64d ms", TM_RECV_NAME, m_sys_zero_ns/1000000);
 	}*/
 	// 计算默认的网络缓冲评估时间 => 使用帧率来计算...
 	m_server_cache_time_ms = 1000 / ((m_rtp_header.fpsNum > 0) ? m_rtp_header.fpsNum : 25); 
@@ -525,7 +525,7 @@ void CUDPRecvThread::doProcServerReady(char * lpBuffer, int inRecvLen)
 	memcpy(&m_rtp_ready, lpBuffer, sizeof(m_rtp_ready));
 	// 打印收到准备就绪命令包 => 将地址转换成字符串...
 	string strAddr = SocketUtils::ConvertAddrToString(m_rtp_ready.recvAddr);
-	blog(LOG_INFO, "[Teacher-Looker] Recv Ready from %s:%d", strAddr.c_str(), m_rtp_ready.recvPort);
+	blog(LOG_INFO, "%s Recv Ready from %s:%d", TM_RECV_NAME, strAddr.c_str(), m_rtp_ready.recvPort);
 }
 
 bool CUDPRecvThread::IsLoginTimeout()
@@ -665,7 +665,7 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 				m_server_cache_time_ms = m_server_rtt_ms + m_server_rtt_var_ms;
 			}
 			// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
-			blog(LOG_INFO, "[Teacher-Looker] Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, AMaxConSeq: %lu, VMaxConSeq: %lu",
+			blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, AMaxConSeq: %lu, VMaxConSeq: %lu", TM_RECV_NAME,
 				 rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms, m_server_cache_time_ms, rtpDetect.maxAConSeq, rtpDetect.maxVConSeq );
 		}
 		// 处理来自P2P方向的探测结果...
@@ -683,7 +683,7 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 				m_p2p_cache_time_ms = m_p2p_rtt_ms + m_p2p_rtt_var_ms;
 			}
 			// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
-			blog(LOG_INFO, "[Teacher-Looker] Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, AMaxConSeq: %lu, VMaxConSeq: %lu",
+			blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, AMaxConSeq: %lu, VMaxConSeq: %lu", TM_RECV_NAME,
 				 rtpDetect.dtDir, rtpDetect.dtNum, m_p2p_rtt_ms, m_p2p_rtt_var_ms, m_p2p_cache_time_ms, rtpDetect.maxAConSeq, rtpDetect.maxVConSeq );
 		}
 		/////////////////////////////////////////////////////////////////////////
@@ -769,7 +769,7 @@ void CUDPRecvThread::doParseFrame(bool bIsAudio)
 	// 如果登录还没有收到服务器反馈或播放器为空，都直接返回，继续等待...
 	//////////////////////////////////////////////////////////////////////////////////
 	if( m_nCmdState <= kCmdSendCreate ) {
-		//blog(LOG_INFO, "[Teacher-Looker] Wait For Player => Audio: %d, Video: %d", m_audio_circle.size/nPerPackSize, m_video_circle.size/nPerPackSize );
+		//blog(LOG_INFO, "%s Wait For Player => Audio: %d, Video: %d", TM_RECV_NAME, m_audio_circle.size/nPerPackSize, m_video_circle.size/nPerPackSize );
 		return;
 	}
 
@@ -814,8 +814,8 @@ void CUDPRecvThread::doParseFrame(bool bIsAudio)
 		// 修改休息状态 => 已经抽取数据包，不能休息...
 		m_bNeedSleep = false;
 		// 打印抽帧失败信息 => 没有找到数据帧的开始标记...
-		blog(LOG_INFO, "[Teacher-Looker] Error => Frame start code not find, Seq: %lu, Type: %d, Key: %d, PTS: %lu", 
-			 lpFrontHeader->seq, lpFrontHeader->pt, lpFrontHeader->pk, lpFrontHeader->ts );
+		blog(LOG_INFO, "%s Error => Frame start code not find, Seq: %lu, Type: %d, Key: %d, PTS: %lu", 
+			 TM_RECV_NAME, lpFrontHeader->seq, lpFrontHeader->pt, lpFrontHeader->pk, lpFrontHeader->ts );
 		return;
 	}
 	ASSERT( lpFrontHeader->pst );
@@ -870,13 +870,13 @@ void CUDPRecvThread::doParseFrame(bool bIsAudio)
 	}
 	// 如果没有解析到数据帧 => 打印错误信息...
 	if( strFrame.size() <= 0 ) {
-		blog(LOG_INFO, "[Teacher-Looker] Error => Frame size is Zero, PlaySeq: %lu, Type: %d, Key: %d", nMaxPlaySeq, pt_type, is_key);
+		blog(LOG_INFO, "%s Error => Frame size is Zero, PlaySeq: %lu, Type: %d, Key: %d", TM_RECV_NAME, nMaxPlaySeq, pt_type, is_key);
 		return;
 	}
 	// 注意：环形队列被抽干后，必须在 doFillLosePack 中对环形队列为空时做特殊处理...
 	// 如果环形队列被全部抽干 => 也没关系，在收到新包当中对环形队列为空时做了特殊处理...
 	/*if( nConsumeSize >= m_circle.size ) {
-		blog(LOG_INFO, "[Teacher-Looker] Error => Circle Empty, PlaySeq: %lu, CurSeq: %lu", m_nMaxPlaySeq, cur_seq);
+		blog(LOG_INFO, "%s Error => Circle Empty, PlaySeq: %lu, CurSeq: %lu", TM_RECV_NAME, m_nMaxPlaySeq, cur_seq);
 	}*/
 
 	// 注意：已解析的序列号是已经被删除的序列号...
@@ -909,8 +909,8 @@ void CUDPRecvThread::doParseFrame(bool bIsAudio)
 		m_lpPlaySDL->PushFrame(cur_cache_ms, strFrame, pt_type, is_key, ts_ms);
 	}
 	// 打印已投递的完整数据帧信息...
-	//blog(LOG_INFO, "[Teacher-Looker] Frame => Type: %d, Key: %d, PTS: %lu, Size: %d, PlaySeq: %lu, CircleSize: %d", 
-	//	   pt_type, is_key, ts_ms, strFrame.size(), m_nMaxPlaySeq, m_circle.size/nPerPackSize );
+	//blog(LOG_INFO, "%s Frame => Type: %d, Key: %d, PTS: %lu, Size: %d, PlaySeq: %lu, CircleSize: %d", 
+	//	   TM_RECV_NAME, pt_type, is_key, ts_ms, strFrame.size(), m_nMaxPlaySeq, m_circle.size/nPerPackSize );
 	// 修改休息状态 => 已经抽取完整音视频数据帧，不能休息...
 	m_bNeedSleep = false;
 }
@@ -928,7 +928,7 @@ void CUDPRecvThread::doEraseLoseSeq(uint8_t inPType, uint32_t inSeqID)
 	uint32_t nResendCount = rtpLose.resend_count;
 	theMapLose.erase(itorItem);
 	// 打印已收到的补包信息，还剩下的未补包个数...
-	blog(LOG_INFO, "[Teacher-Looker] Supply Erase => LoseSeq: %lu, ResendCount: %lu, LoseSize: %lu, Type: %d", inSeqID, nResendCount, theMapLose.size(), inPType);
+	blog(LOG_INFO, "%s Supply Erase => LoseSeq: %lu, ResendCount: %lu, LoseSize: %lu, Type: %d", TM_RECV_NAME, inSeqID, nResendCount, theMapLose.size(), inPType);
 }
 //
 // 给丢失数据包预留环形队列缓存空间...
@@ -961,7 +961,7 @@ void CUDPRecvThread::doFillLosePack(uint8_t inPType, uint32_t nStartLoseID, uint
 		rtpLose.resend_time = cur_time_ms + max(cur_rtt_var_ms, MAX_SLEEP_MS);
 		theMapLose[sup_id] = rtpLose;
 		// 打印已丢包信息，丢包队列长度...
-		blog(LOG_INFO, "[Teacher-Looker] Lose Seq: %lu, LoseSize: %lu, Type: %d", sup_id, theMapLose.size(), inPType);
+		blog(LOG_INFO, "%s Lose Seq: %lu, LoseSize: %lu, Type: %d", TM_RECV_NAME, sup_id, theMapLose.size(), inPType);
 		// 累加当前丢包序列号...
 		++sup_id;
 	}
@@ -973,7 +973,7 @@ void CUDPRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 	// 判断输入数据包的有效性 => 不能小于数据包的头结构长度...
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
 	if( lpBuffer == NULL || inRecvLen < sizeof(rtp_hdr_t) || inRecvLen > nPerPackSize ) {
-		blog(LOG_INFO, "[Teacher-Looker] Error => RecvLen: %d, Max: %d", inRecvLen, nPerPackSize);
+		blog(LOG_INFO, "%s Error => RecvLen: %d, Max: %d", TM_RECV_NAME, inRecvLen, nPerPackSize);
 		return;
 	}
 	/////////////////////////////////////////////////////////////////////////////////
@@ -982,12 +982,12 @@ void CUDPRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 	/////////////////////////////////////////////////////////////////////////////////
 	// 如果没有收到序列头，说明接入还没有完成，直接返回...
 	/*if( m_rtp_header.pt != PT_TAG_HEADER ) {
-		log_trace("[Teacher-Looker] Discard => No Header, Connect not complete");
+		blog(LOG_INFO, "%s Discard => No Header, Connect not complete", TM_RECV_NAME);
 		return;
 	}
 	// 既没有音频，也没有视频，直接返回...
 	if( !m_rtp_header.hasAudio && !m_rtp_header.hasVideo ) {
-		log_trace("[Teacher-Looker] Discard => No Audio and No Video");
+		blog(LOG_INFO, "%s Discard => No Audio and No Video", TM_RECV_NAME);
 		return;
 	}*/
 
@@ -1004,7 +1004,7 @@ void CUDPRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/*if( m_sys_zero_ns < 0 ) {
 		m_sys_zero_ns = CUtilTool::os_gettime_ns() - 100 * 1000000;
-		log_trace("[Teacher-Looker] Set System Zero Time By First Data => %I64d ms", m_sys_zero_ns/1000000);
+		blog(LOG_INFO, "%s Set System Zero Time By First Data => %I64d ms", TM_RECV_NAME, m_sys_zero_ns/1000000);
 	}*/
 
 	// 如果收到的缓冲区长度不够 或 填充量为负数，直接丢弃...
@@ -1017,7 +1017,7 @@ void CUDPRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 	uint32_t min_id = new_id;
 	// 出现打包错误，丢掉错误包，打印错误信息...
 	if( inRecvLen != nDataSize || nZeroSize < 0 ) {
-		blog(LOG_INFO, "[Teacher-Looker] Error => RecvLen: %d, DataSize: %d, ZeroSize: %d", inRecvLen, nDataSize, nZeroSize);
+		blog(LOG_INFO, "%s Error => RecvLen: %d, DataSize: %d, ZeroSize: %d", TM_RECV_NAME, inRecvLen, nDataSize, nZeroSize);
 		return;
 	}
 	// 音视频使用不同的打包对象和变量...
@@ -1029,12 +1029,12 @@ void CUDPRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 	if( nMaxPlaySeq <= 0 && !bFirstSeqSet ) {
 		bFirstSeqSet = true;
 		nMaxPlaySeq = new_id - 1;
-		blog(LOG_INFO, "[Teacher-Looker] First Packet => Seq: %lu, Key: %d, PTS: %lu, PStart: %d, Type: %d", new_id, lpNewHeader->pk, lpNewHeader->ts, lpNewHeader->pst, pt_tag);
+		blog(LOG_INFO, "%s First Packet => Seq: %lu, Key: %d, PTS: %lu, PStart: %d, Type: %d", TM_RECV_NAME, new_id, lpNewHeader->pk, lpNewHeader->ts, lpNewHeader->pst, pt_tag);
 	}
 	// 如果收到的补充包比当前最大播放包还要小 => 说明是多次补包的冗余包，直接扔掉...
 	// 注意：即使相等也要扔掉，因为最大播放序号包本身已经投递到了播放层，已经被删除了...
 	if( new_id <= nMaxPlaySeq ) {
-		blog(LOG_INFO, "[Teacher-Looker] Supply Discard => Seq: %lu, MaxPlaySeq: %lu, Type: %d", new_id, nMaxPlaySeq, pt_tag);
+		blog(LOG_INFO, "%s Supply Discard => Seq: %lu, MaxPlaySeq: %lu, Type: %d", TM_RECV_NAME, new_id, nMaxPlaySeq, pt_tag);
 		return;
 	}
 	// 打印收到的音频数据包信息 => 包括缓冲区填充量 => 每个数据包都是统一大小 => rtp_hdr_t + slice + Zero => 812
@@ -1060,7 +1060,7 @@ void CUDPRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 			circlebuf_push_back_zero(&cur_circle, nZeroSize);
 		}
 		// 打印新追加的序号包 => 不管有没有丢包，都要追加这个新序号包...
-		//log_trace("[Teacher-Looker] Max Seq: %lu, Cricle: Zero", new_id);
+		//blog(LOG_INFO, "%s Max Seq: %lu, Cricle: Zero", TM_RECV_NAME, new_id);
 		return;
 	}
 	// 环形队列中至少要有一个数据包...
@@ -1087,14 +1087,14 @@ void CUDPRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 			circlebuf_push_back_zero(&cur_circle, nZeroSize);
 		}
 		// 打印新加入的最大序号包...
-		//log_trace("[Teacher-Looker] Max Seq: %lu, Circle: %d", new_id, m_circle.size/nPerPackSize-1);
+		//blog(LOG_INFO, "%s Max Seq: %lu, Circle: %d", TM_RECV_NAME, new_id, m_circle.size/nPerPackSize-1);
 		return;
 	}
 	// 如果是丢包后的补充包 => max_id > new_id
 	if( max_id > new_id ) {
 		// 如果最小序号大于丢包序号 => 打印错误，直接丢掉这个补充包...
 		if( min_id > new_id ) {
-			blog(LOG_INFO, "[Teacher-Looker] Supply Discard => Seq: %lu, Min-Max: [%lu, %lu], Type: %d", new_id, min_id, max_id, pt_tag);
+			blog(LOG_INFO, "%s Supply Discard => Seq: %lu, Min-Max: [%lu, %lu], Type: %d", TM_RECV_NAME, new_id, min_id, max_id, pt_tag);
 			return;
 		}
 		// 最小序号不能比丢包序号小...
@@ -1104,11 +1104,11 @@ void CUDPRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 		// 将获取的数据内容更新到指定位置...
 		circlebuf_place(&cur_circle, nPosition, lpBuffer, inRecvLen);
 		// 打印补充包信息...
-		blog(LOG_INFO, "[Teacher-Looker] Supply Success => Seq: %lu, Min-Max: [%lu, %lu], Type: %d", new_id, min_id, max_id, pt_tag);
+		blog(LOG_INFO, "%s Supply Success => Seq: %lu, Min-Max: [%lu, %lu], Type: %d", TM_RECV_NAME, new_id, min_id, max_id, pt_tag);
 		return;
 	}
 	// 如果是其它未知包，打印信息...
-	blog(LOG_INFO, "[Teacher-Looker] Supply Unknown => Seq: %lu, Slice: %d, Min-Max: [%lu, %lu], Type: %d", new_id, lpNewHeader->psize, min_id, max_id, pt_tag);
+	blog(LOG_INFO, "%s Supply Unknown => Seq: %lu, Slice: %d, Min-Max: [%lu, %lu], Type: %d", TM_RECV_NAME, new_id, lpNewHeader->psize, min_id, max_id, pt_tag);
 }
 ///////////////////////////////////////////////////////
 // 注意：没有发包，也没有收包，需要进行休息...

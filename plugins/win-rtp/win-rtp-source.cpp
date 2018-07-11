@@ -82,7 +82,7 @@ static void rtp_source_defaults(obs_data_t *settings)
 }
 
 // 使用列表框展示在线的摄像头列表，无需属性配置...
-static obs_properties_t *rtp_source_getproperties(void *data)
+static obs_properties_t *rtp_source_properties(void *data)
 {
 	return NULL;
 }
@@ -123,12 +123,12 @@ void RegisterWinRtpSource()
 	rtp_source.output_flags    = OBS_SOURCE_ASYNC_VIDEO | OBS_SOURCE_AUDIO | OBS_SOURCE_DO_NOT_DUPLICATE;
 	rtp_source.get_name        = rtp_source_getname;
 	rtp_source.create          = rtp_source_create;
+	rtp_source.update          = rtp_source_update;
 	rtp_source.destroy         = rtp_source_destroy;
 	rtp_source.get_defaults    = rtp_source_defaults;
-	rtp_source.get_properties  = rtp_source_getproperties;
+	rtp_source.get_properties  = rtp_source_properties;
 	rtp_source.activate        = rtp_source_activate;
 	rtp_source.deactivate      = rtp_source_deactivate;
 	rtp_source.video_tick      = rtp_source_tick;
-	rtp_source.update          = rtp_source_update;
 	obs_register_source(&rtp_source);
 }

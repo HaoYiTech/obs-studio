@@ -43,6 +43,9 @@
     <ClCompile Include="..\..\..\plugins\win-rtp\UDPPlayThread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\plugins\win-rtp\UDPSendThread.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\plugins\win-rtp\GMError.h">
@@ -76,6 +79,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\plugins\win-rtp\UDPPlayThread.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\plugins\win-rtp\UDPSendThread.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
