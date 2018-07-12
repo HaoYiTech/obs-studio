@@ -47,11 +47,8 @@ CUDPRecvThread::CUDPRecvThread(int nDBRoomID, int nDBLiveID)
 	circlebuf_init(&m_video_circle);
 	circlebuf_reserve(&m_audio_circle, DEF_CIRCLE_SIZE);
 	circlebuf_reserve(&m_video_circle, DEF_CIRCLE_SIZE);
-	//////////////////////////////////////////////////////////////////////////////////////
-	// 注意：这里暂时模拟讲师端观看者身份 => 本身应该为学生观看者...
-	//////////////////////////////////////////////////////////////////////////////////////
-	// 设置终端类型和结构体类型 => m_rtp_header => 等待网络填充...
-	m_rtp_detect.tm = m_rtp_create.tm = m_rtp_delete.tm = m_rtp_supply.tm = TM_TAG_TEACHER; // TM_TAG_STUDENT
+	// 设置终端类型和结构体类型 => m_rtp_header => 等待网络填充 => 老师观看者身份...
+	m_rtp_detect.tm = m_rtp_create.tm = m_rtp_delete.tm = m_rtp_supply.tm = TM_TAG_TEACHER;
 	m_rtp_detect.id = m_rtp_create.id = m_rtp_delete.id = m_rtp_supply.id = ID_TAG_LOOKER;
 	m_rtp_detect.pt = PT_TAG_DETECT;
 	m_rtp_create.pt = PT_TAG_CREATE;

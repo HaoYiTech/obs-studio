@@ -38,8 +38,6 @@ CUDPSendThread::CUDPSendThread(int nDBRoomID)
   , m_nVideoCurSendSeq(0)
   , m_server_rtt_var_ms(-1)
   , m_server_rtt_ms(-1)
-  , m_p2p_rtt_var_ms(-1)
-  , m_p2p_rtt_ms(-1)
   , m_start_dts_ms(-1)
 {
 	// 初始化发包路线 => 服务器方向...
@@ -52,14 +50,13 @@ CUDPSendThread::CUDPSendThread(int nDBRoomID)
 	memset(&m_rtp_create, 0, sizeof(m_rtp_create));
 	memset(&m_rtp_delete, 0, sizeof(m_rtp_delete));
 	memset(&m_rtp_header, 0, sizeof(m_rtp_header));
-	memset(&m_rtp_ready, 0, sizeof(m_rtp_ready));
 	// 初始化音视频环形队列，预分配空间...
 	circlebuf_init(&m_audio_circle);
 	circlebuf_init(&m_video_circle);
 	circlebuf_reserve(&m_audio_circle, DEF_CIRCLE_SIZE);
 	circlebuf_reserve(&m_video_circle, DEF_CIRCLE_SIZE);
-	// 设置终端类型和结构体类型 => m_rtp_ready => 等待网络填充...
-	m_rtp_detect.tm = m_rtp_create.tm = m_rtp_delete.tm = m_rtp_header.tm = TM_TAG_STUDENT;
+	// 设置终端类型和结构体类型 => m_rtp_ready => 等待网络填充 => 老师推流者身份...
+	m_rtp_detect.tm = m_rtp_create.tm = m_rtp_delete.tm = m_rtp_header.tm = TM_TAG_TEACHER;
 	m_rtp_detect.id = m_rtp_create.id = m_rtp_delete.id = m_rtp_header.id = ID_TAG_PUSHER;
 	m_rtp_detect.pt = PT_TAG_DETECT;
 	m_rtp_create.pt = PT_TAG_CREATE;
@@ -278,28 +275,6 @@ BOOL CUDPSendThread::PushFrame(encoder_packet * lpEncPacket)
 		blog(LOG_INFO, "%s Error => Input Frame Size is Zero", TM_SEND_NAME);
 		return false;
 	}
-	/*/////////////////////////////////////////////////////////////////////
-	// 注意：只有当接收端准备好之后，才能开始推流操作...
-	/////////////////////////////////////////////////////////////////////
-	// 如果接收端没有准备好，直接返回 => 收到准备继续包，状态为打包状态...
-	if( m_nCmdState != kCmdSendAVPack || m_rtp_ready.tm != TM_TAG_TEACHER || m_rtp_ready.recvPort <= 0 ) {
-		blog(LOG_INFO, "%s Discard for Error State => PTS: %lu, Type: %d, Size: %d", TM_SEND_NAME, inFrame.dwSendTime, inFrame.typeFlvTag, inFrame.strData.size());
-		return false;
-	}
-	// 如果有视频，第一帧必须是视频关键帧...
-	if( m_rtp_header.hasVideo && m_nVideoCurPackSeq <= 0 ) {
-		if( inFrame.typeFlvTag != PT_TAG_VIDEO || !inFrame.is_keyframe ) {
-			blog(LOG_INFO, "%s Discard for First Video Frame => PTS: %lu, Type: %d, Size: %d", TM_SEND_NAME, inFrame.dwSendTime, inFrame.typeFlvTag, inFrame.strData.size());
-			return false;
-		}
-		ASSERT( inFrame.typeFlvTag == PT_TAG_VIDEO && inFrame.is_keyframe );
-		blog(LOG_INFO, "%s StartPTS: %lu, Type: %d, Size: %d", TM_SEND_NAME, inFrame.dwSendTime, inFrame.typeFlvTag, inFrame.strData.size());
-	}*/
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////
-	// 注意：也可以不限定状态，一开始就进行数据帧的打包，但需要在发包时判断接入状态...
-	// 并且，需要在接入失败之后，或 一定时间之后，需要自动清理环形队列，避免数据堆积...
-	///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	// 计算当前帧的dts时间，以及与pts的时间差 => 视频是序号，音频是刻度...
 	int32_t cur_offset_ms = get_ms_time(lpEncPacket, lpEncPacket->pts - lpEncPacket->dts);
@@ -321,11 +296,7 @@ BOOL CUDPSendThread::PushFrame(encoder_packet * lpEncPacket)
 	//blog(LOG_INFO, "%s Frame => PTS: %lu, Offset: %d, Type: %d, Key: %d, Size: %d", TM_SEND_NAME, dwSendTime, cur_offset_ms, pt_type, is_keyframe, nDataSize);
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
-	// 只要推流端接入成功之后就可以打包操作了，不要管观看端是否接入...
-	// 接入成功标志：成功收到服务器反馈的收到序列头消息通知...
-	// 因此，观看端在成功接入，开始接收数据的时候，自己设定自己的0点时刻；
-	// 观看端的0点时刻：当收到服务器反馈的序列头命令之后，就可以设定0点时刻，马上就收到音视频数据；
-	// 准备就绪的命令作用：是为了获取穿透地址，便于P2P交互，不能做为收发包依据，更不能做为控制条件；
+	// 连接服务器成功之后，才启动压缩器，因此，一定是链接成功状态...
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	if( m_nCmdState == kCmdUnkownState || m_nCmdState <= kCmdSendHeader ) {
 		blog(LOG_INFO, "%s State Error => PTS: %lu, Type: %d, Size: %d", TM_SEND_NAME, dwSendTime, pt_type, nDataSize);
@@ -336,25 +307,13 @@ BOOL CUDPSendThread::PushFrame(encoder_packet * lpEncPacket)
 	m_audio_input_bytes += ((pt_type == PT_TAG_AUDIO) ? nDataSize : 0);
 	m_video_input_bytes += ((pt_type == PT_TAG_VIDEO) ? nDataSize : 0);
 
-	// 注意：采用新的丢包机制 => doCalcAVJamFlag()
-	// 如果有音频，且多次发生网络拥塞，全部丢掉视频...
-	/*if( m_rtp_header.hasAudio && m_bIsJamAudio && pt_type == PT_TAG_VIDEO ) {
-		blog(LOG_INFO, "%s Jam => OnlyAudio: %d, Video Drop, PTS: %lu, Size: %d", TM_SEND_NAME, m_bIsJamAudio, dwSendTime, nDataSize);
-		return true;
-	}
-	// 如果发生网络拥塞，视频只发送关键帧...
-	if( m_bIsJamFlag && pt_type == PT_TAG_VIDEO && !is_keyframe ) {
-		blog(LOG_INFO, "%s Jam => OnlyAudio: %d, Video Drop, PTS: %lu, Size: %d", TM_SEND_NAME, m_bIsJamAudio, dwSendTime, nDataSize);
-		return true;
-	}*/
-
 	// 音视频使用不同的打包对象和变量...
 	uint32_t & nCurPackSeq = (pt_type == PT_TAG_AUDIO) ? m_nAudioCurPackSeq : m_nVideoCurPackSeq;
 	circlebuf & cur_circle = (pt_type == PT_TAG_AUDIO) ? m_audio_circle : m_video_circle;
 
-	// 构造RTP包头结构体...
+	// 构造RTP包头结构体 => 老师推流者...
 	rtp_hdr_t rtpHeader = {0};
-	rtpHeader.tm  = TM_TAG_STUDENT;
+	rtpHeader.tm  = TM_TAG_TEACHER;
 	rtpHeader.id  = ID_TAG_PUSHER;
 	rtpHeader.pt  = pt_type;
 	rtpHeader.pk  = is_keyframe;
@@ -545,29 +504,14 @@ void CUDPSendThread::doSendDetectCmd()
 	m_rtp_detect.dtDir  = DT_TO_SERVER;
 	m_rtp_detect.dtNum += 1;
 
-	////////////////////////////////////////////////////////////////////////////////////////////////
-	// 注意：这种靠丢数据来解决网络拥塞的方法不可取，网络已经拥塞，无法将结果同步到观看端...
-	// 注意：没有发生拥塞时，音视频的拥塞点都设置成0，观看端也容易判断...
-	// 计算音视频的拥塞点 => 用视频做为判断依据 => 超过多个GOP之后就认为拥塞...
-	//this->doCalcAVJamSeq(m_rtp_detect.maxAConSeq, m_rtp_detect.maxVConSeq);
-	////////////////////////////////////////////////////////////////////////////////////////////////
 	// 采用了新的拥塞处理 => 删除指定缓存时间点之前的音视频数据包...
 	this->doCalcAVJamStatus();
 
-	// 调用接口发送探测命令包...
+	// 调用接口发送探测命令包 => 老师推流端只有一个服务器探测方向...
 	GM_Error theErr = m_lpUDPSocket->SendTo((void*)&m_rtp_detect, sizeof(m_rtp_detect));
 	(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
 	// 累加总的输出字节数，便于计算输出平均码流...
 	m_total_output_bytes += sizeof(m_rtp_detect);
-	// 通过P2P进行的探测 => 如果观看端的映射地址有效...
-	if( m_rtp_ready.recvAddr > 0 && m_rtp_ready.recvPort > 0 ) {
-		m_rtp_detect.dtDir = DT_TO_P2P;
-		m_rtp_detect.tsSrc = (uint32_t)(cur_time_ns / 1000000);
-		theErr = m_lpUDPSocket->SendTo( m_rtp_ready.recvAddr, m_rtp_ready.recvPort, 
-										(void*)&m_rtp_detect, sizeof(m_rtp_detect) );
-		(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
-		m_total_output_bytes += sizeof(m_rtp_detect);
-	}
 	// 打印已发送探测命令包...
 	//blog(LOG_INFO, "%s Send Detect dtNum: %d", TM_SEND_NAME, m_rtp_detect.dtNum);
 	// 计算下次发送探测命令的时间戳...
@@ -719,16 +663,9 @@ void CUDPSendThread::doSendLosePacket(bool bIsAudio)
 	}
 	// 获取有效的数据区长度 => 包头 + 数据...
 	nSendSize = sizeof(rtp_hdr_t) + lpSendHeader->psize;
-	////////////////////////////////////////////////////////////////////////////////////////
-	// 调用套接字接口，直接发送RTP数据包 => 根据发包线路进行有选择的路线发送...
-	// 目前只有两条线路可供选择 => TO_SERVER or TO_P2P...
-	////////////////////////////////////////////////////////////////////////////////////////
-	if((m_dt_to_dir == DT_TO_P2P) && (m_rtp_ready.recvAddr > 0) && (m_rtp_ready.recvPort > 0)) {
-		theErr = m_lpUDPSocket->SendTo(m_rtp_ready.recvAddr, m_rtp_ready.recvPort, (void*)lpSendHeader, nSendSize);
-	} else {
-		ASSERT( m_dt_to_dir == DT_TO_SERVER );
-		theErr = m_lpUDPSocket->SendTo((void*)lpSendHeader, nSendSize);
-	}
+	// 注意：老师推流端只能有一个服务器方向的补包路线...
+	ASSERT(m_dt_to_dir == DT_TO_SERVER);
+	theErr = m_lpUDPSocket->SendTo((void*)lpSendHeader, nSendSize);
 	// 如果有错误发生，打印出来...
 	(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
 	// 累加总的输出字节数，便于计算输出平均码流...
@@ -789,16 +726,9 @@ void CUDPSendThread::doSendPacket(bool bIsAudio)
 		return;
 	// 获取有效的数据区长度 => 包头 + 数据...
 	nSendSize = sizeof(rtp_hdr_t) + lpSendHeader->psize;
-	////////////////////////////////////////////////////////////////////////////////////////
-	// 调用套接字接口，直接发送RTP数据包 => 根据发包线路进行有选择的路线发送...
-	// 目前只有两条线路可供选择 => TO_SERVER or TO_P2P...
-	////////////////////////////////////////////////////////////////////////////////////////
-	if((m_dt_to_dir == DT_TO_P2P) && (m_rtp_ready.recvAddr > 0) && (m_rtp_ready.recvPort > 0)) {
-		theErr = m_lpUDPSocket->SendTo(m_rtp_ready.recvAddr, m_rtp_ready.recvPort, (void*)lpSendHeader, nSendSize);
-	} else {
-		ASSERT( m_dt_to_dir == DT_TO_SERVER );
-		theErr = m_lpUDPSocket->SendTo((void*)lpSendHeader, nSendSize);
-	}
+	// 注意：老师推流端只能有一个服务器方向的发包路线...
+	ASSERT(m_dt_to_dir == DT_TO_SERVER);
+	theErr = m_lpUDPSocket->SendTo((void*)lpSendHeader, nSendSize);
 	// 如果有错误发生，打印出来...
 	(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
 
@@ -854,7 +784,6 @@ void CUDPSendThread::doRecvPacket()
 	{
 	case PT_TAG_CREATE:  this->doProcServerCreate(ioBuffer, outRecvLen); break;
 	case PT_TAG_HEADER:  this->doProcServerHeader(ioBuffer, outRecvLen); break;
-	case PT_TAG_READY:   this->doProcServerReady(ioBuffer, outRecvLen);  break;
 	case PT_TAG_RELOAD:  this->doProcServerReload(ioBuffer, outRecvLen); break;
 
 	case PT_TAG_DETECT:	 this->doTagDetectProcess(ioBuffer, outRecvLen); break;
@@ -891,14 +820,14 @@ void CUDPSendThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
 	if( rtpHdr.tm != TM_TAG_SERVER || rtpHdr.id != ID_TAG_SERVER || rtpHdr.pt != PT_TAG_HEADER )
 		return;
 	// 修改命令状态 => 开始接收观看端准备就绪命令...
-	m_nCmdState = kCmdWaitReady;
+	m_nCmdState = kCmdSendAVPack;
 	// 打印收到服务器反馈的序列头命令包...
 	blog(LOG_INFO, "%s Recv Header from Server", TM_SEND_NAME);
 	// 立即通知上层可以捕捉音视频数据了，之后才会产生压缩数据帧...
 	obs_output_begin_data_capture(m_lpObsOutput, 0);
 }
 
-void CUDPSendThread::doProcServerReady(char * lpBuffer, int inRecvLen)
+/*void CUDPSendThread::doProcServerReady(char * lpBuffer, int inRecvLen)
 {
 	if( m_lpUDPSocket == NULL || lpBuffer == NULL || inRecvLen <= 0 || inRecvLen < sizeof(rtp_ready_t) )
 		return;
@@ -908,9 +837,12 @@ void CUDPSendThread::doProcServerReady(char * lpBuffer, int inRecvLen)
     uint8_t idTag = (lpBuffer[0] >> 2) & 0x03;
     // 获取第一个字节的高4位，得到数据包类型...
     uint8_t ptTag = (lpBuffer[0] >> 4) & 0x0F;
-	// 如果不是 老师观看端 发出的准备就绪包，直接返回...
-	if( tmTag != TM_TAG_TEACHER || idTag != ID_TAG_LOOKER )
+	// 如果不是 学生观看端 发出的准备就绪包，直接返回...
+	if( tmTag != TM_TAG_STUDENT || idTag != ID_TAG_LOOKER )
 		return;
+	///////////////////////////////////////////////////////
+	// 注意：需要处理多个学生端的准备就绪命令...
+	///////////////////////////////////////////////////////
 	// 修改命令状态 => 可以进行音视频打包发送数据了...
 	m_nCmdState = kCmdSendAVPack;
 	// 保存老师观看端发送的准备就绪数据包内容...
@@ -930,60 +862,11 @@ void CUDPSendThread::doProcServerReady(char * lpBuffer, int inRecvLen)
 	m_total_output_bytes += sizeof(rtpReady);
 	// 打印发送准备就绪回复命令包...
 	blog(LOG_INFO, "%s Send Ready command for reply", TM_SEND_NAME);
-}
+}*/
 //
 // 处理服务器发送过来的重建命令...
 void CUDPSendThread::doProcServerReload(char * lpBuffer, int inRecvLen)
 {
-	/*if( m_lpUDPSocket == NULL || lpBuffer == NULL || inRecvLen <= 0 || inRecvLen < sizeof(rtp_reload_t) )
-		return;
-    // 通过第一个字节的低2位，判断终端类型...
-    uint8_t tmTag = lpBuffer[0] & 0x03;
-    // 获取第一个字节的中2位，得到终端身份...
-    uint8_t idTag = (lpBuffer[0] >> 2) & 0x03;
-    // 获取第一个字节的高4位，得到数据包类型...
-    uint8_t ptTag = (lpBuffer[0] >> 4) & 0x0F;
-	// 如果不是服务器端发送的重建命令，直接返回...
-	if( tmTag != TM_TAG_SERVER || idTag != ID_TAG_SERVER )
-		return;
-	// 如果不是第一次重建，重建命令必须间隔20秒以上...
-	if( m_rtp_reload.reload_time > 0 ) {
-		uint32_t cur_time_sec = (uint32_t)(os_gettime_ns()/1000000000);
-		uint32_t load_time_sec = m_rtp_reload.reload_time / 1000;
-		// 如果重建命令间隔不到20秒，直接返回...
-		if( (cur_time_sec - load_time_sec) < RELOAD_TIME_OUT )
-			return;
-	}
-	// 保存服务器传递的重建命令...
-	m_rtp_reload.tm = tmTag;
-	m_rtp_reload.id = idTag;
-	m_rtp_reload.pt = ptTag;
-	// 记录本地重建信息...
-	m_rtp_reload.reload_time = (uint32_t)(CUtilTool::os_gettime_ns()/1000000);
-	++m_rtp_reload.reload_count;
-	// 打印收到服务器重建命令...
-	log_trace("[Student-Pusher] Server Reload Count: %d", m_rtp_reload.reload_count);
-	// 重置相关命令包...
-	memset(&m_rtp_ready, 0, sizeof(m_rtp_ready));
-	// 清空补包集合队列...
-	m_MapLose.clear();
-	// 释放环形队列空间...
-	circlebuf_free(&m_circle);
-	// 初始化环形队列，预分配空间...
-	circlebuf_init(&m_circle);
-	circlebuf_reserve(&m_circle, DEF_CIRCLE_SIZE);
-	// 重置相关变量...
-	m_nCmdState = kCmdSendCreate;
-	m_next_create_ns = -1;
-	m_next_header_ns = -1;
-	m_next_detect_ns = -1;
-	m_nCurPackSeq = 0;
-	m_nCurSendSeq = 0;
-	// 重新开始探测网络...
-	m_rtp_detect.tsSrc = 0;
-	m_rtp_detect.dtNum = 0;
-	m_rtt_var_ms = -1;
-	m_rtt_ms = -1;*/
 }
 
 void CUDPSendThread::doTagSupplyProcess(char * lpBuffer, int inRecvLen)
@@ -996,8 +879,8 @@ void CUDPSendThread::doTagSupplyProcess(char * lpBuffer, int inRecvLen)
     uint8_t idTag = (lpBuffer[0] >> 2) & 0x03;
     // 获取第一个字节的高4位，得到数据包类型...
     uint8_t ptTag = (lpBuffer[0] >> 4) & 0x0F;
-	// 如果不是 老师观看端 发出的准备就绪包，直接返回...
-	if( tmTag != TM_TAG_TEACHER || idTag != ID_TAG_LOOKER )
+	// 注意：只处理 服务器端 发出的补包命令...
+	if( tmTag != TM_TAG_SERVER || idTag != ID_TAG_SERVER )
 		return;
 	// 获取补包命令包内容...
 	rtp_supply_t rtpSupply = {0};
@@ -1035,7 +918,7 @@ void CUDPSendThread::doTagSupplyProcess(char * lpBuffer, int inRecvLen)
 	blog(LOG_INFO, "%s Supply Recv => Count: %d, Type: %d", TM_SEND_NAME, rtpSupply.suSize / sizeof(int), rtpSupply.suType);
 }
 
-void CUDPSendThread::doProcMaxConSeq(bool bIsAudio, uint32_t inMaxConSeq)
+/*void CUDPSendThread::doProcMaxConSeq(bool bIsAudio, uint32_t inMaxConSeq)
 {
 	// 根据数据包类型，找到环形队列、最大播放序号、当前拥塞点...
 	circlebuf & cur_circle = bIsAudio ? m_audio_circle : m_video_circle;
@@ -1071,7 +954,7 @@ void CUDPSendThread::doProcMaxConSeq(bool bIsAudio, uint32_t inMaxConSeq)
 	uint32_t nRemainCount = cur_circle.size / nPerPackSize;
 	blog(LOG_INFO, "%s Detect Erase Success => %s, MaxConSeq: %lu, MinSeq: %lu, CurSendSeq: %lu, CurPackSeq: %lu, Circle: %lu", 
 		 TM_SEND_NAME, bIsAudio ? "Audio" : "Video", inMaxConSeq, lpFrontHeader->seq, nCurSendSeq, nCurPackSeq, nRemainCount );
-}
+}*/
 
 void CUDPSendThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 {
@@ -1084,16 +967,10 @@ void CUDPSendThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
     uint8_t idTag = (lpBuffer[0] >> 2) & 0x03;
     // 获取第一个字节的高4位，得到数据包类型...
     uint8_t ptTag = (lpBuffer[0] >> 4) & 0x0F;
-	// 如果是 老师观看者 发出的探测包，将收到的探测数据包原样返回给服务器端...
-	if( tmTag == TM_TAG_TEACHER && idTag == ID_TAG_LOOKER ) {
+	// 如果是 服务器 发出的探测包，将收到的探测数据包原样返回给服务器端...
+	if (tmTag == TM_TAG_SERVER && idTag == ID_TAG_SERVER) {
 		rtp_detect_t * lpDetect = (rtp_detect_t*)lpBuffer;
-		// 先将收到探测数据包原样返回给发送者 => 目前只有两条线路可供选择 => TO_SERVER or TO_P2P...
-		if((lpDetect->dtDir == DT_TO_P2P) && (m_rtp_ready.recvAddr > 0) && (m_rtp_ready.recvPort > 0)) {
-			theErr = m_lpUDPSocket->SendTo(m_rtp_ready.recvAddr, m_rtp_ready.recvPort, lpBuffer, inRecvLen);
-		} else {
-			// 注意：有可能没有收到观看端映射地址，但收到了观看端P2P探测包，这时，需要通过服务器中转探测包...
-			theErr = m_lpUDPSocket->SendTo(lpBuffer, inRecvLen);
-		}
+		theErr = m_lpUDPSocket->SendTo(lpBuffer, inRecvLen);
 		// 累加总的输出字节数，便于计算输出平均码流...
 		m_total_output_bytes += inRecvLen;
 		// 先处理音频最大连续序号包...
@@ -1102,45 +979,24 @@ void CUDPSendThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 		//this->doProcMaxConSeq(false, lpDetect->maxVConSeq);
 		return;
 	}
-	// 如果是 学生推流端 自己发出的探测包，计算网络延时...
-	if( tmTag == TM_TAG_STUDENT && idTag == ID_TAG_PUSHER ) {
+	// 如果是 老师推流端 自己发出的探测包，计算网络延时...
+	if (tmTag == TM_TAG_TEACHER && idTag == ID_TAG_PUSHER) {
 		// 获取收到的探测数据包...
-		rtp_detect_t rtpDetect = {0};
+		rtp_detect_t rtpDetect = { 0 };
 		memcpy(&rtpDetect, lpBuffer, sizeof(rtpDetect));
+		// 只有一条探测路线 => 服务器探测方向...
+		ASSERT(rtpDetect.dtDir == DT_TO_SERVER);
 		// 当前时间转换成毫秒，计算网络延时 => 当前时间 - 探测时间...
 		uint32_t cur_time_ms = (uint32_t)(os_gettime_ns() / 1000000);
 		int keep_rtt = cur_time_ms - rtpDetect.tsSrc;
-		// 处理来自服务器方向的探测结果...
-		if( rtpDetect.dtDir == DT_TO_SERVER ) {
-			// 防止网络突发延迟增大, 借鉴 TCP 的 RTT 遗忘衰减的算法...
-			if( m_server_rtt_ms < 0 ) { m_server_rtt_ms = keep_rtt; }
-			else { m_server_rtt_ms = (7 * m_server_rtt_ms + keep_rtt) / 8; }
-			// 计算网络抖动的时间差值 => RTT的修正值...
-			if( m_server_rtt_var_ms < 0 ) { m_server_rtt_var_ms = abs(m_server_rtt_ms - keep_rtt); }
-			else { m_server_rtt_var_ms = (m_server_rtt_var_ms * 3 + abs(m_server_rtt_ms - keep_rtt)) / 4; }
-			// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
-			blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms", TM_SEND_NAME, rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms);
-		}
-		// 处理来自P2P方向的探测结果...
-		if( rtpDetect.dtDir == DT_TO_P2P ) {
-			// 防止网络突发延迟增大, 借鉴 TCP 的 RTT 遗忘衰减的算法...
-			if( m_p2p_rtt_ms < 0 ) { m_p2p_rtt_ms = keep_rtt; }
-			else { m_p2p_rtt_ms = (7 * m_p2p_rtt_ms + keep_rtt) / 8; }
-			// 计算网络抖动的时间差值 => RTT的修正值...
-			if( m_p2p_rtt_var_ms < 0 ) { m_p2p_rtt_var_ms = abs(m_p2p_rtt_ms - keep_rtt); }
-			else { m_p2p_rtt_var_ms = (m_p2p_rtt_var_ms * 3 + abs(m_p2p_rtt_ms - keep_rtt)) / 4; }
-			// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
-			blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms", TM_SEND_NAME, rtpDetect.dtDir, rtpDetect.dtNum, m_p2p_rtt_ms, m_p2p_rtt_var_ms);
-		}
-		//////////////////////////////////////////////////////////////////////////////
-		// 对发包线路进行选择 => 选择已联通的最小rtt进行发送正常包和发送补包...
-		//////////////////////////////////////////////////////////////////////////////
-		// 如果P2P线路有效，并且更快，设定为P2P线路，否则，设定为服务器线路...
-		if((m_p2p_rtt_ms >= 0) && (m_p2p_rtt_ms < m_server_rtt_ms)) {
-			m_dt_to_dir = DT_TO_P2P;
-		} else {
-			m_dt_to_dir = DT_TO_SERVER;
-		}
+		// 防止网络突发延迟增大, 借鉴 TCP 的 RTT 遗忘衰减的算法...
+		if (m_server_rtt_ms < 0) { m_server_rtt_ms = keep_rtt; }
+		else { m_server_rtt_ms = (7 * m_server_rtt_ms + keep_rtt) / 8; }
+		// 计算网络抖动的时间差值 => RTT的修正值...
+		if (m_server_rtt_var_ms < 0) { m_server_rtt_var_ms = abs(m_server_rtt_ms - keep_rtt); }
+		else { m_server_rtt_var_ms = (m_server_rtt_var_ms * 3 + abs(m_server_rtt_ms - keep_rtt)) / 4; }
+		// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
+		blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms", TM_SEND_NAME, rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms);
 	}
 }
 ///////////////////////////////////////////////////////
