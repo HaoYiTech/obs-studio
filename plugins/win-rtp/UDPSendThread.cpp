@@ -504,8 +504,10 @@ void CUDPSendThread::doSendDetectCmd()
 	m_rtp_detect.dtDir  = DT_TO_SERVER;
 	m_rtp_detect.dtNum += 1;
 
+	// 注意：老师推流端不会用来进行补包，补包都放到服务器端完成...
+	// 因此，采用了根据探测结果进行丢包的处理方法，而不是固定缓存的方法...
 	// 采用了新的拥塞处理 => 删除指定缓存时间点之前的音视频数据包...
-	this->doCalcAVJamStatus();
+	//this->doCalcAVJamStatus();
 
 	// 调用接口发送探测命令包 => 老师推流端只有一个服务器探测方向...
 	GM_Error theErr = m_lpUDPSocket->SendTo((void*)&m_rtp_detect, sizeof(m_rtp_detect));
@@ -549,9 +551,9 @@ void CUDPSendThread::doCalcAVJamStatus()
 		// 计算环形队列当中总的缓存时间...
 		uint32_t cur_buf_ms = max_ts - lpCurHeader->ts;
 		// 如果总缓存时间不超过n秒，中断操作...
-		if (cur_buf_ms < 3000)
+		if (cur_buf_ms < 5000)
 			break;
-		ASSERT(cur_buf_ms >= 3000);
+		ASSERT(cur_buf_ms >= 5000);
 		// 保存删除的时间点，供音频参考...
 		min_ts = lpCurHeader->ts;
 		min_seq = lpCurHeader->seq;
@@ -920,7 +922,7 @@ void CUDPSendThread::doTagSupplyProcess(char * lpBuffer, int inRecvLen)
 	blog(LOG_INFO, "%s Supply Recv => Count: %d, Type: %d", TM_SEND_NAME, rtpSupply.suSize / sizeof(int), rtpSupply.suType);
 }
 
-/*void CUDPSendThread::doProcMaxConSeq(bool bIsAudio, uint32_t inMaxConSeq)
+void CUDPSendThread::doProcMaxConSeq(bool bIsAudio, uint32_t inMaxConSeq)
 {
 	// 根据数据包类型，找到环形队列、最大播放序号、当前拥塞点...
 	circlebuf & cur_circle = bIsAudio ? m_audio_circle : m_video_circle;
@@ -956,7 +958,7 @@ void CUDPSendThread::doTagSupplyProcess(char * lpBuffer, int inRecvLen)
 	uint32_t nRemainCount = cur_circle.size / nPerPackSize;
 	blog(LOG_INFO, "%s Detect Erase Success => %s, MaxConSeq: %lu, MinSeq: %lu, CurSendSeq: %lu, CurPackSeq: %lu, Circle: %lu", 
 		 TM_SEND_NAME, bIsAudio ? "Audio" : "Video", inMaxConSeq, lpFrontHeader->seq, nCurSendSeq, nCurPackSeq, nRemainCount );
-}*/
+}
 
 void CUDPSendThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 {
@@ -976,9 +978,9 @@ void CUDPSendThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 		// 累加总的输出字节数，便于计算输出平均码流...
 		m_total_output_bytes += inRecvLen;
 		// 先处理音频最大连续序号包...
-		//this->doProcMaxConSeq(true, lpDetect->maxAConSeq);
+		this->doProcMaxConSeq(true, lpDetect->maxAConSeq);
 		// 再处理视频最大连续序号包...
-		//this->doProcMaxConSeq(false, lpDetect->maxVConSeq);
+		this->doProcMaxConSeq(false, lpDetect->maxVConSeq);
 		return;
 	}
 	// 如果是 老师推流端 自己发出的探测包，计算网络延时...

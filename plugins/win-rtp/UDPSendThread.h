@@ -39,6 +39,8 @@ private:
 	void			doTagDetectProcess(char * lpBuffer, int inRecvLen);
 	void			doTagSupplyProcess(char * lpBuffer, int inRecvLen);
 
+	void			doProcMaxConSeq(bool bIsAudio, uint32_t inMaxConSeq);
+
 	void			doEarseAudioByPTS(uint32_t inTimeStamp);
 	void			doCalcAVJamStatus();
 private:
