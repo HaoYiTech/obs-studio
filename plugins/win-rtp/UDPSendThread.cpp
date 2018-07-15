@@ -370,8 +370,8 @@ void CUDPSendThread::doCalcAVBitRate()
 	m_video_output_kbps = (int)(m_video_output_bytes * 8) / 1024; m_video_output_bytes = 0;
 	m_total_output_kbps = (int)(m_total_output_bytes * 8) / 1024; m_total_output_bytes = 0;
 	// 打印计算获得的音视频输入输出平均码流值...
-	blog(LOG_INFO, "%s AVBitRate =>  audio_input: %d kbps,  video_input: %d kbps", TM_SEND_NAME, m_audio_input_kbps, m_video_input_kbps);
-	blog(LOG_INFO, "%s AVBitRate => audio_output: %d kbps, video_output: %d kbps, total_output: %d kbps", TM_SEND_NAME, m_audio_output_kbps, m_video_output_kbps, m_total_output_kbps);
+	//blog(LOG_INFO, "%s AVBitRate =>  audio_input: %d kbps,  video_input: %d kbps", TM_SEND_NAME, m_audio_input_kbps, m_video_input_kbps);
+	//blog(LOG_INFO, "%s AVBitRate => audio_output: %d kbps, video_output: %d kbps, total_output: %d kbps", TM_SEND_NAME, m_audio_output_kbps, m_video_output_kbps, m_total_output_kbps);
 }
 
 void CUDPSendThread::Entry()
@@ -562,7 +562,7 @@ void CUDPSendThread::doCalcAVJamStatus()
 	if (min_ts <= 0 || min_seq <= 0 )
 		return;
 	// 打印网络拥塞情况 => 就是视频缓存的拥塞情况...
-	blog(LOG_INFO, "%s Video Jam => MinSeq: %lu, MaxSeq: %lu, SendSeq: %lu, Circle: %d", TM_SEND_NAME, min_seq, max_seq, cur_send_seq, cur_circle.size/nPerPackSize);
+	//blog(LOG_INFO, "%s Video Jam => MinSeq: %lu, MaxSeq: %lu, SendSeq: %lu, Circle: %d", TM_SEND_NAME, min_seq, max_seq, cur_send_seq, cur_circle.size/nPerPackSize);
 	// 删除音频相关时间的数据包 => 包括这个时间戳之前的所有数据包都被删除...
 	this->doEarseAudioByPTS(min_ts);
 }
@@ -600,7 +600,7 @@ void CUDPSendThread::doEarseAudioByPTS(uint32_t inTimeStamp)
 		circlebuf_pop_front(&cur_circle, NULL, nPerPackSize);
 	}
 	// 打印音频拥塞信息 => 当前位置，已发送数据包 => 两者之差就是观看端的有效补包空间...
-	blog(LOG_INFO, "%s Audio Jam => MinSeq: %lu, MaxSeq: %lu, SendSeq: %lu, Circle: %d", TM_SEND_NAME, min_seq, max_seq, cur_send_seq, cur_circle.size/nPerPackSize);
+	//blog(LOG_INFO, "%s Audio Jam => MinSeq: %lu, MaxSeq: %lu, SendSeq: %lu, Circle: %d", TM_SEND_NAME, min_seq, max_seq, cur_send_seq, cur_circle.size/nPerPackSize);
 }
 
 void CUDPSendThread::doSendLosePacket(bool bIsAudio)
@@ -672,6 +672,8 @@ void CUDPSendThread::doSendLosePacket(bool bIsAudio)
 	m_total_output_bytes += nSendSize;
 	// 打印已经发送补包信息...
 	blog(LOG_INFO, "%s Supply Send => Dir: %d, Seq: %lu, TS: %lu, Slice: %d, Type: %d", TM_SEND_NAME, m_dt_to_dir, lpSendHeader->seq, lpSendHeader->ts, lpSendHeader->psize, lpSendHeader->pt);
+	// 修改休息状态 => 已经有发包，不能休息...
+	m_bNeedSleep = false;
 }
 
 void CUDPSendThread::doSendPacket(bool bIsAudio)
@@ -996,7 +998,7 @@ void CUDPSendThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 		if (m_server_rtt_var_ms < 0) { m_server_rtt_var_ms = abs(m_server_rtt_ms - keep_rtt); }
 		else { m_server_rtt_var_ms = (m_server_rtt_var_ms * 3 + abs(m_server_rtt_ms - keep_rtt)) / 4; }
 		// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
-		blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms", TM_SEND_NAME, rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms);
+		//blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms", TM_SEND_NAME, rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms);
 	}
 }
 ///////////////////////////////////////////////////////

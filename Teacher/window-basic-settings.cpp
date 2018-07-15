@@ -2131,11 +2131,12 @@ void OBSBasicSettings::LoadAudioSettings()
 	loading = true;
 
 	const char *str;
-	if (sampleRate == 48000)
-		str = "48khz";
-	else
-		str = "44.1khz";
-
+	switch (sampleRate) {
+	case 48000: str = "48.0khz"; break;
+	case 44100: str = "44.1khz"; break;
+	case 32000: str = "32.0khz"; break;
+	case 16000: str = "16.0khz"; break;
+	}
 	int sampleRateIdx = ui->sampleRate->findText(str);
 	if (sampleRateIdx != -1)
 		ui->sampleRate->setCurrentIndex(sampleRateIdx);
@@ -3085,8 +3086,15 @@ void OBSBasicSettings::SaveAudioSettings()
 	}
 
 	int sampleRate = 44100;
-	if (sampleRateStr == "48khz")
+	if (sampleRateStr == "48.0khz") {
 		sampleRate = 48000;
+	} else if (sampleRateStr == "44.1khz") {
+		sampleRate = 44100;
+	} else if (sampleRateStr == "32.0khz") {
+		sampleRate = 32000;
+	} else if (sampleRateStr == "16.0khz") {
+		sampleRate = 16000;
+	}
 
 	if (WidgetChanged(ui->sampleRate))
 		config_set_uint(main->Config(), "Audio", "SampleRate",

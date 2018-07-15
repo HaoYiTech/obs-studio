@@ -124,19 +124,10 @@ static void rtp_output_data(void *data, struct encoder_packet *packet)
 {
 	OSMutexLocker theLock(&out_mutex);
 	win_rtp_output * lpRtpStream = (win_rtp_output*)data;
-	encoder_packet   new_packet;
-	// 音视频采用不同的方式产生新的数据包 => 数据帧...
-	if (packet->type == OBS_ENCODER_VIDEO) {
-		obs_parse_avc_packet(&new_packet, packet);
-	} else {
-		obs_encoder_packet_ref(&new_packet, packet);
-	}
-	// 将数据帧投递给推流线程...
+	// 将数据帧投递给推流线程 => 投递原始数据，不用做任何处理...
 	if (lpRtpStream->sendThread != NULL) {
-		lpRtpStream->sendThread->PushFrame(&new_packet);
+		lpRtpStream->sendThread->PushFrame(packet);
 	}
-	// 释放新产生的数据帧管理对象...
-	obs_encoder_packet_release(&new_packet);
 }
 
 static void rtp_output_defaults(obs_data_t *defaults)

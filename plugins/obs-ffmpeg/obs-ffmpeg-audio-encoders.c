@@ -349,8 +349,8 @@ static obs_properties_t *enc_properties(void *unused)
 	UNUSED_PARAMETER(unused);
 
 	obs_properties_t *props = obs_properties_create();
-	// 2018.07.10 - by jackey => 64,1024,32 => 16,256,16
-	obs_properties_add_int(props, "bitrate", obs_module_text("Bitrate"), 16, 256, 16);
+	// 2018.07.10 - by jackey => 64,1024,32 => 32,256,16
+	obs_properties_add_int(props, "bitrate", obs_module_text("Bitrate"), 32, 256, 16);
 	return props;
 }
 
