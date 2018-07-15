@@ -656,7 +656,7 @@ void CUDPSendThread::doSendLosePacket(bool bIsAudio)
 	memset(szPacketBuffer, 0, nPerPackSize);
 	circlebuf_read(&cur_circle, nSendPos, szPacketBuffer, nPerPackSize);
 	lpSendHeader = (rtp_hdr_t*)szPacketBuffer;
-	// 如果找到的序号位置不对，直接返回...
+	// 如果找到的序号位置不对 => 缓存里面的所有包都是有效包，因为是数据源头...
 	if( lpSendHeader->seq != rtpLose.lose_seq ) {
 		blog(LOG_INFO, "%s Supply Error => Seq: %lu, Find: %lu, Type: %d", TM_SEND_NAME, rtpLose.lose_seq, lpSendHeader->seq, rtpLose.lose_type);
 		return;
