@@ -280,6 +280,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "win-dshow", "plugins\win-ds
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "win-rtp", "plugins\win-rtp\win-rtp.vcxproj", "{A6CE7CA6-B97C-4BF6-A59A-BF1F8682F898}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Student", "..\Student\Student.vcxproj", "{62BB77D8-AE58-47AE-A310-6A3B01D3EDDD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -608,6 +610,14 @@ Global
 		{A6CE7CA6-B97C-4BF6-A59A-BF1F8682F898}.Release|Win32.Build.0 = Release|Win32
 		{A6CE7CA6-B97C-4BF6-A59A-BF1F8682F898}.RelWithDebInfo|Win32.ActiveCfg = Release|Win32
 		{A6CE7CA6-B97C-4BF6-A59A-BF1F8682F898}.RelWithDebInfo|Win32.Build.0 = Release|Win32
+		{62BB77D8-AE58-47AE-A310-6A3B01D3EDDD}.Debug|Win32.ActiveCfg = Debug|Win32
+		{62BB77D8-AE58-47AE-A310-6A3B01D3EDDD}.Debug|Win32.Build.0 = Debug|Win32
+		{62BB77D8-AE58-47AE-A310-6A3B01D3EDDD}.MinSizeRel|Win32.ActiveCfg = Release|Win32
+		{62BB77D8-AE58-47AE-A310-6A3B01D3EDDD}.MinSizeRel|Win32.Build.0 = Release|Win32
+		{62BB77D8-AE58-47AE-A310-6A3B01D3EDDD}.Release|Win32.ActiveCfg = Release|Win32
+		{62BB77D8-AE58-47AE-A310-6A3B01D3EDDD}.Release|Win32.Build.0 = Release|Win32
+		{62BB77D8-AE58-47AE-A310-6A3B01D3EDDD}.RelWithDebInfo|Win32.ActiveCfg = Release|Win32
+		{62BB77D8-AE58-47AE-A310-6A3B01D3EDDD}.RelWithDebInfo|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
