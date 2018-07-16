@@ -69,12 +69,12 @@ void LoginWindow::initWindow()
 	lineEdit->setValidator(new QIntValidator(0, 999999999, this));
 	lineEdit->setMaxLength(10);
 	// 从配置文件中读取云教室号码，设置到编辑框当中...
-	/*const char * lpLiveRoomID = config_get_string(App()->GlobalConfig(), "General", "LiveRoomID");
+	const char * lpLiveRoomID = config_get_string(App()->GlobalConfig(), "General", "LiveRoomID");
 	if( lpLiveRoomID != NULL ) {
 		lineEdit->setText(QString::fromUtf8(lpLiveRoomID));
 	} else {
 		ui->accountComboBox->setFocus();
-	}*/
+	}
 	// logo图片显示位置...
 	ui->userHead->setPixmap(QPixmap(":/res/images/student.png"));
 	ui->userHead->setScaledContents(true);
@@ -102,12 +102,12 @@ void LoginWindow::onClickLoginButton()
 	string strRoomID = string((const char *)lineEdit->text().toLocal8Bit());
 	// 判断输入的云教室号码是否不为空...
 	if (strRoomID.size() <= 0) {
-		OBSMessageBox::information(this, QTStr("Teacher.Error.Title"), QTStr("Teacher.Room.None"));
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.None"));
 		return;
 	}
 	// 判断输入的云教室号码是否为有效数字...
 	if (atoi(strRoomID.c_str()) <= 0) {
-		OBSMessageBox::information(this, QTStr("Teacher.Error.Title"), QTStr("Teacher.Room.Number"));
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Number"));
 		return;
 	}
 	// 先将缓冲区进行清空处理...
@@ -140,7 +140,7 @@ void LoginWindow::onClickLoginButton()
 	}
 	// 如果返回的数据为空，提示错误...
 	if( m_strUTF8Data.size() <= 0 ) {
-		OBSMessageBox::information(this, QTStr("Teacher.Error.Title"), QTStr("Teacher.Room.Empty"));
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Empty"));
 		return;
 	}
 	// 开始解析传递过来的 json 数据包...
@@ -150,7 +150,7 @@ void LoginWindow::onClickLoginButton()
 	json_t * theMsg = json_object_get(theRoot, "err_msg");
 	const char * lpStrMsg = json_string_value(theMsg);
 	if (theCode == NULL || theMsg == NULL || lpStrMsg == NULL) {
-		OBSMessageBox::information(this, QTStr("Teacher.Error.Title"), QTStr("Teacher.Room.Json"));
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
 		json_decref(theRoot);
 		return;
 	}
@@ -164,7 +164,7 @@ void LoginWindow::onClickLoginButton()
 	json_t * theLiveKey = json_object_get(theRoot, "live_key");
 	json_t * theLiveServer = json_object_get(theRoot, "live_server");
 	if (theLiveKey == NULL || theLiveServer == NULL) {
-		OBSMessageBox::information(this, QTStr("Teacher.Error.Title"), QTStr("Teacher.Room.Json"));
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
 		json_decref(theRoot);
 		return;
 	}
@@ -172,12 +172,12 @@ void LoginWindow::onClickLoginButton()
 	json_t * theTrackerAddr = json_object_get(theRoot, "tracker_addr");
 	json_t * theTrackerPort = json_object_get(theRoot, "tracker_port");
 	if (theTrackerAddr == NULL || theTrackerPort == NULL) {
-		OBSMessageBox::information(this, QTStr("Teacher.Error.Title"), QTStr("Teacher.Room.Json"));
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
 		json_decref(theRoot);
 		return;
 	}
-	// 获取到直播的分解数据，并将直播地址保存到 => obs-studio/global.ini...
-	/*const char * lpStrKey = json_string_value(theLiveKey);
+	// 获取到直播的分解数据，并将直播地址保存到 => student/global.ini...
+	const char * lpStrKey = json_string_value(theLiveKey);
 	const char * lpStrServer = json_string_value(theLiveServer);
 	const char * lpTrackerAddr = json_string_value(theTrackerAddr);
 	const char * lpTrackerPort = json_string_value(theTrackerPort);
@@ -185,11 +185,11 @@ void LoginWindow::onClickLoginButton()
 	config_set_string(App()->GlobalConfig(), "General", "LiveRoomKey", lpStrKey);
 	config_set_string(App()->GlobalConfig(), "General", "LiveRoomServer", lpStrServer);
 	config_set_string(App()->GlobalConfig(), "General", "TrackerAddr", lpTrackerAddr);
-	config_set_string(App()->GlobalConfig(), "General", "TrackerPort", lpTrackerPort);*/
+	config_set_string(App()->GlobalConfig(), "General", "TrackerPort", lpTrackerPort);
 	// 数据处理完毕，释放json数据包...
 	json_decref(theRoot);
 	// 通知主进程主窗口可以启动了...
-	emit this->loginSuccess();
+	emit this->loginSuccess(strRoomID);
 }
 //
 // 响应点击箭头按钮...

@@ -1,6 +1,7 @@
 <RCC>
   <qresource prefix="/res">
     <file>images/student.png</file>
+    <file>../HaoYi.ico</file>
   </qresource>
   <qresource prefix="/login">
     <file>css/MyTitle.css</file>

@@ -42,10 +42,10 @@
     <ClCompile Include="qt-wrappers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="student-app.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="student-app.cpp">
+    <ClCompile Include="window-student-main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -62,9 +62,15 @@
     <QtMoc Include="student-app.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="window-student-main.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="forms\LoginWindow.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="forms\StudentWindow.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>
