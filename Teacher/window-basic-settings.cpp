@@ -970,8 +970,7 @@ void OBSBasicSettings::LoadThemeList()
 	QSet<QString> uniqueSet;
 	string themeDir;
 	char userThemeDir[512];
-	int ret = GetConfigPath(userThemeDir, sizeof(userThemeDir),
-			"obs-studio/themes/");
+	int ret = GetConfigPath(userThemeDir, sizeof(userThemeDir), "obs-teacher/themes/");
 	GetDataFilePath("themes/", themeDir);
 
 	/* Check user dir first. */

@@ -106,11 +106,9 @@ static void AddExtraModulePaths()
 {
 	char base_module_dir[512];
 #if defined(_WIN32) || defined(__APPLE__)
-	int ret = GetProgramDataPath(base_module_dir, sizeof(base_module_dir),
-			"obs-studio/plugins/%module%");
+	int ret = GetProgramDataPath(base_module_dir, sizeof(base_module_dir), "obs-studio/plugins/%module%");
 #else
-	int ret = GetConfigPath(base_module_dir, sizeof(base_module_dir),
-			"obs-studio/plugins/%module%");
+	int ret = GetConfigPath(base_module_dir, sizeof(base_module_dir), "obs-studio/plugins/%module%");
 #endif
 
 	if (ret <= 0)
@@ -274,11 +272,9 @@ OBSBasic::OBSBasic(QWidget *parent)
 	ui->toggleControls->setChecked(false);
 
 	//restore parent window geometry
-	const char *geometry = config_get_string(App()->GlobalConfig(),
-			"BasicWindow", "geometry");
+	const char *geometry = config_get_string(App()->GlobalConfig(), "BasicWindow", "geometry");
 	if (geometry != NULL) {
-		QByteArray byteArray = QByteArray::fromBase64(
-				QByteArray(geometry));
+		QByteArray byteArray = QByteArray::fromBase64(QByteArray(geometry));
 		restoreGeometry(byteArray);
 
 		QRect windowGeometry = normalGeometry();
@@ -1395,7 +1391,7 @@ void OBSBasic::OBSInit()
 	if (!sceneCollection)
 		throw "Failed to get scene collection name";
 
-	ret = snprintf(fileName, 512, "obs-studio/basic/scenes/%s.json",
+	ret = snprintf(fileName, 512, "obs-teacher/basic/scenes/%s.json",
 			sceneCollection);
 	if (ret <= 0)
 		throw "Failed to create scene collection file name";
@@ -2049,7 +2045,7 @@ void OBSBasic::SaveProjectDeferred()
 	if (!sceneCollection)
 		return;
 
-	ret = snprintf(fileName, 512, "obs-studio/basic/scenes/%s.json",
+	ret = snprintf(fileName, 512, "obs-teacher/basic/scenes/%s.json",
 			sceneCollection);
 	if (ret <= 0)
 		return;
@@ -4332,7 +4328,7 @@ void OBSBasic::UploadLog(const char *subdir, const char *file)
 void OBSBasic::on_actionShowLogs_triggered()
 {
 	char logDir[512];
-	if (GetConfigPath(logDir, sizeof(logDir), "obs-studio/logs") <= 0)
+	if (GetConfigPath(logDir, sizeof(logDir), "obs-teacher/logs") <= 0)
 		return;
 
 	QUrl url = QUrl::fromLocalFile(QT_UTF8(logDir));
@@ -4341,18 +4337,18 @@ void OBSBasic::on_actionShowLogs_triggered()
 
 void OBSBasic::on_actionUploadCurrentLog_triggered()
 {
-	UploadLog("obs-studio/logs", App()->GetCurrentLog());
+	UploadLog("obs-teacher/logs", App()->GetCurrentLog());
 }
 
 void OBSBasic::on_actionUploadLastLog_triggered()
 {
-	UploadLog("obs-studio/logs", App()->GetLastLog());
+	UploadLog("obs-teacher/logs", App()->GetLastLog());
 }
 
 void OBSBasic::on_actionViewCurrentLog_triggered()
 {
 	char logDir[512];
-	if (GetConfigPath(logDir, sizeof(logDir), "obs-studio/logs") <= 0)
+	if (GetConfigPath(logDir, sizeof(logDir), "obs-teacher/logs") <= 0)
 		return;
 
 	const char* log = App()->GetCurrentLog();
@@ -4368,7 +4364,7 @@ void OBSBasic::on_actionViewCurrentLog_triggered()
 void OBSBasic::on_actionShowCrashLogs_triggered()
 {
 	char logDir[512];
-	if (GetConfigPath(logDir, sizeof(logDir), "obs-studio/crashes") <= 0)
+	if (GetConfigPath(logDir, sizeof(logDir), "obs-teacher/crashes") <= 0)
 		return;
 
 	QUrl url = QUrl::fromLocalFile(QT_UTF8(logDir));
@@ -4377,7 +4373,7 @@ void OBSBasic::on_actionShowCrashLogs_triggered()
 
 void OBSBasic::on_actionUploadLastCrashLog_triggered()
 {
-	UploadLog("obs-studio/crashes", App()->GetLastCrashLog());
+	UploadLog("obs-teacher/crashes", App()->GetLastCrashLog());
 }
 
 void OBSBasic::on_actionCheckForUpdates_triggered()
@@ -5110,7 +5106,7 @@ void OBSBasic::on_actionWebsite_triggered()
 void OBSBasic::on_actionShowSettingsFolder_triggered()
 {
 	char path[512];
-	int ret = GetConfigPath(path, 512, "obs-studio");
+	int ret = GetConfigPath(path, 512, "obs-teacher");
 	if (ret <= 0)
 		return;
 
@@ -5880,7 +5876,7 @@ int OBSBasic::GetProfilePath(char *path, size_t size, const char *file) const
 	if (!file)
 		file = "";
 
-	ret = GetConfigPath(profiles_path, 512, "obs-studio/basic/profiles");
+	ret = GetConfigPath(profiles_path, 512, "obs-teacher/basic/profiles");
 	if (ret <= 0)
 		return ret;
 
