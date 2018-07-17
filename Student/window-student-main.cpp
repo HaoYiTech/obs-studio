@@ -21,6 +21,7 @@ StudentWindow::StudentWindow(QWidget *parent)
 	m_ui.actionSystemToolbar->setCheckable(true);
 	m_ui.actionSystemToolbar->setChecked(true);
 	// 关联工具栏菜单事件响应...
+	//m_ui.mainToolBar->setCursor(Qt::OpenHandCursor);
 	m_ui.mainToolBar->addAction(m_ui.actionSystemFullscreen);
 	m_ui.mainToolBar->addSeparator();
 	m_ui.mainToolBar->addAction(m_ui.actionCameraAdd);
@@ -77,6 +78,10 @@ void StudentWindow::InitWindow()
 	blog(LOG_INFO, STARTUP_SEPARATOR);
 
 	this->show();
+
+	if (windowState().testFlag(Qt::WindowFullScreen)) {
+		this->showNormal();
+	}
 }
 
 void StudentWindow::closeEvent(QCloseEvent *event)
@@ -122,6 +127,7 @@ void StudentWindow::on_actionSystemFullscreen_triggered()
 {
 	//m_ui.actionSystemFullscreen->setCheckable(true);
 	//m_ui.actionSystemFullscreen->setChecked(true);
+	m_ui.RightView->onFullScreenAction();
 }
 
 void StudentWindow::on_actionCameraAdd_triggered()

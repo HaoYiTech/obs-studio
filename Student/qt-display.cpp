@@ -34,10 +34,3 @@ void OBSQTDisplay::paintEvent(QPaintEvent *event)
 	painter.setBrush(QBrush(m_bkColor));
 	painter.drawRect(this->rect());
 }
-
-void OBSQTDisplay::mouseDoubleClickEvent(QMouseEvent *event)
-{
-	// 双击全屏当前选中的数据源显示对象...
-	//OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
-	//main->DoDisplayDbClicked();
-}
