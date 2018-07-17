@@ -222,8 +222,8 @@ BOOL CUDPSendThread::StartThread(obs_output_t * lpObsOutput)
 	// 设置TTL网络穿越数值...
 	m_lpUDPSocket->SetTtl(32);
 	// 获取服务器地址信息 => 假设输入信息就是一个IPV4域名...
-	const char * lpszAddr = "192.168.1.70";
-	//const char * lpszAddr = DEF_UDP_HOME;
+	//const char * lpszAddr = "192.168.1.70";
+	const char * lpszAddr = DEF_UDP_HOME;
 	hostent * lpHost = gethostbyname(lpszAddr);
 	if( lpHost != NULL && lpHost->h_addr_list != NULL ) {
 		lpszAddr = inet_ntoa(*(in_addr*)lpHost->h_addr_list[0]);

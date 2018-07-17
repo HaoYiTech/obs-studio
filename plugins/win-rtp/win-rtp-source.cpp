@@ -49,6 +49,9 @@ static void rtp_source_update(void *data, obs_data_t *settings)
 	lpRtpSource->recvThread->InitThread(lpRtpSource->source);
 	// 打印成功创建接收线程信息...
 	blog(LOG_INFO, "[Teacher-Looker] rtp_source_update => Success, RoomID: %d, LiveID: %d", nDBRoomID, nDBLiveID);
+	// 让播放层不要对数据帧进行缓存，直接最快播放...
+	obs_source_set_async_unbuffered(lpRtpSource->source, true);
+	//obs_source_set_async_decoupled(lpRtpSource->source, true);
 }
 
 static void *rtp_source_create(obs_data_t *settings, obs_source_t *source)

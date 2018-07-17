@@ -122,8 +122,8 @@ GM_Error CUDPRecvThread::InitThread(obs_source_t * lpObsSource)
 	// 设置TTL网络穿越数值...
 	m_lpUDPSocket->SetTtl(32);
 	// 获取服务器地址信息 => 假设输入信息就是一个IPV4域名...
-	const char * lpszAddr = "192.168.1.70";
-	//const char * lpszAddr = DEF_UDP_HOME;
+	//const char * lpszAddr = "192.168.1.70";
+	const char * lpszAddr = DEF_UDP_HOME;
 	hostent * lpHost = gethostbyname(lpszAddr);
 	if( lpHost != NULL && lpHost->h_addr_list != NULL ) {
 		lpszAddr = inet_ntoa(*(in_addr*)lpHost->h_addr_list[0]);
@@ -662,8 +662,13 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 				m_server_cache_time_ms = m_server_rtt_ms + m_server_rtt_var_ms;
 			}
 			// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
-			blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, AMaxConSeq: %lu, VMaxConSeq: %lu", TM_RECV_NAME,
-				 rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms, m_server_cache_time_ms, rtpDetect.maxAConSeq, rtpDetect.maxVConSeq );
+			blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, ACircle: %d, VCircle: %d", TM_RECV_NAME,
+				 rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms, m_server_cache_time_ms, m_audio_circle.size / 812, m_video_circle.size / 812);
+			// 打印播放器底层的缓存状态信息...
+			if (m_lpPlaySDL != NULL) {
+				blog(LOG_INFO, "%s Recv Detect => APacket: %d, VPacket: %d, AFrame: %d, VFrame: %d", TM_RECV_NAME,
+					m_lpPlaySDL->GetAPacketSize(), m_lpPlaySDL->GetVPacketSize(), m_lpPlaySDL->GetAFrameSize(), m_lpPlaySDL->GetVFrameSize());
+			}
 		}
 		// 处理来自P2P方向的探测结果...
 		if( rtpDetect.dtDir == DT_TO_P2P ) {
@@ -680,8 +685,13 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 				m_p2p_cache_time_ms = m_p2p_rtt_ms + m_p2p_rtt_var_ms;
 			}
 			// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
-			blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, AMaxConSeq: %lu, VMaxConSeq: %lu", TM_RECV_NAME,
-				 rtpDetect.dtDir, rtpDetect.dtNum, m_p2p_rtt_ms, m_p2p_rtt_var_ms, m_p2p_cache_time_ms, rtpDetect.maxAConSeq, rtpDetect.maxVConSeq );
+			blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, ACircle: %d, VCircle: %d", TM_RECV_NAME,
+				 rtpDetect.dtDir, rtpDetect.dtNum, m_p2p_rtt_ms, m_p2p_rtt_var_ms, m_p2p_cache_time_ms, m_audio_circle.size/812, m_video_circle.size/812 );
+			// 打印播放器底层的缓存状态信息...
+			if (m_lpPlaySDL != NULL) {
+				blog(LOG_INFO, "%s Recv Detect => APacket: %d, VPacket: %d, AFrame: %d, VFrame: %d", TM_RECV_NAME,
+					m_lpPlaySDL->GetAPacketSize(), m_lpPlaySDL->GetVPacketSize(), m_lpPlaySDL->GetAFrameSize(), m_lpPlaySDL->GetVFrameSize());
+			}
 		}
 		/////////////////////////////////////////////////////////////////////////
 		// 对补包线路进行选择 => 选择已联通的最小rtt为补包通知线路...
@@ -903,7 +913,7 @@ void CUDPRecvThread::doParseFrame(bool bIsAudio)
 	int cur_cache_ms = ((m_dt_to_dir == DT_TO_SERVER) ? m_server_cache_time_ms : m_p2p_cache_time_ms);
 	// 将解析到的有效数据帧推入播放对象当中...
 	if( m_lpPlaySDL != NULL ) {
-		m_lpPlaySDL->PushFrame(cur_cache_ms, strFrame, pt_type, is_key, ts_ms);
+		m_lpPlaySDL->PushPacket(cur_cache_ms, strFrame, pt_type, is_key, ts_ms);
 	}
 	// 打印已投递的完整数据帧信息...
 	//blog(LOG_INFO, "%s Frame => Type: %d, Key: %d, PTS: %lu, Size: %d, PlaySeq: %lu, CircleSize: %d", 

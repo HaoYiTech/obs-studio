@@ -26,6 +26,7 @@ public:
 	void		doSleepTo();
 	void		doPushPacket(AVPacket & inPacket);
 	int			GetMapPacketSize() { return m_MapPacket.size(); }
+	int         GetMapFrameSize() { return m_MapFrame.size(); }
 protected:
 	AVCodec         *   m_lpCodec;			// 解码器...
 	AVFrame         *   m_lpDFrame;			// 解码结构体...
@@ -83,9 +84,13 @@ public:
 	CPlaySDL(obs_source_t * lpObsSource, int64_t inSysZeroNS);
 	~CPlaySDL();
 public:
-	void		PushFrame(int zero_delay_ms, string & inData, int inTypeTag, bool bIsKeyFrame, uint32_t inSendTime);
+	void		PushPacket(int zero_delay_ms, string & inData, int inTypeTag, bool bIsKeyFrame, uint32_t inSendTime);
 	BOOL		InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS);
 	BOOL		InitAudio(int nRateIndex, int nChannelNum);
+	int			GetAPacketSize() { return ((m_lpAudioThread != NULL) ? m_lpAudioThread->GetMapPacketSize() : 0); }
+	int			GetVPacketSize() { return ((m_lpVideoThread != NULL) ? m_lpVideoThread->GetMapPacketSize() : 0); }
+	int			GetAFrameSize() { return ((m_lpAudioThread != NULL) ? m_lpAudioThread->GetMapFrameSize() : 0); }
+	int			GetVFrameSize() { return ((m_lpVideoThread != NULL) ? m_lpVideoThread->GetMapFrameSize() : 0); }
 	int64_t		GetZeroDelayMS() { return m_zero_delay_ms; }
 	int64_t		GetSysZeroNS() { return m_sys_zero_ns; }
 	int64_t		GetStartPtsMS() { return m_start_pts_ms; }

@@ -316,7 +316,7 @@ void CVideoThread::doDisplayFrame()
 	// 当前帧的显示时间还没有到 => 直接休息差值...
 	if( frame_pts_ms > sys_cur_ms ) {
 		m_play_next_ns = os_gettime_ns() + (frame_pts_ms - sys_cur_ms)*1000000;
-		//blog(LOG_INFO, "%s [Video] Advance => PTS: %I64d, Delay: %I64d ms, AVPackSize: %d, AVFrameSize: %d", TM_RECV_NAME, frame_pts_ms + inStartPtsMS, frame_pts_ms - sys_cur_ms, m_MapPacket.size(), m_MapFrame.size());
+		//blog(LOG_INFO, "%s [Video] Advance => PTS: %I64d, Delay: %I64d ms, VPackSize: %d, VFrameSize: %d", TM_RECV_NAME, frame_pts_ms + inStartPtsMS, frame_pts_ms - sys_cur_ms, m_MapPacket.size(), m_MapFrame.size());
 		return;
 	}
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -542,9 +542,11 @@ void CAudioThread::doDisplayFrame()
 	// 当前帧的显示时间还没有到 => 直接休息差值...
 	if (frame_pts_ms > sys_cur_ms) {
 		m_play_next_ns = os_gettime_ns() + (frame_pts_ms - sys_cur_ms) * 1000000;
-		//blog(LOG_INFO, "%s [Audio] Advance => PTS: %I64d, Delay: %I64d ms, AVPackSize: %d, AVFrameSize: %d", TM_RECV_NAME, frame_pts_ms + inStartPtsMS, frame_pts_ms - sys_cur_ms, m_MapPacket.size(), m_MapFrame.size());
+		//blog(LOG_INFO, "%s [Audio] Advance => PTS: %I64d, Delay: %I64d ms, APackSize: %d, AFrameSize: %d", TM_RECV_NAME, frame_pts_ms + inStartPtsMS, frame_pts_ms - sys_cur_ms, m_MapPacket.size(), m_MapFrame.size());
 		return;
 	}
+	// 打印正在播放的解码后音频数据...
+	//blog(LOG_INFO, "%s [Audio] Player => StartPTS: %I64d ms, PTS: %I64d ms, Delay: %I64d ms, APackSize: %d, AFrameSize: %d", TM_RECV_NAME, inStartPtsMS, frame_pts_ms, sys_cur_ms - frame_pts_ms, m_MapPacket.size(), m_MapFrame.size());
 	// 将音频数据指针复制到obs结构体当中...
 	for (size_t i = 0; i < MAX_AV_PLANES; i++) {
 		theObsAudio.data[i] = lpSrcFrame->data[i];
@@ -726,7 +728,7 @@ BOOL CPlaySDL::InitAudio(int nRateIndex, int nChannelNum)
 	return m_lpAudioThread->InitAudio(nRateIndex, nChannelNum);
 }
 
-void CPlaySDL::PushFrame(int zero_delay_ms, string & inData, int inTypeTag, bool bIsKeyFrame, uint32_t inSendTime)
+void CPlaySDL::PushPacket(int zero_delay_ms, string & inData, int inTypeTag, bool bIsKeyFrame, uint32_t inSendTime)
 {
 	// 为了解决突发延时抖动，要用一种遗忘衰减算法，进行播放延时控制...
 	// 直接使用计算出的缓存时间设定延时时间 => 缓存就是延时...
