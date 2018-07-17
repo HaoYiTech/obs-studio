@@ -57,6 +57,12 @@
     <ClCompile Include="window-view-right.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="window-view-camera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="window-view-teacher.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="window-login-base.h">
@@ -81,6 +87,12 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="window-view-right.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="window-view-camera.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="window-view-teacher.hpp">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
