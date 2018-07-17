@@ -48,6 +48,15 @@
     <ClCompile Include="window-student-main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="qt-display.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="window-view-left.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="window-view-right.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="window-login-base.h">
@@ -65,6 +74,15 @@
     <QtMoc Include="window-student-main.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="qt-display.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="window-view-left.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="window-view-right.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="forms\LoginWindow.ui">
@@ -79,6 +97,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneratedFiles\ui_LoginWindow.h">
+      <Filter>Generated Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneratedFiles\ui_StudentWindow.h">
+      <Filter>Generated Files</Filter>
+    </ClInclude>
+    <ClInclude Include="display-helpers.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

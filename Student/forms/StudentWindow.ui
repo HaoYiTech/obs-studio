@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>814</width>
-    <height>688</height>
+    <width>712</width>
+    <height>616</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,40 +18,186 @@
     <normaloff>:/res/HaoYi.ico</normaloff>:/res/HaoYi.ico</iconset>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <widget class="QWidget" name="horizontalLayoutWidget">
-    <property name="geometry">
-     <rect>
-      <x>0</x>
-      <y>0</y>
-      <width>251</width>
-      <height>631</height>
-     </rect>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0">
+    <property name="spacing">
+     <number>0</number>
     </property>
-    <layout class="QHBoxLayout" name="horizontalLayout"/>
-   </widget>
-   <widget class="QWidget" name="horizontalLayoutWidget_2">
-    <property name="geometry">
-     <rect>
-      <x>260</x>
-      <y>0</y>
-      <width>551</width>
-      <height>631</height>
-     </rect>
+    <property name="leftMargin">
+     <number>2</number>
     </property>
-    <layout class="QHBoxLayout" name="horizontalLayout_2"/>
-   </widget>
+    <property name="topMargin">
+     <number>2</number>
+    </property>
+    <property name="rightMargin">
+     <number>2</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <item>
+     <widget class="QSplitter" name="splitter">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>400</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <property name="handleWidth">
+       <number>4</number>
+      </property>
+      <property name="childrenCollapsible">
+       <bool>false</bool>
+      </property>
+      <widget class="QWidget" name="horizontalLayoutWidget">
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="CViewLeft" name="LeftView" native="true">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>300</width>
+            <height>300</height>
+           </size>
+          </property>
+          <property name="baseSize">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="horizontalLayoutWidget_2">
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="CViewRight" name="RightView" native="true">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <horstretch>3</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>400</width>
+            <height>400</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>814</width>
+     <width>712</width>
      <height>23</height>
     </rect>
    </property>
+   <widget class="QMenu" name="systemMenu">
+    <property name="title">
+     <string>Basic.System</string>
+    </property>
+    <addaction name="actionSystemToolbar"/>
+    <addaction name="separator"/>
+    <addaction name="actionSystemFullscreen"/>
+    <addaction name="separator"/>
+    <addaction name="actionSystemExit"/>
+   </widget>
+   <widget class="QMenu" name="cameraMenu">
+    <property name="title">
+     <string>Basic.Camera</string>
+    </property>
+    <addaction name="actionCameraAdd"/>
+    <addaction name="actionCameraDel"/>
+    <addaction name="actionCameraMod"/>
+    <addaction name="separator"/>
+    <addaction name="actionCameraStart"/>
+    <addaction name="actionCameraStop"/>
+   </widget>
+   <widget class="QMenu" name="pageMenu">
+    <property name="title">
+     <string>Basic.Page</string>
+    </property>
+    <addaction name="actionPagePrev"/>
+    <addaction name="separator"/>
+    <addaction name="actionPageJump"/>
+    <addaction name="separator"/>
+    <addaction name="actionPageNext"/>
+   </widget>
+   <widget class="QMenu" name="helpMenu">
+    <property name="title">
+     <string>Basic.Help</string>
+    </property>
+    <addaction name="actionHelpAbout"/>
+   </widget>
+   <addaction name="systemMenu"/>
+   <addaction name="cameraMenu"/>
+   <addaction name="pageMenu"/>
+   <addaction name="helpMenu"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="movable">
+    <bool>true</bool>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::TopToolBarArea</set>
+   </property>
+   <property name="iconSize">
+    <size>
+     <width>32</width>
+     <height>32</height>
+    </size>
+   </property>
+   <property name="toolButtonStyle">
+    <enum>Qt::ToolButtonTextUnderIcon</enum>
+   </property>
+   <property name="floatable">
+    <bool>false</bool>
+   </property>
    <attribute name="toolBarArea">
     <enum>TopToolBarArea</enum>
    </attribute>
@@ -60,8 +206,122 @@
    </attribute>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
+  <action name="actionSystemToolbar">
+   <property name="text">
+    <string>Basic.System.Toolbar</string>
+   </property>
+  </action>
+  <action name="actionSystemFullscreen">
+   <property name="icon">
+    <iconset resource="Student.qrc">
+     <normaloff>:/res/images/system_full.png</normaloff>:/res/images/system_full.png</iconset>
+   </property>
+   <property name="text">
+    <string>Basic.System.Fullscreen</string>
+   </property>
+  </action>
+  <action name="actionSystemExit">
+   <property name="text">
+    <string>Basic.System.Exit</string>
+   </property>
+  </action>
+  <action name="actionCameraAdd">
+   <property name="icon">
+    <iconset resource="Student.qrc">
+     <normaloff>:/res/images/camera_add.png</normaloff>:/res/images/camera_add.png</iconset>
+   </property>
+   <property name="text">
+    <string>Basic.Camera.Add</string>
+   </property>
+  </action>
+  <action name="actionCameraDel">
+   <property name="icon">
+    <iconset resource="Student.qrc">
+     <normaloff>:/res/images/camera_del.png</normaloff>:/res/images/camera_del.png</iconset>
+   </property>
+   <property name="text">
+    <string>Basic.Camera.Mod</string>
+   </property>
+  </action>
+  <action name="actionCameraMod">
+   <property name="icon">
+    <iconset resource="Student.qrc">
+     <normaloff>:/res/images/camera_mod.png</normaloff>:/res/images/camera_mod.png</iconset>
+   </property>
+   <property name="text">
+    <string>Basic.Camera.Del</string>
+   </property>
+  </action>
+  <action name="actionCameraStart">
+   <property name="icon">
+    <iconset resource="Student.qrc">
+     <normaloff>:/res/images/camera_start.png</normaloff>:/res/images/camera_start.png</iconset>
+   </property>
+   <property name="text">
+    <string>Basic.Camera.Start</string>
+   </property>
+  </action>
+  <action name="actionCameraStop">
+   <property name="icon">
+    <iconset resource="Student.qrc">
+     <normaloff>:/res/images/camera_stop.png</normaloff>:/res/images/camera_stop.png</iconset>
+   </property>
+   <property name="text">
+    <string>Basic.Camera.Stop</string>
+   </property>
+  </action>
+  <action name="actionPagePrev">
+   <property name="icon">
+    <iconset resource="Student.qrc">
+     <normaloff>:/res/images/page_prev.png</normaloff>:/res/images/page_prev.png</iconset>
+   </property>
+   <property name="text">
+    <string>Basic.Page.Prev</string>
+   </property>
+  </action>
+  <action name="actionPageJump">
+   <property name="icon">
+    <iconset resource="Student.qrc">
+     <normaloff>:/res/images/page_jump.png</normaloff>:/res/images/page_jump.png</iconset>
+   </property>
+   <property name="text">
+    <string>Basic.Page.Jump</string>
+   </property>
+  </action>
+  <action name="actionPageNext">
+   <property name="icon">
+    <iconset resource="Student.qrc">
+     <normaloff>:/res/images/page_next.png</normaloff>:/res/images/page_next.png</iconset>
+   </property>
+   <property name="text">
+    <string>Basic.Page.Next</string>
+   </property>
+  </action>
+  <action name="actionHelpAbout">
+   <property name="icon">
+    <iconset resource="Student.qrc">
+     <normaloff>:/res/images/help_about.png</normaloff>:/res/images/help_about.png</iconset>
+   </property>
+   <property name="text">
+    <string>Basic.Help.About</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>CViewLeft</class>
+   <extends>QWidget</extends>
+   <header>window-view-left.hpp</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>CViewRight</class>
+   <extends>QWidget</extends>
+   <header>window-view-right.hpp</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="Student.qrc"/>
  </resources>

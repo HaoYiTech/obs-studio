@@ -54,7 +54,7 @@
     <ClCompile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <PreprocessorDefinitions>UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>.;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName);E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName);obs-frontend-api;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -70,7 +70,7 @@
     <QtMoc>
       <OutputFile>.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</OutputFile>
       <ExecutionDescription>Moc'ing %(Identity)...</ExecutionDescription>
-      <IncludePath>.;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName);E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork;%(AdditionalIncludeDirectories)</IncludePath>
+      <IncludePath>.;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName);obs-frontend-api;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork;%(AdditionalIncludeDirectories)</IncludePath>
       <Define>UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;%(PreprocessorDefinitions)</Define>
     </QtMoc>
     <QtUic>
@@ -125,6 +125,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </QtRcc>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="qt-display.cpp" />
     <ClCompile Include="qt-wrappers.cpp" />
     <ClCompile Include="student-app.cpp">
       <OutputFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\GeneratedFiles\$(ConfigurationName)\%(Filename).moc</OutputFile>
@@ -140,6 +141,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="window-login-main.cpp" />
     <ClCompile Include="window-login-title.cpp" />
     <ClCompile Include="window-student-main.cpp" />
+    <ClCompile Include="window-view-left.cpp" />
+    <ClCompile Include="window-view-right.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="forms\LoginWindow.ui" />
@@ -170,6 +173,27 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="display-helpers.hpp" />
+    <ClInclude Include="GeneratedFiles\ui_LoginWindow.h" />
+    <ClInclude Include="GeneratedFiles\ui_StudentWindow.h" />
+    <QtMoc Include="window-view-right.hpp">
+      <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName)\.;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork</IncludePath>
+      <Define Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;_UNICODE</Define>
+      <IncludePath Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName)\.;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets</IncludePath>
+      <Define Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_NO_DEBUG;NDEBUG;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB</Define>
+    </QtMoc>
+    <QtMoc Include="window-view-left.hpp">
+      <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName)\.;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork</IncludePath>
+      <Define Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;_UNICODE</Define>
+      <IncludePath Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName)\.;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets</IncludePath>
+      <Define Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_NO_DEBUG;NDEBUG;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB</Define>
+    </QtMoc>
+    <QtMoc Include="qt-display.hpp">
+      <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName)\.;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork</IncludePath>
+      <Define Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;_UNICODE</Define>
+      <IncludePath Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName)\.;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets</IncludePath>
+      <Define Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_NO_DEBUG;NDEBUG;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB</Define>
+    </QtMoc>
     <ClInclude Include="qt-wrappers.hpp" />
     <ClInclude Include="resource.h" />
     <QtMoc Include="window-student-main.h">

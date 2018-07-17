@@ -1,6 +1,16 @@
 <RCC>
   <qresource prefix="/res">
     <file>images/student.png</file>
+    <file>images/system_full.png</file>
+    <file>images/camera_add.png</file>
+    <file>images/camera_del.png</file>
+    <file>images/camera_mod.png</file>
+    <file>images/camera_start.png</file>
+    <file>images/camera_stop.png</file>
+    <file>images/page_prev.png</file>
+    <file>images/page_jump.png</file>
+    <file>images/page_next.png</file>
+    <file>images/help_about.png</file>
     <file>../HaoYi.ico</file>
   </qresource>
   <qresource prefix="/login">

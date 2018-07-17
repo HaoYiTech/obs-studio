@@ -447,6 +447,9 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 	try {
 		// 初始化应用程序...
 		program.AppInit();
+		// 加入文字翻译对象...
+		OBSTranslator translator;
+		program.installTranslator(&translator);
 		// 每次启动创建新的日志文件...
 		create_log_file(logFile);
 		// 初始化登录窗口...
@@ -475,6 +478,26 @@ int main(int argc, char *argv[])
 	// 最后才设置错误打印句柄，否则无法打印...
 	base_set_log_handler(nullptr, nullptr);
 	return ret;
+}
+
+QString OBSTranslator::translate(const char *context, const char *sourceText, const char *disambiguation, int n) const
+{
+	const char *out = nullptr;
+	if (!App()->TranslateString(sourceText, &out))
+		return QString(sourceText);
+	UNUSED_PARAMETER(context);
+	UNUSED_PARAMETER(disambiguation);
+	UNUSED_PARAMETER(n);
+	return QT_UTF8(out);
+}
+
+bool CStudentApp::TranslateString(const char *lookupVal, const char **out) const
+{
+	for (obs_frontend_translate_ui_cb cb : translatorHooks) {
+		if (cb(lookupVal, out))
+			return true;
+	}
+	return text_lookup_getstr(App()->GetTextLookup(), lookupVal, out);
 }
 
 CStudentApp::CStudentApp(int &argc, char **argv)
