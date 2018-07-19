@@ -12,6 +12,8 @@ OBSQTDisplay::OBSQTDisplay(QWidget *parent, Qt::WindowFlags flags)
   : QWidget(parent, flags)
   , m_bkColor(QColor(0,0,0))
 {
+	// 设置无标题窗口属性 => 默认就带这个属性？可以不用设置...
+	//this->setWindowFlags(Qt::FramelessWindowHint);
 	/*setAttribute(Qt::WA_PaintOnScreen);
 	setAttribute(Qt::WA_StaticContents);
 	setAttribute(Qt::WA_NoSystemBackground);

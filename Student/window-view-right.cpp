@@ -12,6 +12,7 @@ CViewRight::CViewRight(QWidget *parent, Qt::WindowFlags flags)
 {
 	m_bkColor = QColor(32, 32, 32);
 	m_lpViewTeacher = new CViewTeacher(this);
+	//m_lpViewTeacher->setTitleContent(QStringLiteral("ÂëÁ÷£º1024kbps"));
 }
 
 CViewRight::~CViewRight()

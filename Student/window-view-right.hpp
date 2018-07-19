@@ -11,7 +11,7 @@ public:
 public:
 	void onFullScreenAction();
 protected:
-	void resizeEvent(QResizeEvent *event);
+	void resizeEvent(QResizeEvent *event) override;
 private:
 	CViewTeacher   *   m_lpViewTeacher;
 };

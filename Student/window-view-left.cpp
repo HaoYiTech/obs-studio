@@ -10,3 +10,8 @@ CViewLeft::CViewLeft(QWidget *parent, Qt::WindowFlags flags)
 CViewLeft::~CViewLeft()
 {
 }
+
+void CViewLeft::resizeEvent(QResizeEvent *event)
+{
+	QWidget::resizeEvent(event);
+}
