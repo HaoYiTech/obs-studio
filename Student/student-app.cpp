@@ -7,7 +7,7 @@
 #include <util/bmem.h>
 #include <util/dstr.h>
 #include <util/platform.h>
-#include <curl/curl.h>
+#include <curl.h>
 #include <jansson.h>
 
 #include <QGuiApplication>
@@ -16,6 +16,13 @@
 #include "qt-wrappers.hpp"
 #include "student-app.h"
 #include "windows.h"
+
+#include "web-thread.h"
+#include "SocketUtils.h"
+#include <IPTypes.h>
+#include <IPHlpApi.h>
+
+#pragma comment(lib, "iphlpapi.lib")
 
 #define DEFAULT_LANG "zh-CN"
 static log_handler_t def_log_handler;
@@ -466,6 +473,10 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
+	// 初始化线程和套接字通用库...
+	OSThread::Initialize();
+	SocketUtils::Initialize();
+
 	// 设置错误日志的处理句柄...
 	base_get_log_handler(&def_log_handler, nullptr);
 
@@ -477,6 +488,10 @@ int main(int argc, char *argv[])
 
 	// 最后才设置错误打印句柄，否则无法打印...
 	base_set_log_handler(nullptr, nullptr);
+
+	// 释放线程和套接字通用库...
+	OSThread::UnInitialize();
+	SocketUtils::UnInitialize();
 	return ret;
 }
 
@@ -500,17 +515,145 @@ bool CStudentApp::TranslateString(const char *lookupVal, const char **out) const
 	return text_lookup_getstr(App()->GetTextLookup(), lookupVal, out);
 }
 
+// 注意：统一返回UTF8格式...
+string CStudentApp::getJsonString(Json::Value & inValue)
+{
+	string strReturn;
+	char szBuffer[32] = { 0 };
+	if (inValue.isInt()) {
+		sprintf(szBuffer, "%d", inValue.asInt());
+		strReturn = szBuffer;
+	}
+	else if (inValue.isString()) {
+		strReturn = inValue.asString();
+	}
+	return strReturn;
+}
+
+// 注意：统一返回UTF8格式...
+char * CStudentApp::GetServerDNSName()
+{
+	static char szBuffer[MAX_PATH] = { 0 };
+	if (strlen(szBuffer) > 0)
+		return szBuffer;
+	DWORD dwLen = MAX_PATH;
+	static WCHAR szTempName[MAX_PATH] = { 0 };
+	::GetComputerName(szTempName, &dwLen);
+	os_wcs_to_utf8(szTempName, MAX_PATH, szBuffer, MAX_PATH);
+	return szBuffer;
+}
+
+// 注意：统一返回UTF8格式...
+char * CStudentApp::GetServerOS()
+{
+	static char szBuffer[MAX_PATH] = { 0 };
+	if (strlen(szBuffer) > 0)
+		return szBuffer;
+	::sprintf(szBuffer, "%s", CStudentApp::GetSystemVer().c_str());
+	assert(::strlen(szBuffer) <= MAX_PATH);
+	return szBuffer;
+}
+
+// 注意：统一返回UTF8格式...
+string CStudentApp::GetSystemVer()
+{
+	string	strVersion = "Windows Unknown";
+	OSVERSIONINFO osv = { 0 };
+	static char szBuffer[MAX_PATH] = { 0 };
+	osv.dwOSVersionInfoSize = sizeof(osv);
+	if (!GetVersionEx(&osv))
+		return strVersion;
+	static char szTempVer[MAX_PATH] = { 0 };
+	os_wcs_to_utf8(osv.szCSDVersion, 128, szTempVer, MAX_PATH);
+	sprintf(szBuffer, "Windows %ld.%ld.%ld %s", osv.dwMajorVersion, osv.dwMinorVersion, osv.dwBuildNumber, szTempVer);
+	strVersion = szBuffer;
+	return strVersion;
+}
+
 CStudentApp::CStudentApp(int &argc, char **argv)
   : QApplication(argc, argv)
+  , m_lpFocusDisplay(NULL)
+  , m_lpWebThread(NULL)
+  , m_bAutoLinkFDFS(false)
+  , m_bAutoLinkDVR(false)
+  , m_bAuthLicense(false)
+  , m_nMaxCamera(DEF_MAX_CAMERA)
+  , m_strWebAddr(DEF_CLOUD_CLASS)
+  , m_nWebPort(DEF_WEB_PORT)
+  , m_nDBHaoYiGatherID(-1)
+  , m_nDBHaoYiNodeID(-1)
+  , m_strAuthExpired("")
+  , m_strTrackerAddr("")
+  , m_strRemoteAddr("")
+  , m_nTrackerPort(0)
+  , m_nDBGatherID(-1)
+  , m_nRemotePort(0)
+  , m_strMainName("")
+  , m_strWebName("")
+  , m_strWebTag("")
+  , m_strWebVer("")
+  , m_nWebType(-1)
+  , m_nAuthDays(0)
+  , m_nSliceVal(0)
+  , m_nInterVal(0)
+  , m_nSnapVal(2)
 {
 }
 
 CStudentApp::~CStudentApp()
 {
+	if (m_lpWebThread != NULL) {
+		delete m_lpWebThread;
+		m_lpWebThread = NULL;
+	}
+}
+
+bool CStudentApp::InitMacIPAddr()
+{
+	// 2018.01.11 - 解决 ERROR_BUFFER_OVERFLOW 的问题...
+	DWORD outBuflen = sizeof(IP_ADAPTER_INFO);
+	IP_ADAPTER_INFO * lpAdapter = new IP_ADAPTER_INFO;
+	DWORD retStatus = GetAdaptersInfo(lpAdapter, &outBuflen);
+	// 发现缓冲区不够用，重新分配空间...
+	if (retStatus == ERROR_BUFFER_OVERFLOW) {
+		MsgLogGM(retStatus);
+		delete lpAdapter; lpAdapter = NULL;
+		lpAdapter = (PIP_ADAPTER_INFO)new BYTE[outBuflen];
+		retStatus = GetAdaptersInfo(lpAdapter, &outBuflen);
+	}
+	// 还是发生了错误，打印错误，直接返回...
+	if (retStatus != ERROR_SUCCESS) {
+		delete lpAdapter; lpAdapter = NULL;
+		MsgLogGM(retStatus);
+		return false;
+	}
+	// 开始循环遍历网卡节点...
+	IP_ADAPTER_INFO * lpInfo = lpAdapter;
+	while (lpInfo != NULL) {
+		// 打印网卡描述信息 => 2018.03.27 - 解决无线网卡的问题...
+		blog(LOG_INFO, "== Adapter Type: %lu, Desc: %s ==\n", lpInfo->Type, lpInfo->Description);
+		// 必须是以太网卡，必须是IPV4的网卡，必须是有效的网卡 => 71 是无线网卡...
+		if ((lpInfo->Type != MIB_IF_TYPE_ETHERNET && lpInfo->Type != 71) || lpInfo->AddressLength != 6 || strcmp(lpInfo->IpAddressList.IpAddress.String, "0.0.0.0") == 0) {
+			lpInfo = lpInfo->Next;
+			continue;
+		}
+		// 获取MAC地址和IP地址，地址是相互关联的...
+		char szBuffer[MAX_PATH] = { 0 };
+		sprintf(szBuffer, "%02X-%02X-%02X-%02X-%02X-%02X", lpInfo->Address[0], lpInfo->Address[1], lpInfo->Address[2], lpInfo->Address[3], lpInfo->Address[4], lpInfo->Address[5]);
+		m_strIPAddr = lpInfo->IpAddressList.IpAddress.String;
+		m_strMacAddr = szBuffer;
+		lpInfo = lpInfo->Next;
+	}
+	// 释放分配的缓冲区...
+	delete lpAdapter;
+	lpAdapter = NULL;
+	return true;
 }
 
 void CStudentApp::AppInit()
 {
+	if (!this->InitMacIPAddr())
+		throw "Failed to get MAC or IP address";
 	if (!MakeUserDirs())
 		throw "Failed to create required user directories";
 	if (!InitGlobalConfig())
@@ -582,6 +725,11 @@ void CStudentApp::doLoginSuccess(string & strRoomID)
 	m_studentWindow->setAttribute(Qt::WA_DeleteOnClose, true);
 	connect(m_studentWindow, SIGNAL(destroyed()), this, SLOT(quit()));
 	m_studentWindow->InitWindow();
+	// 创建并启动一个网站交互线程...
+	GM_Error theErr = GM_NoErr;
+	m_lpWebThread = new CWebThread();
+	theErr = m_lpWebThread->InitThread();
+	((theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL);
 }
 
 // 处理学生端退出事件通知...
@@ -624,4 +772,14 @@ void CStudentApp::doLogoutEvent()
 	if (curl != NULL) {
 	curl_easy_cleanup(curl);
 	}*/
+}
+
+void CStudentApp::doSaveFocus(OBSQTDisplay * lpNewDisplay)
+{
+	if ((lpNewDisplay == NULL) || (m_lpFocusDisplay == lpNewDisplay))
+		return;
+	if (m_lpFocusDisplay != NULL) {
+		m_lpFocusDisplay->doReleaseFocus();
+	}
+	m_lpFocusDisplay = lpNewDisplay;
 }

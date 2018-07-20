@@ -7,7 +7,7 @@
 #include <QLineEdit>
 #include <QPainter>
 
-#include <curl/curl.h>
+#include <curl.h>
 #include <jansson.h>
 
 size_t procPostCurl(void *ptr, size_t size, size_t nmemb, void *stream)

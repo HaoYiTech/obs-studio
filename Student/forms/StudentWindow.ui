@@ -29,13 +29,13 @@
      <number>0</number>
     </property>
     <property name="leftMargin">
-     <number>2</number>
+     <number>0</number>
     </property>
     <property name="topMargin">
-     <number>2</number>
+     <number>0</number>
     </property>
     <property name="rightMargin">
-     <number>2</number>
+     <number>0</number>
     </property>
     <property name="bottomMargin">
      <number>0</number>
@@ -168,9 +168,16 @@
     </property>
     <addaction name="actionHelpAbout"/>
    </widget>
+   <widget class="QMenu" name="settingMenu">
+    <property name="title">
+     <string>Basic.Setting</string>
+    </property>
+    <addaction name="actionSettingSystem"/>
+   </widget>
    <addaction name="systemMenu"/>
    <addaction name="cameraMenu"/>
    <addaction name="pageMenu"/>
+   <addaction name="settingMenu"/>
    <addaction name="helpMenu"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
@@ -310,6 +317,15 @@
    </property>
    <property name="text">
     <string>Basic.Help.About</string>
+   </property>
+  </action>
+  <action name="actionSettingSystem">
+   <property name="icon">
+    <iconset resource="Student.qrc">
+     <normaloff>:/res/images/system_setting.png</normaloff>:/res/images/system_setting.png</iconset>
+   </property>
+   <property name="text">
+    <string>Basic.Setting.System</string>
    </property>
   </action>
  </widget>

@@ -5,10 +5,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{D9D6E242-F8AF-46E4-B9FD-80ECBC20BA3E}</UniqueIdentifier>
       <Extensions>qrc;*</Extensions>
@@ -27,6 +23,19 @@
       <UniqueIdentifier>{71ED8ED8-ACB9-4CE9-BBE1-E00B30144E11}</UniqueIdentifier>
       <Extensions>moc;h;cpp</Extensions>
       <SourceControlFiles>False</SourceControlFiles>
+    </Filter>
+    <Filter Include="Common Files">
+      <UniqueIdentifier>{0a2bfe41-c5f8-4c89-8d93-8b643d19bf79}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Json Files">
+      <UniqueIdentifier>{538ec026-4c05-441a-bd6f-f986dfe9510f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Curl Files">
+      <UniqueIdentifier>{3b95e369-97ec-4df3-9566-7550a17d733c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -62,6 +71,39 @@
     </ClCompile>
     <ClCompile Include="window-view-teacher.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="common\OSMutex.cpp">
+      <Filter>Common Files</Filter>
+    </ClCompile>
+    <ClCompile Include="common\OSThread.cpp">
+      <Filter>Common Files</Filter>
+    </ClCompile>
+    <ClCompile Include="common\Socket.cpp">
+      <Filter>Common Files</Filter>
+    </ClCompile>
+    <ClCompile Include="common\SocketUtils.cpp">
+      <Filter>Common Files</Filter>
+    </ClCompile>
+    <ClCompile Include="common\StrPtrLen.cpp">
+      <Filter>Common Files</Filter>
+    </ClCompile>
+    <ClCompile Include="common\UDPSocket.cpp">
+      <Filter>Common Files</Filter>
+    </ClCompile>
+    <ClCompile Include="web-thread.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="json\json_reader.cpp">
+      <Filter>Json Files</Filter>
+    </ClCompile>
+    <ClCompile Include="json\json_value.cpp">
+      <Filter>Json Files</Filter>
+    </ClCompile>
+    <ClCompile Include="json\json_writer.cpp">
+      <Filter>Json Files</Filter>
+    </ClCompile>
+    <ClCompile Include="common\StringParser.cpp">
+      <Filter>Common Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -119,6 +161,93 @@
     </ClInclude>
     <ClInclude Include="display-helpers.hpp">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common\AmfByteStream.h">
+      <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common\BitWritter.h">
+      <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common\GMError.h">
+      <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common\HYDefine.h">
+      <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common\OSMutex.h">
+      <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common\OSThread.h">
+      <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common\Socket.h">
+      <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common\SocketUtils.h">
+      <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common\StrPtrLen.h">
+      <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common\UDPSocket.h">
+      <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="web-thread.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\autolink.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\config.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\features.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\forwards.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\json.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\reader.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\value.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\writer.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common\StringParser.h">
+      <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common\HYVersion.h">
+      <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="curl\curl.h">
+      <Filter>Curl Files</Filter>
+    </ClInclude>
+    <ClInclude Include="curl\curlbuild.h">
+      <Filter>Curl Files</Filter>
+    </ClInclude>
+    <ClInclude Include="curl\curlrules.h">
+      <Filter>Curl Files</Filter>
+    </ClInclude>
+    <ClInclude Include="curl\curlver.h">
+      <Filter>Curl Files</Filter>
+    </ClInclude>
+    <ClInclude Include="curl\easy.h">
+      <Filter>Curl Files</Filter>
+    </ClInclude>
+    <ClInclude Include="curl\mprintf.h">
+      <Filter>Curl Files</Filter>
+    </ClInclude>
+    <ClInclude Include="curl\multi.h">
+      <Filter>Curl Files</Filter>
+    </ClInclude>
+    <ClInclude Include="curl\stdcheaders.h">
+      <Filter>Curl Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

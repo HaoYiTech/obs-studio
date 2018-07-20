@@ -35,8 +35,10 @@ StudentWindow::StudentWindow(QWidget *parent)
 	m_ui.mainToolBar->addAction(m_ui.actionPageJump);
 	m_ui.mainToolBar->addAction(m_ui.actionPageNext);
 	m_ui.mainToolBar->addSeparator();
+	m_ui.mainToolBar->addAction(m_ui.actionSettingSystem);
 	m_ui.mainToolBar->addAction(m_ui.actionHelpAbout);
 	// 设置左右窗口的大小比例 => 20:80...
+	m_ui.splitter->setContentsMargins(0, 0, 0, 0);
 	m_ui.splitter->setStretchFactor(0, 20);
 	m_ui.splitter->setStretchFactor(1, 80);
 	// 更新主窗口标题栏...
