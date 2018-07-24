@@ -21,6 +21,7 @@
 #include "SocketUtils.h"
 #include <IPTypes.h>
 #include <IPHlpApi.h>
+#include <atlconv.h>
 
 #pragma comment(lib, "iphlpapi.lib")
 
@@ -723,8 +724,11 @@ void CStudentApp::doLoginSuccess(string & strRoomID)
 	setQuitOnLastWindowClosed(false);
 	m_studentWindow = new StudentWindow();
 	m_studentWindow->setAttribute(Qt::WA_DeleteOnClose, true);
-	connect(m_studentWindow, SIGNAL(destroyed()), this, SLOT(quit()));
+	this->connect(m_studentWindow, SIGNAL(destroyed()), this, SLOT(quit()));
 	m_studentWindow->InitWindow();
+	// 建立信号槽关联函数 => 便于辅助线程进行事件通知...
+	this->connect(this, SIGNAL(msgFromWebThread(int, int, int)), m_studentWindow, SLOT(doWebThreadMsg(int, int, int)));
+	this->connect(this, SIGNAL(doEnableCamera(OBSQTDisplay*)), m_studentWindow->GetViewLeft(), SLOT(doEnableCamera(OBSQTDisplay*)));
 	// 创建并启动一个网站交互线程...
 	GM_Error theErr = GM_NoErr;
 	m_lpWebThread = new CWebThread();
@@ -776,10 +780,78 @@ void CStudentApp::doLogoutEvent()
 
 void CStudentApp::doSaveFocus(OBSQTDisplay * lpNewDisplay)
 {
+	// 如果指针无效或相同，直接返回...
 	if ((lpNewDisplay == NULL) || (m_lpFocusDisplay == lpNewDisplay))
 		return;
+	// 之前的焦点有效，释放焦点...
 	if (m_lpFocusDisplay != NULL) {
 		m_lpFocusDisplay->doReleaseFocus();
 	}
+	// 保存为新的焦点对象...
 	m_lpFocusDisplay = lpNewDisplay;
+}
+
+QString CStudentApp::GetCameraPullUrl(int nDBCameraID)
+{
+	QString strPullUrl = QTStr("Camera.Window.None");
+	GM_MapNodeCamera::iterator itorItem = m_MapNodeCamera.find(nDBCameraID);
+	do {
+		if (itorItem == m_MapNodeCamera.end())
+			break;
+		GM_MapData & theMapData = itorItem->second;
+		string & strStreamProp = theMapData["stream_prop"];
+		if (strStreamProp.size() <= 0)
+			break;
+		WCHAR szWBuffer[MAX_PATH] = { 0 };
+		STREAM_PROP nStreamType = (STREAM_PROP)atoi(strStreamProp.c_str());
+		string & strStreamMP4 = theMapData["stream_mp4"];
+		string & strStreamUrl = theMapData["stream_url"];
+		if (nStreamType == kStreamMP4File) {
+			os_utf8_to_wcs(strStreamMP4.c_str(), strStreamMP4.size(), szWBuffer, MAX_PATH);
+			strPullUrl = QString((QChar*)szWBuffer);
+		} else if(nStreamType == kStreamUrlLink) {
+			os_utf8_to_wcs(strStreamUrl.c_str(), strStreamUrl.size(), szWBuffer, MAX_PATH);
+			strPullUrl = QString((QChar*)szWBuffer);
+		}
+	} while (false);
+	return strPullUrl;
+}
+
+string CStudentApp::UTF8_ANSI(const char * lpUValue)
+{
+	string strSValue;
+	USES_CONVERSION;
+	if (lpUValue == NULL || strlen(lpUValue) <= 0)
+		return strSValue;				// 验证有效性
+	_acp = CP_UTF8;                     // 设置code page
+	LPCWSTR lpWValue = A2W(lpUValue);	// UTF-8 to Unicode Wide char
+	_acp = CP_ACP;                      // 设置code page
+	strSValue = W2A(lpWValue);			// Unicode Wide char to ANSI
+	return strSValue;
+}
+
+string CStudentApp::ANSI_UTF8(const char * lpSValue)
+{
+	string strUValue;
+	USES_CONVERSION;
+	if (lpSValue == NULL || strlen(lpSValue) <= 0)
+		return strUValue;				// 验证有效性
+	_acp = CP_ACP;                      // 设置code page(默认)
+
+	// 2009/09/01 A2W 在某些系统下会发生崩溃...
+	// LPCWSTR lpWValue = A2W(lpSValue); // ANSI to Unicode Wide char
+	int dwSize = MultiByteToWideChar(_acp, 0, lpSValue, -1, NULL, 0);
+	wchar_t * lpWValue = new wchar_t[dwSize];
+	MultiByteToWideChar(_acp, 0, lpSValue, -1, lpWValue, dwSize);
+
+	_acp = CP_UTF8;                     // 设置code page, 得到编码长度, Unicode Wide char to UTF-8
+	int ret = WideCharToMultiByte(_acp, 0, lpWValue, -1, NULL, NULL, NULL, NULL);
+	strUValue.resize(ret); ASSERT(ret == strUValue.size());
+
+	ret = WideCharToMultiByte(_acp, 0, lpWValue, -1, (LPSTR)strUValue.c_str(), strUValue.size(), NULL, NULL);
+	ASSERT(ret == strUValue.size());
+
+	delete[] lpWValue;
+
+	return strUValue;
 }

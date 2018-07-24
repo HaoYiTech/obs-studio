@@ -10,8 +10,12 @@ public:
 	virtual ~CViewRight();
 public:
 	void onFullScreenAction();
+	void onWebLoadResource();
+	void onWebAuthResult(int nType, bool bAuthOK);
 protected:
+	void paintEvent(QPaintEvent *event) override;
 	void resizeEvent(QResizeEvent *event) override;
 private:
 	CViewTeacher   *   m_lpViewTeacher;
+	QString            m_strNotice;
 };

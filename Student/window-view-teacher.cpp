@@ -1,5 +1,6 @@
 
 #include <QPainter>
+#include "student-app.h"
 #include "window-view-teacher.hpp"
 
 #define TITLE_WINDOW_HEIGHT		24
@@ -8,13 +9,13 @@
 #define TITLE_BK_COLOR			QColor(96, 123, 189)//QColor(0, 122, 204)
 #define WINDOW_BK_COLOR			QColor(32, 32, 32)
 #define FOCUS_BK_COLOR			QColor(255,255, 0)
+#define STATUS_TEXT_COLOR		QColor(20, 220, 20)
 
 CViewTeacher::CViewTeacher(QWidget *parent, Qt::WindowFlags flags)
   : OBSQTDisplay(parent, flags)
 {
 	// 设置标题栏基础文字信息...
-	//QString::fromLocal8Bit("讲师端画面");
-	m_strTitleBase = QStringLiteral("讲师端画面");
+	m_strTitleBase = QTStr("Teacher.Window.TitleBase");
 	m_strTitleText = m_strTitleBase;
 	// 初始化背景颜色和原始区域...
 	m_bkColor = WINDOW_BK_COLOR;
@@ -61,7 +62,7 @@ void CViewTeacher::DrawTitleArea()
 	painter.setPen(TITLE_TEXT_COLOR);
 	// 计算标题栏坐标 => 特别注意：是文字左下角坐标...
 	int nPosX = 10;
-	int nPosY = TITLE_FONT_HEIGHT + (TITLE_WINDOW_HEIGHT - TITLE_FONT_HEIGHT)/2;
+	int nPosY = TITLE_FONT_HEIGHT + (TITLE_WINDOW_HEIGHT - TITLE_FONT_HEIGHT)/2 + 1;
 	painter.drawText(nPosX, nPosY, m_strTitleText);
 }
 

@@ -10,11 +10,13 @@ public:
 	StudentWindow(QWidget *parent = Q_NULLPTR);
 	virtual ~StudentWindow();
 public:
-	void	InitWindow();
-	void	UpdateTitleBar();
+	void InitWindow();
+	void UpdateTitleBar();
+	CViewLeft * GetViewLeft() { return m_ui.LeftView; }
 protected:
-	virtual void closeEvent(QCloseEvent *event) override;
+	void closeEvent(QCloseEvent *event) override;
 private slots:
+	void doWebThreadMsg(int nMessageID, int nWParam, int nLParam);
 	void on_actionSystemFullscreen_triggered();
 	void on_actionSystemToolbar_triggered();
 	void on_actionSystemExit_triggered();

@@ -105,6 +105,18 @@
     <ClCompile Include="common\StringParser.cpp">
       <Filter>Common Files</Filter>
     </ClCompile>
+    <ClCompile Include="myRTSPClient.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pull-thread.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ReadSPS.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="push-thread.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="window-login-base.h">
@@ -135,6 +147,9 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="window-view-teacher.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="push-thread.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
@@ -248,6 +263,15 @@
     </ClInclude>
     <ClInclude Include="curl\stdcheaders.h">
       <Filter>Curl Files</Filter>
+    </ClInclude>
+    <ClInclude Include="myRTSPClient.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pull-thread.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ReadSPS.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -1,8 +1,7 @@
 
 #pragma once
 
-#include <map>
-#include <functional>
+#include "HYDefine.h"
 #include "qt-display.hpp"
 
 using namespace std;
@@ -16,12 +15,42 @@ class CViewLeft : public OBSQTDisplay {
 public:
 	CViewLeft(QWidget *parent, Qt::WindowFlags flags = 0);
 	virtual ~CViewLeft();
+signals:
+	void enablePagePrev(bool bEnable);
+	void enablePageJump(bool bEnable);
+	void enablePageNext(bool bEnable);
+	void enableCameraAdd(bool bEnable);
+	void enableCameraMod(bool bEnable);
+	void enableCameraDel(bool bEnable);
+	void enableCameraStop(bool bEnable);
+	void enableCameraStart(bool bEnable);
+	void enableSettingSystem(bool bEnable);
+	void enableSettingReconnect(bool bEnable);
+public slots:
+	void doEnableCamera(OBSQTDisplay * lpNewDisplay);
+public:
+	CViewCamera * FindDBCameraByID(int nDBCameraID);
+public:
+	int  GetCurPage() { return m_nCurPage; }
+	int  GetMaxPage() { return m_nMaxPage; }
+	int  GetFocusID() { return m_nFocusID; }
+	void onWebLoadResource();				// 登录成功...
+	void onCameraStart();
+	void onCameraStop();
+	void onPagePrev();						// 点击上一页...
+	void onPageJump();						// 点击跳转页...
+	void onPageNext();						// 点击下一页...
 private:
-	void LayoutViewCamera(QSize & inSize);
+	void LayoutViewCamera(int cx, int cy);
+	void BuildWebCamera(GM_MapData & inWebData);
 protected:
+	void wheelEvent(QWheelEvent *event) override;
 	void paintEvent(QPaintEvent *event) override;
 	void resizeEvent(QResizeEvent *event) override;
 private:
-	int					m_nFirstID;			// 第一个摄像头窗口的编号...
-	GM_MapCamera		m_MapCamera;		// 摄像头窗口集合 => DBCameraID => CViewCamera
+	int				m_nCurPage;			// 当前页...
+	int				m_nMaxPage;			// 总页数...
+	int				m_nFirstID;			// 第一个摄像头窗口的编号...
+	int				m_nFocusID;			// 当前有效焦点摄像头窗口的编号...
+	GM_MapCamera	m_MapCamera;		// 摄像头窗口集合 => DBCameraID => CViewCamera
 };

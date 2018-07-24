@@ -5,6 +5,7 @@
 #include <QRect>
 #include <QScreen>
 
+#include "HYDefine.h"
 #include "student-app.h"
 #include "qt-wrappers.hpp"
 #include "window-student-main.h"
@@ -21,21 +22,55 @@ StudentWindow::StudentWindow(QWidget *parent)
 	m_ui.actionSystemToolbar->setCheckable(true);
 	m_ui.actionSystemToolbar->setChecked(true);
 	// 关联工具栏菜单事件响应...
-	//m_ui.mainToolBar->setCursor(Qt::OpenHandCursor);
-	m_ui.mainToolBar->addAction(m_ui.actionSystemFullscreen);
-	m_ui.mainToolBar->addSeparator();
-	m_ui.mainToolBar->addAction(m_ui.actionCameraAdd);
-	m_ui.mainToolBar->addAction(m_ui.actionCameraMod);
-	m_ui.mainToolBar->addAction(m_ui.actionCameraDel);
-	m_ui.mainToolBar->addSeparator();
-	m_ui.mainToolBar->addAction(m_ui.actionCameraStart);
-	m_ui.mainToolBar->addAction(m_ui.actionCameraStop);
-	m_ui.mainToolBar->addSeparator();
 	m_ui.mainToolBar->addAction(m_ui.actionPagePrev);
 	m_ui.mainToolBar->addAction(m_ui.actionPageJump);
 	m_ui.mainToolBar->addAction(m_ui.actionPageNext);
 	m_ui.mainToolBar->addSeparator();
+	// 设置翻页菜单按钮为不可用...
+	m_ui.actionPagePrev->setDisabled(true);
+	m_ui.actionPageJump->setDisabled(true);
+	m_ui.actionPageNext->setDisabled(true);
+	// 设置工具栏、菜单按钮信号槽...
+	this->connect(m_ui.LeftView, SIGNAL(enablePagePrev(bool)), m_ui.actionPagePrev, SLOT(setEnabled(bool)));
+	this->connect(m_ui.LeftView, SIGNAL(enablePageJump(bool)), m_ui.actionPageJump, SLOT(setEnabled(bool)));
+	this->connect(m_ui.LeftView, SIGNAL(enablePageNext(bool)), m_ui.actionPageNext, SLOT(setEnabled(bool)));
+	// 设置全屏菜单按钮...
+	m_ui.mainToolBar->addAction(m_ui.actionSystemFullscreen);
+	m_ui.mainToolBar->addSeparator();
+	// 设置通道菜单按钮...
+	m_ui.mainToolBar->addAction(m_ui.actionCameraAdd);
+	m_ui.mainToolBar->addAction(m_ui.actionCameraMod);
+	m_ui.mainToolBar->addAction(m_ui.actionCameraDel);
+	m_ui.mainToolBar->addSeparator();
+	// 设置通道菜单按钮为不可用...
+	m_ui.actionCameraAdd->setDisabled(true);
+	m_ui.actionCameraMod->setDisabled(true);
+	m_ui.actionCameraDel->setDisabled(true);
+	// 设置通道菜单按钮信号槽...
+	this->connect(m_ui.LeftView, SIGNAL(enableCameraAdd(bool)), m_ui.actionCameraAdd, SLOT(setEnabled(bool)));
+	this->connect(m_ui.LeftView, SIGNAL(enableCameraMod(bool)), m_ui.actionCameraMod, SLOT(setEnabled(bool)));
+	this->connect(m_ui.LeftView, SIGNAL(enableCameraDel(bool)), m_ui.actionCameraDel, SLOT(setEnabled(bool)));
+	// 设置通道操作菜单按钮...
+	m_ui.mainToolBar->addAction(m_ui.actionCameraStart);
+	m_ui.mainToolBar->addAction(m_ui.actionCameraStop);
+	m_ui.mainToolBar->addSeparator();
+	// 设置通道操作菜单按钮不可用...
+	m_ui.actionCameraStart->setDisabled(true);
+	m_ui.actionCameraStop->setDisabled(true);
+	// 设置通道操作菜单按钮信号槽...
+	this->connect(m_ui.LeftView, SIGNAL(enableCameraStart(bool)), m_ui.actionCameraStart, SLOT(setEnabled(bool)));
+	this->connect(m_ui.LeftView, SIGNAL(enableCameraStop(bool)), m_ui.actionCameraStop, SLOT(setEnabled(bool)));
+	// 设置配置菜单按钮...
+	m_ui.mainToolBar->addAction(m_ui.actionSettingReconnect);
 	m_ui.mainToolBar->addAction(m_ui.actionSettingSystem);
+	m_ui.mainToolBar->addSeparator();
+	// 设置断开重连菜单按钮为不可用...
+	m_ui.actionSettingReconnect->setDisabled(true);
+	m_ui.actionSettingSystem->setDisabled(true);
+	// 设置配置菜单按钮信号槽...
+	this->connect(m_ui.LeftView, SIGNAL(enableSettingReconnect(bool)), m_ui.actionSettingReconnect, SLOT(setEnabled(bool)));
+	this->connect(m_ui.LeftView, SIGNAL(enableSettingSystem(bool)), m_ui.actionSettingSystem, SLOT(setEnabled(bool)));
+	// 设置关于菜单按钮...
 	m_ui.mainToolBar->addAction(m_ui.actionHelpAbout);
 	// 设置左右窗口的大小比例 => 20:80...
 	m_ui.splitter->setContentsMargins(0, 0, 0, 0);
@@ -47,16 +82,23 @@ StudentWindow::StudentWindow(QWidget *parent)
 	const char *geometry = config_get_string(App()->GlobalConfig(), "BasicWindow", "geometry");
 	if (geometry != NULL) {
 		QByteArray byteArray = QByteArray::fromBase64(QByteArray(geometry));
-		restoreGeometry(byteArray);
-
-		QRect windowGeometry = normalGeometry();
+		this->restoreGeometry(byteArray);
+		QRect windowGeometry = this->normalGeometry();
 		if (!WindowPositionValid(windowGeometry)) {
-			QRect rect = App()->desktop()->geometry();
-			setGeometry(QStyle::alignedRect(
-				Qt::LeftToRight,
-				Qt::AlignCenter,
-				size(), rect));
+			const QRect & rect = App()->desktop()->geometry();
+			setGeometry(QStyle::alignedRect(Qt::LeftToRight,Qt::AlignCenter,size(), rect));
 		}
+	}
+}
+
+void StudentWindow::doWebThreadMsg(int nMessageID, int nWParam, int nLParam)
+{
+	if (nMessageID == WM_WEB_AUTH_RESULT) {
+		m_ui.RightView->onWebAuthResult(nWParam, (bool)nLParam);
+	}
+	if (nMessageID == WM_WEB_LOAD_RESOURCE) {
+		m_ui.RightView->onWebLoadResource();
+		m_ui.LeftView->onWebLoadResource();
 	}
 }
 
@@ -68,11 +110,10 @@ StudentWindow::~StudentWindow()
 
 void StudentWindow::UpdateTitleBar()
 {
-	// 对窗口标题进行修改 => 简化...
-	char szTitle[260] = { 0 };
+	// 对窗口标题进行修改 => 使用字典模式...
 	const char * lpLiveRoomID = config_get_string(App()->GlobalConfig(), "General", "LiveRoomID");
-	sprintf(szTitle, "云教室 - 学生端 - 已登录云教室号码：%s", lpLiveRoomID);
-	this->setWindowTitle(QString::fromLocal8Bit(szTitle));
+	QString strTitle = QString("%1%2").arg(QTStr("Main.Window.TitleContent")).arg(lpLiveRoomID);
+	this->setWindowTitle(strTitle);
 }
 
 void StudentWindow::InitWindow()
@@ -146,22 +187,27 @@ void StudentWindow::on_actionCameraDel_triggered()
 
 void StudentWindow::on_actionCameraStart_triggered()
 {
+	m_ui.LeftView->onCameraStart();
 }
 
 void StudentWindow::on_actionCameraStop_triggered()
 {
+	m_ui.LeftView->onCameraStop();
 }
 
 void StudentWindow::on_actionPagePrev_triggered()
 {
+	m_ui.LeftView->onPagePrev();
 }
 
 void StudentWindow::on_actionPageJump_triggered()
 {
+	m_ui.LeftView->onPageJump();
 }
 
 void StudentWindow::on_actionPageNext_triggered()
 {
+	m_ui.LeftView->onPageNext();
 }
 
 void StudentWindow::on_actionHelpAbout_triggered()

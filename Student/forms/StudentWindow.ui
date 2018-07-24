@@ -173,6 +173,8 @@
      <string>Basic.Setting</string>
     </property>
     <addaction name="actionSettingSystem"/>
+    <addaction name="separator"/>
+    <addaction name="actionSettingReconnect"/>
    </widget>
    <addaction name="systemMenu"/>
    <addaction name="cameraMenu"/>
@@ -326,6 +328,15 @@
    </property>
    <property name="text">
     <string>Basic.Setting.System</string>
+   </property>
+  </action>
+  <action name="actionSettingReconnect">
+   <property name="icon">
+    <iconset resource="Student.qrc">
+     <normaloff>:/res/images/system_reconnect.png</normaloff>:/res/images/system_reconnect.png</iconset>
+   </property>
+   <property name="text">
+    <string>Basic.Setting.Reconnect</string>
    </property>
   </action>
  </widget>

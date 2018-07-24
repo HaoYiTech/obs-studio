@@ -11,8 +11,6 @@ public:
 	void   doReleaseFocus();
 	void   setBKColor(QColor inColor);
 protected:
-	void   paintEvent(QPaintEvent *event) override;
-protected:
 	QColor		m_bkColor;
 	bool		m_bFocus;
 };

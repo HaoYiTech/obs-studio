@@ -39,7 +39,7 @@ void LoginWindow::initMyTitle()
 	m_titleBar->move(0, 0);
 	m_titleBar->raise();
 	m_titleBar->setTitleWidth(this->width());
-	m_titleBar->setTitleContent(QStringLiteral("登录云教室 - 学生端"));
+	m_titleBar->setTitleContent(QTStr("Login.Window.TitleContent"));
 	m_titleBar->setBackgroundColor(QColor(0, 122, 204), false);
 	// 这里需要设置成false，不允许通过标题栏拖动来移动窗口位置,否则会造成窗口位置错误;
 	m_titleBar->setMoveParentWindowFlag(false);
@@ -65,7 +65,7 @@ void LoginWindow::initWindow()
 	// 暗注释，并限定输入数字的范围...
 	ui->accountComboBox->setEditable(true);
 	QLineEdit* lineEdit = ui->accountComboBox->lineEdit();
-	lineEdit->setPlaceholderText(QStringLiteral("请输入云教室号码..."));
+	lineEdit->setPlaceholderText(QTStr("Login.Window.EditHolderText"));
 	lineEdit->setValidator(new QIntValidator(0, 999999999, this));
 	lineEdit->setMaxLength(10);
 	// 从配置文件中读取云教室号码，设置到编辑框当中...

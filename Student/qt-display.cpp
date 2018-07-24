@@ -31,17 +31,19 @@ void OBSQTDisplay::setBKColor(QColor inColor)
 	this->update();
 }
 
-void OBSQTDisplay::paintEvent(QPaintEvent *event)
+/*void OBSQTDisplay::paintEvent(QPaintEvent *event)
 {
 	QWidget::paintEvent(event);
 
 	QPainter painter(this);
 	painter.setBrush(QBrush(m_bkColor));
 	painter.drawRect(this->rect());
-}
+}*/
 
 void OBSQTDisplay::doCaptureFocus()
 {
+	// 对摄像头控制菜单做更新 => 调用信号槽...
+	emit App()->doEnableCamera(this);
 	// 恢复之前的焦点窗口的状态...
 	App()->doSaveFocus(this);
 	// 设置当前窗口为焦点窗口...

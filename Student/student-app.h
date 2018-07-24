@@ -15,9 +15,6 @@
 #include "window-student-main.h"
 #include "json.h"
 
-typedef	map<string, string>		GM_MapData;
-typedef map<int, GM_MapData>	GM_MapNodeCamera;	// int  => 是指数据库DBCameraID
-
 std::string CurrentTimeString();
 std::string CurrentDateTimeString();
 std::string GenerateTimeDateFilename(const char *extension, bool noSpace = false);
@@ -44,6 +41,9 @@ class CStudentApp : public QApplication {
 public:
 	CStudentApp(int &argc, char **argv);
 	~CStudentApp();
+signals:
+	void msgFromWebThread(int nMessageID, int nWParam, int nLParam);
+	void doEnableCamera(OBSQTDisplay * lpNewDisplay);
 public:
 	void AppInit();
 public:
@@ -55,6 +55,8 @@ public:
 	static char * GetServerDNSName();
 	static string GetSystemVer();
 	static string getJsonString(Json::Value & inValue);
+	static string UTF8_ANSI(const char * lpUValue);
+	static string ANSI_UTF8(const char * lpSValue);
 public slots:
 	void doLoginSuccess(string & strRoomID);
 public:
@@ -105,7 +107,11 @@ public:
 	void	 SetAutoLinkFDFS(bool bAutoLinkFDFS) { m_bAutoLinkFDFS = bAutoLinkFDFS; }
 	void	 SetMaxCamera(int nMaxCamera) { m_nMaxCamera = nMaxCamera; }
 
+	QString  GetCameraPullUrl(int nDBCameraID);
+	void	 SetCamera(int nDBCameraID, GM_MapData & inMapData) { m_MapNodeCamera[nDBCameraID] = inMapData; }
+	void	 GetCamera(int nDBCameraID, GM_MapData & outMapData) { outMapData = m_MapNodeCamera[nDBCameraID]; }
 	GM_MapNodeCamera & GetNodeCamera() { return m_MapNodeCamera; }
+
 	int      GetWebPort() { return m_nWebPort; }
 	string & GetWebAddr() { return m_strWebAddr; }
 	string & GetLocalIPAddr() { return m_strIPAddr; }
