@@ -19,6 +19,8 @@ CPushThread::CPushThread(CViewCamera * lpViewCamera)
 
 CPushThread::~CPushThread()
 {
+	// 这里使用了互斥，删除RTSP拉流对象...
+	OSMutexLocker theLock(&m_Mutex);
 	if (m_lpRtspThread != NULL) {
 		delete m_lpRtspThread;
 		m_lpRtspThread = NULL;
@@ -74,6 +76,10 @@ void CPushThread::CalcFlowKbps()
 
 void CPushThread::PushFrame(FMS_FRAME & inFrame)
 {
+	// 这里使用了互斥，拉流对象已经被删除，直接返回...
+	OSMutexLocker theLock(&m_Mutex);
+	if (m_lpRtspThread == NULL)
+		return;
 	// 将超时计时点复位，重新计时...
 	m_dwTimeOutMS = ::GetTickCount();
 	// 累加接收数据包的字节数，加入缓存队列...
@@ -98,6 +104,8 @@ int CPushThread::GetSendPushKbps()
 
 bool CPushThread::IsDataFinished()
 {
+	// 这里使用了互斥，避免拉流对象无效...
+	OSMutexLocker theLock(&m_Mutex);
 	if (m_lpRtspThread != NULL) {
 		return m_lpRtspThread->IsFinished();
 	}

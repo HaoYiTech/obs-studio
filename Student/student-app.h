@@ -50,6 +50,7 @@ public:
 	void doLoginInit();
 	void doLogoutEvent();
 	void doSaveFocus(OBSQTDisplay * lpNewDisplay);
+	void doResetFocus(OBSQTDisplay * lpCurDisplay);
 public:
 	static char * GetServerOS();
 	static char * GetServerDNSName();
@@ -107,10 +108,15 @@ public:
 	void	 SetAutoLinkFDFS(bool bAutoLinkFDFS) { m_bAutoLinkFDFS = bAutoLinkFDFS; }
 	void	 SetMaxCamera(int nMaxCamera) { m_nMaxCamera = nMaxCamera; }
 
+	QString  GetCameraName(int nDBCameraID);
 	QString  GetCameraPullUrl(int nDBCameraID);
+	string   GetCameraDeviceSN(int nDBCameraID);
+	void     doDelCamera(int nDBCameraID);
+
 	void	 SetCamera(int nDBCameraID, GM_MapData & inMapData) { m_MapNodeCamera[nDBCameraID] = inMapData; }
 	void	 GetCamera(int nDBCameraID, GM_MapData & outMapData) { outMapData = m_MapNodeCamera[nDBCameraID]; }
 	GM_MapNodeCamera & GetNodeCamera() { return m_MapNodeCamera; }
+	CWebThread * GetWebThread() { return m_lpWebThread; }
 
 	int      GetWebPort() { return m_nWebPort; }
 	string & GetWebAddr() { return m_strWebAddr; }

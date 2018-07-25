@@ -117,6 +117,12 @@
     <ClCompile Include="push-thread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="window-dlg-push.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="common\md5.cpp">
+      <Filter>Common Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="window-login-base.h">
@@ -152,12 +158,18 @@
     <QtMoc Include="push-thread.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="window-dlg-push.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="forms\LoginWindow.ui">
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="forms\StudentWindow.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="forms\DlgPush.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>
@@ -272,6 +284,12 @@
     </ClInclude>
     <ClInclude Include="ReadSPS.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneratedFiles\ui_DlgPush.h">
+      <Filter>Generated Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common\md5.h">
+      <Filter>Common Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -43,6 +43,8 @@ CViewCamera::~CViewCamera()
 		delete m_lpPushThread;
 		m_lpPushThread = NULL;
 	}
+	// 如果自己就是那个焦点窗口，需要重置...
+	App()->doResetFocus(this);
 }
 
 void CViewCamera::paintEvent(QPaintEvent *event)
@@ -65,14 +67,6 @@ void CViewCamera::mousePressEvent(QMouseEvent *event)
 	return QWidget::mousePressEvent(event);
 }
 
-void CViewCamera::setTitleContent(QString & titleContent)
-{
-	// 将输入文字与基础文字进行组合格式化处理...
-	m_strTitleText = QString("%1%2 - %3").arg(QStringLiteral("ID：")).arg(m_nDBCameraID).arg(titleContent);
-	// 不能直接绘制，只能通过刷新绘制...
-	this->update();
-}
-
 void CViewCamera::DrawTitleArea()
 {
 	QPainter painter(this);
@@ -87,7 +81,10 @@ void CViewCamera::DrawTitleArea()
 	// 计算标题栏坐标 => 特别注意：是文字左下角坐标...
 	int nPosX = 10;
 	int nPosY = TITLE_FONT_HEIGHT + (TITLE_WINDOW_HEIGHT - TITLE_FONT_HEIGHT) / 2 + 1;
-	painter.drawText(nPosX, nPosY, m_strTitleText);
+	// 先获取摄像头的标题名称，再进行字符串重组...
+	QString strTitleContent = App()->GetCameraName(m_nDBCameraID);
+	QString strTitleText = QString("%1%2 - %3").arg(QStringLiteral("ID：")).arg(m_nDBCameraID).arg(strTitleContent);
+	painter.drawText(nPosX, nPosY, strTitleText);
 }
 
 void CViewCamera::DrawRenderArea()

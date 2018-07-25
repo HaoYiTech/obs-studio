@@ -6,9 +6,12 @@
 #include <QScreen>
 
 #include "HYDefine.h"
+#include "web-thread.h"
 #include "student-app.h"
 #include "qt-wrappers.hpp"
+#include "window-dlg-push.hpp"
 #include "window-student-main.h"
+#include "window-view-camera.hpp"
 
 #define STARTUP_SEPARATOR   "==== Startup complete ==============================================="
 #define SHUTDOWN_SEPARATOR 	"==== Shutting down =================================================="
@@ -37,6 +40,16 @@ StudentWindow::StudentWindow(QWidget *parent)
 	// 设置全屏菜单按钮...
 	m_ui.mainToolBar->addAction(m_ui.actionSystemFullscreen);
 	m_ui.mainToolBar->addSeparator();
+	// 设置通道操作菜单按钮...
+	m_ui.mainToolBar->addAction(m_ui.actionCameraStart);
+	m_ui.mainToolBar->addAction(m_ui.actionCameraStop);
+	m_ui.mainToolBar->addSeparator();
+	// 设置通道操作菜单按钮不可用...
+	m_ui.actionCameraStart->setDisabled(true);
+	m_ui.actionCameraStop->setDisabled(true);
+	// 设置通道操作菜单按钮信号槽...
+	this->connect(m_ui.LeftView, SIGNAL(enableCameraStart(bool)), m_ui.actionCameraStart, SLOT(setEnabled(bool)));
+	this->connect(m_ui.LeftView, SIGNAL(enableCameraStop(bool)), m_ui.actionCameraStop, SLOT(setEnabled(bool)));
 	// 设置通道菜单按钮...
 	m_ui.mainToolBar->addAction(m_ui.actionCameraAdd);
 	m_ui.mainToolBar->addAction(m_ui.actionCameraMod);
@@ -50,16 +63,6 @@ StudentWindow::StudentWindow(QWidget *parent)
 	this->connect(m_ui.LeftView, SIGNAL(enableCameraAdd(bool)), m_ui.actionCameraAdd, SLOT(setEnabled(bool)));
 	this->connect(m_ui.LeftView, SIGNAL(enableCameraMod(bool)), m_ui.actionCameraMod, SLOT(setEnabled(bool)));
 	this->connect(m_ui.LeftView, SIGNAL(enableCameraDel(bool)), m_ui.actionCameraDel, SLOT(setEnabled(bool)));
-	// 设置通道操作菜单按钮...
-	m_ui.mainToolBar->addAction(m_ui.actionCameraStart);
-	m_ui.mainToolBar->addAction(m_ui.actionCameraStop);
-	m_ui.mainToolBar->addSeparator();
-	// 设置通道操作菜单按钮不可用...
-	m_ui.actionCameraStart->setDisabled(true);
-	m_ui.actionCameraStop->setDisabled(true);
-	// 设置通道操作菜单按钮信号槽...
-	this->connect(m_ui.LeftView, SIGNAL(enableCameraStart(bool)), m_ui.actionCameraStart, SLOT(setEnabled(bool)));
-	this->connect(m_ui.LeftView, SIGNAL(enableCameraStop(bool)), m_ui.actionCameraStop, SLOT(setEnabled(bool)));
 	// 设置配置菜单按钮...
 	m_ui.mainToolBar->addAction(m_ui.actionSettingReconnect);
 	m_ui.mainToolBar->addAction(m_ui.actionSettingSystem);
@@ -175,14 +178,67 @@ void StudentWindow::on_actionSystemFullscreen_triggered()
 
 void StudentWindow::on_actionCameraAdd_triggered()
 {
+	// 打开摄像头窗口配置 => 添加...
+	CDlgPush dlg(this, -1, false);
+	if (dlg.exec() == QDialog::Rejected)
+		return;
+	// 点击确定之后的处理过程...
+	CViewCamera * lpViewCamera = NULL;
+	CWebThread * lpWebThread = App()->GetWebThread();
+	GM_MapData & theMapData = dlg.GetPushData();
+	// 先在服务器上注册通道，然后在本地创建摄像头窗口对象，最后更新到界面...
+	((lpWebThread != NULL) ? lpWebThread->doWebRegCamera(theMapData) : NULL);
+	// 需要单独对新建的摄像头窗口需要重新排列，并且调整翻页菜单...
+	lpViewCamera = m_ui.LeftView->AddNewCamera(theMapData);
+	((lpViewCamera != NULL) ? lpViewCamera->update() : NULL);
+	// 直接启动通道 => 通过左侧的焦点窗口...
+	m_ui.LeftView->onCameraStart();
 }
 
 void StudentWindow::on_actionCameraMod_triggered()
 {
+	// 打开摄像头窗口配置 => 修改...
+	CViewCamera * lpViewCamera = NULL;
+	int nDBCameraID = m_ui.LeftView->GetFocusID();
+	lpViewCamera = m_ui.LeftView->FindDBCameraByID(nDBCameraID);
+	if (nDBCameraID <= 0 || lpViewCamera == NULL)
+		return;
+	// 弹出通道配置修改框...
+	CDlgPush dlg(this, nDBCameraID, lpViewCamera->IsCameraLogin());
+	if (dlg.exec() == QDialog::Rejected)
+		return;
+	// 点击确定之后的处理过程...
+	CWebThread * lpWebThread = App()->GetWebThread();
+	GM_MapData & theMapData = dlg.GetPushData();
+	// 先在服务器上更新通道，然后将结果更新到界面...
+	((lpWebThread != NULL) ? lpWebThread->doWebRegCamera(theMapData) : NULL);
+	((lpViewCamera != NULL) ? lpViewCamera->update() : NULL);
+	// 直接启动通道 => 通过左侧的焦点窗口...
+	m_ui.LeftView->onCameraStart();
 }
 
 void StudentWindow::on_actionCameraDel_triggered()
 {
+	// 确认当前选中焦点是否有效...
+	int nDBCameraID = m_ui.LeftView->GetFocusID();
+	CViewCamera * lpViewCamera = m_ui.LeftView->FindDBCameraByID(nDBCameraID);
+	if (lpViewCamera == NULL)
+		return;
+	CWebThread * lpWebThread = App()->GetWebThread();
+	string strDeviceSN = App()->GetCameraDeviceSN(nDBCameraID);
+	if (lpWebThread == NULL || strDeviceSN.size() <= 0)
+		return;
+	// 删除确认 => 显示提示信息...
+	QMessageBox::StandardButton button = OBSMessageBox::question(
+		this, QTStr("ConfirmDel.Title"), QTStr("ConfirmDel.Text"));
+	if (button == QMessageBox::No)
+		return;
+	// 左侧窗口发起删除操作...
+	m_ui.LeftView->onCameraDel(nDBCameraID);
+	// 通知网站发起删除操作...
+	lpWebThread->doWebDelCamera(strDeviceSN);
+	// 全局配置发起删除操作...
+	App()->doDelCamera(nDBCameraID);
 }
 
 void StudentWindow::on_actionCameraStart_triggered()

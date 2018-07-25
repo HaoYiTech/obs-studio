@@ -6,7 +6,8 @@
 #include <curl.h>
 
 CWebThread::CWebThread()
-  : m_bIsLoadSuccess(false)
+  : m_bIsCanReConnect(false)
+  , m_bIsLoadSuccess(false)
   , m_eRegState(kRegHaoYi)
   , m_nCurCameraCount(0)
 {
@@ -799,6 +800,7 @@ bool CWebThread::doWebGatherLogout()
 void CWebThread::Entry()
 {
 	// 连接过程中不可以重连...
+	m_bIsCanReConnect = false;
 	m_bIsLoadSuccess = false;
 	do {
 		// 首先，在网站上注册采集端信息...
@@ -819,4 +821,6 @@ void CWebThread::Entry()
 	if (!m_bIsLoadSuccess) {
 		this->doWebGatherLogout();
 	}
+	// 设置可以重连服务器标志...
+	m_bIsCanReConnect = true;
 }

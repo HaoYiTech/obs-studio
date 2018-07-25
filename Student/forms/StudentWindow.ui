@@ -255,7 +255,7 @@
      <normaloff>:/res/images/camera_del.png</normaloff>:/res/images/camera_del.png</iconset>
    </property>
    <property name="text">
-    <string>Basic.Camera.Mod</string>
+    <string>Basic.Camera.Del</string>
    </property>
   </action>
   <action name="actionCameraMod">
@@ -264,7 +264,7 @@
      <normaloff>:/res/images/camera_mod.png</normaloff>:/res/images/camera_mod.png</iconset>
    </property>
    <property name="text">
-    <string>Basic.Camera.Del</string>
+    <string>Basic.Camera.Mod</string>
    </property>
   </action>
   <action name="actionCameraStart">

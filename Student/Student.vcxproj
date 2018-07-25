@@ -144,6 +144,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="common\md5.cpp" />
     <ClCompile Include="common\OSMutex.cpp" />
     <ClCompile Include="common\OSThread.cpp" />
     <ClCompile Include="common\Socket.cpp" />
@@ -171,6 +172,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Define Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_NO_DEBUG;NDEBUG;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB</Define>
     </ClCompile>
     <ClCompile Include="web-thread.cpp" />
+    <ClCompile Include="window-dlg-push.cpp" />
     <ClCompile Include="window-login-base.cpp" />
     <ClCompile Include="window-login-main.cpp" />
     <ClCompile Include="window-login-title.cpp" />
@@ -181,6 +183,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="window-view-teacher.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <QtUic Include="forms\DlgPush.ui" />
     <QtUic Include="forms\LoginWindow.ui" />
     <QtUic Include="forms\StudentWindow.ui" />
   </ItemGroup>
@@ -214,6 +217,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="common\GMError.h" />
     <ClInclude Include="common\HYDefine.h" />
     <ClInclude Include="common\HYVersion.h" />
+    <ClInclude Include="common\md5.h" />
     <ClInclude Include="common\OSMutex.h" />
     <ClInclude Include="common\OSThread.h" />
     <ClInclude Include="common\Socket.h" />
@@ -230,6 +234,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="curl\multi.h" />
     <ClInclude Include="curl\stdcheaders.h" />
     <ClInclude Include="display-helpers.hpp" />
+    <ClInclude Include="GeneratedFiles\ui_DlgPush.h" />
     <ClInclude Include="GeneratedFiles\ui_LoginWindow.h" />
     <ClInclude Include="GeneratedFiles\ui_StudentWindow.h" />
     <ClInclude Include="json\autolink.h" />
@@ -242,6 +247,11 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="json\writer.h" />
     <ClInclude Include="myRTSPClient.h" />
     <ClInclude Include="pull-thread.h" />
+    <QtMoc Include="window-dlg-push.hpp">
+      <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.;.\json;.\curl;.\common;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName)\.;.\obs-frontend-api;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\deps\libff;E:\obs-studio\deps\blake2\src;E:\obs-studio\vsbuild\config;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork;$(QTDIR)\mkspecs\win32-msvc2015;.\..\librtsp\liveMedia\include;.\..\librtsp\groupsock\include;.\..\librtsp\UsageEnvironment\include;.\..\librtsp\BasicUsageEnvironment\include</IncludePath>
+      <Define Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;_UNICODE</Define>
+      <Define Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">WIN32;_WINDOWS;NDEBUG;DL_OPENGL=libobs-opengl.dll;DL_D3D9= -DDL_D3D11=libobs-d3d11.dll -DUNICODE -D_UNICODE -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_WARNINGS -DHAVE_OBSCONFIG_H -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -DQT_NO_DEBUG  -I. -I.\GeneratedFiles -I.\GeneratedFiles\$(ConfigurationName)\. -I.\obs-frontend-api -IE:\obs-deps\win32\include -IE:\obs-studio\libobs -IE:\obs-studio\deps\libff -IE:\obs-studio\deps\blake2\src -IE:\obs-studio\vsbuild\config -IE:\obs-studio\deps\jansson\src -IE:\obs-studio\vsbuild\deps\jansson\include -I$(QTDIR)\include -I$(QTDIR)\include\QtCore -I$(QTDIR)\include\QtGui -I$(QTDIR)\include\QtANGLE -I$(QTDIR)\include\QtWidgets -I$(QTDIR)\include\QtNetwork -I$(QTDIR)\mkspecs\win32-msvc2015</Define>
+    </QtMoc>
     <QtMoc Include="push-thread.h">
       <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.;.\json;.\curl;.\common;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName)\.;.\obs-frontend-api;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\deps\libff;E:\obs-studio\deps\blake2\src;E:\obs-studio\vsbuild\config;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork;$(QTDIR)\mkspecs\win32-msvc2015;.\..\librtsp\liveMedia\include;.\..\librtsp\groupsock\include;.\..\librtsp\UsageEnvironment\include;.\..\librtsp\BasicUsageEnvironment\include</IncludePath>
       <Define Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;_UNICODE</Define>

@@ -139,28 +139,26 @@ void CViewLeft::onWebLoadResource()
 	emit this->enableCameraAdd(true);
 	emit this->enableSettingSystem(true);
 	emit this->enableSettingReconnect(true);
+	// 刷新左侧本地页面...
+	this->update();
 }
 
-void CViewLeft::BuildWebCamera(GM_MapData & inWebData)
+CViewCamera * CViewLeft::BuildWebCamera(GM_MapData & inWebData)
 {
 	GM_MapData::iterator itorID, itorName;
 	itorID = inWebData.find("camera_id");
 	itorName = inWebData.find("camera_name");
 	if ((itorID == inWebData.end()) || (itorName == inWebData.end())) {
 		MsgLogGM(GM_No_Xml_Node);
-		return;
+		return NULL;
 	}
 	// 计算每页窗口数 => 列 * 行...
 	int nPerPageSize = COL_SIZE * ROW_SIZE;
 	int nDBCameraID = atoi(itorID->second.c_str());
-	string & strCameraName = itorName->second;
-	// 创建一个新的视频窗口 => 设置标题栏文字信息...
+	// 创建一个新的视频窗口，保存并更新显示界面...
 	CViewCamera * lpViewCamera = new CViewCamera(this, nDBCameraID);
 	m_MapCamera[nDBCameraID] = lpViewCamera;
-	// 将窗口标题栏先从UTF8转换成宽字符集，再从宽字符集转换成QString...
-	WCHAR szWBuffer[MAX_PATH] = { 0 };
-	os_utf8_to_wcs(strCameraName.c_str(), strCameraName.size(), szWBuffer, MAX_PATH);
-	lpViewCamera->setTitleContent(QString((QChar*)szWBuffer));
+	lpViewCamera->update();
 	// 计算总页数 => 注意加1的情况...
 	int nTotalWnd = m_MapCamera.size();
 	m_nMaxPage = nTotalWnd / nPerPageSize;
@@ -169,6 +167,41 @@ void CViewLeft::BuildWebCamera(GM_MapData & inWebData)
 	m_nFirstID = m_MapCamera.begin()->first;
 	// 设定当前页为第一页，因为有新窗口，需要重新开始...
 	m_nCurPage = 1;
+	// 返回新建的摄像头窗口对象...
+	return lpViewCamera;
+}
+
+CViewCamera * CViewLeft::AddNewCamera(GM_MapData & inWebData)
+{
+	// 调用私有接口创建摄像头窗口对象 => 创建失败，直接返回...
+	CViewCamera * lpViewCamera = this->BuildWebCamera(inWebData);
+	if (lpViewCamera == NULL)
+		return NULL;
+	// 对窗口进行重排显示...
+	ASSERT(lpViewCamera != NULL);
+	QRect & rcRect = this->rect();
+	this->LayoutViewCamera(rcRect.width(), rcRect.height());
+	// 根据页面数设置菜单状态...
+	emit this->enablePagePrev(m_nCurPage > 1);
+	emit this->enablePageJump(m_nMaxPage > 1);
+	emit this->enablePageNext(m_nCurPage < m_nMaxPage);
+	// 返回新建的摄像头窗口对象...
+	return lpViewCamera;
+}
+
+CViewCamera * CViewLeft::FindDBCameraByID(int nDBCameraID)
+{
+	CViewCamera * lpViewCamera = NULL;
+	do {
+		if (nDBCameraID <= 0)
+			break;
+		GM_MapCamera::iterator itorItem = m_MapCamera.find(nDBCameraID);
+		if (itorItem == m_MapCamera.end())
+			break;
+		ASSERT(itorItem->first == nDBCameraID);
+		lpViewCamera = itorItem->second;
+	} while (false);
+	return lpViewCamera;
 }
 
 void CViewLeft::wheelEvent(QWheelEvent *event)
@@ -282,21 +315,6 @@ void CViewLeft::doEnableCamera(OBSQTDisplay * lpNewDisplay)
 	emit this->enableCameraStop(bIsLogin);
 }
 
-CViewCamera * CViewLeft::FindDBCameraByID(int nDBCameraID)
-{
-	CViewCamera * lpViewCamera = NULL;
-	do {
-		if (nDBCameraID <= 0)
-			break;
-		GM_MapCamera::iterator itorItem = m_MapCamera.find(nDBCameraID);
-		if (itorItem == m_MapCamera.end())
-			break;
-		ASSERT(itorItem->first == nDBCameraID);
-		lpViewCamera = itorItem->second;
-	} while (false);
-	return lpViewCamera;
-}
-
 void CViewLeft::onCameraStart()
 {
 	CViewCamera * lpViewCamera = this->FindDBCameraByID(m_nFocusID);
@@ -315,4 +333,58 @@ void CViewLeft::onCameraStop()
 	bool bResult = lpViewCamera->doCameraStop();
 	emit this->enableCameraStart(bResult);
 	emit this->enableCameraStop(!bResult);
+}
+//
+// 注意：删除有两个入口 => 本地删除按钮 或 网站后台删除...
+void CViewLeft::onCameraDel(int nDBCameraID)
+{
+	do {
+		// 通过编号找不到摄像头窗口对象，直接返回...
+		GM_MapCamera::iterator itorItem = m_MapCamera.find(nDBCameraID);
+		if (itorItem == m_MapCamera.end())
+			break;
+		// 找到摄像头窗口对象...
+		CViewCamera * lpViewCamera = itorItem->second;
+		ASSERT(lpViewCamera != NULL);
+		// 计算每页大小 => 列 * 行...
+		int nPerPageSize = COL_SIZE * ROW_SIZE;
+		// 计算删除通道所在分页号码 => 需要包含自己的计数...
+		int nTotalNum = std::distance(m_MapCamera.begin(), itorItem) + 1;
+		int nThisPage = nTotalNum / nPerPageSize;
+		nThisPage += ((nTotalNum % nPerPageSize) ? 1 : 0);
+		// 删除对应的摄像头窗口对象...
+		delete lpViewCamera;
+		lpViewCamera = NULL;
+		m_MapCamera.erase(itorItem);
+		// 如果没有窗口了，重置相关变量，返回...
+		if (m_MapCamera.size() <= 0) {
+			m_nCurPage = 0;	m_nMaxPage = 0;
+			m_nFirstID = 0; this->update();
+			break;
+		}
+		// 重新计算最大总页数 => 注意加1的情况...
+		int nTotalWnd = m_MapCamera.size();
+		m_nMaxPage = nTotalWnd / nPerPageSize;
+		m_nMaxPage += ((nTotalWnd % nPerPageSize) ? 1 : 0);
+		// 注意：这种情况发生在通过网站进行的通道删除操作...
+		// 如果删除窗口所在页大于当前页，不影响，直接返回...
+		if (nThisPage > m_nCurPage)
+			break;
+		ASSERT(nThisPage <= m_nCurPage);
+		// 如果当前页大于最大页，需要将当前页等于最大页...
+		if (m_nCurPage > m_nMaxPage) {
+			m_nCurPage = m_nMaxPage;
+		}
+		// 这时，删除窗口所在页小于或等于当前页，使用当前页进行重排窗口...
+		itorItem = m_MapCamera.begin();
+		std::advance(itorItem, (m_nCurPage - 1)*nPerPageSize);
+		m_nFirstID = itorItem->first;
+		// 对当前页的子窗口进行重排操作...
+		QRect & rcRect = this->rect();
+		this->LayoutViewCamera(rcRect.width(), rcRect.height());
+	} while (false);
+	// 根据页面数设置菜单状态...
+	emit this->enablePagePrev(m_nCurPage > 1);
+	emit this->enablePageJump(m_nMaxPage > 1);
+	emit this->enablePageNext(m_nCurPage < m_nMaxPage);
 }

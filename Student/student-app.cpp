@@ -776,6 +776,22 @@ void CStudentApp::doLogoutEvent()
 	if (curl != NULL) {
 	curl_easy_cleanup(curl);
 	}*/
+
+	// 通知网站学生端退出...
+	if (m_lpWebThread == NULL)
+		return;
+	ASSERT(m_lpWebThread != NULL);
+	m_lpWebThread->doWebGatherLogout();
+}
+
+// 摄像头窗口被删除时会被调用 => 如果自己就是那个焦点，需要重置...
+void CStudentApp::doResetFocus(OBSQTDisplay * lpCurDisplay)
+{
+	// 如果输入指针无效或与当前焦点对象不一致，直接返回...
+	if ((lpCurDisplay == NULL) || (m_lpFocusDisplay != lpCurDisplay))
+		return;
+	// 重置焦点窗口对象...
+	m_lpFocusDisplay = NULL;
 }
 
 void CStudentApp::doSaveFocus(OBSQTDisplay * lpNewDisplay)
@@ -789,6 +805,34 @@ void CStudentApp::doSaveFocus(OBSQTDisplay * lpNewDisplay)
 	}
 	// 保存为新的焦点对象...
 	m_lpFocusDisplay = lpNewDisplay;
+}
+
+void CStudentApp::doDelCamera(int nDBCameraID)
+{
+	m_MapNodeCamera.erase(nDBCameraID);
+}
+
+string CStudentApp::GetCameraDeviceSN(int nDBCameraID)
+{
+	string strDeviceSN;
+	GM_MapNodeCamera::iterator itorItem = m_MapNodeCamera.find(nDBCameraID);
+	if (itorItem == m_MapNodeCamera.end())
+		return strDeviceSN;
+	GM_MapData & theMapData = itorItem->second;
+	return theMapData["device_sn"];
+}
+
+QString CStudentApp::GetCameraName(int nDBCameraID)
+{
+	QString strQCameraName = QTStr("Camera.Window.None");
+	GM_MapNodeCamera::iterator itorItem = m_MapNodeCamera.find(nDBCameraID);
+	if (itorItem == m_MapNodeCamera.end())
+		return strQCameraName;
+	WCHAR szWBuffer[MAX_PATH] = { 0 };
+	GM_MapData & theMapData = itorItem->second;
+	string & strUTF8Name = theMapData["camera_name"];
+	os_utf8_to_wcs(strUTF8Name.c_str(), strUTF8Name.size(), szWBuffer, MAX_PATH);
+	return QString((QChar*)szWBuffer);
 }
 
 QString CStudentApp::GetCameraPullUrl(int nDBCameraID)
