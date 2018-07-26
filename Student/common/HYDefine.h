@@ -73,4 +73,11 @@ enum STREAM_PROP
 	kStreamUrlLink = 2,		// URL链接流类型    => rtsp/rtmp
 };
 
+enum CAMERA_STATE
+{
+	kCameraWait = 0,		// 未连接
+	kCameraRun = 1,			// 运行中
+	kCameraRec = 2,			// 录像中
+};
+
 #define MsgLogGM(nErr) blog(LOG_ERROR, "Error: %lu, %s(%d)", nErr, __FILE__, __LINE__)

@@ -9,6 +9,7 @@ public:
 	CViewRight(QWidget *parent, Qt::WindowFlags flags = 0);
 	virtual ~CViewRight();
 public:
+	void doDestroyResource();
 	void onFullScreenAction();
 	void onWebLoadResource();
 	void onWebAuthResult(int nType, bool bAuthOK);

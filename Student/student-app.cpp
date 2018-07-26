@@ -603,6 +603,7 @@ CStudentApp::CStudentApp(int &argc, char **argv)
 
 CStudentApp::~CStudentApp()
 {
+	// 网站线程有效，直接删除...
 	if (m_lpWebThread != NULL) {
 		delete m_lpWebThread;
 		m_lpWebThread = NULL;
@@ -735,7 +736,28 @@ void CStudentApp::doLoginSuccess(string & strRoomID)
 	theErr = m_lpWebThread->InitThread();
 	((theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL);
 }
-
+//
+// 重建系统资源...
+void CStudentApp::doReBuildResource()
+{
+	// 向服务器汇报退出登录...
+	this->doLogoutEvent();
+	// 网站线程有效，直接删除...
+	if (m_lpWebThread != NULL) {
+		delete m_lpWebThread;
+		m_lpWebThread = NULL;
+	}
+	// 直接重置焦点窗口对象...
+	m_lpFocusDisplay = NULL;
+	// 重置通道配置集合对象...
+	m_MapNodeCamera.clear();
+	// 创建并启动一个网站交互线程...
+	GM_Error theErr = GM_NoErr;
+	m_lpWebThread = new CWebThread();
+	theErr = m_lpWebThread->InitThread();
+	((theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL);
+}
+//
 // 处理学生端退出事件通知...
 void CStudentApp::doLogoutEvent()
 {

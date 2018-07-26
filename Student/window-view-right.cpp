@@ -34,10 +34,7 @@ CViewRight::CViewRight(QWidget *parent, Qt::WindowFlags flags)
 CViewRight::~CViewRight()
 {
 	// 这里不删除的话QT也会自动删除...
-	if( m_lpViewTeacher != NULL ) {
-		delete m_lpViewTeacher;
-		m_lpViewTeacher = NULL;
-	}
+	this->doDestroyResource();
 }
 
 void CViewRight::resizeEvent(QResizeEvent *event)
@@ -91,4 +88,17 @@ void CViewRight::paintEvent(QPaintEvent *event)
 	painter.setPen(QPen(NOTICE_TEXT_COLOR));
 	// 自动居中显示文字...
 	painter.drawText(this->rect(), Qt::AlignCenter, m_strNotice);
+}
+
+void CViewRight::doDestroyResource()
+{
+	// 删除讲师端窗口对象...
+	if (m_lpViewTeacher != NULL) {
+		delete m_lpViewTeacher;
+		m_lpViewTeacher = NULL;
+	}
+	// 设置默认的提示信息...
+	m_strNotice = QTStr("Left.Window.DefaultNotice");
+	// 更新窗口界面信息...
+	this->update();
 }

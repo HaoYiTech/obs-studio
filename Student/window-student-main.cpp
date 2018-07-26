@@ -176,6 +176,25 @@ void StudentWindow::on_actionSystemFullscreen_triggered()
 	m_ui.RightView->onFullScreenAction();
 }
 
+void StudentWindow::on_actionSettingReconnect_triggered()
+{
+	// 弹框确认，是否要进行重连操作...
+	QMessageBox::StandardButton button = OBSMessageBox::question(
+		this, QTStr("Confirm.Reconnect.Title"),
+		QTStr("Confirm.Reconnect.Text"));
+	if (button == QMessageBox::No)
+		return;
+	// 删除左侧资源，删除右侧资源...
+	m_ui.LeftView->doDestoryResource();
+	m_ui.RightView->doDestroyResource();
+	// 退出并重建系统资源，构建新的网站线程...
+	App()->doReBuildResource();
+}
+
+void StudentWindow::on_actionSettingSystem_triggered()
+{
+}
+
 void StudentWindow::on_actionCameraAdd_triggered()
 {
 	// 打开摄像头窗口配置 => 添加...

@@ -55,8 +55,8 @@ CDlgPush::CDlgPush(QWidget *parent, int nDBCameraID, bool bIsLogin)
 	m_ui.streamUrl->setText(QString((QChar*)szWBuffer));
 	// 如果通道处于运行状态 => 禁止修改...
 	if (bIsLogin) {
-		m_ui.streamUrl->setEnabled(false);
-		m_ui.cameraName->setEnabled(false);
+		m_ui.streamUrl->setReadOnly(true);
+		m_ui.cameraName->setReadOnly(true);
 		m_ui.streamMode->setEnabled(false);
 		m_ui.useTCP->setEnabled(false);
 		// 运行中的通道不能进行通道配置...

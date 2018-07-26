@@ -49,6 +49,7 @@ public:
 public:
 	void doLoginInit();
 	void doLogoutEvent();
+	void doReBuildResource();
 	void doSaveFocus(OBSQTDisplay * lpNewDisplay);
 	void doResetFocus(OBSQTDisplay * lpCurDisplay);
 public:

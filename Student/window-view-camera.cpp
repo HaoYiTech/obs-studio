@@ -3,6 +3,7 @@
 #include "student-app.h"
 #include "pull-thread.h"
 #include "push-thread.h"
+#include "web-thread.h"
 
 #include "window-view-left.hpp"
 #include "window-view-camera.hpp"
@@ -218,6 +219,11 @@ bool CViewCamera::doCameraStart()
 	// 如果推流对象有效，直接返回...
 	if (m_lpPushThread != NULL)
 		return true;
+	// 调用接口通知服务器 => 修改通道状态...
+	CWebThread * lpWebThread = App()->GetWebThread();
+	if (lpWebThread != NULL) {
+		lpWebThread->doWebStatCamera(m_nDBCameraID, kCameraRun);
+	}
 	// 重建推流对象管理器...
 	ASSERT(m_lpPushThread == NULL);
 	m_lpPushThread = new CPushThread(this);
@@ -234,6 +240,11 @@ bool CViewCamera::doCameraStart()
 
 bool CViewCamera::doCameraStop()
 {
+	// 调用接口通知服务器 => 修改通道状态...
+	CWebThread * lpWebThread = App()->GetWebThread();
+	if (lpWebThread != NULL) {
+		lpWebThread->doWebStatCamera(m_nDBCameraID, kCameraWait);
+	}
 	// 直接删除推流管理器...
 	if (m_lpPushThread != NULL) {
 		delete m_lpPushThread;

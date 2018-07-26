@@ -29,12 +29,7 @@ CViewLeft::CViewLeft(QWidget *parent, Qt::WindowFlags flags)
 CViewLeft::~CViewLeft()
 {
 	// 这里不删除的话QT也会自动删除...
-	GM_MapCamera::iterator itorItem = m_MapCamera.begin();
-	while (itorItem != m_MapCamera.end()) {
-		CViewCamera * lpViewCamera = itorItem->second;
-		delete lpViewCamera; lpViewCamera = NULL;
-		m_MapCamera.erase(itorItem++);
-	}
+	this->doDestoryResource();
 }
 
 void CViewLeft::paintEvent(QPaintEvent *event)
@@ -116,6 +111,20 @@ void CViewLeft::LayoutViewCamera(int cx, int cy)
 	// 最后，将第一个窗口设置成焦点窗口...
 	ASSERT(lpFirstWnd != NULL);
 	lpFirstWnd->doCaptureFocus();
+}
+
+// 删除所有摄像头对象资源...
+void CViewLeft::doDestoryResource()
+{
+	// 遍历并删除所有已经创建的摄像头对象...
+	GM_MapCamera::iterator itorItem = m_MapCamera.begin();
+	while (itorItem != m_MapCamera.end()) {
+		CViewCamera * lpViewCamera = itorItem->second;
+		delete lpViewCamera; lpViewCamera = NULL;
+		m_MapCamera.erase(itorItem++);
+	}
+	// 更新界面信息...
+	this->update();
 }
 
 // 网络线程注册学生端成功之后的操作...
