@@ -39,10 +39,9 @@ using namespace std;
 
 #define DEF_CAMERA_START_ID			1							// 默认摄像头开始ID
 #define DEF_MAX_CAMERA              8							// 默认最大摄像头数目
-#define DEF_MAIN_NAME				"采集端"						// 默认主窗口标题 => 主进程是Unicode，这里自动就会成为Unicode格式...
+#define DEF_CLOUD_CLASS				"http://edu.ihaoyi.cn"		// 云教室地址
 #define DEF_WEB_HOME				"https://www.myhaoyi.com"	// 默认中心网站 => 必须是 https:// 兼容小程序接口...
 #define DEF_WEB_PORT				80							// Web默认端口 
-#define DEF_CLOUD_CLASS				"http://edu.ihaoyi.cn"		// 云教室地址
 #define LINGER_TIME					500							// SOCKET停止时数据链路层BUFF清空的最大延迟时间
 
 #define WM_WEB_LOAD_RESOURCE		(WM_USER + 108)
@@ -79,5 +78,28 @@ enum CAMERA_STATE
 	kCameraRun = 1,			// 运行中
 	kCameraRec = 2,			// 录像中
 };
+
+// define client type...
+enum {
+	kClientPHP = 1,
+	kClientStudent = 2,
+	kClientTeacher = 3,
+};
+
+// define command id...
+enum {
+	kCmd_Student_Login			= 1,
+	kCmd_Student_OnLine			= 2,
+	kCmd_Teacher_Login			= 3,
+	kCmd_Teacher_OnLine         = 4,
+};
+
+// define the command header...
+typedef struct {
+	int   m_pkg_len;    // body size...
+	int   m_type;       // client type...
+	int   m_cmd;        // command id...
+	int   m_sock;       // php sock in transmit...
+} Cmd_Header;
 
 #define MsgLogGM(nErr) blog(LOG_ERROR, "Error: %lu, %s(%d)", nErr, __FILE__, __LINE__)

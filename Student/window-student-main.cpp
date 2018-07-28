@@ -40,6 +40,10 @@ StudentWindow::StudentWindow(QWidget *parent)
 	// 设置全屏菜单按钮...
 	m_ui.mainToolBar->addAction(m_ui.actionSystemFullscreen);
 	m_ui.mainToolBar->addSeparator();
+	// 设置通道操作菜单按钮不可用...
+	m_ui.actionSystemFullscreen->setDisabled(true);
+	// 设置全屏操作菜单按钮信号槽...
+	this->connect(m_ui.LeftView, SIGNAL(enableSystemFullscreen(bool)), m_ui.actionSystemFullscreen, SLOT(setEnabled(bool)));
 	// 设置通道操作菜单按钮...
 	m_ui.mainToolBar->addAction(m_ui.actionCameraStart);
 	m_ui.mainToolBar->addAction(m_ui.actionCameraStop);
@@ -98,10 +102,15 @@ void StudentWindow::doWebThreadMsg(int nMessageID, int nWParam, int nLParam)
 {
 	if (nMessageID == WM_WEB_AUTH_RESULT) {
 		m_ui.RightView->onWebAuthResult(nWParam, (bool)nLParam);
+		if ((nWParam == kAuthExpired) && (nLParam <= 0)) {
+			m_ui.LeftView->onWebAuthExpired();
+			App()->onWebAuthExpired();
+		}
 	}
 	if (nMessageID == WM_WEB_LOAD_RESOURCE) {
 		m_ui.RightView->onWebLoadResource();
 		m_ui.LeftView->onWebLoadResource();
+		App()->onWebLoadResource();
 	}
 }
 
@@ -114,8 +123,8 @@ StudentWindow::~StudentWindow()
 void StudentWindow::UpdateTitleBar()
 {
 	// 对窗口标题进行修改 => 使用字典模式...
-	const char * lpLiveRoomID = config_get_string(App()->GlobalConfig(), "General", "LiveRoomID");
-	QString strTitle = QString("%1%2").arg(QTStr("Main.Window.TitleContent")).arg(lpLiveRoomID);
+	string & strRoomID = App()->GetRoomIDStr();
+	QString strTitle = QString("%1%2").arg(QTStr("Main.Window.TitleContent")).arg(QString::fromUtf8(strRoomID.c_str()));
 	this->setWindowTitle(strTitle);
 }
 

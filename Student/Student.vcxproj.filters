@@ -37,6 +37,9 @@
     <Filter Include="Curl Files">
       <UniqueIdentifier>{3b95e369-97ec-4df3-9566-7550a17d733c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="FastDFS Files">
+      <UniqueIdentifier>{b1a2c001-a4b4-4001-9901-b920636512df}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="window-login-base.cpp">
@@ -123,6 +126,9 @@
     <ClCompile Include="common\md5.cpp">
       <Filter>Common Files</Filter>
     </ClCompile>
+    <ClCompile Include="fastdfs\FastSession.cpp">
+      <Filter>FastDFS Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="window-login-base.h">
@@ -160,6 +166,9 @@
     </QtMoc>
     <QtMoc Include="window-dlg-push.hpp">
       <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="fastdfs\FastSession.h">
+      <Filter>FastDFS Files</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
@@ -290,6 +299,9 @@
     </ClInclude>
     <ClInclude Include="common\md5.h">
       <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="fastdfs\fastdfs.h">
+      <Filter>FastDFS Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -17,6 +17,7 @@
 #include "student-app.h"
 #include "windows.h"
 
+#include "FastSession.h"
 #include "web-thread.h"
 #include "SocketUtils.h"
 #include <IPTypes.h>
@@ -599,10 +600,20 @@ CStudentApp::CStudentApp(int &argc, char **argv)
   , m_nInterVal(0)
   , m_nSnapVal(2)
 {
+	m_nFastTimer = -1;
+	m_nOnLineTimer = -1;
+	m_loginWindow = NULL;
+	m_RemoteSession = NULL;
+	m_studentWindow = NULL;
 }
 
 CStudentApp::~CStudentApp()
 {
+	// 删除TCP长链接对象...
+	if (m_RemoteSession != NULL) {
+		delete m_RemoteSession;
+		m_RemoteSession;
+	}
 	// 网站线程有效，直接删除...
 	if (m_lpWebThread != NULL) {
 		delete m_lpWebThread;
@@ -715,10 +726,12 @@ void CStudentApp::doLoginInit()
 	// 建立登录窗口与应用对象的信号槽关联函数...
 	connect(m_loginWindow, SIGNAL(loginSuccess(string&)), this, SLOT(doLoginSuccess(string&)));
 }
-
+//
 // 处理登录成功之后的信号槽事件...
 void CStudentApp::doLoginSuccess(string & strRoomID)
 {
+	// 保存登录房间号...
+	m_strRoomID = strRoomID;
 	// 先关闭登录窗口...
 	m_loginWindow->close();
 	// 创建并打开主窗口界面...
@@ -737,11 +750,96 @@ void CStudentApp::doLoginSuccess(string & strRoomID)
 	((theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL);
 }
 //
+// 登录成功获取终端配置之后，立即连接中转服务器...
+void CStudentApp::onWebLoadResource()
+{
+	// 创建远程中转服务器对象...
+	this->doCheckRemote();
+	// 开启一个定时检测时钟 => 每隔5秒执行一次...
+	m_nFastTimer = this->startTimer(5 * 1000);
+	// 每隔30秒检测一次，学生端在中转服务器上在线通道列表...
+	m_nOnLineTimer = this->startTimer(30 * 1000);
+}
+//
+// 处理学生端授权过期的情况...
+void CStudentApp::onWebAuthExpired()
+{
+	this->doLogoutEvent();
+}
+//
+// 时钟定时执行过程...
+void CStudentApp::timerEvent(QTimerEvent *inEvent)
+{
+	int nTimerID = inEvent->timerId();
+	if (nTimerID == m_nFastTimer) {
+		this->doCheckFDFS();
+	} else if (nTimerID == m_nOnLineTimer) {
+		this->doCheckOnLine();
+	}
+}
+
+void CStudentApp::doCheckFDFS()
+{
+	this->doCheckRemote();
+}
+
+void CStudentApp::doCheckRemote()
+{
+	// 判断远程中转服务器地址是否有效...
+	if (m_strRemoteAddr.size() <= 0 || m_nRemotePort <= 0)
+		return;
+	// 如果远程会话已经存在，并且已经连接，直接返回...
+	if (m_RemoteSession != NULL && !m_RemoteSession->IsCanReBuild())
+		return;
+	// 如果会话有效，先删除之...
+	if (m_RemoteSession != NULL) {
+		delete m_RemoteSession;
+		m_RemoteSession = NULL;
+	}
+	// 初始化远程中转会话对象...
+	m_RemoteSession = new CRemoteSession();
+	m_RemoteSession->InitSession(m_strRemoteAddr.c_str(), m_nRemotePort);
+}
+
+void CStudentApp::doCheckOnLine()
+{
+	if (m_RemoteSession == NULL)
+		return;
+	m_RemoteSession->SendOnLineCmd();
+}
+//
 // 重建系统资源...
 void CStudentApp::doReBuildResource()
 {
-	// 向服务器汇报退出登录...
+	// 退出并删除相关资源...
 	this->doLogoutEvent();
+	// 创建并启动一个网站交互线程...
+	GM_Error theErr = GM_NoErr;
+	m_lpWebThread = new CWebThread();
+	theErr = m_lpWebThread->InitThread();
+	((theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL);
+	// 开启一个定时检测时钟 => 每隔5秒执行一次...
+	m_nFastTimer = this->startTimer(5 * 1000);
+	// 每隔30秒检测一次，学生端在中转服务器上在线通道列表...
+	m_nOnLineTimer = this->startTimer(30 * 1000);
+}
+//
+// 处理学生端退出事件通知...
+void CStudentApp::doLogoutEvent()
+{
+	// 删除检测时钟...
+	(m_nFastTimer >= 0) ? this->killTimer(m_nFastTimer) : NULL;
+	(m_nOnLineTimer >= 0) ? this->killTimer(m_nOnLineTimer) : NULL;
+	m_nOnLineTimer = m_nFastTimer = -1;
+	// 删除TCP长链接对象...
+	if (m_RemoteSession != NULL) {
+		delete m_RemoteSession;
+		m_RemoteSession;
+	}
+	// 通知网站学生端退出...
+	if (m_lpWebThread != NULL) {
+		m_lpWebThread->doWebGatherLogout();
+	}
 	// 网站线程有效，直接删除...
 	if (m_lpWebThread != NULL) {
 		delete m_lpWebThread;
@@ -751,59 +849,6 @@ void CStudentApp::doReBuildResource()
 	m_lpFocusDisplay = NULL;
 	// 重置通道配置集合对象...
 	m_MapNodeCamera.clear();
-	// 创建并启动一个网站交互线程...
-	GM_Error theErr = GM_NoErr;
-	m_lpWebThread = new CWebThread();
-	theErr = m_lpWebThread->InitThread();
-	((theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL);
-}
-//
-// 处理学生端退出事件通知...
-void CStudentApp::doLogoutEvent()
-{
-	// 释放存储会话对象...
-	/*if (m_TrackerSession != NULL) {
-	delete m_TrackerSession;
-	m_TrackerSession = NULL;
-	}
-	if (m_StorageSession != NULL) {
-	delete m_StorageSession;
-	m_StorageSession = NULL;
-	}
-	// 获取云教室号码的配置对象...
-	const char * lpLiveRoomID = config_get_string(this->GlobalConfig(), "General", "LiveRoomID");
-	if (lpLiveRoomID == NULL)
-	return;
-	// 准备登出需要的云教室号码缓冲区...
-	char   szPost[MAX_PATH] = { 0 };
-	char * lpStrUrl = "http://edu.ihaoyi.cn/wxapi.php/Gather/logoutLiveRoom";
-	sprintf(szPost, "room_id=%s", lpLiveRoomID);
-	// 调用Curl接口，汇报采集端信息...
-	CURLcode res = CURLE_OK;
-	CURL  *  curl = curl_easy_init();
-	do {
-	if (curl == NULL)
-	break;
-	// 设定curl参数，采用post模式，设置5秒超时...
-	res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
-	res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, szPost);
-	res = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(szPost));
-	res = curl_easy_setopt(curl, CURLOPT_HEADER, false);
-	res = curl_easy_setopt(curl, CURLOPT_POST, true);
-	res = curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
-	res = curl_easy_setopt(curl, CURLOPT_URL, lpStrUrl);
-	res = curl_easy_perform(curl);
-	} while (false);
-	// 释放资源...
-	if (curl != NULL) {
-	curl_easy_cleanup(curl);
-	}*/
-
-	// 通知网站学生端退出...
-	if (m_lpWebThread == NULL)
-		return;
-	ASSERT(m_lpWebThread != NULL);
-	m_lpWebThread->doWebGatherLogout();
 }
 
 // 摄像头窗口被删除时会被调用 => 如果自己就是那个焦点，需要重置...

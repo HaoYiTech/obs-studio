@@ -148,8 +148,16 @@ void CViewLeft::onWebLoadResource()
 	emit this->enableCameraAdd(true);
 	emit this->enableSettingSystem(true);
 	emit this->enableSettingReconnect(true);
+	emit this->enableSystemFullscreen(true);
 	// 刷新左侧本地页面...
 	this->update();
+}
+//
+// 授权过期 => 调整工具栏菜单...
+void CViewLeft::onWebAuthExpired()
+{
+	emit this->enableSettingSystem(true);
+	emit this->enableSettingReconnect(true);
 }
 
 CViewCamera * CViewLeft::BuildWebCamera(GM_MapData & inWebData)

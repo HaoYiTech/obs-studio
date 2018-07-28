@@ -115,7 +115,7 @@ void LoginWindow::onClickLoginButton()
 	// 判断完毕，将获取到的云教室号码发送到服务器验证...
 	char   szPost[MAX_PATH] = { 0 };
 	char * lpStrUrl = "http://edu.ihaoyi.cn/wxapi.php/Gather/loginLiveRoom";
-	sprintf(szPost, "room_id=%s", strRoomID.c_str());
+	sprintf(szPost, "room_id=%s&type_id=%d", strRoomID.c_str(), App()->GetClientType());
 	// 调用Curl接口，汇报采集端信息...
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();
@@ -156,36 +156,12 @@ void LoginWindow::onClickLoginButton()
 	}
 	if (theCode->type == JSON_TRUE) {
 		QString strErrMsg = QString::fromUtf8(lpStrMsg);
-		OBSMessageBox::information(this, QTStr("Teacher.Error.Title"), strErrMsg);
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), strErrMsg);
 		json_decref(theRoot);
 		return;
 	}
-	// 继续解析获取到直播地址...
-	json_t * theLiveKey = json_object_get(theRoot, "live_key");
-	json_t * theLiveServer = json_object_get(theRoot, "live_server");
-	if (theLiveKey == NULL || theLiveServer == NULL) {
-		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
-		json_decref(theRoot);
-		return;
-	}
-	// 继续解析获取到的存储服务器地址和端口...
-	json_t * theTrackerAddr = json_object_get(theRoot, "tracker_addr");
-	json_t * theTrackerPort = json_object_get(theRoot, "tracker_port");
-	if (theTrackerAddr == NULL || theTrackerPort == NULL) {
-		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
-		json_decref(theRoot);
-		return;
-	}
-	// 获取到直播的分解数据，并将直播地址保存到 => student/global.ini...
-	const char * lpStrKey = json_string_value(theLiveKey);
-	const char * lpStrServer = json_string_value(theLiveServer);
-	const char * lpTrackerAddr = json_string_value(theTrackerAddr);
-	const char * lpTrackerPort = json_string_value(theTrackerPort);
+	// 获取到直播的分解数据，并将直播地址保存到 => obs-student/global.ini...
 	config_set_string(App()->GlobalConfig(), "General", "LiveRoomID", strRoomID.c_str());
-	config_set_string(App()->GlobalConfig(), "General", "LiveRoomKey", lpStrKey);
-	config_set_string(App()->GlobalConfig(), "General", "LiveRoomServer", lpStrServer);
-	config_set_string(App()->GlobalConfig(), "General", "TrackerAddr", lpTrackerAddr);
-	config_set_string(App()->GlobalConfig(), "General", "TrackerPort", lpTrackerPort);
 	// 数据处理完毕，释放json数据包...
 	json_decref(theRoot);
 	// 通知主进程主窗口可以启动了...

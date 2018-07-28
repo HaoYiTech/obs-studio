@@ -35,6 +35,7 @@ public:
 	virtual QString translate(const char *context, const char *sourceText, const char *disambiguation, int n) const override;
 };
 
+class CRemoteSession;
 class CWebThread;
 class CStudentApp : public QApplication {
 	Q_OBJECT
@@ -50,6 +51,8 @@ public:
 	void doLoginInit();
 	void doLogoutEvent();
 	void doReBuildResource();
+	void onWebLoadResource();
+	void onWebAuthExpired();
 	void doSaveFocus(OBSQTDisplay * lpNewDisplay);
 	void doResetFocus(OBSQTDisplay * lpCurDisplay);
 public:
@@ -76,6 +79,8 @@ public:
 	string & GetWebTag() { return m_strWebTag; }
 	string & GetWebName() { return m_strWebName; }
 	int		 GetWebType() { return m_nWebType; }
+	string & GetUdpAddr() { return m_strUdpAddr; }
+	int		 GetUdpPort() { return m_nUdpPort; }
 	string & GetRemoteAddr() { return m_strRemoteAddr; }
 	int		 GetRemotePort() { return m_nRemotePort; }
 	string & GetTrackerAddr() { return m_strTrackerAddr; }
@@ -85,6 +90,8 @@ public:
 	int      GetDBHaoYiNodeID() { return m_nDBHaoYiNodeID; }
 	int      GetDBHaoYiGatherID() { return m_nDBHaoYiGatherID; }
 
+	void	 SetUdpAddr(const string & strAddr) { m_strUdpAddr = strAddr; }
+	void     SetUdpPort(int nPort) { m_nUdpPort = nPort; }
 	void	 SetRemoteAddr(const string & strAddr) { m_strRemoteAddr = strAddr; }
 	void     SetRemotePort(int nPort) { m_nRemotePort = nPort; }
 	void	 SetTrackerAddr(const string & strAddr) { m_strTrackerAddr = strAddr; }
@@ -119,10 +126,12 @@ public:
 	GM_MapNodeCamera & GetNodeCamera() { return m_MapNodeCamera; }
 	CWebThread * GetWebThread() { return m_lpWebThread; }
 
+	int      GetClientType() { return kClientStudent; }
 	int      GetWebPort() { return m_nWebPort; }
 	string & GetWebAddr() { return m_strWebAddr; }
 	string & GetLocalIPAddr() { return m_strIPAddr; }
 	string & GetLocalMacAddr() { return m_strMacAddr; }
+	string & GetRoomIDStr() { return m_strRoomID; }
 
 	bool TranslateString(const char *lookupVal, const char **out) const;
 	inline config_t *GlobalConfig() const { return m_globalConfig; }
@@ -141,6 +150,11 @@ public:
 	{
 		translatorHooks.pop_front();
 	}
+protected:
+	void	doCheckFDFS();
+	void	doCheckRemote();
+	void	doCheckOnLine();
+	void	timerEvent(QTimerEvent * inEvent) override;
 private:
 	bool	InitLocale();
 	bool	InitGlobalConfig();
@@ -148,26 +162,32 @@ private:
 	bool	InitMacIPAddr();
 private:
 	std::deque<obs_frontend_translate_ui_cb> translatorHooks;
+	QPointer<CRemoteSession>   m_RemoteSession;
 	QPointer<StudentWindow>    m_studentWindow;
 	QPointer<LoginWindow>      m_loginWindow;
 	ConfigFile                 m_globalConfig;
 	TextLookup                 m_textLookup;
 	OBSQTDisplay      *        m_lpFocusDisplay;
 	CWebThread        *        m_lpWebThread;				// 网站相关线程...
+	string                     m_strRoomID;					// 登录的房间号...
 	string                     m_strMacAddr;				// 本机MAC地址...
 	string                     m_strIPAddr;					// 本机IP地址...
 	string                     m_strWebAddr;				// 访问节点网站地址...
 	int                        m_nWebPort;					// 访问节点网站端口...
+	int                        m_nFastTimer;				// 分布式存储、中转链接检测时钟...
+	int                        m_nOnLineTimer;				// 检测在线摄像头通道列表...
 	GM_MapNodeCamera           m_MapNodeCamera;				// 监控通道配置信息(数据库CameraID）
 	int					m_nMaxCamera;					// 能够支持的最大摄像头数（默认为8个）
 	string				m_strWebVer;					// 注册是获取的网站版本
 	string				m_strWebTag;					// 注册时获取的网站标志
 	string				m_strWebName;					// 注册时获取的网站名称
 	int					m_nWebType;						// 注册时获取的网站类型
-	string				m_strRemoteAddr;				// 远程中转服务器的IP地址...
-	int					m_nRemotePort;					// 远程中转服务器的端口地址...
 	string				m_strTrackerAddr;				// FDFS-Tracker的IP地址...
 	int					m_nTrackerPort;					// FDFS-Tracker的端口地址...
+	string				m_strRemoteAddr;				// 远程中转服务器的IP地址...
+	int					m_nRemotePort;					// 远程中转服务器的端口地址...
+	string				m_strUdpAddr;					// 远程UDP服务器的IP地址...
+	int					m_nUdpPort;						// 远程UDP服务器的端口地址...
 	int                 m_nDBGatherID;					// 数据库中采集端编号...
 	int					m_nDBHaoYiUserID;				// 在中心服务器上的绑定用户编号...
 	int					m_nDBHaoYiNodeID;				// 在中心服务器上的节点编号...
