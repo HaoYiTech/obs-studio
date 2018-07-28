@@ -1,6 +1,7 @@
 
 #include "obs-app.hpp"
 #include "FastSession.h"
+#include "json.h"
 
 void long2buff(int64_t n, char *buff)
 {
@@ -31,7 +32,8 @@ int64_t buff2long(const char *buff)
 }
 
 CFastSession::CFastSession()
-  : m_TCPSocket(NULL)
+  : m_bIsConnected(false)
+  , m_TCPSocket(NULL)
   , m_nPort(0)
 {
 }
@@ -50,6 +52,8 @@ void CFastSession::closeSocket()
 		delete m_TCPSocket;
 		m_TCPSocket = NULL;
 	}
+	// 重置已链接标志...
+	m_bIsConnected = false;
 }
 
 bool CFastSession::InitSession(const char * lpszAddr, int nPort)
@@ -74,7 +78,6 @@ CTrackerSession::CTrackerSession()
 {
 	m_nGroupCount = 0;
 	m_lpGroupStat = NULL;
-	m_bIsConnected = false;
 	memset(&m_NewStorage, 0, sizeof(m_NewStorage));
 	memset(&m_TrackerCmd, 0, sizeof(m_TrackerCmd));
 }
@@ -165,6 +168,7 @@ void CTrackerSession::onReadyRead()
 
 void CTrackerSession::onDisConnected()
 {
+	m_bIsConnected = false;
 }
 
 void CTrackerSession::onBytesWritten(qint64 nBytes)
@@ -173,6 +177,8 @@ void CTrackerSession::onBytesWritten(qint64 nBytes)
 
 void CTrackerSession::onError(QAbstractSocket::SocketError nError)
 {
+	// 发生错误，设置未连接标志...
+	m_bIsConnected = false;
 }
 
 CStorageSession::CStorageSession()
@@ -276,6 +282,7 @@ bool CStorageSession::SendCmdHeader()
 
 void CStorageSession::onConnected()
 {
+	m_bIsConnected = true;
 	this->SendCmdHeader();
 }
 
@@ -329,6 +336,7 @@ void CStorageSession::onReadyRead()
 void CStorageSession::onDisConnected()
 {
 	m_bCanReBuild = true;
+	m_bIsConnected = false;
 	blog(LOG_INFO, "onDisConnected");
 }
 
@@ -379,5 +387,130 @@ bool CStorageSession::SendNextPacket(int64_t inLastBytes)
 void CStorageSession::onError(QAbstractSocket::SocketError nError)
 {
 	m_bCanReBuild = true;
+	m_bIsConnected = false;
 	blog(LOG_INFO, "onError: %d", nError);
+}
+
+CRemoteSession::CRemoteSession()
+  : m_bCanReBuild(false)
+  , m_lpSendBuf(NULL)
+{
+	m_lpSendBuf = new char[kSendBufSize];
+	memset(m_lpSendBuf, 0, kSendBufSize);
+}
+
+CRemoteSession::~CRemoteSession()
+{
+	if (m_lpSendBuf != NULL) {
+		delete[] m_lpSendBuf;
+		m_lpSendBuf = NULL;
+	}
+	blog(LOG_INFO, "[~CRemoteSession] - Exit");
+}
+
+void CRemoteSession::onConnected()
+{
+	// 设置链接成功标志...
+	m_bIsConnected = true;
+	// 链接成功，立即发送登录命令 => Cmd_Header + JSON...
+	this->SendLoginCmd();
+}
+
+void CRemoteSession::onReadyRead()
+{
+	// 如果已经处于重建状态，直接返回...
+	if (m_bCanReBuild)
+		return;
+	// 这里网络数据会发生粘滞现象，因此，需要循环执行...
+	while (m_strRecv.size() > 0) {
+		// 得到的数据长度不够，直接返回，等待新数据...
+		int nCmdLength = sizeof(Cmd_Header);
+		if (m_strRecv.size() < nCmdLength)
+			return;
+		ASSERT(m_strRecv.size() >= nCmdLength);
+		Cmd_Header * lpCmdHeader = (Cmd_Header*)m_strRecv.c_str();
+		const char * lpDataPtr = m_strRecv.c_str() + sizeof(Cmd_Header);
+		int nDataSize = m_strRecv.size() - sizeof(Cmd_Header);
+		// 已获取的数据长度不够，直接返回，等待新数据...
+		if (nDataSize < lpCmdHeader->m_pkg_len)
+			return;
+		ASSERT(nDataSize >= lpCmdHeader->m_pkg_len);
+		// 开始处理中转服务器发来的命令...
+		bool bResult = false;
+		switch(lpCmdHeader->m_cmd)
+		{
+		}
+		// 删除已经处理完毕的数据 => Header + pkg_len...
+		m_strRecv.erase(0, lpCmdHeader->m_pkg_len + sizeof(Cmd_Header));
+		// 如果还有数据，则继续解析命令...
+	}
+}
+
+void CRemoteSession::onDisConnected()
+{
+	m_bCanReBuild = true;
+	m_bIsConnected = false;
+	blog(LOG_INFO, "onDisConnected");
+}
+
+void CRemoteSession::onBytesWritten(qint64 nBytes)
+{
+}
+
+void CRemoteSession::onError(QAbstractSocket::SocketError nError)
+{
+	m_bCanReBuild = true;
+	m_bIsConnected = false;
+	blog(LOG_INFO, "onError: %d", nError);
+}
+//
+// 链接成功之后，发送登录命令... 
+bool CRemoteSession::SendLoginCmd()
+{
+	// 组合Login命令需要的JSON数据包 => 用讲师端的MAC地址作为唯一标识...
+	string strJson;	Json::Value root;
+	root["mac_addr"] = App()->GetLocalMacAddr();
+	root["ip_addr"] = App()->GetLocalIPAddr();
+	root["room_id"] = App()->GetRoomIDStr();
+	strJson = root.toStyledString(); ASSERT(strJson.size() > 0);
+	// 组合命令包头 => 数据长度 | 终端类型 | 命令编号 | 采集端MAC地址
+	int nSendSize = 0;
+	Cmd_Header theHeader = { 0 };
+	theHeader.m_pkg_len = strJson.size();
+	theHeader.m_type = App()->GetClientType();
+	theHeader.m_cmd = kCmd_Teacher_Login;
+	// 追加命令包头和命令数据包内容...
+	memcpy(m_lpSendBuf, &theHeader, sizeof(theHeader));
+	nSendSize += sizeof(theHeader);
+	memcpy(m_lpSendBuf + nSendSize, strJson.c_str(), strJson.size());
+	nSendSize += strJson.size();
+	// 调用统一的发送接口...
+	return this->SendData(m_lpSendBuf, nSendSize);
+}
+//
+// 每隔30秒发送在线命令包...
+bool CRemoteSession::SendOnLineCmd()
+{
+	// 没有处于链接状态，直接返回...
+	if (!m_bIsConnected)
+		return false;
+	ASSERT(m_bIsConnected);
+	// 组合命令包头 => 数据长度 | 终端类型 | 命令编号
+	int nSendSize = 0;
+	Cmd_Header theHeader = { 0 };
+	theHeader.m_pkg_len = 0;
+	theHeader.m_type = App()->GetClientType();
+	theHeader.m_cmd = kCmd_Teacher_OnLine;
+	// 追加命令包头和命令数据包内容...
+	memcpy(m_lpSendBuf, &theHeader, sizeof(theHeader));
+	nSendSize += sizeof(theHeader);
+	// 调用统一的发送接口...
+	return this->SendData(m_lpSendBuf, nSendSize);
+}
+//
+// 统一的发送接口...
+bool CRemoteSession::SendData(const char * lpDataPtr, int nDataSize)
+{
+	int nReturn = m_TCPSocket->write(lpDataPtr, nDataSize);
+	return ((nReturn > 0) ? true : false);
 }

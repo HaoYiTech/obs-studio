@@ -31,6 +31,9 @@
     <Filter Include="FastDFS Files">
       <UniqueIdentifier>{2175dafa-d609-432a-8399-6e4c6f722355}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Json Files">
+      <UniqueIdentifier>{73c50a8c-39d1-48c4-a5cf-13ba8d2cb88e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="obs-app.cpp">
@@ -161,6 +164,15 @@
     </ClCompile>
     <ClCompile Include="adv-audio-control.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="json\json_reader.cpp">
+      <Filter>Json Files</Filter>
+    </ClCompile>
+    <ClCompile Include="json\json_value.cpp">
+      <Filter>Json Files</Filter>
+    </ClCompile>
+    <ClCompile Include="json\json_writer.cpp">
+      <Filter>Json Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -306,6 +318,33 @@
     </ClInclude>
     <ClInclude Include="fastdfs\fastdfs.h">
       <Filter>FastDFS Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HYDefine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\autolink.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\config.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\features.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\forwards.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\json.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\reader.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\value.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\writer.h">
+      <Filter>Json Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

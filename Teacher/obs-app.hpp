@@ -15,6 +15,7 @@
 #include <vector>
 #include <deque>
 
+#include "HYDefine.h"
 #include "window-main.hpp"
 #include "window-login-main.h"
 
@@ -43,15 +44,25 @@ public:
 };
 
 class QListWidget;
+class CRemoteSession;
 class CTrackerSession;
 class CStorageSession;
 class OBSApp : public QApplication {
 	Q_OBJECT
-
 private:
-	int                            m_nFastTimer;
-	int                            m_nActiveTimer;
-	std::string                    m_strUTF8Data;
+	std::string                    m_strTrackerAddr;           // FDFS-Tracker的IP地址...
+	int                            m_nTrackerPort;             // FDFS-Tracker的端口地址...
+	std::string                    m_strRemoteAddr;            // 远程中转服务器的IP地址...
+	int                            m_nRemotePort;              // 远程中转服务器的端口地址...
+	std::string                    m_strUdpAddr;               // 远程UDP服务器的IP地址...
+	int                            m_nUdpPort;                 // 远程UDP服务器的端口地址...
+	std::string                    m_strRoomID;                // 登录的房间号...
+	std::string                    m_strMacAddr;               // 本机MAC地址...
+	std::string                    m_strIPAddr;                // 本机IP地址...
+	std::string                    m_strWebAddr;               // 访问节点网站地址...
+	int                            m_nWebPort;                 // 访问节点网站端口...
+	int                            m_nFastTimer;               // 分布式存储、中转链接检测时钟...
+	int                            m_nOnLineTimer;             // 中转服务器在线检测时钟...
 	std::string                    locale;
 	std::string	                   theme;
 	ConfigFile                     globalConfig;
@@ -61,6 +72,7 @@ private:
 	QPointer<LoginWindow>          loginWindow;
 	QPointer<CTrackerSession>      m_TrackerSession;
 	QPointer<CStorageSession>      m_StorageSession;
+	QPointer<CRemoteSession>       m_RemoteSession;
 
 	profiler_name_store_t          *profilerNameStore = nullptr;
 
@@ -68,13 +80,34 @@ private:
 	int                            sleepInhibitRefs = 0;
 
 	std::deque<obs_frontend_translate_ui_cb> translatorHooks;
-
+private:
 	bool InitGlobalConfig();
 	bool InitGlobalConfigDefaults();
 	bool InitLocale();
 	bool InitTheme();
+	bool InitMacIPAddr();
+public:
+	int      GetClientType() { return kClientTeacher; }
+	int      GetWebPort() { return m_nWebPort; }
+	string & GetWebAddr() { return m_strWebAddr; }
+	string & GetLocalIPAddr() { return m_strIPAddr; }
+	string & GetLocalMacAddr() { return m_strMacAddr; }
+	string & GetRoomIDStr() { return m_strRoomID; }
+public:
+	string & GetTrackerAddr() { return m_strTrackerAddr; }
+	int		 GetTrackerPort() { return m_nTrackerPort; }
+	string & GetRemoteAddr() { return m_strRemoteAddr; }
+	int		 GetRemotePort() { return m_nRemotePort; }
+	string & GetUdpAddr() { return m_strUdpAddr; }
+	int		 GetUdpPort() { return m_nUdpPort; }
+	void	 SetUdpAddr(const string & strAddr) { m_strUdpAddr = strAddr; }
+	void     SetUdpPort(int nPort) { m_nUdpPort = nPort; }
+	void	 SetRemoteAddr(const string & strAddr) { m_strRemoteAddr = strAddr; }
+	void     SetRemotePort(int nPort) { m_nRemotePort = nPort; }
+	void	 SetTrackerAddr(const string & strAddr) { m_strTrackerAddr = strAddr; }
+	void     SetTrackerPort(int nPort) { m_nTrackerPort = nPort; }
 public slots:
-	void doLoginSuccess();
+	void doLoginSuccess(string & strRoomID);
 public:
 	OBSApp(int &argc, char **argv, profiler_name_store_t *store);
 	~OBSApp();
@@ -84,15 +117,17 @@ public:
 	
 	void doLoginInit();
 	void doLogoutEvent();
-	void doPostCurl(char *pData, size_t nSize);
-	
-	void doCameraGetOnLineList(QListWidget * lpListView, int inSelCameraID);
-	void doCameraGetRtmpUrl(int nCameraID, obs_data_t * lpSettings);
-	void doCameraVerifyEvent(obs_data_t * lpSettings);
+
+	//void doPostCurl(char *pData, size_t nSize);
+	//void doCameraGetOnLineList(QListWidget * lpListView, int inSelCameraID);
+	//void doCameraGetRtmpUrl(int nCameraID, obs_data_t * lpSettings);
+	//void doCameraVerifyEvent(obs_data_t * lpSettings);
 
 	void doCheckTracker();
 	void doCheckStorage();
+	void doCheckRemote();
 	void doCheckFDFS();
+	void doCheckOnLine();
 	bool doFindOneFile(char * inPath, int inSize, const char * inExtend);
 	void doWebSaveFDFS(char * lpFileName, char * lpPathFDFS, int64_t llFileSize);
 
@@ -183,8 +218,7 @@ bool WindowPositionValid(QRect rect);
 
 static inline int GetProfilePath(char *path, size_t size, const char *file)
 {
-	OBSMainWindow *window = reinterpret_cast<OBSMainWindow*>(
-		App()->GetMainWindow());
+	OBSMainWindow *window = reinterpret_cast<OBSMainWindow*>(App()->GetMainWindow());
 	return window->GetProfilePath(path, size, file);
 }
 

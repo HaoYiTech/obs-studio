@@ -40,6 +40,11 @@
 #endif
 
 #include <iostream>
+#include <IPTypes.h>
+#include <IPHlpApi.h>
+#include <atlconv.h>
+
+#pragma comment(lib, "iphlpapi.lib")
 
 using namespace std;
 static log_handler_t def_log_handler;
@@ -761,8 +766,11 @@ OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
 	: QApplication(argc, argv),
 	profilerNameStore(store)
 {
-	m_nFastTimer   = -1;
-	m_nActiveTimer = -1;
+	m_strWebAddr = DEF_CLOUD_CLASS;
+	m_nWebPort = DEF_WEB_PORT;
+	m_nOnLineTimer = -1;
+	m_nFastTimer = -1;
+	m_RemoteSession = NULL;
 	m_TrackerSession = NULL;
 	m_StorageSession = NULL;
 	sleepInhibitor = os_inhibit_sleep_create("OBS Video/audio");
@@ -871,10 +879,53 @@ static void move_basic_to_scene_collections(void)
 	os_rename(path, new_path);
 }
 
+bool OBSApp::InitMacIPAddr()
+{
+	// 2018.01.11 - 解决 ERROR_BUFFER_OVERFLOW 的问题...
+	DWORD outBuflen = sizeof(IP_ADAPTER_INFO);
+	IP_ADAPTER_INFO * lpAdapter = new IP_ADAPTER_INFO;
+	DWORD retStatus = GetAdaptersInfo(lpAdapter, &outBuflen);
+	// 发现缓冲区不够用，重新分配空间...
+	if (retStatus == ERROR_BUFFER_OVERFLOW) {
+		delete lpAdapter; lpAdapter = NULL;
+		lpAdapter = (PIP_ADAPTER_INFO)new BYTE[outBuflen];
+		retStatus = GetAdaptersInfo(lpAdapter, &outBuflen);
+	}
+	// 还是发生了错误，打印错误，直接返回...
+	if (retStatus != ERROR_SUCCESS) {
+		blog(LOG_INFO, "GetAdaptersInfo Error: %u", retStatus);
+		delete lpAdapter; lpAdapter = NULL;
+		return false;
+	}
+	// 开始循环遍历网卡节点...
+	IP_ADAPTER_INFO * lpInfo = lpAdapter;
+	while (lpInfo != NULL) {
+		// 打印网卡描述信息 => 2018.03.27 - 解决无线网卡的问题...
+		blog(LOG_INFO, "== Adapter Type: %lu, Desc: %s ==\n", lpInfo->Type, lpInfo->Description);
+		// 必须是以太网卡，必须是IPV4的网卡，必须是有效的网卡 => 71 是无线网卡...
+		if ((lpInfo->Type != MIB_IF_TYPE_ETHERNET && lpInfo->Type != 71) || lpInfo->AddressLength != 6 || strcmp(lpInfo->IpAddressList.IpAddress.String, "0.0.0.0") == 0) {
+			lpInfo = lpInfo->Next;
+			continue;
+		}
+		// 获取MAC地址和IP地址，地址是相互关联的...
+		char szBuffer[MAX_PATH] = { 0 };
+		sprintf(szBuffer, "%02X-%02X-%02X-%02X-%02X-%02X", lpInfo->Address[0], lpInfo->Address[1], lpInfo->Address[2], lpInfo->Address[3], lpInfo->Address[4], lpInfo->Address[5]);
+		m_strIPAddr = lpInfo->IpAddressList.IpAddress.String;
+		m_strMacAddr = szBuffer;
+		lpInfo = lpInfo->Next;
+	}
+	// 释放分配的缓冲区...
+	delete lpAdapter;
+	lpAdapter = NULL;
+	return true;
+}
+
 void OBSApp::AppInit()
 {
 	ProfileScope("OBSApp::AppInit");
 
+	if (!this->InitMacIPAddr())
+		throw "Failed to get MAC or IP address";
 	if (!InitApplicationBundle())
 		throw "Failed to initialize application bundle";
 	if (!MakeUserDirs())
@@ -978,7 +1029,7 @@ bool OBSApp::OBSInit()
 }
 //
 // 处理网站反馈接口函数...
-size_t appPostCurl(void *ptr, size_t size, size_t nmemb, void *stream)
+/*size_t appPostCurl(void *ptr, size_t size, size_t nmemb, void *stream)
 {
 	OBSApp * lpApp = (OBSApp*)stream;
 	lpApp->doPostCurl((char*)ptr, size * nmemb);
@@ -1270,11 +1321,16 @@ void OBSApp::doCameraVerifyEvent(obs_data_t * lpSettings)
 	}
 	// 数据处理完毕，释放json数据包...
 	json_decref(theRoot);
-}
+}*/
 //
 // 处理讲师端退出事件通知...
 void OBSApp::doLogoutEvent()
 {
+	// 释放远程会话对象...
+	if (m_RemoteSession != NULL) {
+		delete m_RemoteSession;
+		m_RemoteSession = NULL;
+	}
 	// 释放存储会话对象...
 	if (m_TrackerSession != NULL) {
 		delete m_TrackerSession;
@@ -1291,7 +1347,7 @@ void OBSApp::doLogoutEvent()
 	// 准备登出需要的云教室号码缓冲区...
 	char   szPost[MAX_PATH] = { 0 };
 	char * lpStrUrl = "http://edu.ihaoyi.cn/wxapi.php/Gather/logoutLiveRoom";
-	sprintf(szPost, "room_id=%s", lpLiveRoomID);
+	sprintf(szPost, "room_id=%s&type_id=%d", lpLiveRoomID, this->GetClientType());
 	// 调用Curl接口，汇报采集端信息...
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();
@@ -1321,31 +1377,43 @@ void OBSApp::doLoginInit()
 	loginWindow = new LoginWindow();
 	loginWindow->show();
 	// 建立登录窗口与应用对象的信号槽关联函数...
-	connect(loginWindow, SIGNAL(loginSuccess()), this, SLOT(doLoginSuccess()));
+	connect(loginWindow, SIGNAL(loginSuccess(string&)), this, SLOT(doLoginSuccess(string&)));
 }
 //
 // 处理登录成功之后的信号槽事件...
-void OBSApp::doLoginSuccess()
+void OBSApp::doLoginSuccess(string & strRoomID)
 {
+	// 保存登录房间号...
+	m_strRoomID = strRoomID;
 	// 先关闭登录窗口...
 	loginWindow->close();
 	// 创建主窗口...
 	this->OBSInit();
-	// 开启一个定时通知时钟 => 每隔15秒发送一次...
-	m_nActiveTimer = this->startTimer(15 * 1000);
 	// 开启一个定时上传检测时钟 => 每隔5秒执行一次...
 	m_nFastTimer = this->startTimer(5 * 1000);
+	// 每隔30秒检测一次，学生端在中转服务器上在线汇报通知...
+	m_nOnLineTimer = this->startTimer(30 * 1000);
+	// 已经获取到了远程中转服务器地址，可以立即连接...
+	this->doCheckRemote();
 }
 //
 // 时钟定时执行过程...
 void OBSApp::timerEvent(QTimerEvent *inEvent)
 {
 	int nTimerID = inEvent->timerId();
-	if (nTimerID == m_nActiveTimer) {
-		mainWindow->doCameraVerifyEvent();
-	} else if(nTimerID == m_nFastTimer) {
+	if(nTimerID == m_nFastTimer) {
 		this->doCheckFDFS();
+	} else if(nTimerID == m_nOnLineTimer) {
+		this->doCheckOnLine();
 	}
+}
+//
+// 发送在线检测命令包...
+void OBSApp::doCheckOnLine()
+{
+	if (m_RemoteSession == NULL)
+		return;
+	m_RemoteSession->SendOnLineCmd();
 }
 //
 // 检测是否需要进行数据上传...
@@ -1353,6 +1421,26 @@ void OBSApp::doCheckFDFS()
 {
 	this->doCheckTracker();
 	this->doCheckStorage();
+	this->doCheckRemote();
+}
+//
+// 自动检测并创建RemoteSession...
+void OBSApp::doCheckRemote()
+{
+	// 如果远程会话已经存在，并且已经连接，直接返回...
+	if (m_RemoteSession != NULL && !m_RemoteSession->IsCanReBuild())
+		return;
+	// 判断存储服务器地址是否有效...
+	if (m_strRemoteAddr.size() <= 0 || m_nRemotePort <= 0)
+		return;
+	// 如果会话有效，先删除之...
+	if (m_RemoteSession != NULL) {
+		delete m_RemoteSession;
+		m_RemoteSession = NULL;
+	}
+	// 初始化远程中转会话对象...
+	m_RemoteSession = new CRemoteSession();
+	m_RemoteSession->InitSession(m_strRemoteAddr.c_str(), m_nRemotePort);
 }
 //
 // 自动检测并创建TrackerSession...
@@ -1362,13 +1450,11 @@ void OBSApp::doCheckTracker()
 	if (m_TrackerSession != NULL)
 		return;
 	// 判断存储服务器地址是否有效...
-	const char * lpTrackerAddr = config_get_string(App()->GlobalConfig(), "General", "TrackerAddr");
-	const char * lpTrackerPort = config_get_string(App()->GlobalConfig(), "General", "TrackerPort");
-	if (lpTrackerAddr == NULL || lpTrackerPort == NULL)
+	if (m_strTrackerAddr.size() <= 0 || m_nTrackerPort <= 0)
 		return;
 	// 初始化存储上传会话对象...
 	m_TrackerSession = new CTrackerSession();
-	m_TrackerSession->InitSession(lpTrackerAddr, atoi(lpTrackerPort));
+	m_TrackerSession->InitSession(m_strTrackerAddr.c_str(), m_nTrackerPort);
 }
 //
 // 自动检测并创建StorageSession...

@@ -38,7 +38,7 @@ void LoginWindow::initMyTitle()
 	m_titleBar->move(0, 0);
 	m_titleBar->raise();
 	m_titleBar->setTitleWidth(this->width());
-	m_titleBar->setTitleContent(QStringLiteral("登录云教室 - 讲师端"));
+	m_titleBar->setTitleContent(QTStr("Login.Window.TitleContent"));
 	m_titleBar->setBackgroundColor(QColor(0, 122, 204), false);
 	// 这里需要设置成false，不允许通过标题栏拖动来移动窗口位置,否则会造成窗口位置错误;
 	m_titleBar->setMoveParentWindowFlag(false);
@@ -64,7 +64,7 @@ void LoginWindow::initWindow()
 	// 暗注释，并限定输入数字的范围...
 	ui->accountComboBox->setEditable(true);
 	QLineEdit* lineEdit = ui->accountComboBox->lineEdit();
-	lineEdit->setPlaceholderText(QStringLiteral("请输入云教室号码..."));
+	lineEdit->setPlaceholderText(QTStr("Login.Window.EditHolderText"));
 	lineEdit->setValidator(new QIntValidator(0, 999999999, this));
 	lineEdit->setMaxLength(10);
 	// 从配置文件中读取云教室号码，设置到编辑框当中...
@@ -114,7 +114,7 @@ void LoginWindow::onClickLoginButton()
 	// 判断完毕，将获取到的云教室号码发送到服务器验证...
 	char   szPost[MAX_PATH] = { 0 };
 	char * lpStrUrl = "http://edu.ihaoyi.cn/wxapi.php/Gather/loginLiveRoom";
-	sprintf(szPost, "room_id=%s", strRoomID.c_str());
+	sprintf(szPost, "room_id=%s&type_id=%d", strRoomID.c_str(), App()->GetClientType());
 	// 调用Curl接口，汇报采集端信息...
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();
@@ -159,14 +159,6 @@ void LoginWindow::onClickLoginButton()
 		json_decref(theRoot);
 		return;
 	}
-	// 继续解析获取到直播地址...
-	json_t * theLiveKey = json_object_get(theRoot, "live_key");
-	json_t * theLiveServer = json_object_get(theRoot, "live_server");
-	if (theLiveKey == NULL || theLiveServer == NULL) {
-		OBSMessageBox::information(this, QTStr("Teacher.Error.Title"), QTStr("Teacher.Room.Json"));
-		json_decref(theRoot);
-		return;
-	}
 	// 继续解析获取到的存储服务器地址和端口...
 	json_t * theTrackerAddr = json_object_get(theRoot, "tracker_addr");
 	json_t * theTrackerPort = json_object_get(theRoot, "tracker_port");
@@ -175,20 +167,47 @@ void LoginWindow::onClickLoginButton()
 		json_decref(theRoot);
 		return;
 	}
-	// 获取到直播的分解数据，并将直播地址保存到 => obs-studio/global.ini...
-	const char * lpStrKey = json_string_value(theLiveKey);
-	const char * lpStrServer = json_string_value(theLiveServer);
+	// 继续解析获取到的远程中转服务器地址和端口...
+	json_t * theRemoteAddr = json_object_get(theRoot, "remote_addr");
+	json_t * theRemotePort = json_object_get(theRoot, "remote_port");
+	if (theRemoteAddr == NULL || theRemotePort == NULL) {
+		OBSMessageBox::information(this, QTStr("Teacher.Error.Title"), QTStr("Teacher.Room.Json"));
+		json_decref(theRoot);
+		return;
+	}
+	// 继续解析获取到的udp服务器地址和端口...
+	json_t * theUdpAddr = json_object_get(theRoot, "udp_addr");
+	json_t * theUdpPort = json_object_get(theRoot, "udp_port");
+	if (theUdpAddr == NULL || theUdpPort == NULL) {
+		OBSMessageBox::information(this, QTStr("Teacher.Error.Title"), QTStr("Teacher.Room.Json"));
+		json_decref(theRoot);
+		return;
+	}
+	// 获取到直播的分解数据，并将直播地址保存到 => obs-teacher/global.ini...
+	config_set_string(App()->GlobalConfig(), "General", "LiveRoomID", strRoomID.c_str());
+	//config_set_string(App()->GlobalConfig(), "General", "TrackerAddr", lpTrackerAddr);
+	//config_set_string(App()->GlobalConfig(), "General", "TrackerPort", lpTrackerPort);
+	//config_set_string(App()->GlobalConfig(), "General", "RemoteAddr", lpRemoteAddr);
+	//config_set_string(App()->GlobalConfig(), "General", "RemotePort", lpRemotePort);
+	//config_set_string(App()->GlobalConfig(), "General", "UdpAddr", lpUdpAddr);
+	//config_set_string(App()->GlobalConfig(), "General", "UdpPort", lpUdpPort);
+	// 将获取到的相关地址信息存放到全局对象当中...
 	const char * lpTrackerAddr = json_string_value(theTrackerAddr);
 	const char * lpTrackerPort = json_string_value(theTrackerPort);
-	config_set_string(App()->GlobalConfig(), "General", "LiveRoomID", strRoomID.c_str());
-	config_set_string(App()->GlobalConfig(), "General", "LiveRoomKey", lpStrKey);
-	config_set_string(App()->GlobalConfig(), "General", "LiveRoomServer", lpStrServer);
-	config_set_string(App()->GlobalConfig(), "General", "TrackerAddr", lpTrackerAddr);
-	config_set_string(App()->GlobalConfig(), "General", "TrackerPort", lpTrackerPort);
+	const char * lpRemoteAddr = json_string_value(theRemoteAddr);
+	const char * lpRemotePort = json_string_value(theRemotePort);
+	const char * lpUdpAddr = json_string_value(theUdpAddr);
+	const char * lpUdpPort = json_string_value(theUdpPort);
+	App()->SetTrackerAddr(string(lpTrackerAddr));
+	App()->SetTrackerPort(atoi(lpTrackerPort));
+	App()->SetRemoteAddr(string(lpRemoteAddr));
+	App()->SetRemotePort(atoi(lpRemotePort));
+	App()->SetUdpAddr(string(lpUdpAddr));
+	App()->SetUdpPort(atoi(lpUdpPort));
 	// 数据处理完毕，释放json数据包...
 	json_decref(theRoot);
 	// 通知主进程主窗口可以启动了...
-	emit this->loginSuccess();
+	emit this->loginSuccess(strRoomID);
 }
 //
 // 响应点击箭头按钮...

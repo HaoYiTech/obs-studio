@@ -14,7 +14,7 @@ public:
     LoginWindow(QWidget *parent = NULL);
     ~LoginWindow();
 signals:
-	void loginSuccess();
+	void loginSuccess(string & strRoomID);
 public:
 	void doPostCurl(char *pData, size_t nSize);
 private:

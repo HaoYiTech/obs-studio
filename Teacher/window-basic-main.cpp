@@ -5855,11 +5855,10 @@ void OBSBasic::UpdateTitleBar()
 	
 	//setWindowTitle(QT_UTF8(name.str().c_str()));
 
-	// 对窗口标题进行修改 => 简化...
-	char szTitle[260] = { 0 };
-	const char * lpLiveRoomID = config_get_string(App()->GlobalConfig(), "General", "LiveRoomID");
-	sprintf(szTitle, "云教室 - 讲师端 - 已登录云教室号码：%s", lpLiveRoomID);
-	this->setWindowTitle(QString::fromLocal8Bit(szTitle));
+	// 对窗口标题进行修改 => 使用字典模式...
+	string & strRoomID = App()->GetRoomIDStr();
+	QString strTitle = QString("%1%2").arg(QTStr("Main.Window.TitleContent")).arg(QString::fromUtf8(strRoomID.c_str()));
+	this->setWindowTitle(strTitle);
 }
 
 int OBSBasic::GetProfilePath(char *path, size_t size, const char *file) const
@@ -6286,7 +6285,7 @@ void OBSBasic::on_stats_triggered()
 // 遍历sources里面的rtp_source，发送在线状态通知...
 void OBSBasic::doCameraVerifyEvent()
 {
-	for (int i = 0; i < ui->sources->count(); i++) {
+	/*for (int i = 0; i < ui->sources->count(); i++) {
 		QListWidgetItem * listItem = ui->sources->item(i);
 		OBSSceneItem theItem = this->GetSceneItem(listItem);
 		OBSSource theSource = obs_sceneitem_get_source(theItem);
@@ -6303,5 +6302,5 @@ void OBSBasic::doCameraVerifyEvent()
 		App()->doCameraVerifyEvent(lpSettings);
 		// 注意：这里必须手动进行引用计数减少，否则，会造成内存泄漏...
 		obs_data_release(lpSettings);
-	}
+	}*/
 }

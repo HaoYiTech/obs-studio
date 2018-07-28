@@ -156,7 +156,7 @@ void OBSPropertiesView::RefreshProperties()
 		//connect(m_listCamera, SIGNAL(itemSelectionChanged()), this, SLOT(onItemSelectionChanged()));
 		int nSelCameraID = obs_data_get_int(this->GetSettings(), "camera_id");
 		// 调用App的接口，从网站服务器获取在线的摄像头列表...
-		App()->doCameraGetOnLineList(m_listCamera, nSelCameraID);
+		//App()->doCameraGetOnLineList(m_listCamera, nSelCameraID);
 	}
 
 	lastFocused.clear();
@@ -190,7 +190,7 @@ void OBSPropertiesView::doUpdateRtpSource()
 	if (lpCurItem == NULL)
 		return;
 	int nCameraID = lpCurItem->data(Qt::UserRole).toInt();
-	App()->doCameraGetRtmpUrl(nCameraID, this->GetSettings());
+	//App()->doCameraGetRtmpUrl(nCameraID, this->GetSettings());
 }
 
 void OBSPropertiesView::SetScrollPos(int h, int v)

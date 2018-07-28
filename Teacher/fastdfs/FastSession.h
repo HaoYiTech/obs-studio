@@ -13,6 +13,7 @@ public:
 	CFastSession();
 	virtual ~CFastSession();
 public:
+	bool IsConnected() { return m_bIsConnected; }
 	bool InitSession(const char * lpszAddr, int nPort);
 protected:
 	void closeSocket();
@@ -23,6 +24,7 @@ protected slots:
 	virtual void onBytesWritten(qint64 nBytes) = 0;
 	virtual void onError(QAbstractSocket::SocketError nError) = 0;
 protected:
+	bool             m_bIsConnected;			// 是否已连接标志...
 	QTcpSocket   *   m_TCPSocket;				// TCP套接字...
 	std::string      m_strAddress;				// 链接地址...
 	std::string      m_strRecv;					// 网络数据...
@@ -35,7 +37,6 @@ public:
 	CTrackerSession();
 	virtual ~CTrackerSession();
 public:
-	bool IsConnected() { return m_bIsConnected; }
 	StorageServer   &   GetStorageServer() { return m_NewStorage; }
 protected slots:
 	void onConnected() override;
@@ -50,7 +51,6 @@ private:
 	StorageServer		m_NewStorage;				// 当前有效的存储服务器...
 	FDFSGroupStat	*	m_lpGroupStat;				// group列表头指针...
 	int					m_nGroupCount;				// group数量...
-	bool                m_bIsConnected;				// 是否已连接标志...
 };
 
 class CStorageSession : public CFastSession {
@@ -84,4 +84,31 @@ private:
 	int64_t         m_llLeftSize;		// 剩余数据总长度...
 	FILE       *    m_lpFile;			// 正在处理的文件句柄...
 	bool            m_bCanReBuild;		// 能否进行重建标志...
+};
+
+// 与命令中转服务器交互的会话对象...
+class CRemoteSession : public CFastSession {
+	Q_OBJECT
+public:
+	CRemoteSession();
+	virtual ~CRemoteSession();
+public:
+	bool IsCanReBuild() { return m_bCanReBuild; }
+	bool SendOnLineCmd();
+protected slots:
+	void onConnected() override;
+	void onReadyRead() override;
+	void onDisConnected() override;
+	void onBytesWritten(qint64 nBytes) override;
+	void onError(QAbstractSocket::SocketError nError) override;
+private:
+	bool SendData(const char * lpDataPtr, int nDataSize);
+	bool SendLoginCmd();
+private:
+	enum {
+		kSendBufSize = 2048,			// 发送数据包缓存...
+	};
+private:
+	char	*	m_lpSendBuf;			// 发送缓存...
+	bool        m_bCanReBuild;			// 能否进行重建标志...
 };
