@@ -32,6 +32,7 @@ typedef UInt16				Bool16;
 using namespace std;
 
 #include "obs.h"
+#include "rtp.h"
 #include "GMError.h"
 #include "HYVersion.h"
 #include <util/platform.h>

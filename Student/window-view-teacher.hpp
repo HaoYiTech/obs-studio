@@ -4,6 +4,8 @@
 #include <QMouseEvent>
 #include "qt-display.hpp"
 
+class CUDPRecvThread;
+class CViewRender;
 class CViewTeacher : public OBSQTDisplay {
 	Q_OBJECT
 public:
@@ -12,17 +14,16 @@ public:
 public:
 	void setTitleContent(QString & titleContent);
 	void onFullScreenAction();
+	void ReInitSDLWindow();
 private:
 	void DrawTitleArea();
 	void DrawRenderArea();
 protected:
 	void paintEvent(QPaintEvent *event) override;
-	void keyPressEvent(QKeyEvent *event) override;
 	void mousePressEvent(QMouseEvent *event) override;
-	void mouseDoubleClickEvent(QMouseEvent *event) override;
 private:
-	QString		m_strTitleBase;		// 标题栏基础文字...
-	QString		m_strTitleText;		// 标题栏文字内容...
-	QRect		m_rcNoramlRect;		// 窗口的全屏前的矩形区域...
-	QRect		m_rcRenderRect;		// 窗口画面渲染的矩形区域...
+	CUDPRecvThread  *  m_lpUDPRecvThread;   // UDP接收线程...
+	CViewRender     *  m_lpViewRender;      // 渲染显示窗口...
+	QString            m_strTitleBase;      // 标题栏基础文字...
+	QString            m_strTitleText;      // 标题栏文字内容...
 };

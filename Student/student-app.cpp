@@ -23,6 +23,7 @@
 #include <IPTypes.h>
 #include <IPHlpApi.h>
 #include <atlconv.h>
+#include "SDL2/SDL.h"
 
 #pragma comment(lib, "iphlpapi.lib")
 
@@ -478,13 +479,16 @@ int main(int argc, char *argv[])
 	// 初始化线程和套接字通用库...
 	OSThread::Initialize();
 	SocketUtils::Initialize();
+	// 初始化SDL2.0...
+	CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	int nRet = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
 
 	// 设置错误日志的处理句柄...
 	base_get_log_handler(&def_log_handler, nullptr);
 
 	fstream logFile;
 	curl_global_init(CURL_GLOBAL_ALL);
-	int ret = run_program(logFile, argc, argv);
+	nRet = run_program(logFile, argc, argv);
 
 	blog(LOG_INFO, "Number of memory leaks: %ld", bnum_allocs());
 
@@ -494,7 +498,9 @@ int main(int argc, char *argv[])
 	// 释放线程和套接字通用库...
 	OSThread::UnInitialize();
 	SocketUtils::UnInitialize();
-	return ret;
+	// 释放SDL2.0资源...
+	SDL_Quit();
+	return nRet;
 }
 
 QString OBSTranslator::translate(const char *context, const char *sourceText, const char *disambiguation, int n) const

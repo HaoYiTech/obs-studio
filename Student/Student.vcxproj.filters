@@ -40,6 +40,9 @@
     <Filter Include="FastDFS Files">
       <UniqueIdentifier>{b1a2c001-a4b4-4001-9901-b920636512df}</UniqueIdentifier>
     </Filter>
+    <Filter Include="rtp Files">
+      <UniqueIdentifier>{aa8db552-e07d-480f-99e7-9f60b7a5f53c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="window-login-base.cpp">
@@ -129,6 +132,18 @@
     <ClCompile Include="fastdfs\FastSession.cpp">
       <Filter>FastDFS Files</Filter>
     </ClCompile>
+    <ClCompile Include="rtp\UDPSendThread.cpp">
+      <Filter>rtp Files</Filter>
+    </ClCompile>
+    <ClCompile Include="rtp\UDPPlayThread.cpp">
+      <Filter>rtp Files</Filter>
+    </ClCompile>
+    <ClCompile Include="rtp\UDPRecvThread.cpp">
+      <Filter>rtp Files</Filter>
+    </ClCompile>
+    <ClCompile Include="window-view-render.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="window-login-base.h">
@@ -169,6 +184,9 @@
     </QtMoc>
     <QtMoc Include="fastdfs\FastSession.h">
       <Filter>FastDFS Files</Filter>
+    </QtMoc>
+    <QtMoc Include="window-view-render.hpp">
+      <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
@@ -302,6 +320,18 @@
     </ClInclude>
     <ClInclude Include="fastdfs\fastdfs.h">
       <Filter>FastDFS Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rtp\rtp.h">
+      <Filter>rtp Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rtp\UDPSendThread.h">
+      <Filter>rtp Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rtp\UDPPlayThread.h">
+      <Filter>rtp Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rtp\UDPRecvThread.h">
+      <Filter>rtp Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

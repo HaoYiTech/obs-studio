@@ -1,6 +1,8 @@
 
 #include <QPainter>
 #include "student-app.h"
+#include "UDPRecvThread.h"
+#include "window-view-render.hpp"
 #include "window-view-teacher.hpp"
 
 #define TITLE_WINDOW_HEIGHT		24
@@ -13,22 +15,40 @@
 
 CViewTeacher::CViewTeacher(QWidget *parent, Qt::WindowFlags flags)
   : OBSQTDisplay(parent, flags)
+  , m_lpUDPRecvThread(NULL)
+  , m_lpViewRender(NULL)
 {
+	// 创建渲染窗口对象...
+	m_lpViewRender = new CViewRender(this);
 	// 设置标题栏基础文字信息...
 	m_strTitleBase = QTStr("Teacher.Window.TitleBase");
 	m_strTitleText = m_strTitleBase;
 	// 初始化背景颜色和原始区域...
 	m_bkColor = WINDOW_BK_COLOR;
-	m_rcNoramlRect.setRect(0, 0, 0, 0);
-	m_rcRenderRect.setRect(0, 0, 0, 0);
 	// 设置窗口字体大小...
 	QFont theFont = this->font();
 	theFont.setPointSize(TITLE_FONT_HEIGHT);
 	this->setFont(theFont);
+	// 创建UDP接收线程，使用服务器传递过来的参数...
+	int nRoomID = atoi(App()->GetRoomIDStr().c_str());
+	string & strUdpAddr = App()->GetUdpAddr();
+	int nUdpPort = App()->GetUdpPort();
+	m_lpUDPRecvThread = new CUDPRecvThread(m_lpViewRender, nRoomID, 0);
+	m_lpUDPRecvThread->InitThread(strUdpAddr, nUdpPort);
 }
 
 CViewTeacher::~CViewTeacher()
 {
+	// 删除UDP接收线程对象...
+	if (m_lpUDPRecvThread != NULL) {
+		delete m_lpUDPRecvThread;
+		m_lpUDPRecvThread = NULL;
+	}
+	// 删除渲染窗口对象...
+	if (m_lpViewRender != NULL) {
+		delete m_lpViewRender;
+		m_lpViewRender = NULL;
+	}
 }
 
 void CViewTeacher::paintEvent(QPaintEvent *event)
@@ -81,13 +101,17 @@ void CViewTeacher::DrawRenderArea()
 	painter.setPen(QPen(m_bFocus ? FOCUS_BK_COLOR : TITLE_BK_COLOR, 1));
 	rcRect.adjust(1, 1, -1, -1);
 	painter.drawRect(rcRect);
-	// 填充渲染区矩形框...
+	// 继续计算渲染对象矩形框大小...
 	rcRect.setTop(TITLE_WINDOW_HEIGHT);
 	rcRect.adjust(1, 0, 0, 0);
-	painter.fillRect(rcRect, m_bkColor);
+	// 有渲染窗口占位，不需要填充矩形区...
+	//painter.fillRect(rcRect, m_bkColor);
 	// 注意：这里使用PS截图后放大确认大小...
-	// 保存画面实际渲染矩形区域...
-	m_rcRenderRect = rcRect;
+	// 如果渲染窗口无效，直接返回...
+	if (m_lpViewRender == NULL)
+		return;
+	// 渲染窗口有效，重置渲染窗口的矩形位置...
+	m_lpViewRender->doResizeRect(rcRect);
 }
 
 void CViewTeacher::mousePressEvent(QMouseEvent *event)
@@ -99,32 +123,16 @@ void CViewTeacher::mousePressEvent(QMouseEvent *event)
 	return QWidget::mousePressEvent(event);
 }
 
-void CViewTeacher::mouseDoubleClickEvent(QMouseEvent *event)
-{
-	this->onFullScreenAction();
-}
-
 void CViewTeacher::onFullScreenAction()
 {
-	if( this->isFullScreen() ) {
-		// 窗口退出全屏状态...
-		this->setWindowFlags(Qt::SubWindow);
-		this->showNormal();
-		// 需要恢复到全屏前的矩形区域...
-		this->setGeometry(m_rcNoramlRect);
-	} else {
-		// 需要先保存全屏前的矩形区域...
-		m_rcNoramlRect = this->geometry();
-		// 窗口进入全屏状态...
-		this->setWindowFlags(Qt::Window);
-		this->showFullScreen();
-	}
+	if (m_lpViewRender == NULL)
+		return;
+	m_lpViewRender->onFullScreenAction();
 }
 
-void CViewTeacher::keyPressEvent(QKeyEvent *event)
+void CViewTeacher::ReInitSDLWindow()
 {
-	if (event->key() == Qt::Key_Escape) {
-		this->setWindowFlags(Qt::SubWindow);
-		this->showNormal();
-	}
+	if (m_lpUDPRecvThread == NULL)
+		return;
+	m_lpUDPRecvThread->ReInitSDLWindow();
 }
