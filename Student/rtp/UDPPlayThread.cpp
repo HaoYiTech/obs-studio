@@ -133,20 +133,12 @@ void CVideoThread::doReBuildSDL()
 	if( m_lpViewRender != NULL ) {
 		// 销毁SDL窗口时会隐藏关联窗口 => 必须用Windows的API接口...
 		HWND hWnd = m_lpViewRender->GetRenderHWnd();
-		BOOL bRetValue = ::ShowWindow(hWnd, SW_SHOW);
+		BOOL bRet = ::ShowWindow(hWnd, SW_SHOW);
 		// 创建SDL需要的对象 => 窗口、渲染、纹理...
 		m_sdlScreen = SDL_CreateWindowFrom((void*)hWnd);
 		m_sdlRenderer = SDL_CreateRenderer(m_sdlScreen, -1, 0);
 		m_sdlTexture = SDL_CreateTexture(m_sdlRenderer, SDL_PIXELFORMAT_IYUV, SDL_TEXTUREACCESS_STREAMING, m_nDstWidth, m_nDstHeight);
 	}
-}
-
-void CVideoThread::doReInitSDLWindow()
-{
-	// 进入线程互斥状态中...
-	OSMutexLocker theLock(&m_Mutex);
-	// 重建SDL窗口对象...
-	this->doReBuildSDL();
 }
 
 BOOL CVideoThread::InitVideo(CViewRender * lpViewRender, string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS)
@@ -163,6 +155,8 @@ BOOL CVideoThread::InitVideo(CViewRender * lpViewRender, string & inSPS, string 
 	m_nDstFPS = nFPS;
 	m_strSPS = inSPS;
 	m_strPPS = inPPS;
+	// 强制还原渲染矩形区状态 => 默认变化，重建SDL...
+	m_lpViewRender->GetAndResetRenderFlag();
 	// 重建SDL窗口对象...
 	this->doReBuildSDL();
 	// 初始化ffmpeg解码器...
@@ -309,10 +303,13 @@ void CVideoThread::doDisplaySDL()
 	struct SwsContext * img_convert_ctx = sws_getContext(nSrcWidth, nSrcHeight, nSrcFormat, nDstWidth, nDstHeight, nDestFormat, SWS_BICUBIC, NULL, NULL, NULL);
 	int nReturn = sws_scale(img_convert_ctx, (const uint8_t* const*)lpSrcFrame->data, lpSrcFrame->linesize, 0, nSrcHeight, pDestFrame.data, pDestFrame.linesize);
 	sws_freeContext(img_convert_ctx);
-	///////////////////////////////////////////////////////////
-	// 使用SDL 进行画面绘制工作...
-	///////////////////////////////////////////////////////////
-	if ( m_lpViewRender != NULL ) {
+	//////////////////////////////////////////////////////////////////////////////////
+	// 使用SDL 进行画面绘制工作 => 正在处理全屏时，不能绘制，会与D3D发生冲突崩溃...
+	//////////////////////////////////////////////////////////////////////////////////
+	if (m_lpViewRender != NULL && !m_lpViewRender->GetIsChangeScreen()) {
+		if (m_lpViewRender->GetAndResetRenderFlag()) {
+			this->doReBuildSDL();
+		}
 		// 获取渲染窗口的矩形区域...
 		QRect & rcRect = m_lpViewRender->GetRenderRect();
 		// 注意：这里的源是转换后的图像，目的是播放窗口..
@@ -794,13 +791,6 @@ CPlaySDL::~CPlaySDL()
 		delete m_lpVideoThread;
 		m_lpVideoThread = NULL;
 	}
-}
-
-void CPlaySDL::ReInitSDLWindow()
-{
-	if (m_lpVideoThread == NULL)
-		return;
-	m_lpVideoThread->doReInitSDLWindow();
 }
 
 BOOL CPlaySDL::InitVideo(CViewRender * lpViewRender, string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS)

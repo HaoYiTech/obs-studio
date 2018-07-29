@@ -50,7 +50,6 @@ public:
 public:
 	BOOL	InitVideo(CViewRender * lpViewRender, string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS);
 	void	doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, int inOffset);
-	void	doReInitSDLWindow();
 private:
 	void	doDecodeFrame();
 	void	doDisplaySDL();
@@ -113,7 +112,6 @@ public:
 	void		PushPacket(int zero_delay_ms, string & inData, int inTypeTag, bool bIsKeyFrame, uint32_t inSendTime);
 	BOOL		InitVideo(CViewRender * lpViewRender, string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS);
 	BOOL		InitAudio(int nRateIndex, int nChannelNum);
-	void		ReInitSDLWindow();
 	int			GetAPacketSize() { return ((m_lpAudioThread != NULL) ? m_lpAudioThread->GetMapPacketSize() : 0); }
 	int			GetVPacketSize() { return ((m_lpVideoThread != NULL) ? m_lpVideoThread->GetMapPacketSize() : 0); }
 	int			GetAFrameSize() { return ((m_lpAudioThread != NULL) ? m_lpAudioThread->GetCircleSize() : 0); }

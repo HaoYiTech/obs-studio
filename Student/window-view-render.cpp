@@ -8,6 +8,8 @@
 
 CViewRender::CViewRender(QWidget *parent, Qt::WindowFlags flags)
   : OBSQTDisplay(parent, flags)
+  , m_bIsChangeScreen(false)
+  , m_bRectChanged(false)
   , m_hRenderWnd(NULL)
 {
 	// 保存渲染窗口句柄对象...
@@ -45,7 +47,15 @@ void CViewRender::doResizeRect(const QRect & rcInRect)
 	this->setGeometry(rcInRect);
 	// 保存画面实际渲染矩形区域 => 相对本地窗口...
 	m_rcRenderRect = this->rect();
-	m_lpViewTeacher->ReInitSDLWindow();
+	m_bRectChanged = true;
+}
+
+// 返回矩形区域是否发生变化，并重置标志...
+bool CViewRender::GetAndResetRenderFlag()
+{
+	bool bRetFlag = m_bRectChanged;
+	m_bRectChanged = false;
+	return bRetFlag;
 }
 
 void CViewRender::mouseDoubleClickEvent(QMouseEvent *event)
@@ -55,6 +65,8 @@ void CViewRender::mouseDoubleClickEvent(QMouseEvent *event)
 
 void CViewRender::onFullScreenAction()
 {
+	// 设置正在处理屏幕变化标志...
+	m_bIsChangeScreen = true;
 	if (this->isFullScreen()) {
 		// 窗口退出全屏状态...
 		this->setWindowFlags(Qt::SubWindow);
@@ -71,20 +83,26 @@ void CViewRender::onFullScreenAction()
 	// 比对新的矩形与保留矩形是否发生变化...
 	if (m_rcRenderRect != this->rect()) {
 		m_rcRenderRect = this->rect();
-		m_lpViewTeacher->ReInitSDLWindow();
+		m_bRectChanged = true;
 	}
+	// 还原屏幕变化标志...
+	m_bIsChangeScreen = false;
 }
 
 void CViewRender::keyPressEvent(QKeyEvent *event)
 {
 	if (event->key() == Qt::Key_Escape) {
+		// 设置正在处理屏幕变化标志...
+		m_bIsChangeScreen = true;
 		// 还原渲染窗口的状态 => 恢复到普通窗口...
 		this->setWindowFlags(Qt::SubWindow);
 		this->showNormal();
 		// 比对新的矩形与保留矩形是否发生变化...
 		if (m_rcRenderRect != this->rect()) {
 			m_rcRenderRect = this->rect();
-			m_lpViewTeacher->ReInitSDLWindow();
+			m_bRectChanged = true;
 		}
+		// 还原屏幕变化标志...
+		m_bIsChangeScreen = false;
 	}
 }

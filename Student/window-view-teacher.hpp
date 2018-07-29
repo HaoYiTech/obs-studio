@@ -14,7 +14,6 @@ public:
 public:
 	void setTitleContent(QString & titleContent);
 	void onFullScreenAction();
-	void ReInitSDLWindow();
 private:
 	void DrawTitleArea();
 	void DrawRenderArea();

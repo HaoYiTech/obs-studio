@@ -16,7 +16,6 @@ public:
 	virtual void Entry();
 public:
 	BOOL			InitThread(string & strUdpAddr, int nUdpPort);
-	void			ReInitSDLWindow();
 private:
 	void			ClosePlayer();
 	void			CloseSocket();

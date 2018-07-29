@@ -129,10 +129,3 @@ void CViewTeacher::onFullScreenAction()
 		return;
 	m_lpViewRender->onFullScreenAction();
 }
-
-void CViewTeacher::ReInitSDLWindow()
-{
-	if (m_lpUDPRecvThread == NULL)
-		return;
-	m_lpUDPRecvThread->ReInitSDLWindow();
-}
