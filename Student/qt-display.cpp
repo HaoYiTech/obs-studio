@@ -17,10 +17,10 @@ OBSQTDisplay::OBSQTDisplay(QWidget *parent, Qt::WindowFlags flags)
 	// 设置无标题窗口属性 => 默认就带这个属性？可以不用设置...
 	//this->setWindowFlags(Qt::FramelessWindowHint);
 	//this->setFocusPolicy(Qt::StrongFocus);
-	/*setAttribute(Qt::WA_PaintOnScreen);
+	setAttribute(Qt::WA_PaintOnScreen);
 	setAttribute(Qt::WA_StaticContents);
 	setAttribute(Qt::WA_NoSystemBackground);
-	setAttribute(Qt::WA_OpaquePaintEvent);
+	/*setAttribute(Qt::WA_OpaquePaintEvent);
 	setAttribute(Qt::WA_DontCreateNativeAncestors);
 	setAttribute(Qt::WA_NativeWindow);*/
 }

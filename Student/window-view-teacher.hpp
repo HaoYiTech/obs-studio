@@ -14,6 +14,8 @@ public:
 public:
 	void setTitleContent(QString & titleContent);
 	void onFullScreenAction();
+	bool IsFindFirstVKey();
+	int	 GetCmdState();
 private:
 	void DrawTitleArea();
 	void DrawRenderArea();

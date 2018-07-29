@@ -119,6 +119,7 @@ public:
 	int64_t		GetZeroDelayMS() { return m_zero_delay_ms; }
 	int64_t		GetSysZeroNS() { return m_sys_zero_ns; }
 	int64_t		GetStartPtsMS() { return m_start_pts_ms; }
+	bool		IsFindFirstVKey() { return m_bFindFirstVKey; }
 private:
 	bool				m_bFindFirstVKey;	// 是否找到第一个视频关键帧标志...
 	int64_t				m_sys_zero_ns;		// 系统计时零点 => 启动时间戳 => 纳秒...

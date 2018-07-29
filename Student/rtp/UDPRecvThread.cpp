@@ -4,6 +4,11 @@
 #include "UDPPlayThread.h"
 #include "UDPRecvThread.h"
 
+bool CUDPRecvThread::IsFindFirstVKey()
+{
+	return ((m_lpPlaySDL == NULL) ? false : m_lpPlaySDL->IsFindFirstVKey());
+}
+
 CUDPRecvThread::CUDPRecvThread(CViewRender * lpViewRender, int nDBRoomID, int nDBCameraID)
   : m_lpViewRender(lpViewRender)
   , m_lpUDPSocket(NULL)

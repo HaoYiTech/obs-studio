@@ -306,7 +306,7 @@ void CVideoThread::doDisplaySDL()
 	//////////////////////////////////////////////////////////////////////////////////
 	// 使用SDL 进行画面绘制工作 => 正在处理全屏时，不能绘制，会与D3D发生冲突崩溃...
 	//////////////////////////////////////////////////////////////////////////////////
-	if (m_lpViewRender != NULL && !m_lpViewRender->GetIsChangeScreen()) {
+	if (m_lpViewRender != NULL && !m_lpViewRender->IsChangeScreen()) {
 		if (m_lpViewRender->GetAndResetRenderFlag()) {
 			this->doReBuildSDL();
 		}

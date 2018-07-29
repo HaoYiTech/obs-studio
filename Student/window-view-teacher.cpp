@@ -13,6 +13,16 @@
 #define FOCUS_BK_COLOR			QColor(255,255, 0)
 #define STATUS_TEXT_COLOR		QColor(20, 220, 20)
 
+bool CViewTeacher::IsFindFirstVKey()
+{
+	return ((m_lpUDPRecvThread != NULL) ? m_lpUDPRecvThread->IsFindFirstVKey() : false);
+}
+
+int	CViewTeacher::GetCmdState()
+{
+	return ((m_lpUDPRecvThread != NULL) ? m_lpUDPRecvThread->GetCmdState() : 0);
+}
+
 CViewTeacher::CViewTeacher(QWidget *parent, Qt::WindowFlags flags)
   : OBSQTDisplay(parent, flags)
   , m_lpUDPRecvThread(NULL)
