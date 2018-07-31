@@ -89,7 +89,9 @@ public:
 	int      GetDBHaoYiUserID() { return m_nDBHaoYiUserID; }
 	int      GetDBHaoYiNodeID() { return m_nDBHaoYiNodeID; }
 	int      GetDBHaoYiGatherID() { return m_nDBHaoYiGatherID; }
+	int      GetRtpTCPSockFD() { return m_nRtpTCPSockFD; }
 
+	void     SetRtpTCPSockFD(int nTCPSockFD) { m_nRtpTCPSockFD = nTCPSockFD; }
 	void	 SetUdpAddr(const string & strAddr) { m_strUdpAddr = strAddr; }
 	void     SetUdpPort(int nPort) { m_nUdpPort = nPort; }
 	void	 SetRemoteAddr(const string & strAddr) { m_strRemoteAddr = strAddr; }
@@ -201,6 +203,7 @@ private:
 	int				    m_nSnapVal;						// 通道截图间隔(1~10分钟)
 	bool				m_bAutoLinkDVR;					// 自动重连DVR摄像头...
 	bool				m_bAutoLinkFDFS;				// 自动重连FDFS服务器...
+	int                 m_nRtpTCPSockFD;                // CRemoteSession在服务器端的套接字号码...
 };
 
 inline CStudentApp *App() { return static_cast<CStudentApp*>(qApp); }

@@ -18,6 +18,7 @@ protected:
 	void closeEvent(QCloseEvent *event) override;
 private slots:
 	void doWebThreadMsg(int nMessageID, int nWParam, int nLParam);
+	void onTriggerUdpLogout(int tmTag, int idTag);
 	void on_actionSettingReconnect_triggered();
 	void on_actionSettingSystem_triggered();
 	void on_actionSystemFullscreen_triggered();

@@ -12,6 +12,7 @@
 #include "window-dlg-push.hpp"
 #include "window-student-main.h"
 #include "window-view-camera.hpp"
+#include "window-view-teacher.hpp"
 
 #define STARTUP_SEPARATOR   "==== Startup complete ==============================================="
 #define SHUTDOWN_SEPARATOR 	"==== Shutting down =================================================="
@@ -95,6 +96,25 @@ StudentWindow::StudentWindow(QWidget *parent)
 			const QRect & rect = App()->desktop()->geometry();
 			setGeometry(QStyle::alignedRect(Qt::LeftToRight,Qt::AlignCenter,size(), rect));
 		}
+	}
+}
+
+// 响应服务器发送的UDP连接对象被删除的事件通知...
+void StudentWindow::onTriggerUdpLogout(int tmTag, int idTag)
+{
+	// 如果不是学生端对象 => 直接返回...
+	if (tmTag != TM_TAG_STUDENT)
+		return;
+	// 如果是学生观看端的删除通知 => 使用右侧窗口对象...
+	if (idTag == ID_TAG_LOOKER) {
+		CViewTeacher * lpViewTeacher = m_ui.RightView->GetViewTeacher();
+		((lpViewTeacher != NULL) ? lpViewTeacher->onTriggerUdpRecvThread(false) : NULL);
+		return;
+	}
+	// 如果是学生推流端的删除通知 => 使用左侧窗口对象...
+	if (idTag == ID_TAG_PUSHER) {
+		m_ui.LeftView->onTriggerUdpSendThread();
+		return;
 	}
 }
 

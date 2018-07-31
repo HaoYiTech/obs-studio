@@ -17,8 +17,8 @@ public:
 private:
 	void DrawTitleArea();
 	void DrawRenderArea();
-protected slots:
-	void onBuildUDPRecvThread(bool bIsUDPTeacherOnLine);
+public slots:
+	void onTriggerUdpRecvThread(bool bIsUDPTeacherOnLine);
 protected:
 	void paintEvent(QPaintEvent *event) override;
 	void mousePressEvent(QMouseEvent *event) override;

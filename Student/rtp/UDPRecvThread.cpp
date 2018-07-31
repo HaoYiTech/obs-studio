@@ -31,7 +31,6 @@ CUDPRecvThread::CUDPRecvThread(CViewRender * lpViewRender, int nDBRoomID, int nD
 	// 初始化命令状态...
 	m_nCmdState = kCmdSendCreate;
 	// 初始化rtp序列头结构体...
-	memset(&m_rtp_reload, 0, sizeof(m_rtp_reload));
 	memset(&m_rtp_detect, 0, sizeof(m_rtp_detect));
 	memset(&m_rtp_create, 0, sizeof(m_rtp_create));
 	memset(&m_rtp_delete, 0, sizeof(m_rtp_delete));
@@ -56,6 +55,8 @@ CUDPRecvThread::CUDPRecvThread(CViewRender * lpViewRender, int nDBRoomID, int nD
 	m_rtp_create.liveID = nDBCameraID;
 	m_rtp_delete.roomID = nDBRoomID;
 	m_rtp_delete.liveID = nDBCameraID;
+	// 填充与远程关联的TCP套接字 => 从全局管理器中获取...
+	m_rtp_create.tcpSock = App()->GetRtpTCPSockFD();
 }
 
 CUDPRecvThread::~CUDPRecvThread()
@@ -363,7 +364,6 @@ void CUDPRecvThread::doRecvPacket()
 	switch( ptTag )
 	{
 	case PT_TAG_HEADER:	 this->doProcServerHeader(ioBuffer, outRecvLen); break;
-	case PT_TAG_RELOAD:  this->doProcServerReload(ioBuffer, outRecvLen); break;
 
 	case PT_TAG_DETECT:	 this->doTagDetectProcess(ioBuffer, outRecvLen); break;
 	case PT_TAG_AUDIO:	 this->doTagAVPackProcess(ioBuffer, outRecvLen); break;
@@ -447,11 +447,6 @@ void CUDPRecvThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
 		int nChannelNum = m_rtp_header.channelNum;
 		m_lpPlaySDL->InitAudio(nRateIndex, nChannelNum);
 	}
-}
-//
-// 处理服务器发送过来的重建命令...
-void CUDPRecvThread::doProcServerReload(char * lpBuffer, int inRecvLen)
-{
 }
 
 /*void CUDPRecvThread::doProcJamSeq(bool bIsAudio, uint32_t inJamSeq)

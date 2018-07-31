@@ -32,6 +32,11 @@ CViewLeft::~CViewLeft()
 	this->doDestoryResource();
 }
 
+// 响应从CRemoteSession发出的事件通知信号...
+void CViewLeft::onTriggerUdpSendThread()
+{
+}
+
 void CViewLeft::paintEvent(QPaintEvent *event)
 {
 	QPainter painter(this);

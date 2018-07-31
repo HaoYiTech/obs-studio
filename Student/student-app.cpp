@@ -587,6 +587,7 @@ CStudentApp::CStudentApp(int &argc, char **argv)
   , m_bAutoLinkFDFS(false)
   , m_bAutoLinkDVR(false)
   , m_bAuthLicense(false)
+  , m_nRtpTCPSockFD(0)
   , m_nMaxCamera(DEF_MAX_CAMERA)
   , m_strWebAddr(DEF_CLOUD_CLASS)
   , m_nWebPort(DEF_WEB_PORT)
@@ -807,15 +808,18 @@ void CStudentApp::doCheckRemote()
 	// 初始化远程中转会话对象...
 	m_RemoteSession = new CRemoteSession();
 	m_RemoteSession->InitSession(m_strRemoteAddr.c_str(), m_nRemotePort);
+	// 将远程会话的信号槽与主窗口对象进行相互关联操作 => UDP连接断开时的事件通知...
+	connect(m_RemoteSession, SIGNAL(doTriggerUdpLogout(int, int)), m_studentWindow, SLOT(onTriggerUdpLogout(int, int)));
 	// 建立远程会话与老师窗口对象的信号槽关联函数...
-	if (m_studentWindow == NULL || m_studentWindow->GetViewRight() == NULL)
+	CViewRight * lpViewRight = m_studentWindow->GetViewRight();
+	if (lpViewRight == NULL)
 		return;
 	// 如果讲师渲染窗口无效，直接返回...
-	CViewTeacher * lpViewTeacher = m_studentWindow->GetViewRight()->GetViewTeacher();
+	CViewTeacher * lpViewTeacher = lpViewRight->GetViewTeacher();
 	if (lpViewTeacher == NULL)
 		return;
-	// 将远程会话的信号槽进行相互关联...
-	connect(m_RemoteSession, SIGNAL(doTriggerRecvThread(bool)), lpViewTeacher, SLOT(onBuildUDPRecvThread(bool)));
+	// 将远程会话的信号槽进行相互关联 => 老师推流端上线或下线时的事件通知...
+	connect(m_RemoteSession, SIGNAL(doTriggerRecvThread(bool)), lpViewTeacher, SLOT(onTriggerUdpRecvThread(bool)));
 }
 
 void CStudentApp::doCheckOnLine()

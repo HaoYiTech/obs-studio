@@ -94,6 +94,7 @@ public:
 	CRemoteSession();
 	virtual ~CRemoteSession();
 signals:
+	void doTriggerUdpLogout(int tmTag, int idTag);
 	void doTriggerRecvThread(bool bIsUDPTeacherOnLine);
 public:
 	bool IsCanReBuild() { return m_bCanReBuild; }
@@ -106,6 +107,7 @@ protected slots:
 	void onError(QAbstractSocket::SocketError nError) override;
 private:
 	bool doParseJson(const char * lpData, int nSize, Json::Value & outValue);
+	bool doCmdUdpLogout(const char * lpData, int nSize);
 	bool doCmdStudentLogin(const char * lpData, int nSize);
 	bool doCmdStudentOnLine(const char * lpData, int nSize);
 	bool SendData(const char * lpDataPtr, int nDataSize);

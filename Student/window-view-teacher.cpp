@@ -31,8 +31,8 @@ CViewTeacher::CViewTeacher(QWidget *parent, Qt::WindowFlags flags)
 	this->setFont(theFont);
 }
 
-// 从CRemoteSession发出的事件通知信号...
-void CViewTeacher::onBuildUDPRecvThread(bool bIsUDPTeacherOnLine)
+// 响应从CRemoteSession发出的事件通知信号...
+void CViewTeacher::onTriggerUdpRecvThread(bool bIsUDPTeacherOnLine)
 {
 	// 如果是老师推流端在线通知 => 创建拉流线程...
 	if (bIsUDPTeacherOnLine) {

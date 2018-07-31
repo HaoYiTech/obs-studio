@@ -27,7 +27,6 @@ private:
 	void			doSleepTo();
 
 	void			doProcServerHeader(char * lpBuffer, int inRecvLen);
-	void			doProcServerReload(char * lpBuffer, int inRecvLen);
 
 	void			doTagDetectProcess(char * lpBuffer, int inRecvLen);
 	void			doTagAVPackProcess(char * lpBuffer, int inRecvLen);
@@ -66,7 +65,6 @@ private:
 	rtp_supply_t	m_rtp_supply;			// RTP补包命令结构体
 
 	rtp_header_t	m_rtp_header;			// RTP序列头结构体   => 接收 => 来自推流端...
-	rtp_reload_t	m_rtp_reload;			// RTP重建命令结构体 => 接收 => 来自服务器...
 
 	int64_t			m_sys_zero_ns;			// 系统计时零点 => 第一个数据包到达的系统时刻点 => 纳秒...
 	int64_t			m_next_create_ns;		// 下次发送创建命令时间戳 => 纳秒 => 每隔100毫秒发送一次...

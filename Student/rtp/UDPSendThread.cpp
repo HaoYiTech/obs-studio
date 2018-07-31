@@ -40,7 +40,6 @@ CUDPSendThread::CUDPSendThread(int nDBRoomID, int nDBCameraID)
 	// 初始化命令状态...
 	m_nCmdState = kCmdSendCreate;
 	// 初始化rtp序列头结构体...
-	memset(&m_rtp_reload, 0, sizeof(m_rtp_reload));
 	memset(&m_rtp_detect, 0, sizeof(m_rtp_detect));
 	memset(&m_rtp_create, 0, sizeof(m_rtp_create));
 	memset(&m_rtp_delete, 0, sizeof(m_rtp_delete));
@@ -838,7 +837,6 @@ void CUDPSendThread::doRecvPacket()
 	case PT_TAG_CREATE:  this->doProcServerCreate(ioBuffer, outRecvLen); break;
 	case PT_TAG_HEADER:  this->doProcServerHeader(ioBuffer, outRecvLen); break;
 	case PT_TAG_READY:   this->doProcServerReady(ioBuffer, outRecvLen);  break;
-	case PT_TAG_RELOAD:  this->doProcServerReload(ioBuffer, outRecvLen); break;
 
 	case PT_TAG_DETECT:	 this->doTagDetectProcess(ioBuffer, outRecvLen); break;
 	case PT_TAG_SUPPLY:  this->doTagSupplyProcess(ioBuffer, outRecvLen); break;
@@ -911,60 +909,6 @@ void CUDPSendThread::doProcServerReady(char * lpBuffer, int inRecvLen)
 	m_total_output_bytes += sizeof(rtpReady);
 	// 打印发送准备就绪回复命令包...
 	blog(LOG_INFO, "%s Send Ready command for reply", TM_SEND_NAME);
-}
-//
-// 处理服务器发送过来的重建命令...
-void CUDPSendThread::doProcServerReload(char * lpBuffer, int inRecvLen)
-{
-	/*if( m_lpUDPSocket == NULL || lpBuffer == NULL || inRecvLen <= 0 || inRecvLen < sizeof(rtp_reload_t) )
-		return;
-    // 通过第一个字节的低2位，判断终端类型...
-    uint8_t tmTag = lpBuffer[0] & 0x03;
-    // 获取第一个字节的中2位，得到终端身份...
-    uint8_t idTag = (lpBuffer[0] >> 2) & 0x03;
-    // 获取第一个字节的高4位，得到数据包类型...
-    uint8_t ptTag = (lpBuffer[0] >> 4) & 0x0F;
-	// 如果不是服务器端发送的重建命令，直接返回...
-	if( tmTag != TM_TAG_SERVER || idTag != ID_TAG_SERVER )
-		return;
-	// 如果不是第一次重建，重建命令必须间隔20秒以上...
-	if( m_rtp_reload.reload_time > 0 ) {
-		uint32_t cur_time_sec = (uint32_t)(CUtilTool::os_gettime_ns()/1000000000);
-		uint32_t load_time_sec = m_rtp_reload.reload_time / 1000;
-		// 如果重建命令间隔不到20秒，直接返回...
-		if( (cur_time_sec - load_time_sec) < RELOAD_TIME_OUT )
-			return;
-	}
-	// 保存服务器传递的重建命令...
-	m_rtp_reload.tm = tmTag;
-	m_rtp_reload.id = idTag;
-	m_rtp_reload.pt = ptTag;
-	// 记录本地重建信息...
-	m_rtp_reload.reload_time = (uint32_t)(CUtilTool::os_gettime_ns()/1000000);
-	++m_rtp_reload.reload_count;
-	// 打印收到服务器重建命令...
-	log_trace("%s Server Reload Count: %d", TM_SEND_NAME, m_rtp_reload.reload_count);
-	// 重置相关命令包...
-	memset(&m_rtp_ready, 0, sizeof(m_rtp_ready));
-	// 清空补包集合队列...
-	m_MapLose.clear();
-	// 释放环形队列空间...
-	circlebuf_free(&m_circle);
-	// 初始化环形队列，预分配空间...
-	circlebuf_init(&m_circle);
-	circlebuf_reserve(&m_circle, DEF_CIRCLE_SIZE);
-	// 重置相关变量...
-	m_nCmdState = kCmdSendCreate;
-	m_next_create_ns = -1;
-	m_next_header_ns = -1;
-	m_next_detect_ns = -1;
-	m_nCurPackSeq = 0;
-	m_nCurSendSeq = 0;
-	// 重新开始探测网络...
-	m_rtp_detect.tsSrc = 0;
-	m_rtp_detect.dtNum = 0;
-	m_rtt_var_ms = -1;
-	m_rtt_ms = -1;*/
 }
 
 void CUDPSendThread::doTagSupplyProcess(char * lpBuffer, int inRecvLen)

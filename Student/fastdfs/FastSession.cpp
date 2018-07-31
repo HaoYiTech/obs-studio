@@ -1,7 +1,6 @@
 
 #include "student-app.h"
 #include "FastSession.h"
-#include "json.h"
 
 void long2buff(int64_t n, char *buff)
 {
@@ -452,6 +451,7 @@ void CRemoteSession::onReadyRead()
 		bool bResult = false;
 		switch(lpCmdHeader->m_cmd)
 		{
+		case kCmd_UDP_Logout:     bResult = this->doCmdUdpLogout(lpDataPtr, lpCmdHeader->m_pkg_len); break;
 		case kCmd_Student_Login:  bResult = this->doCmdStudentLogin(lpDataPtr, lpCmdHeader->m_pkg_len); break;
 		case kCmd_Student_OnLine: bResult = this->doCmdStudentOnLine(lpDataPtr, lpCmdHeader->m_pkg_len); break;
 		}
@@ -459,6 +459,22 @@ void CRemoteSession::onReadyRead()
 		m_strRecv.erase(0, lpCmdHeader->m_pkg_len + sizeof(Cmd_Header));
 		// 如果还有数据，则继续解析命令...
 	}
+}
+
+bool CRemoteSession::doCmdUdpLogout(const char * lpData, int nSize)
+{
+	Json::Value value;
+	// 进行Json数据包的内容解析...
+	if (!this->doParseJson(lpData, nSize, value)) {
+		blog(LOG_INFO, "CRemoteSession::doParseJson Error!");
+		return false;
+	}
+	// 获取服务器发送过来的数据信息...
+	int tmTag = atoi(CStudentApp::getJsonString(value["tm_tag"]).c_str());
+	int idTag = atoi(CStudentApp::getJsonString(value["id_tag"]).c_str());
+	// 通知主窗口界面层，UDP终端发生退出事件...
+	emit this->doTriggerUdpLogout(tmTag, idTag);
+	return true;
 }
 
 // 处理中转服务器反馈的学生端登录成功之后的信息 => TCP讲师端和UDP讲师端是否在线...
@@ -470,9 +486,14 @@ bool CRemoteSession::doCmdStudentLogin(const char * lpData, int nSize)
 		blog(LOG_INFO, "CRemoteSession::doParseJson Error!");
 		return false;
 	}
-	// 获取TCP讲师端和UDP讲师端是否在线 => 只检测UDP讲师端在线状态标志...
+	// 获取TCP套接字、TCP讲师端和UDP讲师端是否在线 => 只检测UDP讲师端在线状态标志...
+	int  nTCPSocketFD = atoi(CStudentApp::getJsonString(value["tcp_socket"]).c_str());
 	bool bIsTCPTeacherOnLine = atoi(CStudentApp::getJsonString(value["tcp_teacher"]).c_str());
 	bool bIsUDPTeacherOnLine = atoi(CStudentApp::getJsonString(value["udp_teacher"]).c_str());
+	// 将获取的TCP套接字更新到系统变量当中 => 在创建UDP连接时会用到...
+	if (App()->GetRtpTCPSockFD() != nTCPSocketFD) {
+		App()->SetRtpTCPSockFD(nTCPSocketFD);
+	}
 	// 根据UDP讲师推流端是否在线，进行拉流线程的创建或删除...
 	emit this->doTriggerRecvThread(bIsUDPTeacherOnLine);
 	return true;

@@ -32,7 +32,6 @@ private:
 	void			doProcServerCreate(char * lpBuffer, int inRecvLen);
 	void			doProcServerHeader(char * lpBuffer, int inRecvLen);
 	void			doProcServerReady(char * lpBuffer, int inRecvLen);
-	void			doProcServerReload(char * lpBuffer, int inRecvLen);
 
 	void			doTagDetectProcess(char * lpBuffer, int inRecvLen);
 	void			doTagSupplyProcess(char * lpBuffer, int inRecvLen);
@@ -75,7 +74,6 @@ private:
 	rtp_header_t	m_rtp_header;			// RTP序列头结构体
 
 	rtp_ready_t		m_rtp_ready;			// RTP准备继续结构体 => 接收 => 保存观看端信息
-	rtp_reload_t	m_rtp_reload;			// RTP重建命令结构体 => 接收 => 来自服务器
 
 	int64_t			m_next_create_ns;		// 下次发送创建命令时间戳 => 纳秒 => 每隔100毫秒发送一次...
 	int64_t			m_next_header_ns;		// 下次发送序列头命令时间戳 => 纳秒 => 每隔100毫秒发送一次...
