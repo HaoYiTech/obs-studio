@@ -9,7 +9,9 @@ public:
 	CViewRender(QWidget *parent, Qt::WindowFlags flags = 0);
 	virtual ~CViewRender();
 public:
+	void    doUpdateNotice(const QString & strNotice, bool bIsDrawImage = false);
 	bool    IsChangeScreen() { return m_bIsChangeScreen; }
+	bool    IsDrawImage() { return m_bIsDrawImage; }
 	QRect & GetRenderRect() { return m_rcRenderRect; }
 	HWND    GetRenderHWnd() { return m_hRenderWnd; }
 	void    doResizeRect(const QRect & rcInRect);
@@ -18,7 +20,6 @@ public:
 protected:
 	void    paintEvent(QPaintEvent *event) override;
 	void    keyPressEvent(QKeyEvent *event) override;
-	void	timerEvent(QTimerEvent * inEvent) override;
 	void    mouseDoubleClickEvent(QMouseEvent *event) override;
 private:
 	CViewTeacher   *   m_lpViewTeacher;     // 父窗口对象...
@@ -27,5 +28,6 @@ private:
 	QRect              m_rcRenderRect;      // 窗口画面渲染的矩形区域...
 	bool               m_bRectChanged;      // 渲染矩形区发生变化...
 	bool               m_bIsChangeScreen;   // 正在处理全屏或还原窗口...
-	int                m_nStateTimer;       // 更新状态时钟...
+	bool               m_bIsDrawImage;      // 是否正在绘制图片标志...
+	QString            m_strNoticeText;     // 显示的提示文字信息...
 };

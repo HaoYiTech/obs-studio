@@ -14,11 +14,11 @@ public:
 public:
 	void setTitleContent(QString & titleContent);
 	void onFullScreenAction();
-	bool IsFindFirstVKey();
-	int	 GetCmdState();
 private:
 	void DrawTitleArea();
 	void DrawRenderArea();
+protected slots:
+	void onBuildUDPRecvThread(bool bIsUDPTeacherOnLine);
 protected:
 	void paintEvent(QPaintEvent *event) override;
 	void mousePressEvent(QMouseEvent *event) override;

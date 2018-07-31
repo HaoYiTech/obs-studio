@@ -25,6 +25,8 @@
 #include <atlconv.h>
 #include "SDL2/SDL.h"
 
+#include "window-view-teacher.hpp"
+
 #pragma comment(lib, "iphlpapi.lib")
 
 #define DEFAULT_LANG "zh-CN"
@@ -805,6 +807,15 @@ void CStudentApp::doCheckRemote()
 	// 初始化远程中转会话对象...
 	m_RemoteSession = new CRemoteSession();
 	m_RemoteSession->InitSession(m_strRemoteAddr.c_str(), m_nRemotePort);
+	// 建立远程会话与老师窗口对象的信号槽关联函数...
+	if (m_studentWindow == NULL || m_studentWindow->GetViewRight() == NULL)
+		return;
+	// 如果讲师渲染窗口无效，直接返回...
+	CViewTeacher * lpViewTeacher = m_studentWindow->GetViewRight()->GetViewTeacher();
+	if (lpViewTeacher == NULL)
+		return;
+	// 将远程会话的信号槽进行相互关联...
+	connect(m_RemoteSession, SIGNAL(doTriggerRecvThread(bool)), lpViewTeacher, SLOT(onBuildUDPRecvThread(bool)));
 }
 
 void CStudentApp::doCheckOnLine()

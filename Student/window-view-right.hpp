@@ -9,6 +9,8 @@ public:
 	CViewRight(QWidget *parent, Qt::WindowFlags flags = 0);
 	virtual ~CViewRight();
 public:
+	CViewTeacher * GetViewTeacher() { return m_lpViewTeacher; }
+public:
 	void doDestroyResource();
 	void onFullScreenAction();
 	void onWebLoadResource();

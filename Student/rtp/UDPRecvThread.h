@@ -16,8 +16,6 @@ public:
 	virtual void Entry();
 public:
 	BOOL			InitThread(string & strUdpAddr, int nUdpPort);
-	int				GetCmdState() { return m_nCmdState; }
-	bool			IsFindFirstVKey();
 private:
 	void			ClosePlayer();
 	void			CloseSocket();

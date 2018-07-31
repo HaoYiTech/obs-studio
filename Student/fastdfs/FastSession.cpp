@@ -416,11 +416,24 @@ void CRemoteSession::onConnected()
 	this->SendLoginCmd();
 }
 
+bool CRemoteSession::doParseJson(const char * lpData, int nSize, Json::Value & outValue)
+{
+	if (nSize <= 0 || lpData == NULL)
+		return false;
+	string strUTF8Data;
+	Json::Reader reader;
+	strUTF8Data.assign(lpData, nSize);
+	return reader.parse(strUTF8Data, outValue);
+}
+
 void CRemoteSession::onReadyRead()
 {
 	// 如果已经处于重建状态，直接返回...
 	if (m_bCanReBuild)
 		return;
+	// 从网络层读取所有的缓冲区，并将缓冲区连接起来...
+	QByteArray theBuffer = m_TCPSocket->readAll();
+	m_strRecv.append(theBuffer.toStdString());
 	// 这里网络数据会发生粘滞现象，因此，需要循环执行...
 	while (m_strRecv.size() > 0) {
 		// 得到的数据长度不够，直接返回，等待新数据...
@@ -439,6 +452,7 @@ void CRemoteSession::onReadyRead()
 		bool bResult = false;
 		switch(lpCmdHeader->m_cmd)
 		{
+		case kCmd_Student_Login:  bResult = this->doCmdStudentLogin(lpDataPtr, lpCmdHeader->m_pkg_len); break;
 		case kCmd_Student_OnLine: bResult = this->doCmdStudentOnLine(lpDataPtr, lpCmdHeader->m_pkg_len); break;
 		}
 		// 删除已经处理完毕的数据 => Header + pkg_len...
@@ -446,7 +460,24 @@ void CRemoteSession::onReadyRead()
 		// 如果还有数据，则继续解析命令...
 	}
 }
-//
+
+// 处理中转服务器反馈的学生端登录成功之后的信息 => TCP讲师端和UDP讲师端是否在线...
+bool CRemoteSession::doCmdStudentLogin(const char * lpData, int nSize)
+{
+	Json::Value value;
+	// 进行Json数据包的内容解析...
+	if (!this->doParseJson(lpData, nSize, value)) {
+		blog(LOG_INFO, "CRemoteSession::doParseJson Error!");
+		return false;
+	}
+	// 获取TCP讲师端和UDP讲师端是否在线 => 只检测UDP讲师端在线状态标志...
+	bool bIsTCPTeacherOnLine = atoi(CStudentApp::getJsonString(value["tcp_teacher"]).c_str());
+	bool bIsUDPTeacherOnLine = atoi(CStudentApp::getJsonString(value["udp_teacher"]).c_str());
+	// 根据UDP讲师推流端是否在线，进行拉流线程的创建或删除...
+	emit this->doTriggerRecvThread(bIsUDPTeacherOnLine);
+	return true;
+}
+
 // 处理中转服务器反馈的在线通道列表 => 不用反馈数据给中转服务器...
 bool CRemoteSession::doCmdStudentOnLine(const char * lpData, int nSize)
 {

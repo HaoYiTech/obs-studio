@@ -1,13 +1,10 @@
 
+#include "student-app.h"
 #include "UDPSocket.h"
 #include "SocketUtils.h"
 #include "UDPPlayThread.h"
 #include "UDPRecvThread.h"
-
-bool CUDPRecvThread::IsFindFirstVKey()
-{
-	return ((m_lpPlaySDL == NULL) ? false : m_lpPlaySDL->IsFindFirstVKey());
-}
+#include "../window-view-render.hpp"
 
 CUDPRecvThread::CUDPRecvThread(CViewRender * lpViewRender, int nDBRoomID, int nDBCameraID)
   : m_lpViewRender(lpViewRender)
@@ -210,6 +207,8 @@ void CUDPRecvThread::doSendCreateCmd()
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	m_sys_zero_ns = os_gettime_ns();
 	blog(LOG_INFO, "%s Set System Zero Time By Create => %I64d ms", TM_RECV_NAME, m_sys_zero_ns/1000000);
+	// 更新渲染界面，显示正在连接服务器的提示信息...
+	m_lpViewRender->doUpdateNotice(QTStr("Render.Window.ConnectServer"));
 }
 
 void CUDPRecvThread::doSendDetectCmd()
@@ -415,6 +414,8 @@ void CUDPRecvThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
 	// 如果播放器已经创建，直接返回...
 	if( m_lpPlaySDL != NULL || m_lpViewRender == NULL )
 		return;
+	// 更新渲染界面，已连接成功，等待接收网络数据...
+	m_lpViewRender->doUpdateNotice(QTStr("Render.Window.WaitNetData"));
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 开始重建本地播放器对象，设定观看端的0点时刻...
 	// 注意：这里非常重要，服务器开始转发推流者音视频数据了，必须设定观看者的系统计时起点，0点时刻...
@@ -430,7 +431,7 @@ void CUDPRecvThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
 		blog(LOG_INFO, "%s Set System Zero Time By Header => %I64d ms", TM_RECV_NAME, m_sys_zero_ns/1000000);
 	}*/
 	// 新建播放器，初始化音视频线程...
-	m_lpPlaySDL = new CPlaySDL(m_sys_zero_ns);
+	m_lpPlaySDL = new CPlaySDL(m_lpViewRender, m_sys_zero_ns);
 	// 计算默认的网络缓冲评估时间 => 使用帧率来计算...
 	m_server_cache_time_ms = 1000 / ((m_rtp_header.fpsNum > 0) ? m_rtp_header.fpsNum : 25); 
 	// 如果有视频，初始化视频线程...
@@ -438,7 +439,7 @@ void CUDPRecvThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
 		int nPicFPS = m_rtp_header.fpsNum;
 		int nPicWidth = m_rtp_header.picWidth;
 		int nPicHeight = m_rtp_header.picHeight;
-		m_lpPlaySDL->InitVideo(m_lpViewRender, m_strSPS, m_strPPS, nPicWidth, nPicHeight, nPicFPS);
+		m_lpPlaySDL->InitVideo(m_strSPS, m_strPPS, nPicWidth, nPicHeight, nPicFPS);
 	} 
 	// 如果有音频，初始化音频线程...
 	if( m_rtp_header.hasAudio ) {

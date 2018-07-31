@@ -106,11 +106,11 @@ private:
 class CPlaySDL
 {
 public:
-	CPlaySDL(int64_t inSysZeroNS);
+	CPlaySDL(CViewRender * lpViewRender, int64_t inSysZeroNS);
 	~CPlaySDL();
 public:
 	void		PushPacket(int zero_delay_ms, string & inData, int inTypeTag, bool bIsKeyFrame, uint32_t inSendTime);
-	BOOL		InitVideo(CViewRender * lpViewRender, string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS);
+	BOOL		InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS);
 	BOOL		InitAudio(int nRateIndex, int nChannelNum);
 	int			GetAPacketSize() { return ((m_lpAudioThread != NULL) ? m_lpAudioThread->GetMapPacketSize() : 0); }
 	int			GetVPacketSize() { return ((m_lpVideoThread != NULL) ? m_lpVideoThread->GetMapPacketSize() : 0); }
@@ -119,7 +119,6 @@ public:
 	int64_t		GetZeroDelayMS() { return m_zero_delay_ms; }
 	int64_t		GetSysZeroNS() { return m_sys_zero_ns; }
 	int64_t		GetStartPtsMS() { return m_start_pts_ms; }
-	bool		IsFindFirstVKey() { return m_bFindFirstVKey; }
 private:
 	bool				m_bFindFirstVKey;	// 是否找到第一个视频关键帧标志...
 	int64_t				m_sys_zero_ns;		// 系统计时零点 => 启动时间戳 => 纳秒...
@@ -128,4 +127,5 @@ private:
 
 	CVideoThread    *   m_lpVideoThread;	// 视频线程...
 	CAudioThread    *   m_lpAudioThread;	// 音频线程...
+	CViewRender     *   m_lpViewRender;     // 渲染窗口...
 };

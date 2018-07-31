@@ -13,16 +13,6 @@
 #define FOCUS_BK_COLOR			QColor(255,255, 0)
 #define STATUS_TEXT_COLOR		QColor(20, 220, 20)
 
-bool CViewTeacher::IsFindFirstVKey()
-{
-	return ((m_lpUDPRecvThread != NULL) ? m_lpUDPRecvThread->IsFindFirstVKey() : false);
-}
-
-int	CViewTeacher::GetCmdState()
-{
-	return ((m_lpUDPRecvThread != NULL) ? m_lpUDPRecvThread->GetCmdState() : 0);
-}
-
 CViewTeacher::CViewTeacher(QWidget *parent, Qt::WindowFlags flags)
   : OBSQTDisplay(parent, flags)
   , m_lpUDPRecvThread(NULL)
@@ -39,12 +29,34 @@ CViewTeacher::CViewTeacher(QWidget *parent, Qt::WindowFlags flags)
 	QFont theFont = this->font();
 	theFont.setPointSize(TITLE_FONT_HEIGHT);
 	this->setFont(theFont);
-	// 创建UDP接收线程，使用服务器传递过来的参数...
-	int nRoomID = atoi(App()->GetRoomIDStr().c_str());
-	string & strUdpAddr = App()->GetUdpAddr();
-	int nUdpPort = App()->GetUdpPort();
-	m_lpUDPRecvThread = new CUDPRecvThread(m_lpViewRender, nRoomID, 0);
-	m_lpUDPRecvThread->InitThread(strUdpAddr, nUdpPort);
+}
+
+// 从CRemoteSession发出的事件通知信号...
+void CViewTeacher::onBuildUDPRecvThread(bool bIsUDPTeacherOnLine)
+{
+	// 如果是老师推流端在线通知 => 创建拉流线程...
+	if (bIsUDPTeacherOnLine) {
+		// 如果UDP接收线程已经创建过了，直接返回...
+		if (m_lpUDPRecvThread != NULL)
+			return;
+		ASSERT(m_lpUDPRecvThread == NULL);
+		// 创建UDP接收线程，使用服务器传递过来的参数...
+		int nRoomID = atoi(App()->GetRoomIDStr().c_str());
+		string & strUdpAddr = App()->GetUdpAddr();
+		int nUdpPort = App()->GetUdpPort();
+		m_lpUDPRecvThread = new CUDPRecvThread(m_lpViewRender, nRoomID, 0);
+		m_lpUDPRecvThread->InitThread(strUdpAddr, nUdpPort);
+		// 更新渲染界面窗口显示信息 => 讲师推流端已经上线...
+		m_lpViewRender->doUpdateNotice(QTStr("Render.Window.TeacherOnLine"));
+	} else {
+		// 如果是老师推流端离线通知 => 删除拉流线程...
+		if (m_lpUDPRecvThread != NULL) {
+			delete m_lpUDPRecvThread;
+			m_lpUDPRecvThread = NULL;
+		}
+		// 更新渲染界面窗口显示信息 => 恢复成默认提示信息...
+		m_lpViewRender->doUpdateNotice(QTStr("Render.Window.DefaultNotice"));
+	}
 }
 
 CViewTeacher::~CViewTeacher()
@@ -98,10 +110,21 @@ void CViewTeacher::DrawTitleArea()
 
 void CViewTeacher::DrawRenderArea()
 {
+	// 准备通用绘制对象...
 	QPainter painter(this);
 	if (!painter.isActive())
 		return;
+	// 获取窗口矩形区域...
 	QRect rcRect = this->rect();
+	// 如果正在用SDL绘制图片，需要进行区域裁剪...
+	if (m_lpViewRender->IsDrawImage()) {
+		QRect rcSrcRect = rcRect;
+		QRegion oldRect(rcSrcRect);
+		rcSrcRect = rcSrcRect.adjusted(2, 2, -2, -2);
+		QRegion newRect(rcSrcRect);
+		QRegion borderRect = newRect.xored(oldRect);
+		painter.setClipRegion(borderRect);
+	}
 	// 绘制最大矩形边框...
 	rcRect.adjust(0, 0, -1, -1);
 	painter.setPen(QPen(m_bkColor, 1));
@@ -117,9 +140,6 @@ void CViewTeacher::DrawRenderArea()
 	// 有渲染窗口占位，不需要填充矩形区...
 	//painter.fillRect(rcRect, m_bkColor);
 	// 注意：这里使用PS截图后放大确认大小...
-	// 如果渲染窗口无效，直接返回...
-	if (m_lpViewRender == NULL)
-		return;
 	// 渲染窗口有效，重置渲染窗口的矩形位置...
 	m_lpViewRender->doResizeRect(rcRect);
 }

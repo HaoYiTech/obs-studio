@@ -1,4 +1,5 @@
 
+#include "student-app.h"
 #include "BitWritter.h"
 #include "UDPPlayThread.h"
 #include "../window-view-render.hpp"
@@ -103,7 +104,8 @@ CVideoThread::~CVideoThread()
 	}
 	// 销毁SDL窗口时会隐藏关联窗口...
 	if( m_lpViewRender != NULL ) {
-		m_lpViewRender->show();
+		HWND hWnd = m_lpViewRender->GetRenderHWnd();
+		BOOL bRet = ::ShowWindow(hWnd, SW_SHOW);
 	}
 	// 释放单帧图像转换空间...
 	if( m_img_buffer_ptr != NULL ) {
@@ -769,14 +771,16 @@ void CAudioThread::doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, in
 	this->doPushPacket(theNewPacket);
 }
 
-CPlaySDL::CPlaySDL(int64_t inSysZeroNS)
-  : m_sys_zero_ns(inSysZeroNS)
+CPlaySDL::CPlaySDL(CViewRender * lpViewRender, int64_t inSysZeroNS)
+  : m_lpViewRender(lpViewRender)
+  , m_sys_zero_ns(inSysZeroNS)
   , m_bFindFirstVKey(false)
   , m_lpVideoThread(NULL)
   , m_lpAudioThread(NULL)
   , m_zero_delay_ms(-1)
   , m_start_pts_ms(-1)
 {
+	ASSERT( m_lpViewRender != NULL );
 	ASSERT( m_sys_zero_ns > 0 );
 }
 
@@ -793,7 +797,7 @@ CPlaySDL::~CPlaySDL()
 	}
 }
 
-BOOL CPlaySDL::InitVideo(CViewRender * lpViewRender, string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS)
+BOOL CPlaySDL::InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS)
 {
 	// 创建新的视频对象...
 	if( m_lpVideoThread != NULL ) {
@@ -801,7 +805,7 @@ BOOL CPlaySDL::InitVideo(CViewRender * lpViewRender, string & inSPS, string & in
 		m_lpVideoThread = NULL;
 	}
 	m_lpVideoThread = new CVideoThread(this);
-	return m_lpVideoThread->InitVideo(lpViewRender, inSPS, inPPS, nWidth, nHeight, nFPS);
+	return m_lpVideoThread->InitVideo(m_lpViewRender, inSPS, inPPS, nWidth, nHeight, nFPS);
 }
 
 BOOL CPlaySDL::InitAudio(int nRateIndex, int nChannelNum)
@@ -841,10 +845,12 @@ void CPlaySDL::PushPacket(int zero_delay_ms, string & inData, int inTypeTag, boo
 		// 如果当前视频帧，不是关键帧，直接丢弃...
 		if( !bIsKeyFrame ) {
 			blog(LOG_INFO, "%s Discard for First Video KeyFrame => PTS: %lu, Type: %d", TM_RECV_NAME, inSendTime, inTypeTag);
+			m_lpViewRender->doUpdateNotice(QString(QTStr("Render.Window.DropVideoFrame")).arg(inSendTime));
 			return;
 		}
 		// 设置已经找到第一个视频关键帧标志...
 		m_bFindFirstVKey = true;
+		m_lpViewRender->doUpdateNotice(QTStr("Render.Window.FindFirstVKey"), true);
 		blog(LOG_INFO, "%s Find First Video KeyFrame OK => PTS: %lu, Type: %d", TM_RECV_NAME, inSendTime, inTypeTag);
 	}
 	// 判断处理帧的对象是否存在，不存在，直接丢弃...

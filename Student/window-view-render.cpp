@@ -12,8 +12,8 @@ CViewRender::CViewRender(QWidget *parent, Qt::WindowFlags flags)
   : OBSQTDisplay(parent, flags)
   , m_bIsChangeScreen(false)
   , m_bRectChanged(false)
+  , m_bIsDrawImage(false)
   , m_hRenderWnd(NULL)
-  , m_nStateTimer(-1)
 {
 	// 保存渲染窗口句柄对象...
 	m_hRenderWnd = (HWND)this->winId();
@@ -23,52 +23,45 @@ CViewRender::CViewRender(QWidget *parent, Qt::WindowFlags flags)
 	m_bkColor = WINDOW_BK_COLOR;
 	m_rcNoramlRect.setRect(0, 0, 0, 0);
 	m_rcRenderRect.setRect(0, 0, 0, 0);
-	// 创建时钟，每隔半秒刷新状态...
-	m_nStateTimer = this->startTimer(500);
 	// 设置窗口字体大小...
 	QFont theFont = this->font();
 	theFont.setFamily(QTStr("Student.Font.Family"));
 	theFont.setPointSize(NOTICE_FONT_HEIGHT);
 	theFont.setWeight(QFont::Light);
 	this->setFont(theFont);
+	// 设置默认的文字提示信息...
+	m_strNoticeText = QTStr("Render.Window.DefaultNotice");
 }
 
 CViewRender::~CViewRender()
 {
 }
 
-// 时钟定时执行过程...
-void CViewRender::timerEvent(QTimerEvent *inEvent)
+void CViewRender::doUpdateNotice(const QString & strNotice, bool bIsDrawImage/* = false*/)
 {
-	int nTimerID = inEvent->timerId();
-	if (nTimerID == m_nStateTimer) {
-		this->update();
-	}
+	m_bIsDrawImage = bIsDrawImage;
+	m_strNoticeText = strNotice;
+	this->update();
 }
 
 void CViewRender::paintEvent(QPaintEvent *event)
 {
+	// 如果正在用SDL绘制图片，忽略事件，直接返回...
+	if (m_bIsDrawImage) {
+		event->ignore();
+		return;
+	}
+	// 准备通用绘制对象...
 	QPainter painter(this);
 	if (!painter.isActive())
 		return;
-	// 如果已经收到第一个视频关键帧 => 删除时钟...
-	if (m_lpViewTeacher->IsFindFirstVKey()) {
-		if (m_nStateTimer >= 0) {
-			this->killTimer(m_nStateTimer);
-			m_nStateTimer = -1;
-		}
-		return;
-	}
-	// 第一个关键帧没有到达 => 查看登录状态，准备文字...
-	int nCmdState = m_lpViewTeacher->GetCmdState();
-	QString strNotice = QTStr((nCmdState <= 0) ? "Render.Window.DefaultNotice" : "Render.Window.WaitFirstVKey");
 	// 先填充背景单纯颜色...
 	painter.setBrush(QBrush(m_bkColor));
 	painter.drawRect(this->rect());
 	// 设置信息栏文字颜色...
 	painter.setPen(QPen(NOTICE_TEXT_COLOR));
 	// 自动居中显示文字...
-	painter.drawText(this->rect(), Qt::AlignCenter, strNotice);
+	painter.drawText(this->rect(), Qt::AlignCenter, m_strNoticeText);
 }
 
 // 重置窗口的矩形区域 => 相对父窗口的矩形坐标...

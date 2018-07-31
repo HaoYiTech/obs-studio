@@ -78,6 +78,7 @@ void CViewRight::onWebLoadResource()
 
 void CViewRight::paintEvent(QPaintEvent *event)
 {
+	// 准备通用绘制对象...
 	QPainter painter(this);
 	painter.setBrush(QBrush(m_bkColor));
 	painter.drawRect(this->rect());

@@ -12,7 +12,8 @@ public:
 public:
 	void InitWindow();
 	void UpdateTitleBar();
-	CViewLeft * GetViewLeft() { return m_ui.LeftView; }
+	CViewLeft  * GetViewLeft() { return m_ui.LeftView; }
+	CViewRight * GetViewRight() { return m_ui.RightView; }
 protected:
 	void closeEvent(QCloseEvent *event) override;
 private slots:
