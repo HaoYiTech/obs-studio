@@ -1,7 +1,6 @@
 
 #include "obs-app.hpp"
 #include "FastSession.h"
-#include "json.h"
 
 void long2buff(int64_t n, char *buff)
 {
@@ -416,11 +415,24 @@ void CRemoteSession::onConnected()
 	this->SendLoginCmd();
 }
 
+bool CRemoteSession::doParseJson(const char * lpData, int nSize, Json::Value & outValue)
+{
+	if (nSize <= 0 || lpData == NULL)
+		return false;
+	string strUTF8Data;
+	Json::Reader reader;
+	strUTF8Data.assign(lpData, nSize);
+	return reader.parse(strUTF8Data, outValue);
+}
+
 void CRemoteSession::onReadyRead()
 {
 	// 如果已经处于重建状态，直接返回...
 	if (m_bCanReBuild)
 		return;
+	// 从网络层读取所有的缓冲区，并将缓冲区连接起来...
+	QByteArray theBuffer = m_TCPSocket->readAll();
+	m_strRecv.append(theBuffer.toStdString());
 	// 这里网络数据会发生粘滞现象，因此，需要循环执行...
 	while (m_strRecv.size() > 0) {
 		// 得到的数据长度不够，直接返回，等待新数据...
@@ -439,11 +451,52 @@ void CRemoteSession::onReadyRead()
 		bool bResult = false;
 		switch(lpCmdHeader->m_cmd)
 		{
+		case kCmd_UDP_Logout:     bResult = this->doCmdUdpLogout(lpDataPtr, lpCmdHeader->m_pkg_len); break;
+		case kCmd_Teacher_Login:  bResult = this->doCmdTeacherLogin(lpDataPtr, lpCmdHeader->m_pkg_len); break;
+		case kCmd_Teacher_OnLine: bResult = this->doCmdTeacherOnLine(lpDataPtr, lpCmdHeader->m_pkg_len); break;
 		}
 		// 删除已经处理完毕的数据 => Header + pkg_len...
 		m_strRecv.erase(0, lpCmdHeader->m_pkg_len + sizeof(Cmd_Header));
 		// 如果还有数据，则继续解析命令...
 	}
+}
+
+bool CRemoteSession::doCmdUdpLogout(const char * lpData, int nSize)
+{
+	Json::Value value;
+	// 进行Json数据包的内容解析...
+	if (!this->doParseJson(lpData, nSize, value)) {
+		blog(LOG_INFO, "CRemoteSession::doParseJson Error!");
+		return false;
+	}
+	// 获取服务器发送过来的数据信息...
+	int tmTag = atoi(OBSApp::getJsonString(value["tm_tag"]).c_str());
+	int idTag = atoi(OBSApp::getJsonString(value["id_tag"]).c_str());
+	// 通知主窗口界面层，UDP终端发生退出事件...
+	emit this->doTriggerUdpLogout(tmTag, idTag);
+	return true;
+}
+
+bool CRemoteSession::doCmdTeacherLogin(const char * lpData, int nSize)
+{
+	Json::Value value;
+	// 进行Json数据包的内容解析...
+	if (!this->doParseJson(lpData, nSize, value)) {
+		blog(LOG_INFO, "CRemoteSession::doParseJson Error!");
+		return false;
+	}
+	// 获取远程连接在服务器端的TCP套接字...
+	int nTCPSocketFD = atoi(OBSApp::getJsonString(value["tcp_socket"]).c_str());
+	// 将获取的TCP套接字更新到系统变量当中 => 在创建UDP连接时会用到...
+	if (App()->GetRtpTCPSockFD() != nTCPSocketFD) {
+		App()->SetRtpTCPSockFD(nTCPSocketFD);
+	}
+	return true;
+}
+
+bool CRemoteSession::doCmdTeacherOnLine(const char * lpData, int nSize)
+{
+	return true;
 }
 
 void CRemoteSession::onDisConnected()

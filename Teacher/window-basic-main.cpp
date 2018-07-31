@@ -55,6 +55,8 @@
 #include "volume-control.hpp"
 //#include "remote-text.hpp"
 
+#include "../plugins/win-rtp/rtp.h"
+
 #define VOLUME_METER_DECAY_FAST        23.53
 #define VOLUME_METER_DECAY_MEDIUM      11.76
 #define VOLUME_METER_DECAY_SLOW        8.57
@@ -5043,6 +5045,26 @@ void OBSBasic::on_statsButton_clicked()
 	on_stats_triggered();
 }
 
+// 响应服务器发送的UDP连接对象被删除的事件通知...
+void OBSBasic::onTriggerUdpLogout(int tmTag, int idTag)
+{
+	// 如果不是讲师端对象 => 直接返回...
+	if (tmTag != TM_TAG_TEACHER)
+		return;
+	// 如果是讲师推流端的删除通知...
+	if (idTag == ID_TAG_PUSHER) {
+		// 输出对象有效，输出流处于活动状态 => 直接停止推流连接...
+		if (outputHandler && outputHandler->StreamingActive()) {
+			this->StopStreaming();
+		}
+		return;
+	}
+	// 如果是讲师观看端的删除通知...
+	if (idTag == ID_TAG_LOOKER) {
+	}
+}
+
+// 点击“开始推流”或“停止推流”的按钮事件...
 void OBSBasic::on_streamButton_clicked()
 {
 	if (outputHandler->StreamingActive()) {
@@ -5059,7 +5081,7 @@ void OBSBasic::on_streamButton_clicked()
 				return;
 		}
 
-		StopStreaming();
+		this->StopStreaming();
 	} else {
 		bool confirm = config_get_bool(GetGlobalConfig(), "BasicWindow",
 				"WarnBeforeStartingStream");
@@ -5074,7 +5096,7 @@ void OBSBasic::on_streamButton_clicked()
 				return;
 		}
 
-		StartStreaming();
+		this->StartStreaming();
 	}
 }
 

@@ -4,6 +4,7 @@
 #include <fastdfs.h>
 #include <QTcpSocket>
 #include <string>
+#include "json.h"
 
 using namespace std;
 
@@ -92,6 +93,8 @@ class CRemoteSession : public CFastSession {
 public:
 	CRemoteSession();
 	virtual ~CRemoteSession();
+signals:
+	void doTriggerUdpLogout(int tmTag, int idTag);
 public:
 	bool IsCanReBuild() { return m_bCanReBuild; }
 	bool SendOnLineCmd();
@@ -102,6 +105,10 @@ protected slots:
 	void onBytesWritten(qint64 nBytes) override;
 	void onError(QAbstractSocket::SocketError nError) override;
 private:
+	bool doParseJson(const char * lpData, int nSize, Json::Value & outValue);
+	bool doCmdUdpLogout(const char * lpData, int nSize);
+	bool doCmdTeacherLogin(const char * lpData, int nSize);
+	bool doCmdTeacherOnLine(const char * lpData, int nSize);
 	bool SendData(const char * lpDataPtr, int nDataSize);
 	bool SendLoginCmd();
 private:

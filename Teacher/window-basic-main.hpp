@@ -403,13 +403,11 @@ public slots:
 	void SaveProject();
 
 	void SetTransition(OBSSource transition);
-	void TransitionToScene(OBSScene scene, bool force = false,
-			bool direct = false);
-	void TransitionToScene(OBSSource scene, bool force = false,
-			bool direct = false, bool quickTransition = false);
-	void SetCurrentScene(OBSSource scene, bool force = false,
-			bool direct = false);
+	void SetCurrentScene(OBSSource scene, bool force = false, bool direct = false);
+	void TransitionToScene(OBSScene scene, bool force = false, bool direct = false);
+	void TransitionToScene(OBSSource scene, bool force = false, bool direct = false, bool quickTransition = false);
 
+	void onTriggerUdpLogout(int tmTag, int idTag);
 private slots:
 	void AddSceneItem(OBSSceneItem item);
 	void RemoveSceneItem(OBSSceneItem item);
@@ -463,7 +461,6 @@ private slots:
 
 	void on_actionCopyFilters_triggered();
 	void on_actionPasteFilters_triggered();
-
 private:
 	/* OBS Callbacks */
 	static void SceneReordered(void *data, calldata_t *params);

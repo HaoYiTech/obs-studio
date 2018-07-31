@@ -14,6 +14,7 @@
 #include <memory>
 #include <vector>
 #include <deque>
+#include "json.h"
 
 #include "HYDefine.h"
 #include "window-main.hpp"
@@ -63,6 +64,7 @@ private:
 	int                            m_nWebPort;                 // 访问节点网站端口...
 	int                            m_nFastTimer;               // 分布式存储、中转链接检测时钟...
 	int                            m_nOnLineTimer;             // 中转服务器在线检测时钟...
+	int                            m_nRtpTCPSockFD;            // CRemoteSession在服务器端的套接字号码...
 	std::string                    locale;
 	std::string	                   theme;
 	ConfigFile                     globalConfig;
@@ -100,12 +102,17 @@ public:
 	int		 GetRemotePort() { return m_nRemotePort; }
 	string & GetUdpAddr() { return m_strUdpAddr; }
 	int		 GetUdpPort() { return m_nUdpPort; }
+	int      GetRtpTCPSockFD() { return m_nRtpTCPSockFD; }
+
+	void     SetRtpTCPSockFD(int nTCPSockFD) { m_nRtpTCPSockFD = nTCPSockFD; }
 	void	 SetUdpAddr(const string & strAddr) { m_strUdpAddr = strAddr; }
 	void     SetUdpPort(int nPort) { m_nUdpPort = nPort; }
 	void	 SetRemoteAddr(const string & strAddr) { m_strRemoteAddr = strAddr; }
 	void     SetRemotePort(int nPort) { m_nRemotePort = nPort; }
 	void	 SetTrackerAddr(const string & strAddr) { m_strTrackerAddr = strAddr; }
 	void     SetTrackerPort(int nPort) { m_nTrackerPort = nPort; }
+public:
+	static string getJsonString(Json::Value & inValue);
 public slots:
 	void doLoginSuccess(string & strRoomID);
 public:

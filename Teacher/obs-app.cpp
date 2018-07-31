@@ -762,12 +762,28 @@ bool OBSApp::InitTheme()
 	return SetTheme("Default");
 }
 
+// 注意：统一返回UTF8格式...
+string OBSApp::getJsonString(Json::Value & inValue)
+{
+	string strReturn;
+	char szBuffer[32] = { 0 };
+	if (inValue.isInt()) {
+		sprintf(szBuffer, "%d", inValue.asInt());
+		strReturn = szBuffer;
+	}
+	else if (inValue.isString()) {
+		strReturn = inValue.asString();
+	}
+	return strReturn;
+}
+
 OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
 	: QApplication(argc, argv),
 	profilerNameStore(store)
 {
 	m_strWebAddr = DEF_CLOUD_CLASS;
 	m_nWebPort = DEF_WEB_PORT;
+	m_nRtpTCPSockFD = 0;
 	m_nOnLineTimer = -1;
 	m_nFastTimer = -1;
 	m_RemoteSession = NULL;
@@ -1441,6 +1457,9 @@ void OBSApp::doCheckRemote()
 	// 初始化远程中转会话对象...
 	m_RemoteSession = new CRemoteSession();
 	m_RemoteSession->InitSession(m_strRemoteAddr.c_str(), m_nRemotePort);
+	// 关联UDP连接被服务器删除时的事件通知信号槽...
+	OBSBasic * lpBasicWnd = qobject_cast<OBSBasic*>(mainWindow);
+	this->connect(m_RemoteSession, SIGNAL(doTriggerUdpLogout(int, int)), lpBasicWnd, SLOT(onTriggerUdpLogout(int, int)));
 }
 //
 // 自动检测并创建TrackerSession...
