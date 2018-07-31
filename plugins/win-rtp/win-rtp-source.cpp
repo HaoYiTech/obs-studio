@@ -104,10 +104,10 @@ static void rtp_source_tick(void *data, float seconds)
 		return;
 	}
 	// 如果已经发生系统重载，删除并重建接收线程...
-	if( lpRtpSource->recvThread->IsReloadFlag() ) {
+	/*if( lpRtpSource->recvThread->IsReloadFlag() ) {
 		delete lpRtpSource->recvThread;
 		lpRtpSource->recvThread = NULL;
-	}
+	}*/
 }
 
 static void rtp_source_activate(void *data)

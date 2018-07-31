@@ -10,7 +10,7 @@ static int32_t get_ms_time(struct encoder_packet *packet, int64_t val)
 	return (int32_t)(val * MILLISECOND_DEN / packet->timebase_den);
 }
 
-CUDPSendThread::CUDPSendThread(int nDBRoomID)
+CUDPSendThread::CUDPSendThread(int nDBRoomID, int nTCPSockFD)
   : m_total_output_bytes(0)
   , m_audio_output_bytes(0)
   , m_video_output_bytes(0)
@@ -45,7 +45,6 @@ CUDPSendThread::CUDPSendThread(int nDBRoomID)
 	// 初始化命令状态...
 	m_nCmdState = kCmdSendCreate;
 	// 初始化rtp序列头结构体...
-	memset(&m_rtp_reload, 0, sizeof(m_rtp_reload));
 	memset(&m_rtp_detect, 0, sizeof(m_rtp_detect));
 	memset(&m_rtp_create, 0, sizeof(m_rtp_create));
 	memset(&m_rtp_delete, 0, sizeof(m_rtp_delete));
@@ -67,6 +66,8 @@ CUDPSendThread::CUDPSendThread(int nDBRoomID)
 	m_rtp_create.liveID = 0;
 	m_rtp_delete.roomID = nDBRoomID;
 	m_rtp_delete.liveID = 0;
+	// 填充与远程关联的TCP套接字...
+	m_rtp_create.tcpSock = nTCPSockFD;
 }
 
 CUDPSendThread::~CUDPSendThread()
@@ -192,7 +193,7 @@ BOOL CUDPSendThread::ParseAVHeader()
 	return true;
 }
 
-BOOL CUDPSendThread::StartThread(obs_output_t * lpObsOutput)
+BOOL CUDPSendThread::StartThread(obs_output_t * lpObsOutput, const char * lpUdpAddr, int nUdpPort)
 {
 	// 保存并解析obs音视频格式头信息...
 	m_lpObsOutput = lpObsOutput;
@@ -222,16 +223,15 @@ BOOL CUDPSendThread::StartThread(obs_output_t * lpObsOutput)
 	// 设置TTL网络穿越数值...
 	m_lpUDPSocket->SetTtl(32);
 	// 获取服务器地址信息 => 假设输入信息就是一个IPV4域名...
-	//const char * lpszAddr = "192.168.1.70";
-	const char * lpszAddr = DEF_UDP_HOME;
+	const char * lpszAddr = lpUdpAddr;
 	hostent * lpHost = gethostbyname(lpszAddr);
 	if( lpHost != NULL && lpHost->h_addr_list != NULL ) {
 		lpszAddr = inet_ntoa(*(in_addr*)lpHost->h_addr_list[0]);
 	}
 	// 保存服务器地址，简化SendTo参数......
-	m_lpUDPSocket->SetRemoteAddr(lpszAddr, DEF_UDP_PORT);
+	m_lpUDPSocket->SetRemoteAddr(lpszAddr, nUdpPort);
 	// 服务器地址和端口转换成host格式，保存起来...
-	m_HostServerPort = DEF_UDP_PORT;
+	m_HostServerPort = nUdpPort;
 	m_HostServerAddr = ntohl(inet_addr(lpszAddr));
 	// 启动组播接收线程...
 	this->Start();
@@ -788,7 +788,6 @@ void CUDPSendThread::doRecvPacket()
 	{
 	case PT_TAG_CREATE:  this->doProcServerCreate(ioBuffer, outRecvLen); break;
 	case PT_TAG_HEADER:  this->doProcServerHeader(ioBuffer, outRecvLen); break;
-	case PT_TAG_RELOAD:  this->doProcServerReload(ioBuffer, outRecvLen); break;
 
 	case PT_TAG_DETECT:	 this->doTagDetectProcess(ioBuffer, outRecvLen); break;
 	case PT_TAG_SUPPLY:  this->doTagSupplyProcess(ioBuffer, outRecvLen); break;
@@ -867,11 +866,6 @@ void CUDPSendThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
 	// 打印发送准备就绪回复命令包...
 	blog(LOG_INFO, "%s Send Ready command for reply", TM_SEND_NAME);
 }*/
-//
-// 处理服务器发送过来的重建命令...
-void CUDPSendThread::doProcServerReload(char * lpBuffer, int inRecvLen)
-{
-}
 
 void CUDPSendThread::doTagSupplyProcess(char * lpBuffer, int inRecvLen)
 {

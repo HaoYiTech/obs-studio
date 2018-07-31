@@ -18,7 +18,6 @@ public:
 	bool            IsLoginTimeout();
 	int				GetRoomID() { return m_nRoomID; }
 	int				GetLiveID() { return m_nLiveID; }
-	bool            IsReloadFlag() { return m_bReloadFlag; }
 private:
 	void			ClosePlayer();
 	void			CloseSocket();
@@ -32,10 +31,8 @@ private:
 
 	void			doProcServerReady(char * lpBuffer, int inRecvLen);
 	void			doProcServerHeader(char * lpBuffer, int inRecvLen);
-	void			doProcServerReload(char * lpBuffer, int inRecvLen);
 
 	void			doTagDetectProcess(char * lpBuffer, int inRecvLen);
-	void			doTagHeaderProcess(char * lpBuffer, int inRecvLen);
 	void			doTagAVPackProcess(char * lpBuffer, int inRecvLen);
 
 	void			doFillLosePack(uint8_t inPType, uint32_t nStartLoseID, uint32_t nEndLoseID);
@@ -63,7 +60,6 @@ private:
 	int				m_nRoomID;				// 房间编号
 	int				m_nLiveID;				// 摄像头编号
 	bool			m_bNeedSleep;			// 休息标志 => 只要有发包或收包就不能休息...
-	bool            m_bReloadFlag;          // 是否收到系统重载命令...
 	int				m_dt_to_dir;			// 发包路线方向 => TO_SERVER | TO_P2P
 	int				m_p2p_rtt_ms;			// P2P    => 网络往返延迟值 => 毫秒
 	int				m_p2p_rtt_var_ms;		// P2P    => 网络抖动时间差 => 毫秒
@@ -80,7 +76,6 @@ private:
 
 	rtp_header_t	m_rtp_header;			// RTP序列头结构体   => 接收 => 来自推流端...
 	rtp_ready_t		m_rtp_ready;			// RTP准备继续结构体 => 接收 => 来自推流端...
-	rtp_reload_t	m_rtp_reload;			// RTP重建命令结构体 => 接收 => 来自服务器...
 
 	int64_t			m_login_zero_ns;		// 系统登录计时0点时刻...
 	int64_t			m_sys_zero_ns;			// 系统计时零点 => 第一个数据包到达的系统时刻点 => 纳秒...

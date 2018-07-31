@@ -13,7 +13,6 @@ CUDPRecvThread::CUDPRecvThread(int nDBRoomID, int nDBLiveID)
   , m_bNeedSleep(false)
   , m_HostServerPort(0)
   , m_HostServerAddr(0)
-  , m_bReloadFlag(false)
   , m_bFirstAudioSeq(false)
   , m_bFirstVideoSeq(false)
   , m_nAudioMaxPlaySeq(0)
@@ -36,7 +35,6 @@ CUDPRecvThread::CUDPRecvThread(int nDBRoomID, int nDBLiveID)
 	// 初始化命令状态...
 	m_nCmdState = kCmdSendCreate;
 	// 初始化rtp序列头结构体...
-	memset(&m_rtp_reload, 0, sizeof(m_rtp_reload));
 	memset(&m_rtp_detect, 0, sizeof(m_rtp_detect));
 	memset(&m_rtp_create, 0, sizeof(m_rtp_create));
 	memset(&m_rtp_delete, 0, sizeof(m_rtp_delete));
@@ -413,7 +411,6 @@ void CUDPRecvThread::doRecvPacket()
 	{
 	case PT_TAG_READY:   this->doProcServerReady(ioBuffer, outRecvLen);  break;
 	case PT_TAG_HEADER:	 this->doProcServerHeader(ioBuffer, outRecvLen); break;
-	case PT_TAG_RELOAD:  this->doProcServerReload(ioBuffer, outRecvLen); break;
 
 	case PT_TAG_DETECT:	 this->doTagDetectProcess(ioBuffer, outRecvLen); break;
 	case PT_TAG_AUDIO:	 this->doTagAVPackProcess(ioBuffer, outRecvLen); break;
@@ -535,15 +532,6 @@ bool CUDPRecvThread::IsLoginTimeout()
 	// 计算已尝试登录时间，如果超时返回true...
 	uint32_t cur_elapse_ms = (uint32_t)((os_gettime_ns() - m_login_zero_ns) / 1000000);
 	return ((cur_elapse_ms >= DEF_TIMEOUT_MS) ? true : false);
-}
-//
-// 处理服务器发送过来的重建命令...
-void CUDPRecvThread::doProcServerReload(char * lpBuffer, int inRecvLen)
-{
-	if( m_lpUDPSocket == NULL || lpBuffer == NULL || inRecvLen <= 0 || inRecvLen < sizeof(rtp_reload_t) )
-		return;
-	// 直接设定重建标志，等待上层读取...
-	m_bReloadFlag = true;
 }
 
 /*void CUDPRecvThread::doProcJamSeq(bool bIsAudio, uint32_t inJamSeq)
