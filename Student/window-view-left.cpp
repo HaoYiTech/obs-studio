@@ -33,8 +33,13 @@ CViewLeft::~CViewLeft()
 }
 
 // 响应从CRemoteSession发出的事件通知信号...
-void CViewLeft::onTriggerUdpSendThread()
+void CViewLeft::onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID)
 {
+	GM_MapCamera::iterator itorItem = m_MapCamera.find(nDBCameraID);
+	if (itorItem == m_MapCamera.end())
+		return;
+	CViewCamera * lpViewCamera = itorItem->second;
+	lpViewCamera->onTriggerUdpSendThread(bIsStartCmd, nDBCameraID);
 }
 
 void CViewLeft::paintEvent(QPaintEvent *event)

@@ -51,6 +51,7 @@ private:
   
 	uint16_t		m_HostServerPort;		// 服务器端口 => host
 	uint32_t	    m_HostServerAddr;		// 服务器地址 => host
+	string          m_HostServerStr;        // 服务器地址 => string
 
 	bool			m_bNeedSleep;			// 休息标志 => 只要有发包或收包就不能休息...
 	int				m_dt_to_dir;			// 发包路线方向 => TO_SERVER | TO_P2P

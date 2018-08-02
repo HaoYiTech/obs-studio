@@ -6,12 +6,19 @@
 #include "OSThread.h"
 
 class UDPSocket;
+class CViewCamera;
 class CUDPSendThread : public OSThread
 {
 public:
-	CUDPSendThread(int nDBRoomID, int nDBCameraID);
+	CUDPSendThread(CViewCamera * lpViewCamera, int nDBRoomID, int nDBCameraID);
 	virtual ~CUDPSendThread();
 	virtual void Entry();
+public:
+	string    &    GetServerAddrStr() { return m_HostServerStr; }
+	int            GetServerPortInt() { return m_HostServerPort; }
+	int            GetSendTotalKbps() { return (m_bNeedDelete ? -1 : m_total_output_kbps); }
+	int            GetSendAudioKbps() { return (m_bNeedDelete ? -1 : m_audio_output_kbps); }
+	int            GetSendVideoKbps() { return (m_bNeedDelete ? -1 : m_video_output_kbps); }
 public:
 	BOOL			InitThread(string & strUdpAddr, int nUdpPort);
 	BOOL			InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS);
@@ -53,15 +60,17 @@ private:
 
 	OSMutex			m_Mutex;				// 互斥对象
 	UDPSocket	*	m_lpUDPSocket;			// UDP对象
-	//CPushThread *   m_lpPushThread;
+	CViewCamera *   m_lpViewCamera;         // 窗口对象
 
 	uint16_t		m_HostServerPort;		// 服务器端口 => host
 	uint32_t	    m_HostServerAddr;		// 服务器地址 => host
+	string          m_HostServerStr;        // 服务器地址 => string
 
 	int				m_nJamCount;			// 发生网络拥塞次数...
 	bool			m_bIsJamFlag;			// 发生网络拥塞标志...
 	bool			m_bIsJamAudio;			// 发生多次拥塞只发音频...
 	bool			m_bNeedSleep;			// 休息标志 => 只要有发包或收包就不能休息...
+	bool            m_bNeedDelete;			// 删除标志 => 没有用户接入，需要被删除...
 	int				m_dt_to_dir;			// 发包路线方向 => TO_SERVER | TO_P2P
 	int				m_p2p_rtt_ms;			// P2P    => 网络往返延迟值 => 毫秒
 	int				m_p2p_rtt_var_ms;		// P2P    => 网络抖动时间差 => 毫秒

@@ -392,18 +392,11 @@ void CStorageSession::onError(QAbstractSocket::SocketError nError)
 
 CRemoteSession::CRemoteSession()
   : m_bCanReBuild(false)
-  , m_lpSendBuf(NULL)
 {
-	m_lpSendBuf = new char[kSendBufSize];
-	memset(m_lpSendBuf, 0, kSendBufSize);
 }
 
 CRemoteSession::~CRemoteSession()
 {
-	if (m_lpSendBuf != NULL) {
-		delete[] m_lpSendBuf;
-		m_lpSendBuf = NULL;
-	}
 	blog(LOG_INFO, "[~CRemoteSession] - Exit");
 }
 
@@ -451,14 +444,30 @@ void CRemoteSession::onReadyRead()
 		bool bResult = false;
 		switch(lpCmdHeader->m_cmd)
 		{
-		case kCmd_UDP_Logout:     bResult = this->doCmdUdpLogout(lpDataPtr, lpCmdHeader->m_pkg_len); break;
-		case kCmd_Student_Login:  bResult = this->doCmdStudentLogin(lpDataPtr, lpCmdHeader->m_pkg_len); break;
-		case kCmd_Student_OnLine: bResult = this->doCmdStudentOnLine(lpDataPtr, lpCmdHeader->m_pkg_len); break;
+		case kCmd_UDP_Logout:       bResult = this->doCmdUdpLogout(lpDataPtr, lpCmdHeader->m_pkg_len); break;
+		case kCmd_Student_Login:    bResult = this->doCmdStudentLogin(lpDataPtr, lpCmdHeader->m_pkg_len); break;
+		case kCmd_Student_OnLine:   bResult = this->doCmdStudentOnLine(lpDataPtr, lpCmdHeader->m_pkg_len); break;
+		case kCmd_Camera_LiveStart: bResult = this->doCmdCameraLiveStart(lpDataPtr, lpCmdHeader->m_pkg_len); break;
 		}
 		// 删除已经处理完毕的数据 => Header + pkg_len...
 		m_strRecv.erase(0, lpCmdHeader->m_pkg_len + sizeof(Cmd_Header));
 		// 如果还有数据，则继续解析命令...
 	}
+}
+
+bool CRemoteSession::doCmdCameraLiveStart(const char * lpData, int nSize)
+{
+	Json::Value value;
+	// 进行Json数据包的内容解析...
+	if (!this->doParseJson(lpData, nSize, value)) {
+		blog(LOG_INFO, "CRemoteSession::doParseJson Error!");
+		return false;
+	}
+	// 获取服务器发送过来的数据信息 => 只需要摄像头通道编号就可以了...
+	int nDBCameraID = atoi(CStudentApp::getJsonString(value["camera_id"]).c_str());
+	// 通知左侧窗口，对应通道可以创建推流线程了...
+	emit this->doTriggerSendThread(true, nDBCameraID);
+	return true;
 }
 
 bool CRemoteSession::doCmdUdpLogout(const char * lpData, int nSize)
@@ -472,8 +481,9 @@ bool CRemoteSession::doCmdUdpLogout(const char * lpData, int nSize)
 	// 获取服务器发送过来的数据信息...
 	int tmTag = atoi(CStudentApp::getJsonString(value["tm_tag"]).c_str());
 	int idTag = atoi(CStudentApp::getJsonString(value["id_tag"]).c_str());
+	int nDBCameraID = atoi(CStudentApp::getJsonString(value["camera_id"]).c_str());
 	// 通知主窗口界面层，UDP终端发生退出事件...
-	emit this->doTriggerUdpLogout(tmTag, idTag);
+	emit this->doTriggerUdpLogout(tmTag, idTag, nDBCameraID);
 	return true;
 }
 
@@ -522,49 +532,85 @@ void CRemoteSession::onError(QAbstractSocket::SocketError nError)
 	m_bIsConnected = false;
 	blog(LOG_INFO, "onError: %d", nError);
 }
-//
-// 链接成功之后，发送登录命令... 
-bool CRemoteSession::SendLoginCmd()
+
+// 向中转服务器发送通道在线(启动)通知...
+bool CRemoteSession::doSendStartCameraCmd(int nDBCameraID)
 {
-	// 组合Login命令需要的JSON数据包 => 用采集端的MAC地址作为唯一标识...
+	// 没有处于链接状态，直接返回...
+	if (!m_bIsConnected)
+		return false;
+	// 组合命令需要的JSON数据包 => 通道编号|名称...
 	string strJson;	Json::Value root;
-	root["mac_addr"] = App()->GetLocalMacAddr();
-	root["ip_addr"] = App()->GetLocalIPAddr();
-	root["room_id"] = App()->GetRoomIDStr();
+	char szDataBuf[32] = { 0 };
+	sprintf(szDataBuf, "%d", nDBCameraID);
+	root["camera_id"] = szDataBuf;
+	root["camera_name"] = App()->GetCameraSName(nDBCameraID);
 	strJson = root.toStyledString(); ASSERT(strJson.size() > 0);
-	// 组合命令包头 => 数据长度 | 终端类型 | 命令编号 | 采集端MAC地址
-	int nSendSize = 0;
-	Cmd_Header theHeader = { 0 };
-	theHeader.m_pkg_len = strJson.size();
-	theHeader.m_type = App()->GetClientType();
-	theHeader.m_cmd = kCmd_Student_Login;
-	// 追加命令包头和命令数据包内容...
-	memcpy(m_lpSendBuf, &theHeader, sizeof(theHeader));
-	nSendSize += sizeof(theHeader);
-	memcpy(m_lpSendBuf + nSendSize, strJson.c_str(), strJson.size());
-	nSendSize += strJson.size();
-	// 调用统一的发送接口...
-	return this->SendData(m_lpSendBuf, nSendSize);
+	// 调用统一的接口进行命令数据的发送操作...
+	return this->doSendCommonCmd(kCmd_Camera_PullStart, strJson.c_str(), strJson.size());
+}
+
+// 向中转服务器发送通道离线(停止)通知...
+bool CRemoteSession::doSendStopCameraCmd(int nDBCameraID)
+{
+	// 没有处于链接状态，直接返回...
+	if (!m_bIsConnected)
+		return false;
+	// 组合命令需要的JSON数据包 => 通道编号...
+	string strJson;	Json::Value root;
+	char szDataBuf[32] = { 0 };
+	sprintf(szDataBuf, "%d", nDBCameraID);
+	root["camera_id"] = szDataBuf;
+	strJson = root.toStyledString();
+	// 调用统一的接口进行命令数据的发送操作...
+	return this->doSendCommonCmd(kCmd_Camera_PullStop, strJson.c_str(), strJson.size());
 }
 //
 // 每隔30秒发送获取在线通道列表命令...
-bool CRemoteSession::SendOnLineCmd()
+bool CRemoteSession::doSendOnLineCmd()
 {
 	// 没有处于链接状态，直接返回...
 	if (!m_bIsConnected)
 		return false;
 	ASSERT(m_bIsConnected);
+	// 调用统一的接口进行命令数据的发送操作...
+	return this->doSendCommonCmd(kCmd_Student_OnLine);
+}
+//
+// 链接成功之后，发送登录命令... 
+bool CRemoteSession::SendLoginCmd()
+{
+	// 没有处于链接状态，直接返回...
+	if (!m_bIsConnected)
+		return false;
+	// 组合Login命令需要的JSON数据包 => 用采集端的MAC地址作为唯一标识...
+	string strJson;	Json::Value root;
+	root["mac_addr"] = App()->GetLocalMacAddr();
+	root["ip_addr"] = App()->GetLocalIPAddr();
+	root["room_id"] = App()->GetRoomIDStr();
+	root["pc_name"] = App()->GetMainName();
+	strJson = root.toStyledString(); ASSERT(strJson.size() > 0);
+	// 调用统一的接口进行命令数据的发送操作...
+	return this->doSendCommonCmd(kCmd_Student_Login, strJson.c_str(), strJson.size());
+}
+//
+// 通用的命令发送接口...
+bool CRemoteSession::doSendCommonCmd(int nCmdID, const char * lpJsonPtr/* = NULL*/, int nJsonSize/* = 0*/)
+{
 	// 组合命令包头 => 数据长度 | 终端类型 | 命令编号
-	int nSendSize = 0;
+	string     strBuffer;
 	Cmd_Header theHeader = { 0 };
-	theHeader.m_pkg_len = 0;
+	theHeader.m_pkg_len = ((lpJsonPtr != NULL) ? nJsonSize : 0);
 	theHeader.m_type = App()->GetClientType();
-	theHeader.m_cmd = kCmd_Student_OnLine;
+	theHeader.m_cmd = nCmdID;
 	// 追加命令包头和命令数据包内容...
-	memcpy(m_lpSendBuf, &theHeader, sizeof(theHeader));
-	nSendSize += sizeof(theHeader);
+	strBuffer.append((char*)&theHeader, sizeof(theHeader));
+	// 如果传入的数据内容有效，才进行数据的填充...
+	if (lpJsonPtr != NULL && nJsonSize > 0) {
+		strBuffer.append(lpJsonPtr, nJsonSize);
+	}
 	// 调用统一的发送接口...
-	return this->SendData(m_lpSendBuf, nSendSize);
+	return this->SendData(strBuffer.c_str(), strBuffer.size());
 }
 //
 // 统一的发送接口...

@@ -1,10 +1,13 @@
 
+#include "student-app.h"
 #include "UDPSocket.h"
 #include "SocketUtils.h"
 #include "UDPSendThread.h"
+#include "../window-view-camera.hpp"
 
-CUDPSendThread::CUDPSendThread(int nDBRoomID, int nDBCameraID)
-  : m_total_output_bytes(0)
+CUDPSendThread::CUDPSendThread(CViewCamera * lpViewCamera, int nDBRoomID, int nDBCameraID)
+  : m_lpViewCamera(lpViewCamera)
+  , m_total_output_bytes(0)
   , m_audio_output_bytes(0)
   , m_video_output_bytes(0)
   , m_total_output_kbps(0)
@@ -20,6 +23,7 @@ CUDPSendThread::CUDPSendThread(int nDBRoomID, int nDBCameraID)
   , m_start_time_ns(0)
   , m_total_time_ms(0)
   , m_nJamCount(0)
+  , m_bNeedDelete(false)
   , m_bIsJamAudio(false)
   , m_bIsJamFlag(false)
   , m_bNeedSleep(false)
@@ -62,6 +66,8 @@ CUDPSendThread::CUDPSendThread(int nDBRoomID, int nDBCameraID)
 	m_rtp_create.liveID = nDBCameraID;
 	m_rtp_delete.roomID = nDBRoomID;
 	m_rtp_delete.liveID = nDBCameraID;
+	// 填充与远程关联的TCP套接字 => 从全局管理器中获取...
+	m_rtp_create.tcpSock = App()->GetRtpTCPSockFD();
 }
 
 CUDPSendThread::~CUDPSendThread()
@@ -160,6 +166,7 @@ BOOL CUDPSendThread::InitThread(string & strUdpAddr, int nUdpPort)
 	// 保存服务器地址，简化SendTo参数......
 	m_lpUDPSocket->SetRemoteAddr(lpszAddr, nUdpPort);
 	// 服务器地址和端口转换成host格式，保存起来...
+	m_HostServerStr = lpszAddr;
 	m_HostServerPort = nUdpPort;
 	m_HostServerAddr = ntohl(inet_addr(lpszAddr));
 	// 启动组播接收线程...
@@ -522,7 +529,7 @@ void CUDPSendThread::doCalcAVJamFlag()
 		// 如果观看端还没有接入，直接中断推流操作...
 		if( m_nCmdState != kCmdSendAVPack ) {
 			blog(LOG_INFO, "%s Jam => Stop Push, After %lu ms no user login", TM_SEND_NAME, cur_buf_ms);
-			//m_lpPushThread->StopUDPSendThread();
+			m_bNeedDelete = true;
 			return;
 		}
 		// 设置网络拥塞标志...

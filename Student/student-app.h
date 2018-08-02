@@ -13,7 +13,7 @@
 
 #include "window-login-main.h"
 #include "window-student-main.h"
-#include "json.h"
+#include "FastSession.h"
 
 std::string CurrentTimeString();
 std::string CurrentDateTimeString();
@@ -118,7 +118,8 @@ public:
 	void	 SetAutoLinkFDFS(bool bAutoLinkFDFS) { m_bAutoLinkFDFS = bAutoLinkFDFS; }
 	void	 SetMaxCamera(int nMaxCamera) { m_nMaxCamera = nMaxCamera; }
 
-	QString  GetCameraName(int nDBCameraID);
+	string   GetCameraSName(int nDBCameraID);
+	QString  GetCameraQName(int nDBCameraID);
 	QString  GetCameraPullUrl(int nDBCameraID);
 	string   GetCameraDeviceSN(int nDBCameraID);
 	void     doDelCamera(int nDBCameraID);
@@ -126,7 +127,8 @@ public:
 	void	 SetCamera(int nDBCameraID, GM_MapData & inMapData) { m_MapNodeCamera[nDBCameraID] = inMapData; }
 	void	 GetCamera(int nDBCameraID, GM_MapData & outMapData) { outMapData = m_MapNodeCamera[nDBCameraID]; }
 	GM_MapNodeCamera & GetNodeCamera() { return m_MapNodeCamera; }
-	CWebThread * GetWebThread() { return m_lpWebThread; }
+	CWebThread * GetWebThread() const { return m_lpWebThread; }
+	CRemoteSession * GetRemoteSession() const { return m_RemoteSession.data(); }
 
 	int      GetClientType() { return kClientStudent; }
 	int      GetWebPort() { return m_nWebPort; }

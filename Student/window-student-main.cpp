@@ -100,7 +100,7 @@ StudentWindow::StudentWindow(QWidget *parent)
 }
 
 // 响应服务器发送的UDP连接对象被删除的事件通知...
-void StudentWindow::onTriggerUdpLogout(int tmTag, int idTag)
+void StudentWindow::onTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID)
 {
 	// 如果不是学生端对象 => 直接返回...
 	if (tmTag != TM_TAG_STUDENT)
@@ -113,7 +113,7 @@ void StudentWindow::onTriggerUdpLogout(int tmTag, int idTag)
 	}
 	// 如果是学生推流端的删除通知 => 使用左侧窗口对象...
 	if (idTag == ID_TAG_PUSHER) {
-		m_ui.LeftView->onTriggerUdpSendThread();
+		m_ui.LeftView->onTriggerUdpSendThread(false, nDBCameraID);
 		return;
 	}
 }
@@ -281,6 +281,11 @@ void StudentWindow::on_actionCameraDel_triggered()
 		this, QTStr("ConfirmDel.Title"), QTStr("ConfirmDel.Text"));
 	if (button == QMessageBox::No)
 		return;
+	// 向中转服务器汇报通道信息和状态...
+	CRemoteSession * lpRemoteSession = App()->GetRemoteSession();
+	if (lpRemoteSession != NULL) {
+		lpRemoteSession->doSendStopCameraCmd(nDBCameraID);
+	}
 	// 左侧窗口发起删除操作...
 	m_ui.LeftView->onCameraDel(nDBCameraID);
 	// 通知网站发起删除操作...

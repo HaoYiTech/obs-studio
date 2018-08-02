@@ -2,11 +2,13 @@
 #include "student-app.h"
 #include "pull-thread.h"
 #include "push-thread.h"
+#include "UDPSendThread.h"
 
 #include "window-view-camera.hpp"
 
 CPushThread::CPushThread(CViewCamera * lpViewCamera)
   : m_lpViewCamera(lpViewCamera)
+  , m_lpUDPSendThread(NULL)
   , m_lpRtspThread(NULL)
   , m_nCurRecvByte(0)
   , m_dwTimeOutMS(0)
@@ -19,11 +21,16 @@ CPushThread::CPushThread(CViewCamera * lpViewCamera)
 
 CPushThread::~CPushThread()
 {
-	// 这里使用了互斥，删除RTSP拉流对象...
-	OSMutexLocker theLock(&m_Mutex);
+	// 注意：这里使用互斥会造成卡死...
+	// 这里不能使用互斥，删除RTSP拉流对象...
 	if (m_lpRtspThread != NULL) {
 		delete m_lpRtspThread;
 		m_lpRtspThread = NULL;
+	}
+	// 删除UDP推流线程 => 数据使用者...
+	if (m_lpUDPSendThread != NULL) {
+		delete m_lpUDPSendThread;
+		m_lpUDPSendThread = NULL;
 	}
 	blog(LOG_INFO, "== [~CPushThread Thread] - Exit ==");
 }
@@ -74,6 +81,30 @@ void CPushThread::CalcFlowKbps()
 	m_lpViewCamera->update();
 }
 
+void CPushThread::onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID)
+{
+	OSMutexLocker theLock(&m_Mutex);
+	// 如果是通道开始推流命令 => 创建推流线程...
+	if (bIsStartCmd) {
+		// 如果推流线程已经创建了，直接返回...
+		if (m_lpUDPSendThread != NULL)
+			return;
+		ASSERT(m_lpUDPSendThread == NULL);
+		// 创建UDP推流线程，使用服务器传递过来的参数...
+		int nRoomID = atoi(App()->GetRoomIDStr().c_str());
+		string & strUdpAddr = App()->GetUdpAddr();
+		int nUdpPort = App()->GetUdpPort();
+		m_lpUDPSendThread = new CUDPSendThread(m_lpViewCamera, nRoomID, nDBCameraID);
+		m_lpUDPSendThread->InitThread(strUdpAddr, nUdpPort);
+	} else {
+		// 如果是通道停止推流命令 => 删除推流线程...
+		if (m_lpUDPSendThread != NULL) {
+			delete m_lpUDPSendThread;
+			m_lpUDPSendThread = NULL;
+		}
+	}
+}
+
 void CPushThread::PushFrame(FMS_FRAME & inFrame)
 {
 	// 这里使用了互斥，拉流对象已经被删除，直接返回...
@@ -84,6 +115,22 @@ void CPushThread::PushFrame(FMS_FRAME & inFrame)
 	m_dwTimeOutMS = ::GetTickCount();
 	// 累加接收数据包的字节数，加入缓存队列...
 	m_nCurRecvByte += inFrame.strData.size();
+	// 如果UDP推流线程有效，继续传递数据...
+	if (m_lpUDPSendThread != NULL) {
+		m_lpUDPSendThread->PushFrame(inFrame);
+	}
+	// 可以进一步的对数据帧进行加工处理...
+}
+
+QString CPushThread::GetStreamPushUrl()
+{
+	if (m_lpUDPSendThread == NULL) {
+		return QTStr("Camera.Window.None");
+	}
+	string & strServerAddr = m_lpUDPSendThread->GetServerAddrStr();
+	QString strQServerStr = QString::fromUtf8(strServerAddr.c_str());
+	int nServerPort = m_lpUDPSendThread->GetServerPortInt();
+	return QString("udp://%1/%2").arg(strQServerStr).arg(nServerPort);
 }
 
 int CPushThread::GetRecvPullKbps()
@@ -99,7 +146,7 @@ int CPushThread::GetRecvPullKbps()
 
 int CPushThread::GetSendPushKbps()
 {
-	return 0;
+	return ((m_lpUDPSendThread != NULL) ? m_lpUDPSendThread->GetSendTotalKbps() : -1);
 }
 
 bool CPushThread::IsDataFinished()

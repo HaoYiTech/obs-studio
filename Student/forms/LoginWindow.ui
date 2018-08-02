@@ -96,7 +96,7 @@
     <enum>Qt::NoFocus</enum>
    </property>
    <property name="text">
-    <string>登录云教室</string>
+    <string>Login.Window.LoginBtnTitle</string>
    </property>
   </widget>
   <widget class="QLabel" name="userHead">

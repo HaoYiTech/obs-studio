@@ -17,7 +17,6 @@
 #include "student-app.h"
 #include "windows.h"
 
-#include "FastSession.h"
 #include "web-thread.h"
 #include "SocketUtils.h"
 #include <IPTypes.h>
@@ -392,6 +391,12 @@ static void do_log(int log_level, const char *msg, va_list args, void *param)
 
 #ifdef _WIN32
 	if (IsDebuggerPresent()) {
+		// 调试信息新增时间戳...
+		string strTemp = str;
+		char szBuf[32] = { 0 };
+		sprintf(szBuf, "[%I64d ms]", os_gettime_ns() / 1000000);
+		sprintf(str, "%s %s", szBuf, strTemp.c_str());
+		// 进行宽字符格式转换...
 		int wNum = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
 		if (wNum > 1) {
 			static wstring wide_buf;
@@ -400,8 +405,7 @@ static void do_log(int log_level, const char *msg, va_list args, void *param)
 			lock_guard<mutex> lock(wide_mutex);
 			wide_buf.reserve(wNum + 1);
 			wide_buf.resize(wNum - 1);
-			MultiByteToWideChar(CP_UTF8, 0, str, -1, &wide_buf[0],
-				wNum);
+			MultiByteToWideChar(CP_UTF8, 0, str, -1, &wide_buf[0], wNum);
 			wide_buf.push_back('\n');
 
 			OutputDebugStringW(wide_buf.c_str());
@@ -809,11 +813,12 @@ void CStudentApp::doCheckRemote()
 	m_RemoteSession = new CRemoteSession();
 	m_RemoteSession->InitSession(m_strRemoteAddr.c_str(), m_nRemotePort);
 	// 将远程会话的信号槽与主窗口对象进行相互关联操作 => UDP连接断开时的事件通知...
-	connect(m_RemoteSession, SIGNAL(doTriggerUdpLogout(int, int)), m_studentWindow, SLOT(onTriggerUdpLogout(int, int)));
+	connect(m_RemoteSession, SIGNAL(doTriggerUdpLogout(int, int, int)), m_studentWindow, SLOT(onTriggerUdpLogout(int, int, int)));
+	// 建立左侧窗口与发送线程事件的信号槽...
+	CViewLeft * lpViewLeft = m_studentWindow->GetViewLeft();
+	connect(m_RemoteSession, SIGNAL(doTriggerSendThread(bool, int)), lpViewLeft, SLOT(onTriggerUdpSendThread(bool, int)));
 	// 建立远程会话与老师窗口对象的信号槽关联函数...
 	CViewRight * lpViewRight = m_studentWindow->GetViewRight();
-	if (lpViewRight == NULL)
-		return;
 	// 如果讲师渲染窗口无效，直接返回...
 	CViewTeacher * lpViewTeacher = lpViewRight->GetViewTeacher();
 	if (lpViewTeacher == NULL)
@@ -826,7 +831,7 @@ void CStudentApp::doCheckOnLine()
 {
 	if (m_RemoteSession == NULL)
 		return;
-	m_RemoteSession->SendOnLineCmd();
+	m_RemoteSession->doSendOnLineCmd();
 }
 //
 // 重建系统资源...
@@ -910,7 +915,17 @@ string CStudentApp::GetCameraDeviceSN(int nDBCameraID)
 	return theMapData["device_sn"];
 }
 
-QString CStudentApp::GetCameraName(int nDBCameraID)
+string CStudentApp::GetCameraSName(int nDBCameraID)
+{
+	string strCameraName;
+	GM_MapNodeCamera::iterator itorItem = m_MapNodeCamera.find(nDBCameraID);
+	if (itorItem == m_MapNodeCamera.end())
+		return strCameraName;
+	GM_MapData & theMapData = itorItem->second;
+	return theMapData["camera_name"];
+}
+
+QString CStudentApp::GetCameraQName(int nDBCameraID)
 {
 	QString strQCameraName = QTStr("Camera.Window.None");
 	GM_MapNodeCamera::iterator itorItem = m_MapNodeCamera.find(nDBCameraID);

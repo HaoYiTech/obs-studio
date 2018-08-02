@@ -4,7 +4,7 @@
 #include "pull-thread.h"
 #include "push-thread.h"
 #include "web-thread.h"
-
+#include "FastSession.h"
 #include "window-view-left.hpp"
 #include "window-view-camera.hpp"
 
@@ -39,7 +39,7 @@ CViewCamera::CViewCamera(QWidget *parent, int nDBCameraID)
 
 CViewCamera::~CViewCamera()
 {
-	// 释放推流数据管理器...
+	// 释放推流数据管理器 => 数据源头...
 	if (m_lpPushThread != NULL) {
 		delete m_lpPushThread;
 		m_lpPushThread = NULL;
@@ -48,6 +48,7 @@ CViewCamera::~CViewCamera()
 	App()->doResetFocus(this);
 }
 
+// 注意：更新时钟放在 CPushThread::timerEvent() => 每秒更新一次...
 void CViewCamera::paintEvent(QPaintEvent *event)
 {
 	// 绘制标题栏内容...
@@ -83,7 +84,7 @@ void CViewCamera::DrawTitleArea()
 	int nPosX = 10;
 	int nPosY = TITLE_FONT_HEIGHT + (TITLE_WINDOW_HEIGHT - TITLE_FONT_HEIGHT) / 2 + 1;
 	// 先获取摄像头的标题名称，再进行字符串重组...
-	QString strTitleContent = App()->GetCameraName(m_nDBCameraID);
+	QString strTitleContent = App()->GetCameraQName(m_nDBCameraID);
 	QString strTitleText = QString("%1%2 - %3").arg(QStringLiteral("ID：")).arg(m_nDBCameraID).arg(strTitleContent);
 	painter.drawText(nPosX, nPosY, strTitleText);
 }
@@ -203,15 +204,29 @@ QString CViewCamera::GetRecvPullRate()
 
 QString CViewCamera::GetSendPushRate()
 {
-	QString strRate("0 Kbps");
-	return strRate;
+	// 获取发送码率的具体数字 => 直接从推流管理器当中获取...
+	int nSendKbps = ((m_lpPushThread != NULL) ? m_lpPushThread->GetSendPushKbps() : -1);
+	// 如果为负数，需要删除UDP推流线程对象...
+	if (nSendKbps < 0) {
+		// 先删除UDP推流线程对象...
+		this->onTriggerUdpSendThread(false, m_nDBCameraID);
+		// 重置推流码率...
+		nSendKbps = 0;
+	}
+	// 返回接收码率的字符串内容...
+	return QString("%1 Kbps").arg(nSendKbps);
 }
 
 QString CViewCamera::GetStreamPushUrl()
 {
-	//QString strRate("udp://edu.ihaoyi.cn:5252");
-	QString strRate = QTStr("Camera.Window.None");
-	return strRate;
+	return ((m_lpPushThread != NULL) ? m_lpPushThread->GetStreamPushUrl() : QTStr("Camera.Window.None"));
+}
+
+void CViewCamera::onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID)
+{
+	if (m_lpPushThread == NULL || nDBCameraID != m_nDBCameraID)
+		return;
+	m_lpPushThread->onTriggerUdpSendThread(bIsStartCmd, nDBCameraID);
 }
 
 bool CViewCamera::doCameraStart()
@@ -219,6 +234,11 @@ bool CViewCamera::doCameraStart()
 	// 如果推流对象有效，直接返回...
 	if (m_lpPushThread != NULL)
 		return true;
+	// 向中转服务器汇报通道信息和状态...
+	CRemoteSession * lpRemoteSession = App()->GetRemoteSession();
+	if (lpRemoteSession != NULL) {
+		lpRemoteSession->doSendStartCameraCmd(m_nDBCameraID);
+	}
 	// 调用接口通知服务器 => 修改通道状态...
 	CWebThread * lpWebThread = App()->GetWebThread();
 	if (lpWebThread != NULL) {
@@ -240,6 +260,11 @@ bool CViewCamera::doCameraStart()
 
 bool CViewCamera::doCameraStop()
 {
+	// 向中转服务器汇报通道信息和状态...
+	CRemoteSession * lpRemoteSession = App()->GetRemoteSession();
+	if (lpRemoteSession != NULL) {
+		lpRemoteSession->doSendStopCameraCmd(m_nDBCameraID);
+	}
 	// 调用接口通知服务器 => 修改通道状态...
 	CWebThread * lpWebThread = App()->GetWebThread();
 	if (lpWebThread != NULL) {
