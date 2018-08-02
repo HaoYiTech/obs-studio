@@ -13,6 +13,7 @@
 #define RIGHT_SPACE_PIXEL		20
 #define TITLE_WINDOW_HEIGHT		24
 #define TITLE_FONT_HEIGHT		10
+#define TITLE_LIVE_COLOR        QColor(255,140,0)
 #define TITLE_TEXT_COLOR		QColor(255,255,255)
 #define TITLE_BK_COLOR			QColor(96, 123, 189)//QColor(0, 122, 204)
 #define WINDOW_BK_COLOR			QColor(32, 32, 32)
@@ -87,6 +88,14 @@ void CViewCamera::DrawTitleArea()
 	QString strTitleContent = App()->GetCameraQName(m_nDBCameraID);
 	QString strTitleText = QString("%1%2 - %3").arg(QStringLiteral("ID：")).arg(m_nDBCameraID).arg(strTitleContent);
 	painter.drawText(nPosX, nPosY, strTitleText);
+	// 绘制在线LIVE文字信息...
+	if (this->IsLiveState()) {
+		painter.setPen(TITLE_LIVE_COLOR);
+		QFontMetrics & fontMetrics = painter.fontMetrics();
+		QString strLive = QTStr("Camera.Window.Live");
+		nPosX = rcRect.width() - 2 * fontMetrics.width(strLive);
+		painter.drawText(nPosX, nPosY, strLive);
+	}
 }
 
 void CViewCamera::DrawRenderArea()
@@ -215,6 +224,11 @@ QString CViewCamera::GetSendPushRate()
 	}
 	// 返回接收码率的字符串内容...
 	return QString("%1 Kbps").arg(nSendKbps);
+}
+
+bool CViewCamera::IsLiveState()
+{
+	return ((m_lpPushThread != NULL) ? m_lpPushThread->IsLiveState() : false);
 }
 
 QString CViewCamera::GetStreamPushUrl()

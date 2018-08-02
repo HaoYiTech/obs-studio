@@ -21,6 +21,7 @@ public:
 	QString		GetStreamPushUrl();
 	void		PushFrame(FMS_FRAME & inFrame);
 	void		onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID);
+	bool        IsLiveState() { return ((m_lpUDPSendThread != NULL) ? true : false); }
 private:
 	void		CalcFlowKbps();
 	bool		IsDataFinished();

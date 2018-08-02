@@ -17,6 +17,7 @@ public:
 	bool doCameraStart();
 	bool doCameraStop();
 private:
+	bool IsLiveState();
 	void DrawTitleArea();
 	void DrawRenderArea();
 	void DrawStatusText();
