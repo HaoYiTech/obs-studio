@@ -94,10 +94,13 @@ public:
 	CRemoteSession();
 	virtual ~CRemoteSession();
 signals:
-	void doTriggerUdpLogout(int tmTag, int idTag);
+	void doTriggerCameraList(Json::Value & value);
+	void doTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID);
 public:
 	bool IsCanReBuild() { return m_bCanReBuild; }
-	bool SendOnLineCmd();
+	bool doSendOnLineCmd();
+	bool doSendCameraOnLineListCmd();
+	bool doSendCameraLiveStartCmd(int nDBCameraID);
 protected slots:
 	void onConnected() override;
 	void onReadyRead() override;
@@ -105,17 +108,14 @@ protected slots:
 	void onBytesWritten(qint64 nBytes) override;
 	void onError(QAbstractSocket::SocketError nError) override;
 private:
+	bool doSendCommonCmd(int nCmdID, const char * lpJsonPtr = NULL, int nJsonSize = 0);
 	bool doParseJson(const char * lpData, int nSize, Json::Value & outValue);
 	bool doCmdUdpLogout(const char * lpData, int nSize);
 	bool doCmdTeacherLogin(const char * lpData, int nSize);
 	bool doCmdTeacherOnLine(const char * lpData, int nSize);
+	bool doCmdTeacherCameraList(const char * lpData, int nSize);
 	bool SendData(const char * lpDataPtr, int nDataSize);
 	bool SendLoginCmd();
 private:
-	enum {
-		kSendBufSize = 2048,			// 发送数据包缓存...
-	};
-private:
-	char	*	m_lpSendBuf;			// 发送缓存...
 	bool        m_bCanReBuild;			// 能否进行重建标志...
 };

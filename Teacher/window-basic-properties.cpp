@@ -171,13 +171,14 @@ void OBSBasicProperties::on_buttonBox_clicked(QAbstractButton *button)
 
 	if (val == QDialogButtonBox::AcceptRole) {
 		acceptClicked = true;
-		close();
+		this->close();
 		
-		// 通知推流端开始推送rtp数据...
-		view->doUpdateRtpSource();
+		// 通过中转服务器通知推流端开始推送指定通道的rtp数据...
+		bool bResult = view->doSendCameraLiveStartCmd();
 
-		// 如果配置发生变化，或是rtp资源，直接将更新消息通知到插件层...
-		if( view->DeferUpdate() || view->IsUseRtpSource() ) {
+		// 注意：rtp_source配置更新是通过远程命令，而不是在这里...
+		// 如果配置发生变化，直接将更新消息通知到插件层...
+		if( view->DeferUpdate() ) {
 			view->UpdateSettings();
 		}
 
@@ -186,12 +187,16 @@ void OBSBasicProperties::on_buttonBox_clicked(QAbstractButton *button)
 		obs_data_clear(settings);
 		obs_data_release(settings);
 
-		if (view->DeferUpdate())
-			obs_data_apply(settings, oldSettings);
-		else
-			obs_source_update(source, oldSettings);
-
-		close();
+		// 如果不是rtp资源，点击取消，需要对配置进行还原更新处理...
+		if (!view->IsUseRtpSource()) {
+			if (view->DeferUpdate()) {
+				obs_data_apply(settings, oldSettings);
+			} else {
+				obs_source_update(source, oldSettings);
+			}
+		}
+		// 关闭窗口...
+		this->close();
 
 	} else if (val == QDialogButtonBox::ResetRole) {
 		obs_data_t *settings = obs_source_get_settings(source);

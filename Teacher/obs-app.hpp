@@ -89,6 +89,8 @@ private:
 	bool InitTheme();
 	bool InitMacIPAddr();
 public:
+	static char * GetServerDNSName();
+public:
 	int      GetClientType() { return kClientTeacher; }
 	int      GetWebPort() { return m_nWebPort; }
 	string & GetWebAddr() { return m_strWebAddr; }
@@ -125,10 +127,8 @@ public:
 	void doLoginInit();
 	void doLogoutEvent();
 
-	//void doPostCurl(char *pData, size_t nSize);
-	//void doCameraGetOnLineList(QListWidget * lpListView, int inSelCameraID);
-	//void doCameraGetRtmpUrl(int nCameraID, obs_data_t * lpSettings);
-	//void doCameraVerifyEvent(obs_data_t * lpSettings);
+	bool doSendCameraOnLineListCmd();
+	bool doSendCameraLiveStartCmd(int nDBCameraID);
 
 	void doCheckTracker();
 	void doCheckStorage();

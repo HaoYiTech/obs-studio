@@ -5045,8 +5045,16 @@ void OBSBasic::on_statsButton_clicked()
 	on_stats_triggered();
 }
 
+// 响应服务器发送的当前房间在线的摄像头列表事件通知...
+void OBSBasic::onTriggerCameraList(Json::Value & value)
+{
+	if (properties == NULL) return;
+	OBSPropertiesView * lpView = properties->GetPropView();
+	((lpView != NULL) ? lpView->onTriggerCameraList(value) : NULL);
+}
+
 // 响应服务器发送的UDP连接对象被删除的事件通知...
-void OBSBasic::onTriggerUdpLogout(int tmTag, int idTag)
+void OBSBasic::onTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID)
 {
 	// 如果不是讲师端对象 => 直接返回...
 	if (tmTag != TM_TAG_TEACHER)
@@ -5059,7 +5067,7 @@ void OBSBasic::onTriggerUdpLogout(int tmTag, int idTag)
 		}
 		return;
 	}
-	// 如果是讲师观看端的删除通知...
+	// 如果是讲师观看端的删除通知 => 通过摄像头通道号查找...
 	if (idTag == ID_TAG_LOOKER) {
 	}
 }
@@ -6303,11 +6311,11 @@ void OBSBasic::on_stats_triggered()
 	statsDlg->show();
 	stats = statsDlg;
 }
-//
+
 // 遍历sources里面的rtp_source，发送在线状态通知...
-void OBSBasic::doCameraVerifyEvent()
+/*void OBSBasic::doCameraVerifyEvent()
 {
-	/*for (int i = 0; i < ui->sources->count(); i++) {
+	for (int i = 0; i < ui->sources->count(); i++) {
 		QListWidgetItem * listItem = ui->sources->item(i);
 		OBSSceneItem theItem = this->GetSceneItem(listItem);
 		OBSSource theSource = obs_sceneitem_get_source(theItem);
@@ -6324,5 +6332,5 @@ void OBSBasic::doCameraVerifyEvent()
 		App()->doCameraVerifyEvent(lpSettings);
 		// 注意：这里必须手动进行引用计数减少，否则，会造成内存泄漏...
 		obs_data_release(lpSettings);
-	}*/
-}
+	}
+}*/

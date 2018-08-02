@@ -45,6 +45,11 @@ enum {
 	kCmd_Teacher_Login		= 3,
 	kCmd_Teacher_OnLine     = 4,
 	kCmd_UDP_Logout			= 5,
+	kCmd_Camera_PullStart   = 6,
+	kCmd_Camera_PullStop    = 7,
+	kCmd_Camera_OnLineList  = 8,
+	kCmd_Camera_LiveStart   = 9,
+	kCmd_Camera_LiveStop    = 10,
 };
 
 // define the command header...

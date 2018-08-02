@@ -30,6 +30,7 @@
 #include "window-basic-adv-audio.hpp"
 //#include "window-basic-filters.hpp"
 #include "window-projector.hpp"
+#include "json.h"
 
 #include <obs-frontend-internal.hpp>
 
@@ -407,7 +408,8 @@ public slots:
 	void TransitionToScene(OBSScene scene, bool force = false, bool direct = false);
 	void TransitionToScene(OBSSource scene, bool force = false, bool direct = false, bool quickTransition = false);
 
-	void onTriggerUdpLogout(int tmTag, int idTag);
+	void onTriggerCameraList(Json::Value & value);
+	void onTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID);
 private slots:
 	void AddSceneItem(OBSSceneItem item);
 	void RemoveSceneItem(OBSSceneItem item);
@@ -727,8 +729,6 @@ public:
 	virtual config_t *Config() const override;
 
 	virtual int GetProfilePath(char *path, size_t size, const char *file) const override;
-
-	virtual void doCameraVerifyEvent() override;
 private:
 	std::unique_ptr<Ui::OBSBasic> ui;
 };

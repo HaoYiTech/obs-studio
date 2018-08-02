@@ -4,6 +4,7 @@
 #include <obs.hpp>
 #include <vector>
 #include <memory>
+#include "json.h"
 
 class QFormLayout;
 class OBSPropertiesView;
@@ -85,8 +86,9 @@ private:
 	QWidget                                  *lastWidget = nullptr;
 	bool                                     deferUpdate;
 
-	bool									 m_bUseRtpSource = false;
+	bool                                     m_bUseRtpSource = false;
 	QListWidget                            * m_listCamera = nullptr;
+	int                                      m_nSelDBCameraID;
 
 	QWidget *NewWidget(obs_property_t *prop, QWidget *widget,
 			const char *signal);
@@ -132,8 +134,9 @@ public:
 			PropertiesReloadCallback reloadCallback,
 			int minSize = 0);
 	
-	void doUpdateRtpSource();
-	bool IsUseRtpSource() { return m_bUseRtpSource; }
+	bool doSendCameraLiveStartCmd();
+	void onTriggerCameraList(Json::Value & value);
+	inline bool IsUseRtpSource() { return m_bUseRtpSource; }
 	
 	inline obs_data_t *GetSettings() const {return settings;}
 	inline void UpdateSettings() {callback(obj, settings);}

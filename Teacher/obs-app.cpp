@@ -317,6 +317,12 @@ static void do_log(int log_level, const char *msg, va_list args, void *param)
 
 #ifdef _WIN32
 	if (IsDebuggerPresent()) {
+		// 调试信息新增时间戳...
+		string strTemp = str;
+		char szBuf[32] = { 0 };
+		sprintf(szBuf, "[%I64d ms]", os_gettime_ns() / 1000000);
+		sprintf(str, "%s %s", szBuf, strTemp.c_str());
+		// 进行宽字符格式转换...
 		int wNum = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
 		if (wNum > 1) {
 			static wstring wide_buf;
@@ -577,6 +583,18 @@ static string GetSceneCollectionFileFromName(const char *name)
 	}
 
 	return outputPath;
+}
+// 注意：统一返回UTF8格式...
+char * OBSApp::GetServerDNSName()
+{
+	static char szBuffer[MAX_PATH] = { 0 };
+	if (strlen(szBuffer) > 0)
+		return szBuffer;
+	DWORD dwLen = MAX_PATH;
+	static WCHAR szTempName[MAX_PATH] = { 0 };
+	::GetComputerName(szTempName, &dwLen);
+	os_wcs_to_utf8(szTempName, MAX_PATH, szBuffer, MAX_PATH);
+	return szBuffer;
 }
 
 bool OBSApp::InitGlobalConfig()
@@ -1429,7 +1447,7 @@ void OBSApp::doCheckOnLine()
 {
 	if (m_RemoteSession == NULL)
 		return;
-	m_RemoteSession->SendOnLineCmd();
+	m_RemoteSession->doSendOnLineCmd();
 }
 //
 // 检测是否需要进行数据上传...
@@ -1457,11 +1475,28 @@ void OBSApp::doCheckRemote()
 	// 初始化远程中转会话对象...
 	m_RemoteSession = new CRemoteSession();
 	m_RemoteSession->InitSession(m_strRemoteAddr.c_str(), m_nRemotePort);
-	// 关联UDP连接被服务器删除时的事件通知信号槽...
+	// 关联UDP连接被服务器删除时的事件通知信号槽和获取在线通道列表的信号槽...
 	OBSBasic * lpBasicWnd = qobject_cast<OBSBasic*>(mainWindow);
-	this->connect(m_RemoteSession, SIGNAL(doTriggerUdpLogout(int, int)), lpBasicWnd, SLOT(onTriggerUdpLogout(int, int)));
+	this->connect(m_RemoteSession, SIGNAL(doTriggerUdpLogout(int, int, int)), lpBasicWnd, SLOT(onTriggerUdpLogout(int, int, int)));
+	this->connect(m_RemoteSession, SIGNAL(doTriggerCameraList(Json::Value&)), lpBasicWnd, SLOT(onTriggerCameraList(Json::Value&)));
 }
-//
+
+// 向中转服务器请求当前房间在线的摄像头列表...
+bool OBSApp::doSendCameraOnLineListCmd()
+{
+	if (m_RemoteSession == NULL)
+		return false;
+	return m_RemoteSession->doSendCameraOnLineListCmd();
+}
+
+// 通过中转服务器向学生端发送开启通道推流工作...
+bool OBSApp::doSendCameraLiveStartCmd(int nDBCameraID)
+{
+	if (m_RemoteSession == NULL)
+		return false;
+	return m_RemoteSession->doSendCameraLiveStartCmd(nDBCameraID);
+}
+
 // 自动检测并创建TrackerSession...
 void OBSApp::doCheckTracker()
 {

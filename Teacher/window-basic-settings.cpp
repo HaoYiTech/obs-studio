@@ -1132,8 +1132,7 @@ void OBSBasicSettings::LoadStream1Settings()
 
 	delete streamProperties;
 	streamProperties = new OBSPropertiesView(settings, type,
-			(PropertiesReloadCallback)obs_get_service_properties,
-			170);
+			(PropertiesReloadCallback)obs_get_service_properties, 170);
 
 	streamProperties->setProperty("changed", QVariant(false));
 	layout->addWidget(streamProperties);
@@ -1572,19 +1571,15 @@ OBSPropertiesView *OBSBasicSettings::CreateEncoderPropertyView(
 
 	if (path) {
 		char encoderJsonPath[512];
-		int ret = GetProfilePath(encoderJsonPath,
-				sizeof(encoderJsonPath), path);
+		int ret = GetProfilePath(encoderJsonPath, sizeof(encoderJsonPath), path);
 		if (ret > 0) {
-			obs_data_t *data = obs_data_create_from_json_file_safe(
-					encoderJsonPath, "bak");
+			obs_data_t *data = obs_data_create_from_json_file_safe(encoderJsonPath, "bak");
 			obs_data_apply(settings, data);
 			obs_data_release(data);
 		}
 	}
 
-	view = new OBSPropertiesView(settings, encoder,
-			(PropertiesReloadCallback)obs_get_encoder_properties,
-			170);
+	view = new OBSPropertiesView(settings, encoder, (PropertiesReloadCallback)obs_get_encoder_properties, 170);
 	view->setFrameShape(QFrame::StyledPanel);
 	view->setProperty("changed", QVariant(changed));
 	QObject::connect(view, SIGNAL(Changed()), this, SLOT(OutputsChanged()));
@@ -1595,12 +1590,10 @@ OBSPropertiesView *OBSBasicSettings::CreateEncoderPropertyView(
 
 void OBSBasicSettings::LoadAdvOutputStreamingEncoderProperties()
 {
-	const char *type = config_get_string(main->Config(), "AdvOut",
-			"Encoder");
+	const char *type = config_get_string(main->Config(), "AdvOut", "Encoder");
 
 	delete streamEncoderProps;
-	streamEncoderProps = CreateEncoderPropertyView(type,
-			"streamEncoder.json");
+	streamEncoderProps = CreateEncoderPropertyView(type, "streamEncoder.json");
 	ui->advOutputStreamTab->layout()->addWidget(streamEncoderProps);
 
 	connect(streamEncoderProps, SIGNAL(Changed()),

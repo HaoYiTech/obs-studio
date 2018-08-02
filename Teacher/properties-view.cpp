@@ -22,6 +22,7 @@
 #include "qt-wrappers.hpp"
 #include "properties-view.hpp"
 #include "properties-view.moc.hpp"
+#include "window-basic-main.hpp"
 #include "obs-app.hpp"
 
 #include <cstdlib>
@@ -154,9 +155,10 @@ void OBSPropertiesView::RefreshProperties()
 		m_listCamera->setStyleSheet("QListView::item:selected {background: #4FC3F7;}");
 		// 设置关联信号槽，这样可以简化很多判断操作 => 最终还是采用点击确认再获取摄像头地址...
 		//connect(m_listCamera, SIGNAL(itemSelectionChanged()), this, SLOT(onItemSelectionChanged()));
-		int nSelCameraID = obs_data_get_int(this->GetSettings(), "camera_id");
-		// 调用App的接口，从网站服务器获取在线的摄像头列表...
-		//App()->doCameraGetOnLineList(m_listCamera, nSelCameraID);
+		// 从配置文件中读取之前选中的摄像头通道编号，保存到变量当中...
+		m_nSelDBCameraID = obs_data_get_int(this->GetSettings(), "camera_id");
+		// 调用App的接口，从中转服务器获取当前房间里在线的摄像头列表...
+		App()->doSendCameraOnLineListCmd();
 	}
 
 	lastFocused.clear();
@@ -171,7 +173,39 @@ void OBSPropertiesView::RefreshProperties()
 		layout->addWidget(noPropertiesLabel);
 	}
 }
-//
+
+// 响应服务器发送的当前房间在线的摄像头列表事件通知...
+void OBSPropertiesView::onTriggerCameraList(Json::Value & value)
+{
+	// 必须是rtp数据源，并且列表框对象必须有效...
+	if (!m_bUseRtpSource || m_listCamera == NULL)
+		return;
+	// 如果不是数组，或者数组长度为0，直接返回...
+	if (!value.isArray() || value.size() <= 0)
+		return;
+	// 变量数组，获取每行数据内容 => room_id|camera_id|camera_name|pc_name
+	QIcon theIcon = QIcon(QStringLiteral(":/res/images/camera.png"));
+	QListWidgetItem * theSelectItem = nullptr;
+	for (int i = 0; i < value.size(); ++i) {
+		int nDBCameraID = atoi(OBSApp::getJsonString(value[i]["camera_id"]).c_str());
+		int nRoomID = atoi(OBSApp::getJsonString(value[i]["room_id"]).c_str());
+		QString strCameraName = QString::fromUtf8(OBSApp::getJsonString(value[i]["camera_name"]).c_str());
+		QString strPCName = QString::fromUtf8(OBSApp::getJsonString(value[i]["pc_name"]).c_str());
+		QString strItemValue = QString("%1 - %2").arg(strPCName).arg(strCameraName);
+		QListWidgetItem * theListItem = new QListWidgetItem(theIcon, strItemValue);
+		theListItem->setData(Qt::UserRole, nDBCameraID);
+		m_listCamera->insertItem(0, theListItem);
+		// 如果选中摄像头与当前条目一致，保存选中条目...
+		theSelectItem = (m_nSelDBCameraID == nDBCameraID) ? theListItem : theSelectItem;
+	}
+	// 如果行数不为0，选中第一行内容...
+	if (theSelectItem != nullptr) {
+		m_listCamera->setCurrentItem(theSelectItem);
+	} else {
+		m_listCamera->setCurrentRow(0);
+	}
+}
+
 // 处理选中摄像头发生变化的事件处理...
 /*void OBSPropertiesView::onItemSelectionChanged()
 {
@@ -180,17 +214,31 @@ void OBSPropertiesView::RefreshProperties()
 	int nCameraID = m_listCamera->currentItem()->data(Qt::UserRole).toInt();
 	obs_data_set_string(this->GetSettings(), "input", theText.toStdString().c_str());
 }*/
-//
-// 从网站获取当前选定摄像头的直播地址，并发起推流...
-void OBSPropertiesView::doUpdateRtpSource()
+
+// 通过中转服务器通知推流端开始推送指定通道的rtp数据...
+bool OBSPropertiesView::doSendCameraLiveStartCmd()
 {
+	// 如果不是rtp数据源，直接返回 。。。
 	if (!m_bUseRtpSource || m_listCamera == NULL)
-		return;
+		return false;
+	// 找到当前选中的记录编号，没有选中记录，直接返回...
 	QListWidgetItem * lpCurItem = m_listCamera->currentItem();
-	if (lpCurItem == NULL)
-		return;
-	int nCameraID = lpCurItem->data(Qt::UserRole).toInt();
-	//App()->doCameraGetRtmpUrl(nCameraID, this->GetSettings());
+	if (lpCurItem == NULL || obj == NULL)
+		return false;
+	// 注意：不用获取场景资源编号，使用摄像头通道编号即可...
+	// 必须从主窗口界面当中获取当前scene对象...
+	/*OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	obs_scene_t * scene = main->GetCurrentScene();
+	// obj(source)查找资源对应的编号，发送给服务器，便于回馈查找...
+	obs_source_t * source = (obs_source_t *)obj;
+	obs_sceneitem_t * sitem = obs_scene_find_source(scene, obs_source_get_name(source));
+	int nSceneItemID = (int)obs_sceneitem_get_id(sitem);
+	// 如果没有获取到场景资源编号，直接返回...
+	if (nSceneItemID <= 0 || sitem == NULL)
+		return false;*/
+	// 获取到当前记录中存放的摄像头通道编号...
+	int nDBCameraID = lpCurItem->data(Qt::UserRole).toInt();
+	return App()->doSendCameraLiveStartCmd(nDBCameraID);
 }
 
 void OBSPropertiesView::SetScrollPos(int h, int v)
@@ -231,6 +279,7 @@ OBSPropertiesView::OBSPropertiesView(OBSData settings_, void *obj_,
 	  m_bUseRtpSource(inUseRtpSource)
 {
 	m_listCamera = NULL;
+	m_nSelDBCameraID = 0;
 	setFrameShape(QFrame::NoFrame);
 	ReloadProperties();
 }
@@ -245,6 +294,7 @@ OBSPropertiesView::OBSPropertiesView(OBSData settings_, const char *type_,
 	  minSize        (minSize_)
 {
 	m_listCamera = NULL;
+	m_nSelDBCameraID = 0;
 	m_bUseRtpSource = false;
 	setFrameShape(QFrame::NoFrame);
 	ReloadProperties();

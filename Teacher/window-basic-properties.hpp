@@ -44,7 +44,7 @@ private:
 	OBSPropertiesView *view;
 	QDialogButtonBox *buttonBox;
 	QSplitter *windowSplitter;
-
+private:
 	static void SourceRemoved(void *data, calldata_t *params);
 	static void SourceRenamed(void *data, calldata_t *params);
 	static void UpdateProperties(void *data, calldata_t *params);
@@ -52,16 +52,14 @@ private:
 	bool ConfirmQuit();
 	int  CheckSettings();
 	void Cleanup();
-
 private slots:
 	void on_buttonBox_clicked(QAbstractButton *button);
-
 public:
 	OBSBasicProperties(QWidget *parent, OBSSource source_);
 	~OBSBasicProperties();
-
+public:
 	void Init();
-
+	OBSPropertiesView * GetPropView() { return view; }
 protected:
 	virtual void closeEvent(QCloseEvent *event) override;
 	virtual void reject() override;
