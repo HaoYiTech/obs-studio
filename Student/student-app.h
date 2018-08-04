@@ -123,7 +123,7 @@ public:
 	QString  GetCameraPullUrl(int nDBCameraID);
 	string   GetCameraDeviceSN(int nDBCameraID);
 	void     doDelCamera(int nDBCameraID);
-
+	
 	void	 SetCamera(int nDBCameraID, GM_MapData & inMapData) { m_MapNodeCamera[nDBCameraID] = inMapData; }
 	void	 GetCamera(int nDBCameraID, GM_MapData & outMapData) { outMapData = m_MapNodeCamera[nDBCameraID]; }
 	GM_MapNodeCamera & GetNodeCamera() { return m_MapNodeCamera; }

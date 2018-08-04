@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include "HYDefine.h"
 #include "qt-display.hpp"
+#include "HYDefine.h"
 
 using namespace std;
 

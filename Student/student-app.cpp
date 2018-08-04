@@ -730,6 +730,7 @@ bool CStudentApp::InitGlobalConfigDefaults()
 	config_save_safe(m_globalConfig, "tmp", nullptr);
 	return true;
 }
+
 // 创建并初始化登录窗口...
 void CStudentApp::doLoginInit()
 {
