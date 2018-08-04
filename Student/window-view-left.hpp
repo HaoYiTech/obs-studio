@@ -28,6 +28,7 @@ signals:
 	void enableSettingReconnect(bool bEnable);
 	void enableSystemFullscreen(bool bEnable);
 public slots:
+	void onTriggerConnected();
 	void doEnableCamera(OBSQTDisplay * lpNewDisplay);
 	void onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID);
 public:

@@ -248,24 +248,24 @@ bool CViewCamera::doCameraStart()
 	// 如果推流对象有效，直接返回...
 	if (m_lpPushThread != NULL)
 		return true;
-	// 向中转服务器汇报通道信息和状态...
-	CRemoteSession * lpRemoteSession = App()->GetRemoteSession();
-	if (lpRemoteSession != NULL) {
-		lpRemoteSession->doSendStartCameraCmd(m_nDBCameraID);
-	}
-	// 调用接口通知服务器 => 修改通道状态...
-	CWebThread * lpWebThread = App()->GetWebThread();
-	if (lpWebThread != NULL) {
-		lpWebThread->doWebStatCamera(m_nDBCameraID, kCameraRun);
-	}
 	// 重建推流对象管理器...
 	ASSERT(m_lpPushThread == NULL);
 	m_lpPushThread = new CPushThread(this);
-	// 初始化失败，直接返回...
+	// 初始化失败，直接返回 => 删除对象...
 	if (!m_lpPushThread->InitThread()) {
 		delete m_lpPushThread;
 		m_lpPushThread = NULL;
 		return false;
+	}
+	// 向中转服务器汇报通道信息和状态 => 重建成功之后再发送命令...
+	CRemoteSession * lpRemoteSession = App()->GetRemoteSession();
+	if (lpRemoteSession != NULL) {
+		lpRemoteSession->doSendStartCameraCmd(m_nDBCameraID);
+	}
+	// 调用接口通知服务器 => 修改通道状态 => 重建成功之后再发送命令...
+	CWebThread * lpWebThread = App()->GetWebThread();
+	if (lpWebThread != NULL) {
+		lpWebThread->doWebStatCamera(m_nDBCameraID, kCameraRun);
 	}
 	// 更新显示状态...
 	this->update();

@@ -406,6 +406,8 @@ void CRemoteSession::onConnected()
 	m_bIsConnected = true;
 	// 链接成功，立即发送登录命令 => Cmd_Header + JSON...
 	this->SendLoginCmd();
+	// 通知左侧窗口，可以进行摄像头通道的在线汇报通知命令操作了...
+	emit this->doTriggerConnected();
 }
 
 bool CRemoteSession::doParseJson(const char * lpData, int nSize, Json::Value & outValue)
@@ -544,6 +546,7 @@ bool CRemoteSession::doSendStartCameraCmd(int nDBCameraID)
 	char szDataBuf[32] = { 0 };
 	sprintf(szDataBuf, "%d", nDBCameraID);
 	root["camera_id"] = szDataBuf;
+	root["room_id"] = App()->GetRoomIDStr();
 	root["camera_name"] = App()->GetCameraSName(nDBCameraID);
 	strJson = root.toStyledString(); ASSERT(strJson.size() > 0);
 	// 调用统一的接口进行命令数据的发送操作...

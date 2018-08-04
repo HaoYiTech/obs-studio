@@ -94,6 +94,7 @@ public:
 	CRemoteSession();
 	virtual ~CRemoteSession();
 signals:
+	void doTriggerConnected();
 	void doTriggerRecvThread(bool bIsUDPTeacherOnLine);
 	void doTriggerSendThread(bool bIsStartCmd, int nDBCameraID);
 	void doTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID);

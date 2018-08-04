@@ -32,6 +32,22 @@ CViewLeft::~CViewLeft()
 	this->doDestoryResource();
 }
 
+// 响应CRemoteSession发出的连接服务器成功通知 => 汇报在线通道状态...
+void CViewLeft::onTriggerConnected()
+{
+	// 获取到远程会话连接对象...
+	GM_MapCamera::iterator itorItem;
+	CRemoteSession * lpRemoteSession = App()->GetRemoteSession();
+	// 遍历所有正在拉流的摄像头通道，汇报给服务器，...
+	for(itorItem = m_MapCamera.begin(); itorItem != m_MapCamera.end(); ++itorItem) {
+		CViewCamera * lpViewCamera = itorItem->second;
+		// 如果当前摄像头对象正在拉取数据 => 发起汇报命令...
+		if (lpRemoteSession != NULL && lpViewCamera->IsCameraLogin()) {
+			lpRemoteSession->doSendStartCameraCmd(itorItem->first);
+		}
+	}
+}
+
 // 响应从CRemoteSession发出的事件通知信号...
 void CViewLeft::onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID)
 {
