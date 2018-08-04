@@ -126,7 +126,7 @@ private:
 
 	std::vector<OBSSignal> signalHandlers;
 
-	bool loaded = false;
+	bool m_bIsLoaded = false;
 	long disableSaving = 1;
 	bool projectChanged = false;
 	bool previewEnabled = true;
@@ -410,6 +410,7 @@ public slots:
 
 	void onTriggerCameraList(Json::Value & value);
 	void onTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID);
+	void onTriggerRtpSource(int nSceneItemID, int nDBCameraID, bool bIsCameraOnLine);
 private slots:
 	void AddSceneItem(OBSSceneItem item);
 	void RemoveSceneItem(OBSSceneItem item);
@@ -487,6 +488,8 @@ private:
 	static void HotkeyTriggered(void *data, obs_hotkey_id id, bool pressed);
 
 public:
+	inline bool IsLoaded() { return m_bIsLoaded; }
+
 	OBSSource GetProgramSource();
 	OBSScene GetCurrentScene();
 
@@ -536,8 +539,6 @@ public:
 
 	void SaveService();
 	bool LoadService();
-
-	void doUpdateService();
 
 	inline void EnableOutputs(bool enable)
 	{

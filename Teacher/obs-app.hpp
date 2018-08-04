@@ -88,6 +88,7 @@ private:
 	bool InitLocale();
 	bool InitTheme();
 	bool InitMacIPAddr();
+	void FindRtpSource(int & outDBCameraID, int & outSceneItemID, bool & outHasRecvThread);
 public:
 	static char * GetServerDNSName();
 public:
@@ -128,13 +129,14 @@ public:
 	void doLogoutEvent();
 
 	bool doSendCameraOnLineListCmd();
-	bool doSendCameraLiveStartCmd(int nDBCameraID);
+	bool doSendCameraLiveStartCmd(int nDBCameraID, int nSceneItemID);
 
 	void doCheckTracker();
 	void doCheckStorage();
 	void doCheckRemote();
 	void doCheckFDFS();
 	void doCheckOnLine();
+	void doCheckRtpSource();
 	bool doFindOneFile(char * inPath, int inSize, const char * inExtend);
 	void doWebSaveFDFS(char * lpFileName, char * lpPathFDFS, int64_t llFileSize);
 

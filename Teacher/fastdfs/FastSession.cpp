@@ -390,8 +390,10 @@ void CStorageSession::onError(QAbstractSocket::SocketError nError)
 	blog(LOG_INFO, "onError: %d", nError);
 }
 
-CRemoteSession::CRemoteSession()
-  : m_bCanReBuild(false)
+CRemoteSession::CRemoteSession(int nDBCameraID, int nSceneItemID)
+  : m_nInitSceneitemID(nSceneItemID)
+  , m_nInitDBCameraID(nDBCameraID)
+  , m_bCanReBuild(false)
 {
 }
 
@@ -405,7 +407,7 @@ void CRemoteSession::onConnected()
 	// 设置链接成功标志...
 	m_bIsConnected = true;
 	// 链接成功，立即发送登录命令 => Cmd_Header + JSON...
-	this->SendLoginCmd();
+	this->SendLoginCmd(m_nInitDBCameraID, m_nInitSceneitemID);
 }
 
 bool CRemoteSession::doParseJson(const char * lpData, int nSize, Json::Value & outValue)
@@ -502,10 +504,15 @@ bool CRemoteSession::doCmdTeacherLogin(const char * lpData, int nSize)
 	}
 	// 获取远程连接在服务器端的TCP套接字...
 	int nTCPSocketFD = atoi(OBSApp::getJsonString(value["tcp_socket"]).c_str());
+	int nSceneItemID = atoi(OBSApp::getJsonString(value["sitem_id"]).c_str());
+	int nDBCameraID = atoi(OBSApp::getJsonString(value["camera_id"]).c_str());
+	bool bIsCameraOnLine = atoi(OBSApp::getJsonString(value["udp_camera"]).c_str());
 	// 将获取的TCP套接字更新到系统变量当中 => 在创建UDP连接时会用到...
 	if (App()->GetRtpTCPSockFD() != nTCPSocketFD) {
 		App()->SetRtpTCPSockFD(nTCPSocketFD);
 	}
+	// 根据摄像头在线状态，进行rtp_source资源拉流线程的创建或删除...
+	emit this->doTriggerRtpSource(nSceneItemID, nDBCameraID, bIsCameraOnLine);
 	return true;
 }
 
@@ -533,16 +540,18 @@ void CRemoteSession::onError(QAbstractSocket::SocketError nError)
 }
 
 // 通过中转服务器向学生端发送开启通道推流工作...
-bool CRemoteSession::doSendCameraLiveStartCmd(int nDBCameraID)
+bool CRemoteSession::doSendCameraLiveStartCmd(int nDBCameraID, int nSceneItemID)
 {
 	// 没有处于链接状态，直接返回...
 	if (!m_bIsConnected)
 		return false;
-	// 组合命令需要的JSON数据包 => 通道编号...
+	// 组合命令需要的JSON数据包 => 通道编号|场景资源编号...
 	string strJson;	Json::Value root;
 	char szDataBuf[32] = { 0 };
 	sprintf(szDataBuf, "%d", nDBCameraID);
 	root["camera_id"] = szDataBuf;
+	sprintf(szDataBuf, "%d", nSceneItemID);
+	root["sitem_id"] = szDataBuf;
 	strJson = root.toStyledString();
 	// 调用统一的接口进行命令数据的发送操作...
 	return this->doSendCommonCmd(kCmd_Camera_LiveStart, strJson.c_str(), strJson.size());
@@ -570,19 +579,26 @@ bool CRemoteSession::doSendOnLineCmd()
 	return this->doSendCommonCmd(kCmd_Teacher_OnLine);
 }
 
-// 链接成功之后，发送登录命令... 
-bool CRemoteSession::SendLoginCmd()
+// 链接成功之后，发送登录命令 => 上次保存的摄像头通道编号和场景资源编号...
+bool CRemoteSession::SendLoginCmd(int nDBCameraID, int nSceneItemID)
 {
 	// 没有处于链接状态，直接返回...
 	if (!m_bIsConnected)
 		return false;
-	// 组合Login命令需要的JSON数据包 => 用讲师端的MAC地址作为唯一标识...
+	// 组合Login命令需要的JSON数据包...
+	char szDataBuf[32] = { 0 };
 	string strJson;	Json::Value root;
+	// 填充摄像头编号|场景资源编号...
+	sprintf(szDataBuf, "%d", nDBCameraID);
+	root["camera_id"] = szDataBuf;
+	sprintf(szDataBuf, "%d", nSceneItemID);
+	root["sitem_id"] = szDataBuf;
+	// 填充mac地址|ip地址|房间编号|机器名称...
 	root["mac_addr"] = App()->GetLocalMacAddr();
 	root["ip_addr"] = App()->GetLocalIPAddr();
 	root["room_id"] = App()->GetRoomIDStr();
 	root["pc_name"] = OBSApp::GetServerDNSName();
-	strJson = root.toStyledString(); ASSERT(strJson.size() > 0);
+	strJson = root.toStyledString();
 	// 调用统一的接口进行命令数据的发送操作...
 	return this->doSendCommonCmd(kCmd_Teacher_Login, strJson.c_str(), strJson.size());
 }

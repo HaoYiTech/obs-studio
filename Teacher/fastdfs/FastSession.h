@@ -91,16 +91,17 @@ private:
 class CRemoteSession : public CFastSession {
 	Q_OBJECT
 public:
-	CRemoteSession();
+	CRemoteSession(int nDBCameraID, int nSceneItemID);
 	virtual ~CRemoteSession();
 signals:
 	void doTriggerCameraList(Json::Value & value);
 	void doTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID);
+	void doTriggerRtpSource(int nSceneItemID, int nDBCameraID, bool bIsCameraOnLine);
 public:
 	bool IsCanReBuild() { return m_bCanReBuild; }
 	bool doSendOnLineCmd();
 	bool doSendCameraOnLineListCmd();
-	bool doSendCameraLiveStartCmd(int nDBCameraID);
+	bool doSendCameraLiveStartCmd(int nDBCameraID, int nSceneItemID);
 protected slots:
 	void onConnected() override;
 	void onReadyRead() override;
@@ -114,8 +115,10 @@ private:
 	bool doCmdTeacherLogin(const char * lpData, int nSize);
 	bool doCmdTeacherOnLine(const char * lpData, int nSize);
 	bool doCmdTeacherCameraList(const char * lpData, int nSize);
+	bool SendLoginCmd(int nDBCameraID, int nSceneItemID);
 	bool SendData(const char * lpDataPtr, int nDataSize);
-	bool SendLoginCmd();
 private:
 	bool        m_bCanReBuild;			// 能否进行重建标志...
+	int         m_nInitDBCameraID;		// 初始默认通道编号...
+	int         m_nInitSceneitemID;		// 初始默认场景编号...
 };

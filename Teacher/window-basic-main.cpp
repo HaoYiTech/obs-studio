@@ -915,8 +915,9 @@ retryScene:
 
 #define SERVICE_PATH "service.json"
 
+// 注意：现在是udp模式，这个接口用不着了...
 // 将获取的云教室直播地址更新到service.json当中...
-void OBSBasic::doUpdateService()
+/*void OBSBasic::doUpdateService()
 {
 	// 必须在读取配置之前操作...
 	if (service != NULL)
@@ -945,7 +946,7 @@ void OBSBasic::doUpdateService()
 	// 减少引用计数，释放资源 => 注意：相互引用指针，释放顺序不受影响...
 	obs_data_release(dataSave);
 	obs_data_release(settings);
-}
+}*/
 
 void OBSBasic::SaveService()
 {
@@ -1454,9 +1455,6 @@ void OBSBasic::OBSInit()
 	ResetOutputs();
 	CreateHotkeys();
 
-	// 将获取的云教室直播地址更新到service.json当中...
-	this->doUpdateService();
-
 	if (!InitService()) {
 		throw "Failed to initialize service";
 	}
@@ -1493,7 +1491,6 @@ void OBSBasic::OBSInit()
 #undef SET_VISIBILITY
 
 	TimedCheckForUpdates();
-	loaded = true;
 
 	previewEnabled = config_get_bool(App()->GlobalConfig(),
 			"BasicWindow", "PreviewEnabled");
@@ -1684,8 +1681,12 @@ void OBSBasic::DeferredLoad(const QString &file, int requeueCount)
 				Q_ARG(int, requeueCount));
 		return;
 	}
-
-	Load(QT_TO_UTF8(file));
+	// 加载系统各种配置参数...
+	this->Load(QT_TO_UTF8(file));
+	// 设置已加载完毕的标志...
+	m_bIsLoaded = true;
+	// 立即启动远程连接...
+	App()->doCheckRemote();
 }
 
 void OBSBasic::UpdateMultiviewProjectorMenu()
@@ -5043,6 +5044,45 @@ void OBSBasic::ReplayBufferStop(int code)
 void OBSBasic::on_statsButton_clicked()
 {
 	on_stats_triggered();
+}
+
+// 响应服务器发送的rtp_source重建事件通知...
+void OBSBasic::onTriggerRtpSource(int nSceneItemID, int nDBCameraID, bool bIsCameraOnLine)
+{
+	// 场景编号无效，直接返回...
+	if (nSceneItemID <= 0)
+		return;
+	// 通过场景编号查找场景对应的资源...
+	obs_source_t * lpFindSource = NULL;
+	for (int i = 0; i < ui->sources->count(); i++) {
+		QListWidgetItem * lpListItem = ui->sources->item(i);
+		OBSSceneItem theSceneItem = this->GetSceneItem(lpListItem);
+		int nCurSceneID = (int)obs_sceneitem_get_id(theSceneItem);
+		// 当前场景编号与输入场景编号一致 => 找到资源跳出循环...
+		if (nCurSceneID == nSceneItemID) {
+			lpFindSource = obs_sceneitem_get_source(theSceneItem);
+			break;
+		}
+	}
+	// 如果最终没有找到需要的资源，直接返回...
+	if (lpFindSource == NULL)
+		return;
+	// 注意：这里的接口会增加引用计数，使用完毕之后要减少引用计数...
+	obs_data_t * lpSettings = obs_source_get_settings(lpFindSource);
+	if (lpSettings == NULL)
+		return;
+	// 将rtp_source需要的参数写入配置结构当中...
+	int nRoomID = atoi(App()->GetRoomIDStr().c_str());
+	obs_data_set_int(lpSettings, "room_id", nRoomID);
+	obs_data_set_int(lpSettings, "camera_id", nDBCameraID);
+	obs_data_set_bool(lpSettings, "udp_camera", bIsCameraOnLine);
+	obs_data_set_int(lpSettings, "udp_port", App()->GetUdpPort());
+	obs_data_set_int(lpSettings, "tcp_socket", App()->GetRtpTCPSockFD());
+	obs_data_set_string(lpSettings, "udp_addr", App()->GetUdpAddr().c_str());
+	// 将新的资源配置应用到当前rtp_source资源对象当中...
+	obs_source_update(lpFindSource, lpSettings);
+	// 注意：这里必须手动进行引用计数减少，否则，会造成内存泄漏...
+	obs_data_release(lpSettings);
 }
 
 // 响应服务器发送的当前房间在线的摄像头列表事件通知...

@@ -1415,8 +1415,7 @@ bool AdvancedOutput::StartStreaming(obs_service_t *service)
 
 	/* --------------------- */
 
-	int trackIndex = config_get_int(main->Config(), "AdvOut",
-			"TrackIndex");
+	int trackIndex = config_get_int(main->Config(), "AdvOut", "TrackIndex");
 
 	// 注意：这里直接指定使用rtp输出流...
 	const char * type = "rtp_output";

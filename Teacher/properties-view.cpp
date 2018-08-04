@@ -225,9 +225,8 @@ bool OBSPropertiesView::doSendCameraLiveStartCmd()
 	QListWidgetItem * lpCurItem = m_listCamera->currentItem();
 	if (lpCurItem == NULL || obj == NULL)
 		return false;
-	// 注意：不用获取场景资源编号，使用摄像头通道编号即可...
 	// 必须从主窗口界面当中获取当前scene对象...
-	/*OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
 	obs_scene_t * scene = main->GetCurrentScene();
 	// obj(source)查找资源对应的编号，发送给服务器，便于回馈查找...
 	obs_source_t * source = (obs_source_t *)obj;
@@ -235,10 +234,11 @@ bool OBSPropertiesView::doSendCameraLiveStartCmd()
 	int nSceneItemID = (int)obs_sceneitem_get_id(sitem);
 	// 如果没有获取到场景资源编号，直接返回...
 	if (nSceneItemID <= 0 || sitem == NULL)
-		return false;*/
+		return false;
 	// 获取到当前记录中存放的摄像头通道编号...
 	int nDBCameraID = lpCurItem->data(Qt::UserRole).toInt();
-	return App()->doSendCameraLiveStartCmd(nDBCameraID);
+	// 调用远程接口向中转服务器发送开启推流命令...
+	return App()->doSendCameraLiveStartCmd(nDBCameraID, nSceneItemID);
 }
 
 void OBSPropertiesView::SetScrollPos(int h, int v)
