@@ -819,12 +819,11 @@ void CStudentApp::doCheckRemote()
 	connect(m_RemoteSession, SIGNAL(doTriggerSendThread(bool, int)), lpViewLeft, SLOT(onTriggerUdpSendThread(bool, int)));
 	// 建立远程会话与老师窗口对象的信号槽关联函数...
 	CViewRight * lpViewRight = m_studentWindow->GetViewRight();
-	// 如果讲师渲染窗口无效，直接返回...
 	CViewTeacher * lpViewTeacher = lpViewRight->GetViewTeacher();
-	if (lpViewTeacher == NULL)
-		return;
 	// 将远程会话的信号槽进行相互关联 => 老师推流端上线或下线时的事件通知...
-	connect(m_RemoteSession, SIGNAL(doTriggerRecvThread(bool)), lpViewTeacher, SLOT(onTriggerUdpRecvThread(bool)));
+	if (lpViewTeacher != NULL) {
+		connect(m_RemoteSession, SIGNAL(doTriggerRecvThread(bool)), lpViewTeacher, SLOT(onTriggerUdpRecvThread(bool)));
+	}
 }
 
 void CStudentApp::doCheckOnLine()

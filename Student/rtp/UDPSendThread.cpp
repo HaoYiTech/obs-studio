@@ -3,10 +3,10 @@
 #include "UDPSocket.h"
 #include "SocketUtils.h"
 #include "UDPSendThread.h"
-#include "../window-view-camera.hpp"
+#include "push-thread.h"
 
-CUDPSendThread::CUDPSendThread(CViewCamera * lpViewCamera, int nDBRoomID, int nDBCameraID)
-  : m_lpViewCamera(lpViewCamera)
+CUDPSendThread::CUDPSendThread(CPushThread * lpPushThread, int nDBRoomID, int nDBCameraID)
+  : m_lpPushThread(lpPushThread)
   , m_total_output_bytes(0)
   , m_audio_output_bytes(0)
   , m_video_output_bytes(0)
@@ -22,10 +22,7 @@ CUDPSendThread::CUDPSendThread(CViewCamera * lpViewCamera, int nDBRoomID, int nD
   , m_next_detect_ns(-1)
   , m_start_time_ns(0)
   , m_total_time_ms(0)
-  , m_nJamCount(0)
   , m_bNeedDelete(false)
-  , m_bIsJamAudio(false)
-  , m_bIsJamFlag(false)
   , m_bNeedSleep(false)
   , m_lpUDPSocket(NULL)
   , m_HostServerPort(0)
@@ -96,7 +93,6 @@ void CUDPSendThread::CloseSocket()
 
 BOOL CUDPSendThread::InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS)
 {
-	OSMutexLocker theLock(&m_Mutex);
 	// 设置视频标志...
 	m_rtp_header.hasVideo = true;
 	// 保存传递过来的参数信息...
@@ -115,7 +111,6 @@ BOOL CUDPSendThread::InitVideo(string & inSPS, string & inPPS, int nWidth, int n
 
 BOOL CUDPSendThread::InitAudio(int nRateIndex, int nChannelNum)
 {
-	OSMutexLocker theLock(&m_Mutex);
 	// 设置音频标志...
 	m_rtp_header.hasAudio = true;
 	// 保存采样率索引和声道...
@@ -128,6 +123,38 @@ BOOL CUDPSendThread::InitAudio(int nRateIndex, int nChannelNum)
 	return true;
 }
 
+BOOL CUDPSendThread::ParseAVHeader()
+{
+	// 如果推流管理器无效，返回失败...
+	if (m_lpPushThread == NULL)
+		return false;
+	// 如果既没有音频也没有视频，返回失败...
+	string strAACHeader = m_lpPushThread->GetAACHeader();
+	string strAVCHeader = m_lpPushThread->GetAVCHeader();
+	if (strAACHeader.size() <= 0 && strAVCHeader.size() <= 0) {
+		blog(LOG_INFO, "%s ParseAVHeader error => No Audio and No Video!", TM_SEND_NAME);
+		return false;
+	}
+	// 获取视频相关的格式头信息...
+	int nVideoFPS = m_lpPushThread->GetVideoFPS();
+	int nVideoWidth = m_lpPushThread->GetVideoWidth();
+	int nVideoHeight = m_lpPushThread->GetVideoHeight();
+	string strSPS = m_lpPushThread->GetVideoSPS();
+	string strPPS = m_lpPushThread->GetVideoPPS();
+	// 如果有视频格式头信息，对视频进行初始化...
+	if (strAVCHeader.size() > 0) {
+		this->InitVideo(strSPS, strPPS, nVideoWidth, nVideoHeight, nVideoFPS);
+	}
+	// 获取音频相关的格式头信息...
+	int nRateIndex = m_lpPushThread->GetAudioRateIndex();
+	int nChannelNum = m_lpPushThread->GetAudioChannelNum();
+	// 如果有音频格式头信息，对音频进行初始化...
+	if (strAACHeader.size() > 0) {
+		this->InitAudio(nRateIndex, nChannelNum);
+	}
+	return true;
+}
+
 BOOL CUDPSendThread::InitThread(string & strUdpAddr, int nUdpPort)
 {
 	// 判断输入参数是否有效...
@@ -135,6 +162,9 @@ BOOL CUDPSendThread::InitThread(string & strUdpAddr, int nUdpPort)
 		blog(LOG_INFO, "Invalidate udp-addr or udp-port!");
 		return false;
 	}
+	// 从CPushThread当中解析音视频格式头，解析失败，直接返回...
+	if (!this->ParseAVHeader())
+		return false;
 	// 首先，关闭socket...
 	this->CloseSocket();
 	// 再新建socket...
@@ -256,8 +286,9 @@ BOOL CUDPSendThread::PushFrame(FMS_FRAME & inFrame)
 	DoSaveSendFile(inFrame.dwSendTime, inFrame.typeFlvTag, inFrame.is_keyframe, inFrame.strData);
 #endif // DEBUG_FRAME
 
+	// 注意：严重拥塞直接中断推流，不进行丢包处理...
 	// 如果有音频，且多次发生网络拥塞，全部丢掉视频...
-	if( m_rtp_header.hasAudio && m_bIsJamAudio && inFrame.typeFlvTag == PT_TAG_VIDEO ) {
+	/*if( m_rtp_header.hasAudio && m_bIsJamAudio && inFrame.typeFlvTag == PT_TAG_VIDEO ) {
 		blog(LOG_INFO, "%s Jam => OnlyAudio: %d, Video Drop, PTS: %lu, Size: %d", TM_SEND_NAME, m_bIsJamAudio, inFrame.dwSendTime, inFrame.strData.size());
 		return true;
 	}
@@ -265,7 +296,7 @@ BOOL CUDPSendThread::PushFrame(FMS_FRAME & inFrame)
 	if( m_bIsJamFlag && inFrame.typeFlvTag == PT_TAG_VIDEO && !inFrame.is_keyframe ) {
 		blog(LOG_INFO, "%s Jam => OnlyAudio: %d, Video Drop, PTS: %lu, Size: %d", TM_SEND_NAME, m_bIsJamAudio, inFrame.dwSendTime, inFrame.strData.size());
 		return true;
-	}
+	}*/
 
 	// 音视频使用不同的打包对象和变量...
 	uint32_t & nCurPackSeq = (inFrame.typeFlvTag == PT_TAG_AUDIO) ? m_nAudioCurPackSeq : m_nVideoCurPackSeq;
@@ -473,7 +504,7 @@ void CUDPSendThread::doSendDetectCmd()
 	// 计算音视频的拥塞点 => 用视频做为判断依据 => 超过多个GOP之后就认为拥塞...
 	//this->doCalcAVJamSeq(m_rtp_detect.maxAConSeq, m_rtp_detect.maxVConSeq);
 	////////////////////////////////////////////////////////////////////////////////////////////////
-	// 采用了新的拥塞处理 => 判断缓存时间，设置标志，只发关键帧的方式，最简单、高效、稳定...
+	// 采用了新的拥塞处理 => 判断缓存时间，发生严重拥塞，中断推流，等待讲师端自动触发再次推流...
 	this->doCalcAVJamFlag();
 
 	// 调用接口发送探测命令包...
@@ -520,7 +551,16 @@ void CUDPSendThread::doCalcAVJamFlag()
 	max_ts = lpCurHeader->ts;
 	// 计算环形队列当中总的缓存时间...
 	uint32_t cur_buf_ms = max_ts - min_ts;
-	// 如果总缓存时间低于1秒，设置网络恢复标志...
+	// 只要视频总缓存时间超过一定毫秒数，判断网络严重拥塞，立即中断推流操作...
+	if( cur_buf_ms >= MAX_SEND_JAM_MS) {
+		blog(LOG_INFO, "%s Jam => Stop Push, Buffered %lu ms video data.", TM_SEND_NAME, cur_buf_ms);
+		m_bNeedDelete = true;
+		return;
+	}
+	// 打印网络拥塞情况 => 就是视频缓存的拥塞情况...
+	//blog(LOG_INFO, "%s Jam => Count: %d, Flag: %d, CurBufMS: %lu, Circle: %d", TM_SEND_NAME, m_nJamCount, m_bIsJamFlag, cur_buf_ms, cur_circle.size/nPerPackSize);
+
+	/*// 如果总缓存时间低于1秒，设置网络恢复标志...
 	if( cur_buf_ms <= 1000 ) {
 		m_bIsJamFlag = false;
 	}
@@ -540,13 +580,7 @@ void CUDPSendThread::doCalcAVJamFlag()
 	if( m_nJamCount >= 5 ) {
 		m_bIsJamFlag = true;
 		m_bIsJamAudio = true;
-	}
-	/*// 如果累加发生网络拥塞超过10次，只能发送音频...
-	if( m_nJamCount >= 10 ) {
-		m_bIsJamAudio = true;
 	}*/
-	// 打印网络拥塞情况 => 就是视频缓存的拥塞情况...
-	//blog(LOG_INFO, "%s Jam => Count: %d, Flag: %d, CurBufMS: %lu, Circle: %d", TM_SEND_NAME, m_nJamCount, m_bIsJamFlag, cur_buf_ms, cur_circle.size/nPerPackSize);
 }
 
 /*void CUDPSendThread::doCalcAVJamSeq(uint32_t & outAudioSeq, uint32_t & outVideoSeq)

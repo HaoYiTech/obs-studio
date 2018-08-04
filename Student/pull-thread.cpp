@@ -35,10 +35,12 @@ CRtspThread::~CRtspThread()
 	// 设置rtsp循环退出标志...
 	m_rtspEventLoopWatchVariable = 1;
 
+	blog(LOG_INFO, "== [~CRtspThread Thread] - Exit Start ==");
+
 	// 停止线程...
 	this->StopAndWaitForThread();
 
-	blog(LOG_INFO, "== [~CRtspThread Thread] - Exit ==");
+	blog(LOG_INFO, "== [~CRtspThread Thread] - Exit End ==");
 }
 
 BOOL CRtspThread::InitRtsp(CPushThread * lpPushThread, BOOL bUsingTCP, string & strRtspUrl)

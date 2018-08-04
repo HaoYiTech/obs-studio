@@ -22,6 +22,16 @@ public:
 	void		PushFrame(FMS_FRAME & inFrame);
 	void		onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID);
 	bool        IsLiveState() { return ((m_lpUDPSendThread != NULL) ? true : false); }
+public:
+	string	 	GetAVCHeader();
+	string	 	GetAACHeader();
+	string   	GetVideoSPS();
+	string   	GetVideoPPS();
+	int			GetVideoFPS();
+	int			GetVideoWidth();
+	int			GetVideoHeight();
+	int			GetAudioRateIndex();
+	int			GetAudioChannelNum();
 private:
 	void		CalcFlowKbps();
 	bool		IsDataFinished();

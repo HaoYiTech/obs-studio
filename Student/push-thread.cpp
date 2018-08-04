@@ -21,6 +21,7 @@ CPushThread::CPushThread(CViewCamera * lpViewCamera)
 
 CPushThread::~CPushThread()
 {
+	blog(LOG_INFO, "== [~CPushThread Thread] - Exit Start ==");
 	// 注意：这里使用互斥会造成卡死...
 	// 这里不能使用互斥，删除RTSP拉流对象...
 	if (m_lpRtspThread != NULL) {
@@ -32,7 +33,68 @@ CPushThread::~CPushThread()
 		delete m_lpUDPSendThread;
 		m_lpUDPSendThread = NULL;
 	}
-	blog(LOG_INFO, "== [~CPushThread Thread] - Exit ==");
+	blog(LOG_INFO, "== [~CPushThread Thread] - Exit End ==");
+}
+
+string CPushThread::GetAVCHeader()
+{
+	string strAVCHeader;
+	if (m_lpRtspThread != NULL) {
+		strAVCHeader = m_lpRtspThread->GetAVCHeader();
+	}
+	return strAVCHeader;
+}
+
+string CPushThread::GetAACHeader()
+{
+	string strAACHeader;
+	if (m_lpRtspThread != NULL) {
+		strAACHeader = m_lpRtspThread->GetAACHeader();
+	}
+	return strAACHeader;
+}
+
+string CPushThread::GetVideoSPS()
+{
+	string strVideoSPS;
+	if (m_lpRtspThread != NULL) {
+		strVideoSPS = m_lpRtspThread->GetVideoSPS();
+	}
+	return strVideoSPS;
+}
+
+string CPushThread::GetVideoPPS()
+{
+	string strVideoPPS;
+	if (m_lpRtspThread != NULL) {
+		strVideoPPS = m_lpRtspThread->GetVideoPPS();
+	}
+	return strVideoPPS;
+}
+
+int CPushThread::GetVideoFPS()
+{
+	return ((m_lpRtspThread != NULL) ? m_lpRtspThread->GetVideoFPS() : 0);
+}
+
+int CPushThread::GetVideoWidth()
+{
+	return ((m_lpRtspThread != NULL) ? m_lpRtspThread->GetVideoWidth() : 0);
+}
+
+int CPushThread::GetVideoHeight()
+{
+	return ((m_lpRtspThread != NULL) ? m_lpRtspThread->GetVideoHeight() : 0);
+}
+
+int CPushThread::GetAudioRateIndex()
+{
+	return ((m_lpRtspThread != NULL) ? m_lpRtspThread->GetAudioRateIndex() : 0);
+}
+
+int CPushThread::GetAudioChannelNum()
+{
+	return ((m_lpRtspThread != NULL) ? m_lpRtspThread->GetAudioChannelNum() : 0);
 }
 
 bool CPushThread::InitThread()
@@ -94,8 +156,12 @@ void CPushThread::onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID)
 		int nRoomID = atoi(App()->GetRoomIDStr().c_str());
 		string & strUdpAddr = App()->GetUdpAddr();
 		int nUdpPort = App()->GetUdpPort();
-		m_lpUDPSendThread = new CUDPSendThread(m_lpViewCamera, nRoomID, nDBCameraID);
-		m_lpUDPSendThread->InitThread(strUdpAddr, nUdpPort);
+		m_lpUDPSendThread = new CUDPSendThread(this, nRoomID, nDBCameraID);
+		// 如果初始化UDP推流线程失败，删除已经创建的对象...
+		if( !m_lpUDPSendThread->InitThread(strUdpAddr, nUdpPort) ) {
+			delete m_lpUDPSendThread;
+			m_lpUDPSendThread = NULL;
+		}
 	} else {
 		// 如果是通道停止推流命令 => 删除推流线程...
 		if (m_lpUDPSendThread != NULL) {
@@ -115,8 +181,8 @@ void CPushThread::PushFrame(FMS_FRAME & inFrame)
 	m_dwTimeOutMS = ::GetTickCount();
 	// 累加接收数据包的字节数，加入缓存队列...
 	m_nCurRecvByte += inFrame.strData.size();
-	// 如果UDP推流线程有效，继续传递数据...
-	if (m_lpUDPSendThread != NULL) {
+	// 如果UDP推流线程有效，并且，推流线程没有发生严重拥塞，继续传递数据...
+	if (m_lpUDPSendThread != NULL && !m_lpUDPSendThread->IsNeedDelete()) {
 		m_lpUDPSendThread->PushFrame(inFrame);
 	}
 	// 可以进一步的对数据帧进行加工处理...
