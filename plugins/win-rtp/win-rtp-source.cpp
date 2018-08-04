@@ -7,6 +7,9 @@ struct win_rtp_source {
 	CUDPRecvThread * recvThread;
 };
 
+// 拉流线程是否有效标志...
+bool g_HasRecvThread = false;
+
 static const char *rtp_source_getname(void *unused)
 {
 	UNUSED_PARAMETER(unused);
@@ -18,50 +21,59 @@ static void rtp_source_update(void *data, obs_data_t *settings)
 	// 获取传递过来的资源对象和配置信息...
 	win_rtp_source * lpRtpSource = (win_rtp_source*)data;
 	int nDBRoomID = (int)obs_data_get_int(settings, "room_id");
-	int nDBLiveID = (int)obs_data_get_int(settings, "camera_id");
-	// 如果房间编号和摄像头编号无效，删除接收线程对象...
-	if (nDBRoomID <= 0 || nDBLiveID <= 0) {
+	int nDBCameraID = (int)obs_data_get_int(settings, "camera_id");
+	bool bIsCameraOnLine = obs_data_get_bool(settings, "udp_camera");
+	const char * lpUdpAddr = obs_data_get_string(settings, "udp_addr");
+	int nUdpPort = (int)obs_data_get_int(settings, "udp_port");
+	int nTCPSockFD = (int)obs_data_get_int(settings, "tcp_socket");
+	// 如果房间号无效、摄像头编号无效、摄像头离线，直接删除拉流线程...
+	if (nDBRoomID <= 0 || nDBCameraID <= 0 || !bIsCameraOnLine) {
 		// 如果已经创建过接收线程，删除这个对象...
-		if( lpRtpSource->recvThread != NULL ) {
+		if (lpRtpSource->recvThread != NULL) {
 			delete lpRtpSource->recvThread;
 			lpRtpSource->recvThread = NULL;
 		}
-		// 没有房间号或没有摄像头，直接返回...
-		blog(LOG_INFO, "[Teacher-Looker] rtp_source_update => Failed, RoomID: %d, LiveID: %d", nDBRoomID, nDBLiveID);
+		// 设置拉流线程未创建标志...
+		g_HasRecvThread = false;
+		// 没有房间号、没有摄像头编号、摄像头离线，打印信息，然后返回...
+		blog(LOG_INFO, "%s rtp_source_update => Failed, RoomID: %d, CameraID: %d, OnLine: %d", TM_RECV_NAME, nDBRoomID, nDBCameraID, bIsCameraOnLine);
 		return;
 	}
-	// 如果接收线程已经创建，房间号和摄像头编号没有发生变化，直接返回...
-	CUDPRecvThread * lpRecvThread = lpRtpSource->recvThread;
-	int nOldRoomID = ((lpRecvThread == NULL) ? -1 : lpRecvThread->GetRoomID());
-	int nOldLiveID = ((lpRecvThread == NULL) ? -1 : lpRecvThread->GetLiveID());
-	if((lpRecvThread != NULL) && (nOldRoomID == nDBRoomID) && (nOldLiveID == nDBLiveID)) {
-		blog(LOG_INFO, "[Teacher-Looker] rtp_source_update => Origin, RoomID: %d, LiveID: %d", nDBRoomID, nDBLiveID);
-		return;
-	}
-	// 如果接收线程已经创建，但是，房间号或摄像头编号，发生变化，删除接收线程...
-	if( lpRtpSource->recvThread != NULL ) {
+	// 如果拉流线程已经创建，直接删除重建...
+	if (lpRtpSource->recvThread != NULL) {
 		delete lpRtpSource->recvThread;
 		lpRtpSource->recvThread = NULL;
 	}
-	ASSERT(lpRtpSource->recvThread == NULL);
-	// 创建新的观看线程对象，并初始化，将接收线程对象保存到数据源管理器当中...
-	lpRtpSource->recvThread = new CUDPRecvThread(nDBRoomID, nDBLiveID);
-	lpRtpSource->recvThread->InitThread(lpRtpSource->source);
-	// 打印成功创建接收线程信息...
-	blog(LOG_INFO, "[Teacher-Looker] rtp_source_update => Success, RoomID: %d, LiveID: %d", nDBRoomID, nDBLiveID);
-	// 让播放层不要对数据帧进行缓存，直接最快播放...
+	// 设置拉流线程未创建标志...
+	g_HasRecvThread = false;
+	// 房间号必须有效、摄像头编号必须有效、摄像头必须在线、套接字必须有效、地址必须有效...
+	if (nDBRoomID <= 0 || nDBCameraID <= 0 || !bIsCameraOnLine || nTCPSockFD <= 0 || lpUdpAddr == NULL || nUdpPort <= 0) {
+		blog(LOG_INFO, "%s rtp_source_update => Failed, RoomID: %d, CameraID: %d, OnLine: %d, TCPSock: %d, %s:%d", 
+			TM_RECV_NAME, nDBRoomID, nDBCameraID, bIsCameraOnLine, nTCPSockFD, lpUdpAddr, nUdpPort);
+		return;
+	}
+	// 使用验证过的有效参数，重建拉流对象，并初始化，将接收线程对象保存到数据源管理器当中...
+	lpRtpSource->recvThread = new CUDPRecvThread(nTCPSockFD, nDBRoomID, nDBCameraID);
+	lpRtpSource->recvThread->InitThread(lpRtpSource->source, lpUdpAddr, nUdpPort);
+	// 打印成功创建接收线程信息 => 将所有传入的参数打印出来...
+	blog(LOG_INFO, "%s rtp_source_update => Success, RoomID: %d, CameraID: %d, OnLine: %d, TCPSock: %d, %s:%d", 
+		TM_RECV_NAME, nDBRoomID, nDBCameraID, bIsCameraOnLine, nTCPSockFD, lpUdpAddr, nUdpPort);
+	// 让播放层不要对数据帧进行缓存，直接最快播放 => 这个很重要，可以有效降低播放延时...
 	obs_source_set_async_unbuffered(lpRtpSource->source, true);
 	//obs_source_set_async_decoupled(lpRtpSource->source, true);
+	// 设置拉流线程已创建标志...
+	g_HasRecvThread = true;
 }
 
+// 注意：创建过程不要进行拉流对象的创建，而是通过上层调用rtp_source_update来完成拉流线程创建...
 static void *rtp_source_create(obs_data_t *settings, obs_source_t *source)
 {
 	// 创建rtp数据源变量管理对象...
 	win_rtp_source * lpRtpSource = (win_rtp_source*)bzalloc(sizeof(struct win_rtp_source));
 	// 将传递过来的obs资源对象保存起来...
 	lpRtpSource->source = source;
-	// 先调用配置发生变化的处理...
-	rtp_source_update(lpRtpSource, settings);
+	// 设置拉流线程未创建标志...
+	g_HasRecvThread = false;
 	// 返回资源变量管理对象...
 	return lpRtpSource;
 }
@@ -74,6 +86,8 @@ static void rtp_source_destroy(void *data)
 		delete lpRtpSource->recvThread;
 		lpRtpSource->recvThread = NULL;
 	}
+	// 设置拉流线程未创建标志...
+	g_HasRecvThread = false;
 	// 释放rtp资源管理器...
 	bfree(lpRtpSource);
 }
@@ -95,19 +109,19 @@ static void rtp_source_tick(void *data, float seconds)
 {
 	// 接收线程如果无效，直接返回...
 	win_rtp_source * lpRtpSource = (win_rtp_source*)data;
-	if (lpRtpSource->recvThread == NULL)
+	// 设置拉流线程未创建标志...
+	if (lpRtpSource->recvThread == NULL) {
+		g_HasRecvThread = false;
 		return;
+	}
 	// 如果已经发生登录超时，删除接收线程...
 	if( lpRtpSource->recvThread->IsLoginTimeout() ) {
 		delete lpRtpSource->recvThread;
 		lpRtpSource->recvThread = NULL;
+		// 设置拉流线程未创建标志...
+		g_HasRecvThread = false;
 		return;
 	}
-	// 如果已经发生系统重载，删除并重建接收线程...
-	/*if( lpRtpSource->recvThread->IsReloadFlag() ) {
-		delete lpRtpSource->recvThread;
-		lpRtpSource->recvThread = NULL;
-	}*/
 }
 
 static void rtp_source_activate(void *data)
@@ -133,5 +147,6 @@ void RegisterWinRtpSource()
 	rtp_source.activate        = rtp_source_activate;
 	rtp_source.deactivate      = rtp_source_deactivate;
 	rtp_source.video_tick      = rtp_source_tick;
+	rtp_source.type_data       = (void*)&g_HasRecvThread;
 	obs_register_source(&rtp_source);
 }

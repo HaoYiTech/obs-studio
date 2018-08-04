@@ -42,8 +42,8 @@ static void rtp_output_update(void *data, obs_data_t *settings)
 			lpRtpStream->room_id, lpRtpStream->tcp_socket, lpRtpStream->udp_addr, lpRtpStream->udp_port);
 		return;
 	}
-	// 创建新的推流线程对象，并初始化，将推流线程对象保存到输出管理器当中...
-	lpRtpStream->sendThread = new CUDPSendThread(lpRtpStream->room_id, lpRtpStream->tcp_socket);
+	// 创建新的推流线程对象，延时初始化，将推流线程对象保存到输出管理器当中...
+	lpRtpStream->sendThread = new CUDPSendThread(lpRtpStream->tcp_socket, lpRtpStream->room_id);
 	// 打印成功创建接收线程信息 => room_id | udp_addr | udp_port | tcp_socket
 	blog(LOG_INFO, "%s rtp_source_update => Success, RoomID: %d, TCPSock: %d, %s:%d", TM_SEND_NAME,
 		lpRtpStream->room_id, lpRtpStream->tcp_socket, lpRtpStream->udp_addr, lpRtpStream->udp_port);
@@ -96,7 +96,7 @@ static bool rtp_output_start(void *data)
 		return false;
 	}
 	// 用音视频格式头初始化推流线程 => 初始化失败，直接返回...
-	if (!lpRtpStream->sendThread->StartThread(lpRtpStream->output, lpRtpStream->udp_addr, lpRtpStream->udp_port)) {
+	if (!lpRtpStream->sendThread->InitThread(lpRtpStream->output, lpRtpStream->udp_addr, lpRtpStream->udp_port)) {
 		blog(LOG_INFO, "%s start thread failed!", TM_SEND_NAME);
 		return false;
 	}

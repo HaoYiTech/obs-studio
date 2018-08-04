@@ -10,7 +10,7 @@ static int32_t get_ms_time(struct encoder_packet *packet, int64_t val)
 	return (int32_t)(val * MILLISECOND_DEN / packet->timebase_den);
 }
 
-CUDPSendThread::CUDPSendThread(int nDBRoomID, int nTCPSockFD)
+CUDPSendThread::CUDPSendThread(int nTCPSockFD, int nDBRoomID)
   : m_total_output_bytes(0)
   , m_audio_output_bytes(0)
   , m_video_output_bytes(0)
@@ -24,7 +24,6 @@ CUDPSendThread::CUDPSendThread(int nDBRoomID, int nTCPSockFD)
   , m_next_create_ns(-1)
   , m_next_header_ns(-1)
   , m_next_detect_ns(-1)
-  , m_nRoomID(nDBRoomID)
   , m_start_time_ns(0)
   , m_total_time_ms(0)
   , m_bNeedSleep(false)
@@ -193,11 +192,11 @@ BOOL CUDPSendThread::ParseAVHeader()
 	return true;
 }
 
-BOOL CUDPSendThread::StartThread(obs_output_t * lpObsOutput, const char * lpUdpAddr, int nUdpPort)
+BOOL CUDPSendThread::InitThread(obs_output_t * lpObsOutput, const char * lpUdpAddr, int nUdpPort)
 {
 	// 保存并解析obs音视频格式头信息...
 	m_lpObsOutput = lpObsOutput;
-	// 解析失败，直接返回...
+	// 从obs中解析音视频格式头，解析失败，直接返回...
 	if (!this->ParseAVHeader())
 		return false;
 	// 首先，关闭socket...

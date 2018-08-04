@@ -10,14 +10,12 @@ class UDPSocket;
 class CUDPRecvThread : public OSThread
 {
 public:
-	CUDPRecvThread(int nDBRoomID, int nDBLiveID);
+	CUDPRecvThread(int nTCPSockFD, int nDBRoomID, int nDBCameraID);
 	virtual ~CUDPRecvThread();
 	virtual void Entry();
 public:
-	GM_Error		InitThread(obs_source_t * lpObsSource);
+	bool			InitThread(obs_source_t * lpObsSource, const char * lpUdpAddr, int nUdpPort);
 	bool            IsLoginTimeout();
-	int				GetRoomID() { return m_nRoomID; }
-	int				GetLiveID() { return m_nLiveID; }
 private:
 	void			ClosePlayer();
 	void			CloseSocket();
@@ -57,8 +55,6 @@ private:
 	uint16_t		m_HostServerPort;		// 服务器端口 => host
 	uint32_t	    m_HostServerAddr;		// 服务器地址 => host
 
-	int				m_nRoomID;				// 房间编号
-	int				m_nLiveID;				// 摄像头编号
 	bool			m_bNeedSleep;			// 休息标志 => 只要有发包或收包就不能休息...
 	int				m_dt_to_dir;			// 发包路线方向 => TO_SERVER | TO_P2P
 	int				m_p2p_rtt_ms;			// P2P    => 网络往返延迟值 => 毫秒

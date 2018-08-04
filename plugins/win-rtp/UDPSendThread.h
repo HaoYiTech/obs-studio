@@ -9,13 +9,12 @@ class UDPSocket;
 class CUDPSendThread : public OSThread
 {
 public:
-	CUDPSendThread(int nDBRoomID, int nTCPSockFD);
+	CUDPSendThread(int nTCPSockFD, int nDBRoomID);
 	virtual ~CUDPSendThread();
 	virtual void Entry();
 public:
-	BOOL			StartThread(obs_output_t * lpObsOutput, const char * lpUdpAddr, int nUdpPort);
+	BOOL			InitThread(obs_output_t * lpObsOutput, const char * lpUdpAddr, int nUdpPort);
 	BOOL			PushFrame(encoder_packet * lpEncPacket);
-	int				GetRoomID() { return m_nRoomID; }
 protected:
 	BOOL			InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS);
 	BOOL			InitAudio(int inAudioRate, int inAudioChannel);
@@ -60,7 +59,6 @@ private:
 	uint16_t		m_HostServerPort;		// 服务器端口 => host
 	uint32_t	    m_HostServerAddr;		// 服务器地址 => host
 
-	int				m_nRoomID;				// 房间编号
 	bool			m_bNeedSleep;			// 休息标志 => 只要有发包或收包就不能休息...
 	int32_t			m_start_dts_ms;			// 第一个数据帧的dts时间，0点计时...
 

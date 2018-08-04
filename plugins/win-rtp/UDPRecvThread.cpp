@@ -4,12 +4,10 @@
 #include "UDPRecvThread.h"
 #include "UDPPlayThread.h"
 
-CUDPRecvThread::CUDPRecvThread(int nDBRoomID, int nDBLiveID)
+CUDPRecvThread::CUDPRecvThread(int nTCPSockFD, int nDBRoomID, int nDBCameraID)
   : m_lpUDPSocket(NULL)
   , m_lpObsSource(NULL)
   , m_lpPlaySDL(NULL)
-  , m_nLiveID(nDBLiveID)
-  , m_nRoomID(nDBRoomID)
   , m_bNeedSleep(false)
   , m_HostServerPort(0)
   , m_HostServerAddr(0)
@@ -54,9 +52,11 @@ CUDPRecvThread::CUDPRecvThread(int nDBRoomID, int nDBLiveID)
 	m_rtp_supply.pt = PT_TAG_SUPPLY;
 	// 填充房间号和直播通道号...
 	m_rtp_create.roomID = nDBRoomID;
-	m_rtp_create.liveID = nDBLiveID;
+	m_rtp_create.liveID = nDBCameraID;
 	m_rtp_delete.roomID = nDBRoomID;
-	m_rtp_delete.liveID = nDBLiveID;
+	m_rtp_delete.liveID = nDBCameraID;
+	// 填充与远程关联的TCP套接字...
+	m_rtp_create.tcpSock = nTCPSockFD;
 }
 
 CUDPRecvThread::~CUDPRecvThread()
@@ -93,7 +93,7 @@ void CUDPRecvThread::CloseSocket()
 	}
 }
 
-GM_Error CUDPRecvThread::InitThread(obs_source_t * lpObsSource)
+bool CUDPRecvThread::InitThread(obs_source_t * lpObsSource, const char * lpUdpAddr, int nUdpPort)
 {
 	// 保存obs资源对象...
 	m_lpObsSource = lpObsSource;
@@ -110,7 +110,7 @@ GM_Error CUDPRecvThread::InitThread(obs_source_t * lpObsSource)
 	theErr = m_lpUDPSocket->Open();
 	if( theErr != GM_NoErr ) {
 		MsgLogGM(theErr);
-		return theErr;
+		return false;
 	}
 	// 设置重复使用端口...
 	m_lpUDPSocket->ReuseAddr();
@@ -120,23 +120,22 @@ GM_Error CUDPRecvThread::InitThread(obs_source_t * lpObsSource)
 	// 设置TTL网络穿越数值...
 	m_lpUDPSocket->SetTtl(32);
 	// 获取服务器地址信息 => 假设输入信息就是一个IPV4域名...
-	//const char * lpszAddr = "192.168.1.70";
-	const char * lpszAddr = DEF_UDP_HOME;
+	const char * lpszAddr = lpUdpAddr;
 	hostent * lpHost = gethostbyname(lpszAddr);
 	if( lpHost != NULL && lpHost->h_addr_list != NULL ) {
 		lpszAddr = inet_ntoa(*(in_addr*)lpHost->h_addr_list[0]);
 	}
 	// 保存服务器地址，简化SendTo参数......
-	m_lpUDPSocket->SetRemoteAddr(lpszAddr, DEF_UDP_PORT);
+	m_lpUDPSocket->SetRemoteAddr(lpszAddr, nUdpPort);
 	// 服务器地址和端口转换成host格式，保存起来...
-	m_HostServerPort = DEF_UDP_PORT;
+	m_HostServerPort = nUdpPort;
 	m_HostServerAddr = ntohl(inet_addr(lpszAddr));
 	// 设定系统登录计时0点位置...
 	m_login_zero_ns = os_gettime_ns();
 	// 启动组播接收线程...
 	this->Start();
 	// 返回执行结果...
-	return theErr;
+	return true;
 }
 
 void CUDPRecvThread::Entry()
@@ -650,13 +649,13 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 				m_server_cache_time_ms = m_server_rtt_ms + m_server_rtt_var_ms;
 			}
 			// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
-			blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, ACircle: %d, VCircle: %d", TM_RECV_NAME,
+			/*blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, ACircle: %d, VCircle: %d", TM_RECV_NAME,
 				 rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms, m_server_cache_time_ms, m_audio_circle.size / 812, m_video_circle.size / 812);
 			// 打印播放器底层的缓存状态信息...
 			if (m_lpPlaySDL != NULL) {
 				blog(LOG_INFO, "%s Recv Detect => APacket: %d, VPacket: %d, AFrame: %d, VFrame: %d", TM_RECV_NAME,
 					m_lpPlaySDL->GetAPacketSize(), m_lpPlaySDL->GetVPacketSize(), m_lpPlaySDL->GetAFrameSize(), m_lpPlaySDL->GetVFrameSize());
-			}
+			}*/
 		}
 		// 处理来自P2P方向的探测结果...
 		if( rtpDetect.dtDir == DT_TO_P2P ) {
