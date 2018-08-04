@@ -485,16 +485,13 @@ int main(int argc, char *argv[])
 	// 初始化线程和套接字通用库...
 	OSThread::Initialize();
 	SocketUtils::Initialize();
-	// 初始化SDL2.0...
-	CoInitializeEx(NULL, COINIT_MULTITHREADED);
-	int nRet = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
 
 	// 设置错误日志的处理句柄...
 	base_get_log_handler(&def_log_handler, nullptr);
 
 	fstream logFile;
 	curl_global_init(CURL_GLOBAL_ALL);
-	nRet = run_program(logFile, argc, argv);
+	int nRet = run_program(logFile, argc, argv);
 
 	blog(LOG_INFO, "Number of memory leaks: %ld", bnum_allocs());
 
@@ -504,8 +501,6 @@ int main(int argc, char *argv[])
 	// 释放线程和套接字通用库...
 	OSThread::UnInitialize();
 	SocketUtils::UnInitialize();
-	// 释放SDL2.0资源...
-	SDL_Quit();
 	return nRet;
 }
 
@@ -632,6 +627,8 @@ CStudentApp::~CStudentApp()
 		delete m_lpWebThread;
 		m_lpWebThread = NULL;
 	}
+	// 释放Com和SDL2.0...
+	this->UnInitCoSDL();
 }
 
 bool CStudentApp::InitMacIPAddr()
@@ -740,10 +737,26 @@ void CStudentApp::doLoginInit()
 	// 建立登录窗口与应用对象的信号槽关联函数...
 	connect(m_loginWindow, SIGNAL(loginSuccess(string&)), this, SLOT(doLoginSuccess(string&)));
 }
+
+// 初始化Com和SDL2.0...
+void CStudentApp::InitCoSDL()
+{
+	CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	int nRet = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
+}
+
+// 释放Com和SDL2.0...
+void CStudentApp::UnInitCoSDL()
+{
+	SDL_Quit();
+	CoUninitialize();
+}
 //
 // 处理登录成功之后的信号槽事件...
 void CStudentApp::doLoginSuccess(string & strRoomID)
 {
+	// 初始化COM和SDL2.0...
+	this->InitCoSDL();
 	// 保存登录房间号...
 	m_strRoomID = strRoomID;
 	// 先关闭登录窗口...

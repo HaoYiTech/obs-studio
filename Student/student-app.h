@@ -164,6 +164,8 @@ private:
 	bool	InitGlobalConfig();
 	bool	InitGlobalConfigDefaults();
 	bool	InitMacIPAddr();
+	void	InitCoSDL();
+	void	UnInitCoSDL();
 private:
 	std::deque<obs_frontend_translate_ui_cb> translatorHooks;
 	QPointer<CRemoteSession>   m_RemoteSession;
