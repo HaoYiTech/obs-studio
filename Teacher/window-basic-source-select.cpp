@@ -188,6 +188,14 @@ void OBSBasicSourceSelect::on_buttonBox_accepted()
 	bool useExisting = ui->selectExisting->isChecked();
 	bool visible = ui->sourceVisible->isChecked();
 
+	// 如果已经有了rtp_source资源，就不能再添加新的rtp_source资源了...
+	if (m_bHasRtpSource && astrcmpi(id, "rtp_source") == 0) {
+		OBSMessageBox::information(this, 
+			QTStr("SingleRtpSource.Title"), 
+			QTStr("SingleRtpSource.Text"));
+		return;
+	}
+
 	if (useExisting) {
 		QListWidgetItem *item = ui->sourceList->currentItem();
 		if (!item)
@@ -235,6 +243,8 @@ OBSBasicSourceSelect::OBSBasicSourceSelect(OBSBasic *parent, const char *id_)
 	  ui      (new Ui::OBSBasicSourceSelect),
 	  id      (id_)
 {
+	m_bHasRtpSource = false;
+
 	ui->setupUi(this);
 
 	ui->sourceList->setAttribute(Qt::WA_MacShowFocusRect, false);
@@ -256,8 +266,7 @@ OBSBasicSourceSelect::OBSBasicSourceSelect(OBSBasic *parent, const char *id_)
 	installEventFilter(CreateShortcutFilter());
 
 	if (strcmp(id_, "scene") == 0) {
-		OBSBasic *main = reinterpret_cast<OBSBasic*>(
-				App()->GetMainWindow());
+		OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
 		OBSSource curSceneSource = main->GetCurrentSceneSource();
 
 		ui->selectExisting->setChecked(true);
@@ -279,6 +288,19 @@ OBSBasicSourceSelect::OBSBasicSourceSelect(OBSBasic *parent, const char *id_)
 		}
 	} else {
 		obs_enum_sources(EnumSources, this);
+
+		OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+		for (int i = 0; i < main->ui->sources->count(); i++) {
+			QListWidgetItem * listItem = main->ui->sources->item(i);
+			OBSSceneItem theItem = main->GetSceneItem(listItem);
+			OBSSource theSource = obs_sceneitem_get_source(theItem);
+			const char * lpID = obs_source_get_id(theSource);
+			// 如果资源中包含有rtp_source资源 => 设置标志...
+			if (astrcmpi(lpID, "rtp_source") == 0) {
+				this->m_bHasRtpSource = true;
+				break;
+			}
+		}
 	}
 }
 
