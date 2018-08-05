@@ -48,12 +48,28 @@ void CViewLeft::onTriggerConnected()
 	}
 }
 
+// 停止所有正在推流的通道，如果通道编号与新通道一致，不处理...
+void CViewLeft::doStopCurUdpSendThread(int nNewDBCameraID)
+{
+	GM_MapCamera::iterator itorItem;
+	for (itorItem = m_MapCamera.begin(); itorItem != m_MapCamera.end(); ++itorItem) {
+		CViewCamera * lpViewCamera= itorItem->second;
+		if (lpViewCamera->GetDBCameraID() != nNewDBCameraID) {
+			lpViewCamera->onTriggerUdpSendThread(false, itorItem->first);
+		}
+	}
+}
+
 // 响应从CRemoteSession发出的事件通知信号...
 void CViewLeft::onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID)
 {
+	// 如果是启动推流命令，先停止当前正在推流的通道...
+	if (bIsStartCmd) this->doStopCurUdpSendThread(nDBCameraID);
+	// 在摄像头通道集合中查找指定的通道编号...
 	GM_MapCamera::iterator itorItem = m_MapCamera.find(nDBCameraID);
 	if (itorItem == m_MapCamera.end())
 		return;
+	// 执行摄像头通道的开启或停止推流线程...
 	CViewCamera * lpViewCamera = itorItem->second;
 	lpViewCamera->onTriggerUdpSendThread(bIsStartCmd, nDBCameraID);
 }

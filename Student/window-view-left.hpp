@@ -49,6 +49,7 @@ public:
 	void onPageNext();					// µã»÷ÏÂÒ»Ò³...
 private:
 	void LayoutViewCamera(int cx, int cy);
+	void doStopCurUdpSendThread(int nNewDBCameraID);
 	CViewCamera * BuildWebCamera(GM_MapData & inWebData);
 protected:
 	void wheelEvent(QWheelEvent *event) override;
