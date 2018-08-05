@@ -16,7 +16,8 @@ static const char *rtp_source_getname(void *unused)
 	return obs_module_text("RTPSource");
 }
 
-static void rtp_source_update(void *data, obs_data_t *settings)
+// 处理摄像头通道上线通知...
+static void doCameraOnLine(void *data, obs_data_t *settings)
 {
 	// 获取传递过来的资源对象和配置信息...
 	win_rtp_source * lpRtpSource = (win_rtp_source*)data;
@@ -26,43 +27,78 @@ static void rtp_source_update(void *data, obs_data_t *settings)
 	const char * lpUdpAddr = obs_data_get_string(settings, "udp_addr");
 	int nUdpPort = (int)obs_data_get_int(settings, "udp_port");
 	int nTCPSockFD = (int)obs_data_get_int(settings, "tcp_socket");
-	// 如果房间号无效、摄像头编号无效、摄像头离线，直接删除拉流线程...
-	if (nDBRoomID <= 0 || nDBCameraID <= 0 || !bIsCameraOnLine) {
-		// 如果已经创建过接收线程，删除这个对象...
-		if (lpRtpSource->recvThread != NULL) {
-			delete lpRtpSource->recvThread;
-			lpRtpSource->recvThread = NULL;
-		}
-		// 设置拉流线程未创建标志...
-		g_HasRecvThread = false;
-		// 没有房间号、没有摄像头编号、摄像头离线，打印信息，然后返回...
-		blog(LOG_INFO, "%s rtp_source_update => Failed, RoomID: %d, CameraID: %d, OnLine: %d", TM_RECV_NAME, nDBRoomID, nDBCameraID, bIsCameraOnLine);
-		return;
-	}
-	// 如果拉流线程已经创建，直接删除重建...
+	// 如果是摄像头通道上线通知 => 如果拉流对象不为空，删除拉流对象...
 	if (lpRtpSource->recvThread != NULL) {
 		delete lpRtpSource->recvThread;
 		lpRtpSource->recvThread = NULL;
+		// 将画面绘制过程设置为非活动状态，等待新的画面到达...
+		obs_source_output_video(lpRtpSource->source, NULL);
 	}
 	// 设置拉流线程未创建标志...
 	g_HasRecvThread = false;
 	// 房间号必须有效、摄像头编号必须有效、摄像头必须在线、套接字必须有效、地址必须有效...
-	if (nDBRoomID <= 0 || nDBCameraID <= 0 || !bIsCameraOnLine || nTCPSockFD <= 0 || lpUdpAddr == NULL || nUdpPort <= 0) {
-		blog(LOG_INFO, "%s rtp_source_update => Failed, RoomID: %d, CameraID: %d, OnLine: %d, TCPSock: %d, %s:%d", 
-			TM_RECV_NAME, nDBRoomID, nDBCameraID, bIsCameraOnLine, nTCPSockFD, lpUdpAddr, nUdpPort);
+	if (nDBRoomID <= 0 || nDBCameraID <= 0 || nTCPSockFD <= 0 || lpUdpAddr == NULL || nUdpPort <= 0) {
+		blog(LOG_INFO, "%s rtp_source_update => OnLine, HasRecv: %d, RoomID: %d, CameraID: %d, TCPSock: %d, %s:%d",
+			TM_RECV_NAME, g_HasRecvThread, nDBRoomID, nDBCameraID, nTCPSockFD, lpUdpAddr, nUdpPort);
 		return;
 	}
 	// 使用验证过的有效参数，重建拉流对象，并初始化，将接收线程对象保存到数据源管理器当中...
 	lpRtpSource->recvThread = new CUDPRecvThread(nTCPSockFD, nDBRoomID, nDBCameraID);
 	lpRtpSource->recvThread->InitThread(lpRtpSource->source, lpUdpAddr, nUdpPort);
-	// 打印成功创建接收线程信息 => 将所有传入的参数打印出来...
-	blog(LOG_INFO, "%s rtp_source_update => Success, RoomID: %d, CameraID: %d, OnLine: %d, TCPSock: %d, %s:%d", 
-		TM_RECV_NAME, nDBRoomID, nDBCameraID, bIsCameraOnLine, nTCPSockFD, lpUdpAddr, nUdpPort);
 	// 让播放层不要对数据帧进行缓存，直接最快播放 => 这个很重要，可以有效降低播放延时...
 	obs_source_set_async_unbuffered(lpRtpSource->source, true);
 	//obs_source_set_async_decoupled(lpRtpSource->source, true);
 	// 设置拉流线程已创建标志...
 	g_HasRecvThread = true;
+	// 打印成功创建接收线程信息 => 将所有传入的参数打印出来...
+	blog(LOG_INFO, "%s rtp_source_update => OnLine, HasRecv: %d, RoomID: %d, CameraID: %d, TCPSock: %d, %s:%d",
+		TM_RECV_NAME, g_HasRecvThread, nDBRoomID, nDBCameraID, nTCPSockFD, lpUdpAddr, nUdpPort);
+}
+
+// 处理摄像头通道下线通知...
+static void doCameraOffLine(void *data, obs_data_t *settings)
+{
+	// 获取传递过来的资源对象和配置信息...
+	win_rtp_source * lpRtpSource = (win_rtp_source*)data;
+	int nDBRoomID = (int)obs_data_get_int(settings, "room_id");
+	int nDBCameraID = (int)obs_data_get_int(settings, "camera_id");
+	bool bIsCameraOnLine = obs_data_get_bool(settings, "udp_camera");
+	const char * lpUdpAddr = obs_data_get_string(settings, "udp_addr");
+	int nUdpPort = (int)obs_data_get_int(settings, "udp_port");
+	int nTCPSockFD = (int)obs_data_get_int(settings, "tcp_socket");
+	// 进行单次循环验证处理过程...
+	do {
+		// 如果是摄像头通道下线通知 => 拉流对象为空，直接返回...
+		if (lpRtpSource->recvThread == NULL) {
+			g_HasRecvThread = false;
+			break;
+		}
+		ASSERT(lpRtpSource->recvThread != NULL);
+		// 如果拉流对象不为空，但通道编号不一致，不能删除，直接返回...
+		if (lpRtpSource->recvThread->GetDBCameraID() != nDBCameraID) {
+			g_HasRecvThread = true;
+			break;
+		}
+		// 如果拉流对象不为空，通道编号一致，删除拉流对象...
+		delete lpRtpSource->recvThread;
+		lpRtpSource->recvThread = NULL;
+		// 将画面绘制过程设置为非活动状态，等待新的画面到达...
+		obs_source_output_video(lpRtpSource->source, NULL);
+		// 设置拉流线程未创建标志...
+		g_HasRecvThread = false;
+	} while (false);
+	// 打印成功删除拉流线程信息 => 将所有传入的参数打印出来...
+	blog(LOG_INFO, "%s rtp_source_update => OffLine, HasRecv: %d, RoomID: %d, CameraID: %d, TCPSock: %d, %s:%d",
+		TM_RECV_NAME, g_HasRecvThread, nDBRoomID, nDBCameraID, nTCPSockFD, lpUdpAddr, nUdpPort);
+}
+
+// 处理rtp_source资源配置发生变化的事件通知...
+static void rtp_source_update(void *data, obs_data_t *settings)
+{
+	int nDBCameraID = (int)obs_data_get_int(settings, "camera_id");
+	bool bIsCameraOnLine = obs_data_get_bool(settings, "udp_camera");
+	// 根据摄像头通道的上线通知或下线通知来进行单独分开处理...
+	bIsCameraOnLine ? doCameraOnLine(data, settings) : doCameraOffLine(data, settings);
 }
 
 // 注意：创建过程不要进行拉流对象的创建，而是通过上层调用rtp_source_update来完成拉流线程创建...

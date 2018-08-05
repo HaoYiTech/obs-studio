@@ -16,6 +16,8 @@ public:
 public:
 	bool			InitThread(obs_source_t * lpObsSource, const char * lpUdpAddr, int nUdpPort);
 	bool            IsLoginTimeout();
+	int             GetDBRoomID() { return m_rtp_create.roomID; }
+	int             GetDBCameraID() { return m_rtp_create.liveID; }
 private:
 	void			ClosePlayer();
 	void			CloseSocket();
