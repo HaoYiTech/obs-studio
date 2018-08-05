@@ -191,7 +191,7 @@ void OBSPropertiesView::onTriggerCameraList(Json::Value & value)
 		int nRoomID = atoi(OBSApp::getJsonString(value[i]["room_id"]).c_str());
 		QString strCameraName = QString::fromUtf8(OBSApp::getJsonString(value[i]["camera_name"]).c_str());
 		QString strPCName = QString::fromUtf8(OBSApp::getJsonString(value[i]["pc_name"]).c_str());
-		QString strItemValue = QString("%1 - %2").arg(strPCName).arg(strCameraName);
+		QString strItemValue = QString("%1 - %2 - ID: %3").arg(strPCName).arg(strCameraName).arg(nDBCameraID);
 		QListWidgetItem * theListItem = new QListWidgetItem(theIcon, strItemValue);
 		theListItem->setData(Qt::UserRole, nDBCameraID);
 		m_listCamera->insertItem(0, theListItem);
