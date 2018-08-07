@@ -1,5 +1,7 @@
+
 #include <QGuiApplication>
 #include <QMouseEvent>
+#include <QScreen>
 
 #include <algorithm>
 #include <cmath>
@@ -17,7 +19,7 @@ using namespace std;
 /* TODO: make C++ math classes and clean up code here later */
 
 OBSBasicPreview::OBSBasicPreview(QWidget *parent, Qt::WindowFlags flags)
-	: OBSQTDisplay(parent, flags)
+  : OBSQTDisplay(parent, flags)
 {
 	ResetScrollingOffset();
 	setMouseTracking(true);
@@ -382,20 +384,63 @@ void OBSBasicPreview::GetStretchHandleData(const vec2 &pos)
 	}
 }
 
+// 响应全屏快捷键的按下事件操作...
+/*void OBSBasicPreview::doKeyFullScreen()
+{
+	//if (this->isFullScreen()) {
+	if (m_bIsFullScreen) {
+		// 窗口退出全屏状态...
+		this->setWindowFlags(Qt::SubWindow);
+		this->showNormal();
+		// 需要恢复到全屏前的矩形区域...
+		this->setGeometry(m_rcNoramlRect);
+		m_bIsFullScreen = false;
+	} else {
+		// 需要先保存全屏前的矩形区域...
+		m_rcNoramlRect = this->geometry();
+		m_bIsFullScreen = true;
+		// 窗口进入全屏状态...
+		this->setWindowFlags(Qt::Window);
+		QScreen *screen = QGuiApplication::screens()[0];
+		this->setGeometry(screen->geometry());
+		this->show();
+		//this->showFullScreen();
+	}
+}
+
+// 响应Escape快捷键的按下事件...
+void OBSBasicPreview::doKeyEscape()
+{
+	// 如果不是全屏状态，直接返回...
+	if (!this->isFullScreen())
+		return;
+	// 还原渲染窗口的状态 => 恢复到普通窗口...
+	this->setWindowFlags(Qt::SubWindow);
+	this->showNormal();
+	// 需要恢复到全屏前的矩形区域...
+	this->setGeometry(m_rcNoramlRect);
+}*/
+
 void OBSBasicPreview::keyPressEvent(QKeyEvent *event)
 {
+	/*// 处理全屏操作的快捷键...
+	switch (event->key()) {
+	case Qt::Key_Escape: this->doKeyEscape(); break;
+	case Qt::Key_F:      this->doKeyFullScreen(); break;
+	}*/
+
+	// 处理其它情况的快捷键...
 	if (!IsFixedScaling() || event->isAutoRepeat()) {
 		OBSQTDisplay::keyPressEvent(event);
 		return;
 	}
-
+	// 空格键按下时，设置鼠标形状...
 	switch (event->key()) {
 	case Qt::Key_Space:
 		setCursor(Qt::OpenHandCursor);
 		scrollMode = true;
 		break;
 	}
-
 	OBSQTDisplay::keyPressEvent(event);
 }
 
@@ -405,14 +450,13 @@ void OBSBasicPreview::keyReleaseEvent(QKeyEvent *event)
 		OBSQTDisplay::keyReleaseEvent(event);
 		return;
 	}
-
+	// 空格键抬起时，设置鼠标形状...
 	switch (event->key()) {
 	case Qt::Key_Space:
 		scrollMode = false;
 		setCursor(Qt::ArrowCursor);
 		break;
 	}
-
 	OBSQTDisplay::keyReleaseEvent(event);
 }
 

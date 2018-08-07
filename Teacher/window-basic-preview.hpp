@@ -32,7 +32,6 @@ enum class ItemHandle : uint32_t {
 
 class OBSBasicPreview : public OBSQTDisplay {
 	Q_OBJECT
-
 private:
 	obs_sceneitem_crop startCrop;
 	vec2         startItemPos;
