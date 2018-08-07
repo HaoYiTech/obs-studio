@@ -854,7 +854,8 @@ retryScene:
 
 	RefreshQuickTransitions();
 
-	bool previewLocked = obs_data_get_bool(data, "preview_locked");
+	// 默认强制使用预览锁定方式 => 不能让场景资源预览窗口自由变换位置...
+	bool previewLocked = true; //obs_data_get_bool(data, "preview_locked");
 	ui->preview->SetLocked(previewLocked);
 	ui->actionLockPreview->setChecked(previewLocked);
 
@@ -865,7 +866,7 @@ retryScene:
 	float scrollOffX = (float)obs_data_get_double(data, "scaling_off_x");
 	float scrollOffY = (float)obs_data_get_double(data, "scaling_off_y");
 
-	// 强制预览框使用锁定缩放模式...
+	// 强制预览框使用锁定缩放模式 => 自动根据窗口变化自动缩放所有场景资源...
 	fixedScaling = false;
 
 	if (fixedScaling) {
@@ -1687,6 +1688,8 @@ void OBSBasic::DeferredLoad(const QString &file, int requeueCount)
 	m_bIsLoaded = true;
 	// 立即启动远程连接...
 	App()->doCheckRemote();
+	// 对场景资源进行位置重排...
+	this->doSceneItemLayout();
 }
 
 void OBSBasic::UpdateMultiviewProjectorMenu()
@@ -4178,7 +4181,6 @@ void OBSBasic::on_actionAddSource_triggered()
 void OBSBasic::on_actionRemoveSource_triggered()
 {
 	vector<OBSSceneItem> items;
-
 	auto func = [] (obs_scene_t *, obs_sceneitem_t *item, void *param)
 	{
 		vector<OBSSceneItem> &items =
@@ -4195,13 +4197,12 @@ void OBSBasic::on_actionRemoveSource_triggered()
 
 	auto removeMultiple = [this] (size_t count)
 	{
-		QString text = QTStr("ConfirmRemove.TextMultiple")
-			.arg(QString::number(count));
+		QString text = QTStr("ConfirmRemove.TextMultiple").arg(QString::number(count));
 
 		QMessageBox remove_items(this);
 		remove_items.setText(text);
-		QAbstractButton *Yes = remove_items.addButton(QTStr("Yes"),
-				QMessageBox::YesRole);
+
+		QAbstractButton *Yes = remove_items.addButton(QTStr("Yes"),	QMessageBox::YesRole);
 		remove_items.addButton(QTStr("No"), QMessageBox::NoRole);
 		remove_items.setIcon(QMessageBox::Question);
 		remove_items.setWindowTitle(QTStr("ConfirmRemove.Title"));
@@ -4213,13 +4214,14 @@ void OBSBasic::on_actionRemoveSource_triggered()
 	if (items.size() == 1) {
 		OBSSceneItem &item = items[0];
 		obs_source_t *source = obs_sceneitem_get_source(item);
-
-		if (source && QueryRemoveSource(source))
+		if (source && QueryRemoveSource(source)) {
 			obs_sceneitem_remove(item);
+		}
 	} else {
 		if (removeMultiple(items.size())) {
-			for (auto &item : items)
+			for (auto &item : items) {
 				obs_sceneitem_remove(item);
+			}
 		}
 	}
 }
@@ -5764,14 +5766,145 @@ void OBSBasic::OpenSourceProjector()
 		ProjectorType::Source);
 }*/
 
-void OBSBasic::DoDisplayDbClicked()
+// 对场景资源位置进行重新排列 => 两行（1行1列，1行5列）...
+void OBSBasic::doSceneItemLayout(obs_sceneitem_t * scene_item/* = NULL*/)
 {
-	// 先将当前预览框移动到最上层...
-	on_actionMoveToTop_triggered();
-	// 再将当前预览框适配到全屏...
-	on_actionFitToScreen_triggered();
-	// 再将当前预览框拉伸到全屏...
-	//on_actionStretchToScreen_triggered();
+	// 如果是新添加的场景资源...
+	if (scene_item != NULL) {
+		obs_source_t *source = obs_sceneitem_get_source(scene_item);
+		uint32_t flags = obs_source_get_output_flags(source);
+		// 如果新添加场景资源，没有视频，不重排位置，直接返回...
+		if ((flags & OBS_SOURCE_VIDEO) == 0)
+			return;
+		// 新的场景资源必须包含视频内容...
+		ASSERT(flags & OBS_SOURCE_VIDEO);
+	}
+	// 获取显示系统的宽和高...
+	obs_video_info ovi = { 0 };
+	obs_get_video_info(&ovi);
+	// 初始化场景资源算子对象...
+	BaseSceneItem theRtpSceneItem = { 0 };
+	theRtpSceneItem.first_item = true;
+	// 计算第一个资源的宽和高...
+	ovi.base_height -= DEF_ROW_SPACE;
+	theRtpSceneItem.first_width = ovi.base_width;
+	theRtpSceneItem.first_height = ovi.base_height - ovi.base_height / DEF_ROW_SIZE;
+	// 计算其它资源的宽和高...
+	ovi.base_width -= (DEF_COL_SIZE - 1) * DEF_COL_SPACE;
+	theRtpSceneItem.other_width = ovi.base_width / DEF_COL_SIZE;
+	theRtpSceneItem.other_height = ovi.base_height / DEF_ROW_SIZE;
+	// 每个场景资源的回调接口函数...
+	auto func = [](obs_scene_t *, obs_sceneitem_t *item, void *param)
+	{
+		// 有视频的资源才进行显示位置重排处理...
+		obs_source_t *source = obs_sceneitem_get_source(item);
+		uint32_t flags = obs_source_get_output_flags(source);
+		if ((flags & OBS_SOURCE_VIDEO) == 0)
+			return true;
+		// 对传入的参数结构进行转换处理...
+		BaseSceneItem * out_item = reinterpret_cast<BaseSceneItem*>(param);
+		// 设置统一默认的场景资源参数...
+		obs_transform_info itemInfo = { 0 };
+		vec2_set(&itemInfo.scale, 1.0f, 1.0f);
+		itemInfo.alignment = OBS_ALIGN_LEFT | OBS_ALIGN_TOP;
+		itemInfo.bounds_type = OBS_BOUNDS_SCALE_INNER;
+		itemInfo.bounds_alignment = OBS_ALIGN_CENTER;
+		// 设置第一个场景资源的显示位置...
+		if (out_item->first_item) {
+			out_item->index_num++;
+			out_item->first_item = false;
+			vec2_set(&itemInfo.pos, 0.0f, 0.0f);
+			vec2_set(&itemInfo.bounds, float(out_item->first_width), float(out_item->first_height));
+		} else {
+			uint32_t pos_x = (out_item->index_num++ - 1) * (out_item->other_width + DEF_COL_SPACE);
+			uint32_t pos_y = out_item->first_height + DEF_ROW_SPACE;
+			vec2_set(&itemInfo.pos, float(pos_x), float(pos_y));
+			vec2_set(&itemInfo.bounds, float(out_item->other_width), float(out_item->other_height));
+		}
+		// 更新场景资源的显示位置信息...
+		obs_sceneitem_set_info(item, &itemInfo);
+		// 设置场景资源的裁剪区域...
+		obs_sceneitem_crop crop = { 0 };
+		obs_sceneitem_set_crop(item, &crop);
+		return true;
+	};
+	// 遍历所有的场景资源进行位置重排...
+	obs_scene_enum_items(this->GetCurrentScene(), func, &theRtpSceneItem);
+}
+
+// 响应鼠标双击事件 => 交换场景资源位置...
+void OBSBasic::doSceneItemExchangePos(obs_sceneitem_t * select_item)
+{
+	// 输入场景资源为空，直接返回...
+	if (select_item == NULL)
+		return;
+	// 获取当前选中资源的坐标信息...
+	obs_transform_info selectInfo = { 0 };
+	obs_sceneitem_get_info(select_item, &selectInfo);
+	// 初始化场景资源算子对象...
+	BaseSceneItem theRtpSceneItem = { 0 };
+	// 每个场景资源的回调接口函数...
+	auto func = [](obs_scene_t *, obs_sceneitem_t *item, void *param)
+	{
+		// 有视频的资源才进行显示位置重排处理...
+		obs_source_t *source = obs_sceneitem_get_source(item);
+		uint32_t flags = obs_source_get_output_flags(source);
+		if ((flags & OBS_SOURCE_VIDEO) == 0)
+			return true;
+		// 对传入的参数结构进行转换处理...
+		BaseSceneItem * out_item = reinterpret_cast<BaseSceneItem*>(param);
+		// 根据资源的显示位置，判断是否是第一个显示资源...
+		vec2 posDisp = { 0 };
+		obs_sceneitem_get_pos(item, &posDisp);
+		if (posDisp.x <= 0.0f && posDisp.y <= 0.0f) {
+			out_item->scene_item = item;
+			return false;
+		}
+		return true;
+	};
+	// 遍历所有的场景资源查找第一个资源对象...
+	obs_scene_enum_items(this->GetCurrentScene(), func, &theRtpSceneItem);
+	obs_sceneitem_t * lpFirstSceneItem = theRtpSceneItem.scene_item;
+	// 如果没有找到第一个资源对象，把当前选中资源设置为第一个显示资源...
+	if (lpFirstSceneItem == NULL) {
+		this->doSceneItemToFirst(select_item);
+		return;
+	}
+	// 获取第一个资源对象的全部坐标信息...
+	obs_transform_info firstInfo = { 0 };
+	obs_sceneitem_get_info(lpFirstSceneItem, &firstInfo);
+	ASSERT(firstInfo.pos.x <= 0.0f && firstInfo.pos.y <= 0.0f);
+	// 将当前选中资源的坐标信息与第一个资源的坐标信息进行交换...
+	obs_sceneitem_set_info(lpFirstSceneItem, &selectInfo);
+	obs_sceneitem_set_info(select_item, &firstInfo);
+}
+
+// 将当前场景资源设置为第一个显示资源，重新计算显示坐标...
+void OBSBasic::doSceneItemToFirst(obs_sceneitem_t * select_item)
+{
+	// 输入资源无效，直接返回...
+	if (select_item == NULL)
+		return;
+	// 获取显示系统的宽和高...
+	obs_video_info ovi = { 0 };
+	obs_get_video_info(&ovi);
+	// 计算第一个资源的宽和高...
+	ovi.base_height -= DEF_ROW_SPACE;
+	uint32_t first_width = ovi.base_width;
+	uint32_t first_height = ovi.base_height - ovi.base_height / DEF_ROW_SIZE;
+	// 设置默认的场景资源参数...
+	obs_transform_info itemInfo = { 0 };
+	vec2_set(&itemInfo.scale, 1.0f, 1.0f);
+	itemInfo.alignment = OBS_ALIGN_LEFT | OBS_ALIGN_TOP;
+	itemInfo.bounds_type = OBS_BOUNDS_SCALE_INNER;
+	itemInfo.bounds_alignment = OBS_ALIGN_CENTER;
+	vec2_set(&itemInfo.pos, 0.0f, 0.0f);
+	vec2_set(&itemInfo.bounds, float(first_width), float(first_height));
+	// 更新场景资源的显示位置信息...
+	obs_sceneitem_set_info(select_item, &itemInfo);
+	// 设置场景资源的裁剪区域...
+	obs_sceneitem_crop crop = { 0 };
+	obs_sceneitem_set_crop(select_item, &crop);
 }
 
 void OBSBasic::OpenMultiviewProjector()

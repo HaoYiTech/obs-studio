@@ -445,10 +445,11 @@ void OBSBasicPreview::mousePressEvent(QMouseEvent *event)
 		setCursor(Qt::ArrowCursor);
 	}
 
-	if (locked) {
+	// 屏蔽后，锁定状态下也能绘制编辑框...
+	/*if (locked) {
 		OBSQTDisplay::mousePressEvent(event);
 		return;
-	}
+	}*/
 
 	OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
 	float pixelRatio = main->devicePixelRatio();
@@ -525,10 +526,11 @@ void OBSBasicPreview::mouseReleaseEvent(QMouseEvent *event)
 	if (scrollMode)
 		setCursor(Qt::OpenHandCursor);
 
-	if (locked) {
+	// 屏蔽后，锁定状态下也能绘制编辑框...
+	/*if (locked) {
 		OBSQTDisplay::mouseReleaseEvent(event);
 		return;
-	}
+	}*/
 
 	if (mouseDown) {
 		vec2 pos = GetMouseEventPos(event);
@@ -1193,8 +1195,9 @@ bool OBSBasicPreview::DrawSelectedItem(obs_scene_t *scene,
 
 void OBSBasicPreview::DrawSceneEditing()
 {
-	if (locked)
-		return;
+	// 屏蔽后，锁定状态下也能绘制编辑框...
+	//if (locked)
+	//	return;
 
 	OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
 
@@ -1234,4 +1237,24 @@ void OBSBasicPreview::SetScalingAmount(float newScalingAmountVal) {
 	scrollingOffset.x *= newScalingAmountVal / scalingAmount;
 	scrollingOffset.y *= newScalingAmountVal / scalingAmount;
 	scalingAmount = newScalingAmountVal;
+}
+
+// 处理场景资源显示位置的交换操作...
+void OBSBasicPreview::mouseDoubleClickEvent(QMouseEvent *event)
+{
+	// 先找到当前鼠标双击位置的场景资源...
+	vec2 posMouse, posItem;
+	posMouse = this->GetMouseEventPos(event);
+	OBSSceneItem itemSelect = this->GetItemAtPos(posMouse, false);
+	// 如果没有找到对应的场景资源，直接返回...
+	if (itemSelect == NULL)
+		return;
+	// 获取当前选中资源的左上角坐标位置...
+	obs_sceneitem_get_pos(itemSelect, &posItem);
+	// 如果当前资源本身就是第一个窗口，直接返回...
+	if (posItem.x <= 0.0f && posItem.y <= 0.0f)
+		return;
+	// 向主窗口通知，鼠标双击事件，进行位置切换...
+	OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	main->doSceneItemExchangePos(itemSelect);
 }

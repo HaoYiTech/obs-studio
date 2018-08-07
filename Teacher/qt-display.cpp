@@ -89,10 +89,3 @@ QPaintEngine *OBSQTDisplay::paintEngine() const
 {
 	return nullptr;
 }
-
-void OBSQTDisplay::mouseDoubleClickEvent(QMouseEvent *event)
-{
-	// 双击全屏当前选中的数据源显示对象...
-	OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
-	main->DoDisplayDbClicked();
-}

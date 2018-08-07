@@ -1471,22 +1471,23 @@ void OBSApp::FindRtpSource(int & outDBCameraID, int & outSceneItemID, bool & out
 	// 场景资源遍历回调函数 => 找到rtp_source，返回false，中断查找...
 	auto func = [](obs_scene_t *, obs_sceneitem_t *item, void *param)
 	{
-		obs_sceneitem_t ** out_item = reinterpret_cast<obs_sceneitem_t**>(param);
+		BaseSceneItem * out_item = reinterpret_cast<BaseSceneItem*>(param);
 		obs_source_t * source = obs_sceneitem_get_source(item);
 		// 判断是否是rtp数据源类型标志，如果是rtp资源，返回false，中断...
 		const char * lpSrcID = obs_source_get_id(source);
 		// 填充参数，返回false，中断查找过程...
 		if (astrcmpi(lpSrcID, "rtp_source") == 0) {
-			*out_item = item;
+			out_item->scene_item = item;
 			return false;
 		}
 		// 返回true，继续下一条记录...
 		return true;
 	};
 	// 在主窗口中变量查找第一个rtp_source资源...
-	obs_sceneitem_t * lpRtpSceneItem = NULL;
-	obs_scene_enum_items(lpBasicWnd->GetCurrentScene(), func, &lpRtpSceneItem);
+	BaseSceneItem theRtpSceneItem = { 0 };
+	obs_scene_enum_items(lpBasicWnd->GetCurrentScene(), func, &theRtpSceneItem);
 	// 如果当前场景中有rtp_source资源，更新摄像头编号和场景资源编号...
+	obs_sceneitem_t * lpRtpSceneItem = theRtpSceneItem.scene_item;
 	if (lpRtpSceneItem != NULL) {
 		// 先找到场景资源编号...
 		outSceneItemID = (int)obs_sceneitem_get_id(lpRtpSceneItem);

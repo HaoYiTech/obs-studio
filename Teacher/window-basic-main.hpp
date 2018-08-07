@@ -64,7 +64,12 @@ class OBSBasicStats;
 #define SIMPLE_ENCODER_NVENC                   "nvenc"
 #define SIMPLE_ENCODER_AMD                     "amd"
 
-#define PREVIEW_EDGE_SIZE 10
+#define PREVIEW_EDGE_SIZE			10			// 预览窗口边框间距
+
+#define DEF_ROW_SIZE				5			// 预览窗口显示行数
+#define DEF_COL_SIZE				5			// 预览窗口显示列数
+#define DEF_ROW_SPACE				8			// 预览窗口行间距
+#define DEF_COL_SPACE				5			// 预览窗口列间距
 
 struct BasicOutputHandler;
 
@@ -95,6 +100,16 @@ struct QuickTransition {
 	{}
 };
 
+struct BaseSceneItem {
+	obs_sceneitem_t * scene_item;
+	int               index_num;
+	bool              first_item;
+	uint32_t          first_width;
+	uint32_t          first_height;
+	uint32_t          other_width;
+	uint32_t          other_height;
+};
+
 class OBSBasic : public OBSMainWindow {
 	Q_OBJECT
 
@@ -118,7 +133,6 @@ class OBSBasic : public OBSMainWindow {
 		DropType_Media,
 		DropType_Html
 	};
-
 private:
 	obs_frontend_callbacks *api = nullptr;
 
@@ -369,7 +383,6 @@ private:
 
 	obs_data_array_t *SaveProjectors();
 	void LoadSavedProjectors(obs_data_array_t *savedProjectors);
-
 public slots:
 	void DeferSaveBegin();
 	void DeferSaveEnd();
@@ -563,11 +576,13 @@ public:
 	void SystemTray(bool firstStarted);
 
 	void OpenSavedProjectors();
-	void DoDisplayDbClicked();
+
+	void doSceneItemLayout(obs_sceneitem_t * scene_item = NULL);
+	void doSceneItemExchangePos(obs_sceneitem_t * select_item);
+	void doSceneItemToFirst(obs_sceneitem_t * select_item);
 protected:
 	virtual void closeEvent(QCloseEvent *event) override;
 	virtual void changeEvent(QEvent *event) override;
-
 private slots:
 	void on_actionFullscreenInterface_triggered();
 

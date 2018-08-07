@@ -19,9 +19,6 @@ signals:
 
 public:
 	OBSQTDisplay(QWidget *parent = 0, Qt::WindowFlags flags = 0);
-
-	virtual void mouseDoubleClickEvent(QMouseEvent *event) override;
-	virtual QPaintEngine *paintEngine() const override;
-
 	inline obs_display_t *GetDisplay() const {return display;}
+	virtual QPaintEngine *paintEngine() const override;
 };

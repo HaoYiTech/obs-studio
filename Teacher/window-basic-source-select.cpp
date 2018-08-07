@@ -91,6 +91,10 @@ static void AddSource(void *_data, obs_scene_t *scene)
 
 	sceneitem = obs_scene_add(scene, data->source);
 	obs_sceneitem_set_visible(sceneitem, data->visible);
+
+	// 调用主窗口接口 => 对场景资源进行位置重排，两行（1行1列，1行5列）
+	OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	main->doSceneItemLayout(sceneitem);
 }
 
 static char *get_new_source_name(const char *name)
