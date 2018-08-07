@@ -328,8 +328,18 @@ void CVideoThread::doDisplaySDL()
 		if( nResult < 0 ) { blog(LOG_INFO, "%s [Video] Error => %s", TM_RECV_NAME, SDL_GetError()); }
 		nResult = SDL_RenderClear( m_sdlRenderer );
 		if( nResult < 0 ) { blog(LOG_INFO, "%s [Video] Error => %s", TM_RECV_NAME, SDL_GetError()); }
+		////////////////////////////////////////////////////////////////////////////////////////
+		// 注意：这里进行特殊的矩形坐标变换处理，目前的方式并不精确，后期还要细化...
+		////////////////////////////////////////////////////////////////////////////////////////
+		// 裁剪掉原始Texture的1/5的高度 => 老师端第二行数据裁剪掉...
+		srcSdlRect.h -= nDstHeight / 5;
+		// 计算目的窗口矩形的高度值 => 源(高)/源(宽) = 目(高)/目(宽)
+		dstSdlRect.h = srcSdlRect.h * dstSdlRect.w / srcSdlRect.w;
+		dstSdlRect.y = (rcRect.height() - dstSdlRect.h) / 2;
+		// 将计算后的矩形区域进行拷贝显示到渲染窗口当中...
 		nResult = SDL_RenderCopy( m_sdlRenderer, m_sdlTexture, &srcSdlRect, &dstSdlRect );
 		if( nResult < 0 ) { blog(LOG_INFO, "%s [Video] Error => %s", TM_RECV_NAME, SDL_GetError()); }
+		// 正式激发渲染窗口，绘制出图像来...
 		SDL_RenderPresent( m_sdlRenderer );
 	}
 	// 释放临时分配的数据空间...
@@ -782,6 +792,8 @@ CPlaySDL::CPlaySDL(CViewRender * lpViewRender, int64_t inSysZeroNS)
 {
 	ASSERT( m_lpViewRender != NULL );
 	ASSERT( m_sys_zero_ns > 0 );
+	// 初始化SDL2.0 => QT线程当中已经调用了 CoInitializeEx()...
+	int nRet = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
 }
 
 CPlaySDL::~CPlaySDL()
@@ -795,6 +807,8 @@ CPlaySDL::~CPlaySDL()
 		delete m_lpVideoThread;
 		m_lpVideoThread = NULL;
 	}
+	// 释放SDL2.0资源...
+	SDL_Quit();
 }
 
 BOOL CPlaySDL::InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS)

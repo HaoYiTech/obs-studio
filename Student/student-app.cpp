@@ -627,8 +627,8 @@ CStudentApp::~CStudentApp()
 		delete m_lpWebThread;
 		m_lpWebThread = NULL;
 	}
-	// 释放Com和SDL2.0...
-	this->UnInitCoSDL();
+	// 释放Com系统对象...
+	CoUninitialize();
 }
 
 bool CStudentApp::InitMacIPAddr()
@@ -738,25 +738,11 @@ void CStudentApp::doLoginInit()
 	connect(m_loginWindow, SIGNAL(loginSuccess(string&)), this, SLOT(doLoginSuccess(string&)));
 }
 
-// 初始化Com和SDL2.0...
-void CStudentApp::InitCoSDL()
-{
-	CoInitializeEx(NULL, COINIT_MULTITHREADED);
-	int nRet = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
-}
-
-// 释放Com和SDL2.0...
-void CStudentApp::UnInitCoSDL()
-{
-	SDL_Quit();
-	CoUninitialize();
-}
-//
 // 处理登录成功之后的信号槽事件...
 void CStudentApp::doLoginSuccess(string & strRoomID)
 {
-	// 初始化COM和SDL2.0...
-	this->InitCoSDL();
+	// 初始化COM系统对象...
+	CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	// 保存登录房间号...
 	m_strRoomID = strRoomID;
 	// 先关闭登录窗口...
