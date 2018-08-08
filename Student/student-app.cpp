@@ -15,6 +15,7 @@
 
 #include "qt-wrappers.hpp"
 #include "student-app.h"
+#include "platform.hpp"
 #include "windows.h"
 
 #include "web-thread.h"
@@ -466,14 +467,24 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		// 加入文字翻译对象...
 		OBSTranslator translator;
 		program.installTranslator(&translator);
+		// 判断进程是否重复启动 => 只能启动一个进程...
+		bool already_running = false;
+		// 这里必须保持返回值rom的有效性，有效才能证明进程已经启动...
+		RunOnceMutex rom = GetRunOnceMutex(already_running);
+		// 如果进程已经启动，弹出提示框，退出...
+		if (already_running) {
+			OBSMessageBox::information(nullptr, 
+				QTStr("AlreadyRunning.Title"),
+				QTStr("AlreadyRunning.Text"));
+			return 0;
+		}
 		// 每次启动创建新的日志文件...
 		create_log_file(logFile);
 		// 初始化登录窗口...
 		program.doLoginInit();
 		// 执行主循环操作...
 		return program.exec();
-	}
-	catch (const char *error) {
+	} catch (const char *error) {
 		blog(LOG_ERROR, "%s", error);
 		OBSErrorBox(nullptr, "%s", error);
 	}

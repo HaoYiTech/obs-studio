@@ -159,6 +159,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="json\json_value.cpp" />
     <ClCompile Include="json\json_writer.cpp" />
     <ClCompile Include="myRTSPClient.cpp" />
+    <ClCompile Include="platform-windows.cpp" />
     <ClCompile Include="pull-thread.cpp" />
     <ClCompile Include="push-thread.cpp" />
     <ClCompile Include="qt-display.cpp" />
@@ -264,6 +265,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="json\value.h" />
     <ClInclude Include="json\writer.h" />
     <ClInclude Include="myRTSPClient.h" />
+    <ClInclude Include="platform.hpp" />
     <ClInclude Include="pull-thread.h" />
     <QtMoc Include="window-dlg-push.hpp">
       <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.;.\json;.\curl;.\common;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName)\.;.\obs-frontend-api;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\deps\libff;E:\obs-studio\deps\blake2\src;E:\obs-studio\vsbuild\config;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork;$(QTDIR)\mkspecs\win32-msvc2015;.\..\librtsp\liveMedia\include;.\..\librtsp\groupsock\include;.\..\librtsp\UsageEnvironment\include;.\..\librtsp\BasicUsageEnvironment\include</IncludePath>
