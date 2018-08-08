@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Student", "..\Student\Student.vcxproj", "{62BB77D8-AE58-47AE-A310-6A3B01D3EDDD}"
+	ProjectSection(ProjectDependencies) = postProject
+		{FD7D9CD8-DC49-4C78-AA52-E75E04A141A1} = {FD7D9CD8-DC49-4C78-AA52-E75E04A141A1}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "librtsp", "librtsp\librtsp.vcxproj", "{FD7D9CD8-DC49-4C78-AA52-E75E04A141A1}"
 EndProject
