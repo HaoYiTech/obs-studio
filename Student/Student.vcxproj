@@ -34,7 +34,7 @@
     <OutDir>E:\obs-studio\vsbuild\student\Debug\bin\32bit\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>E:\obs-studio\vsbuild\rundir\Release\bin\32bit\</OutDir>
+    <OutDir>E:\obs-studio\vsbuild\student\Release\bin\32bit\</OutDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')">
@@ -135,7 +135,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ProjectReference>
     <PostBuildEvent>
       <Command>setlocal
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy_directory E:/obs-studio/Student/data E:/obs-studio/vsbuild/rundir/Release/data/student
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy_directory E:/obs-studio/Student/data E:/obs-studio/vsbuild/student/Release/data/student
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
