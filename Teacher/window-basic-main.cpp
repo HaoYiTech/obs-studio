@@ -143,6 +143,9 @@ OBSBasic::OBSBasic(QWidget *parent)
 
 	ui->setupUi(this);
 
+	// 设置窗口图标 => 必须用png图片 => 解决有些机器不认ico，造成左上角图标无法显示...
+	this->setWindowIcon(QIcon(":/res/images/obs.png"));
+
 	// 强制隐藏菜单栏和预览禁止...
 	ui->menubar->setVisible(false);
 	ui->previewDisabledLabel->setVisible(false);
