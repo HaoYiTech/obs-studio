@@ -735,7 +735,7 @@ void CAudioThread::Entry()
 void CAudioThread::doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, int inOffset)
 {
 	// 线程正在退出中，直接返回...
-	if( this->IsStopRequested() )
+	if (this->IsStopRequested())
 		return;
 	// 进入线程互斥状态中...
 	OSMutexLocker theLock(&m_Mutex);
@@ -814,12 +814,20 @@ CPlaySDL::~CPlaySDL()
 BOOL CPlaySDL::InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS)
 {
 	// 创建新的视频对象...
-	if( m_lpVideoThread != NULL ) {
+	if (m_lpVideoThread != NULL) {
 		delete m_lpVideoThread;
 		m_lpVideoThread = NULL;
 	}
+	// 创建视频线程对象...
 	m_lpVideoThread = new CVideoThread(this);
-	return m_lpVideoThread->InitVideo(m_lpViewRender, inSPS, inPPS, nWidth, nHeight, nFPS);
+	// 初始化视频对象失败，直接删除视频对象，返回失败...
+	if (!m_lpVideoThread->InitVideo(m_lpViewRender, inSPS, inPPS, nWidth, nHeight, nFPS)){
+		delete m_lpVideoThread;
+		m_lpVideoThread = NULL;
+		return false;
+	}
+	// 返回成功...
+	return true;
 }
 
 BOOL CPlaySDL::InitAudio(int nRateIndex, int nChannelNum)
@@ -829,8 +837,16 @@ BOOL CPlaySDL::InitAudio(int nRateIndex, int nChannelNum)
 		delete m_lpAudioThread;
 		m_lpAudioThread = NULL;
 	}
+	// 创建音频线程对象...
 	m_lpAudioThread = new CAudioThread(this);
-	return m_lpAudioThread->InitAudio(nRateIndex, nChannelNum);
+	// 初始化音频对象失败，直接删除音频对象，返回失败...
+	if (!m_lpAudioThread->InitAudio(nRateIndex, nChannelNum)) {
+		delete m_lpAudioThread;
+		m_lpAudioThread = NULL;
+		return false;
+	}
+	// 返回成功...
+	return true;
 }
 
 void CPlaySDL::PushPacket(int zero_delay_ms, string & inData, int inTypeTag, bool bIsKeyFrame, uint32_t inSendTime)
