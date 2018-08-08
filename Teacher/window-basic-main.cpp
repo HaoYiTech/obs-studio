@@ -5766,6 +5766,22 @@ void OBSBasic::OpenSourceProjector()
 		ProjectorType::Source);
 }*/
 
+static inline void setAudioMixer(obs_sceneitem_t *scene_item, const int mixerIdx, const bool enabled)
+{
+	obs_source_t *source = obs_sceneitem_get_source(scene_item);
+	uint32_t mixers = obs_source_get_audio_mixers(source);
+	uint32_t new_mixers = mixers;
+
+	// 没有音频属性，或资源为空，直接返回...
+	if (mixers <= 0 || source == NULL)
+		return;
+
+	if (enabled) new_mixers |= (1 << mixerIdx);
+	else         new_mixers &= ~(1 << mixerIdx);
+
+	obs_source_set_audio_mixers(source, new_mixers);
+}
+
 // 对场景资源位置进行重新排列 => 两行（1行1列，1行5列）...
 void OBSBasic::doSceneItemLayout(obs_sceneitem_t * scene_item/* = NULL*/)
 {
@@ -5815,11 +5831,15 @@ void OBSBasic::doSceneItemLayout(obs_sceneitem_t * scene_item/* = NULL*/)
 			out_item->first_item = false;
 			vec2_set(&itemInfo.pos, 0.0f, 0.0f);
 			vec2_set(&itemInfo.bounds, float(out_item->first_width), float(out_item->first_height));
+			// 强制第一个窗口资源的音频输出，只保留全局音频资源和第一个窗口的音频资源输出...
+			setAudioMixer(item, 0, true);
 		} else {
 			uint32_t pos_x = (out_item->index_num++ - 1) * (out_item->other_width + DEF_COL_SPACE);
 			uint32_t pos_y = out_item->first_height + DEF_ROW_SPACE;
 			vec2_set(&itemInfo.pos, float(pos_x), float(pos_y));
 			vec2_set(&itemInfo.bounds, float(out_item->other_width), float(out_item->other_height));
+			// 屏蔽非第一个窗口资源的音频输出，只保留全局音频资源和第一个窗口的音频资源输出...
+			setAudioMixer(item, 0, false);
 		}
 		// 更新场景资源的显示位置信息...
 		obs_sceneitem_set_info(item, &itemInfo);
@@ -5877,6 +5897,9 @@ void OBSBasic::doSceneItemExchangePos(obs_sceneitem_t * select_item)
 	// 将当前选中资源的坐标信息与第一个资源的坐标信息进行交换...
 	obs_sceneitem_set_info(lpFirstSceneItem, &selectInfo);
 	obs_sceneitem_set_info(select_item, &firstInfo);
+	// 强制新的第一个窗口音频输出，屏蔽旧的第一个窗口音频输出...
+	setAudioMixer(lpFirstSceneItem, 0, false);
+	setAudioMixer(select_item, 0, true);
 }
 
 // 将当前场景资源设置为第一个显示资源，重新计算显示坐标...
@@ -5905,6 +5928,8 @@ void OBSBasic::doSceneItemToFirst(obs_sceneitem_t * select_item)
 	// 设置场景资源的裁剪区域...
 	obs_sceneitem_crop crop = { 0 };
 	obs_sceneitem_set_crop(select_item, &crop);
+	// 强制第一个窗口资源的音频输出，只保留全局音频资源和第一个窗口的音频资源输出...
+	setAudioMixer(select_item, 0, true);
 }
 
 void OBSBasic::OpenMultiviewProjector()
