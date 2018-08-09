@@ -1078,70 +1078,52 @@ bool OBSBasic::InitBasicConfigDefaults()
 
 	/* ----------------------------------------------------- */
 
-	config_set_default_string(basicConfig, "Output", "Mode", "Simple");
+	config_set_default_string(basicConfig, "Output", "Mode", "Advanced"); //"Simple");
 
-	config_set_default_string(basicConfig, "SimpleOutput", "FilePath",
-			GetDefaultVideoSavePath().c_str());
-	config_set_default_string(basicConfig, "SimpleOutput", "RecFormat",
-			"flv");
-	config_set_default_uint  (basicConfig, "SimpleOutput", "VBitrate",
-			2500);
-	config_set_default_string(basicConfig, "SimpleOutput", "StreamEncoder",
-			SIMPLE_ENCODER_X264);
-	config_set_default_uint  (basicConfig, "SimpleOutput", "ABitrate", 160);
-	config_set_default_bool  (basicConfig, "SimpleOutput", "UseAdvanced",
-			false);
-	config_set_default_bool  (basicConfig, "SimpleOutput", "EnforceBitrate",
-			true);
-	config_set_default_string(basicConfig, "SimpleOutput", "Preset",
-			"veryfast");
-	config_set_default_string(basicConfig, "SimpleOutput", "RecQuality",
-			"Stream");
-	config_set_default_string(basicConfig, "SimpleOutput", "RecEncoder",
-			SIMPLE_ENCODER_X264);
+	config_set_default_string(basicConfig, "SimpleOutput", "FilePath", GetDefaultVideoSavePath().c_str());
+	config_set_default_string(basicConfig, "SimpleOutput", "RecFormat",	"flv");
+	config_set_default_uint  (basicConfig, "SimpleOutput", "VBitrate", 1024); //2500
+	config_set_default_string(basicConfig, "SimpleOutput", "StreamEncoder", SIMPLE_ENCODER_X264);
+	config_set_default_uint  (basicConfig, "SimpleOutput", "ABitrate", 64); //160
+	config_set_default_bool  (basicConfig, "SimpleOutput", "UseAdvanced", false);
+	config_set_default_bool  (basicConfig, "SimpleOutput", "EnforceBitrate", true);
+	config_set_default_string(basicConfig, "SimpleOutput", "Preset", "veryfast");
+	config_set_default_string(basicConfig, "SimpleOutput", "RecQuality", "Stream");
+	config_set_default_string(basicConfig, "SimpleOutput", "RecEncoder", SIMPLE_ENCODER_X264);
 	config_set_default_bool(basicConfig, "SimpleOutput", "RecRB", false);
 	config_set_default_int(basicConfig, "SimpleOutput", "RecRBTime", 20);
 	config_set_default_int(basicConfig, "SimpleOutput", "RecRBSize", 512);
-	config_set_default_string(basicConfig, "SimpleOutput", "RecRBPrefix",
-			"Replay");
+	config_set_default_string(basicConfig, "SimpleOutput", "RecRBPrefix", "Replay");
 
-	config_set_default_bool  (basicConfig, "AdvOut", "ApplyServiceSettings",
-			true);
+	config_set_default_bool  (basicConfig, "AdvOut", "ApplyServiceSettings", true);
 	config_set_default_bool  (basicConfig, "AdvOut", "UseRescale", false);
 	config_set_default_uint  (basicConfig, "AdvOut", "TrackIndex", 1);
 	config_set_default_string(basicConfig, "AdvOut", "Encoder", "obs_x264");
 
 	config_set_default_string(basicConfig, "AdvOut", "RecType", "Standard");
 
-	config_set_default_string(basicConfig, "AdvOut", "RecFilePath",
-			GetDefaultVideoSavePath().c_str());
+	config_set_default_string(basicConfig, "AdvOut", "RecFilePath", GetDefaultVideoSavePath().c_str());
 	config_set_default_string(basicConfig, "AdvOut", "RecFormat", "flv");
-	config_set_default_bool  (basicConfig, "AdvOut", "RecUseRescale",
-			false);
+	config_set_default_bool  (basicConfig, "AdvOut", "RecUseRescale", false);
 	config_set_default_uint  (basicConfig, "AdvOut", "RecTracks", (1<<0));
-	config_set_default_string(basicConfig, "AdvOut", "RecEncoder",
-			"none");
+	config_set_default_string(basicConfig, "AdvOut", "RecEncoder", "none");
 
-	config_set_default_bool  (basicConfig, "AdvOut", "FFOutputToFile",
-			true);
-	config_set_default_string(basicConfig, "AdvOut", "FFFilePath",
-			GetDefaultVideoSavePath().c_str());
+	config_set_default_bool  (basicConfig, "AdvOut", "FFOutputToFile", true);
+	config_set_default_string(basicConfig, "AdvOut", "FFFilePath", GetDefaultVideoSavePath().c_str());
 	config_set_default_string(basicConfig, "AdvOut", "FFExtension", "mp4");
-	config_set_default_uint  (basicConfig, "AdvOut", "FFVBitrate", 2500);
-	config_set_default_uint  (basicConfig, "AdvOut", "FFVGOPSize", 250);
-	config_set_default_bool  (basicConfig, "AdvOut", "FFUseRescale",
-			false);
-	config_set_default_bool  (basicConfig, "AdvOut", "FFIgnoreCompat",
-			false);
-	config_set_default_uint  (basicConfig, "AdvOut", "FFABitrate", 160);
+	config_set_default_uint  (basicConfig, "AdvOut", "FFVBitrate", 1024); //2500);
+	config_set_default_uint  (basicConfig, "AdvOut", "FFVGOPSize", 150);  //250);
+	config_set_default_bool  (basicConfig, "AdvOut", "FFUseRescale", false);
+	config_set_default_bool  (basicConfig, "AdvOut", "FFIgnoreCompat", false);
+	config_set_default_uint  (basicConfig, "AdvOut", "FFABitrate", 64); //160);
 	config_set_default_uint  (basicConfig, "AdvOut", "FFAudioTrack", 1);
 
-	config_set_default_uint  (basicConfig, "AdvOut", "Track1Bitrate", 160);
-	config_set_default_uint  (basicConfig, "AdvOut", "Track2Bitrate", 160);
-	config_set_default_uint  (basicConfig, "AdvOut", "Track3Bitrate", 160);
-	config_set_default_uint  (basicConfig, "AdvOut", "Track4Bitrate", 160);
-	config_set_default_uint  (basicConfig, "AdvOut", "Track5Bitrate", 160);
-	config_set_default_uint  (basicConfig, "AdvOut", "Track6Bitrate", 160);
+	config_set_default_uint  (basicConfig, "AdvOut", "Track1Bitrate", 64);//160);
+	config_set_default_uint  (basicConfig, "AdvOut", "Track2Bitrate", 64);//160);
+	config_set_default_uint  (basicConfig, "AdvOut", "Track3Bitrate", 64);//160);
+	config_set_default_uint  (basicConfig, "AdvOut", "Track4Bitrate", 64);//160);
+	config_set_default_uint  (basicConfig, "AdvOut", "Track5Bitrate", 64);//160);
+	config_set_default_uint  (basicConfig, "AdvOut", "Track6Bitrate", 64);//160);
 
 	config_set_default_bool  (basicConfig, "AdvOut", "RecRB", false);
 	config_set_default_uint  (basicConfig, "AdvOut", "RecRBTime", 20);

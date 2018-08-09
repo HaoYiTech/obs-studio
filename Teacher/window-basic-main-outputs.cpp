@@ -1051,6 +1051,15 @@ static OBSData GetDataFromJsonFile(const char *jsonFile)
 	return nullptr;
 }
 
+static void WriteJsonFromData(obs_data_t * settings)
+{
+	char full_path[512] = { 0 };
+	int ret = GetProfilePath(full_path, sizeof(full_path), "streamEncoder.json");
+	if (ret > 0 && settings != NULL) {
+		obs_data_save_json_safe(settings, full_path, "tmp", "bak");
+	}
+}
+
 AdvancedOutput::AdvancedOutput(OBSBasic *main_) : BasicOutputHandler(main_)
 {
 	const char *recType = config_get_string(main->Config(), "AdvOut",
@@ -1067,6 +1076,43 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_) : BasicOutputHandler(main_)
 
 	OBSData streamEncSettings = GetDataFromJsonFile("streamEncoder.json");
 	OBSData recordEncSettings = GetDataFromJsonFile("recordEncoder.json");
+
+	// 如果.json文件不存在，创建新的文件，注意释放引用计数...
+	if (streamEncSettings == NULL) {
+		obs_data_t * lpNewData = obs_data_create();
+		streamEncSettings = lpNewData;
+		obs_data_release(lpNewData);
+	}
+	// 从配置当中获取压缩码率、压缩方式、缓存模式...
+	bool bEncSetChanged = false;
+	int nVBitrate = obs_data_get_int(streamEncSettings, "bitrate");
+	const char * lpTune = obs_data_get_string(streamEncSettings, "tune");
+	const char * lpProfile = obs_data_get_string(streamEncSettings, "profile");
+	// 压缩方式为空，设置默认压缩模式...
+	if (lpProfile == NULL || strlen(lpProfile) <= 0) {
+		obs_data_set_string(streamEncSettings, "profile", "baseline");
+		bEncSetChanged = true;
+	}
+	// 缓存模式为空，设置默认缓存模式...
+	if (lpTune == NULL || strlen(lpTune) <= 0) {
+		obs_data_set_string(streamEncSettings, "tune", "zerolatency");
+		bEncSetChanged = true;
+	}
+	// 压缩码率为空，设置模式压缩码率...
+	if (nVBitrate <= 0) {
+		obs_data_set_int(streamEncSettings, "bitrate", 1024);
+		bEncSetChanged = true;
+	}
+	// 关键帧间隔为空，设置默认关键帧间隔 => 通过配置页面，手动配置...
+	/*int nKeyIntSec = obs_data_get_int(streamEncSettings, "keyint_sec");
+	if (nKeyIntSec <= 0) {
+		obs_data_set_int(streamEncSettings, "keyint_sec", 2);
+		bEncSetChanged = true;
+	}*/
+	// 配置放生变化，进行存盘操作...
+	if (bEncSetChanged) {
+		WriteJsonFromData(streamEncSettings);
+	}
 
 	const char *rate_control = obs_data_get_string(
 			useStreamEncoder ? streamEncSettings : recordEncSettings,
