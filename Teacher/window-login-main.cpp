@@ -112,8 +112,9 @@ void LoginWindow::onClickLoginButton()
 	// 先将缓冲区进行清空处理...
 	m_strUTF8Data.clear();
 	// 判断完毕，将获取到的云教室号码发送到服务器验证...
-	char   szPost[MAX_PATH] = { 0 };
-	char * lpStrUrl = "http://edu.ihaoyi.cn/wxapi.php/Gather/loginLiveRoom";
+	char  szUrl[MAX_PATH] = {0};
+	char  szPost[MAX_PATH] = { 0 };
+	sprintf(szUrl, "%s/wxapi.php/Gather/loginLiveRoom", App()->GetWebAddr().c_str());
 	sprintf(szPost, "room_id=%s&type_id=%d", strRoomID.c_str(), App()->GetClientType());
 	// 调用Curl接口，汇报采集端信息...
 	CURLcode res = CURLE_OK;
@@ -128,7 +129,7 @@ void LoginWindow::onClickLoginButton()
 		res = curl_easy_setopt(curl, CURLOPT_HEADER, false);
 		res = curl_easy_setopt(curl, CURLOPT_POST, true);
 		res = curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
-		res = curl_easy_setopt(curl, CURLOPT_URL, lpStrUrl);
+		res = curl_easy_setopt(curl, CURLOPT_URL, szUrl);
 		res = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, procPostCurl);
 		res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)this);
 		res = curl_easy_perform(curl);

@@ -1379,8 +1379,9 @@ void OBSApp::doLogoutEvent()
 	if (lpLiveRoomID == NULL)
 		return;
 	// 准备登出需要的云教室号码缓冲区...
-	char   szPost[MAX_PATH] = { 0 };
-	char * lpStrUrl = "http://edu.ihaoyi.cn/wxapi.php/Gather/logoutLiveRoom";
+	char  szUrl[MAX_PATH] = { 0 };
+	char  szPost[MAX_PATH] = { 0 };
+	sprintf(szUrl, "%s/wxapi.php/Gather/logoutLiveRoom", m_strWebAddr.c_str());
 	sprintf(szPost, "room_id=%s&type_id=%d", lpLiveRoomID, this->GetClientType());
 	// 调用Curl接口，汇报采集端信息...
 	CURLcode res = CURLE_OK;
@@ -1395,7 +1396,7 @@ void OBSApp::doLogoutEvent()
 		res = curl_easy_setopt(curl, CURLOPT_HEADER, false);
 		res = curl_easy_setopt(curl, CURLOPT_POST, true);
 		res = curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
-		res = curl_easy_setopt(curl, CURLOPT_URL, lpStrUrl);
+		res = curl_easy_setopt(curl, CURLOPT_URL, szUrl);
 		res = curl_easy_perform(curl);
 	} while (false);
 	// 释放资源...
@@ -1657,8 +1658,9 @@ void OBSApp::doWebSaveFDFS(char * lpFileName, char * lpPathFDFS, int64_t llFileS
 	char szSrcName[MAX_PATH] = { 0 };
 	_splitpath(lpFileName, szDriver, szDir, szSrcName, szExt);
 	// 准备汇报需要的缓冲区...
-	char   szPost[MAX_PATH] = { 0 };
-	char * lpStrUrl = "http://edu.ihaoyi.cn/wxapi.php/Gather/liveFDFS";
+	char  szUrl[MAX_PATH] = { 0 };
+	char  szPost[MAX_PATH] = { 0 };
+	sprintf(szUrl, "%s/wxapi.php/Gather/liveFDFS", m_strWebAddr.c_str());
 	sprintf(szPost, "ext=%s&file_src=%s&file_fdfs=%s&file_size=%I64d", szExt, szSrcName, lpPathFDFS, llFileSize);
 	// 调用Curl接口，汇报采集端信息...
 	CURLcode res = CURLE_OK;
@@ -1673,7 +1675,7 @@ void OBSApp::doWebSaveFDFS(char * lpFileName, char * lpPathFDFS, int64_t llFileS
 		res = curl_easy_setopt(curl, CURLOPT_HEADER, false);
 		res = curl_easy_setopt(curl, CURLOPT_POST, true);
 		res = curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
-		res = curl_easy_setopt(curl, CURLOPT_URL, lpStrUrl);
+		res = curl_easy_setopt(curl, CURLOPT_URL, szUrl);
 		res = curl_easy_perform(curl);
 	} while (false);
 	// 释放资源...
