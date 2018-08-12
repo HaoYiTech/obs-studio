@@ -294,7 +294,7 @@ RunOnceMutex GetRunOnceMutex(bool &already_running)
 	string name;
 
 	if (!portable_mode) {
-		name = "OBSStudioCore";
+		name = "OBSTeacherCore";
 	} else {
 		char path[500];
 		*path = 0;

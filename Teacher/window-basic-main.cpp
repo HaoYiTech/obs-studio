@@ -3908,7 +3908,7 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 			action->setEnabled(false);
 
 		popup.addAction(ui->actionLockPreview);
-		//popup.addMenu(ui->scalingMenu);
+		popup.addMenu(ui->scalingMenu);
 
 		previewProjector = new QMenu(QTStr("PreviewProjector"));
 		AddProjectorMenuMonitors(previewProjector, this,
@@ -6220,8 +6220,7 @@ void OBSBasic::on_actionScaleOutput_triggered()
 	ui->preview->SetFixedScaling(true);
 	float scalingAmount = float(ovi.output_width) / float(ovi.base_width);
 	// log base ZOOM_SENSITIVITY of x = log(x) / log(ZOOM_SENSITIVITY)
-	int32_t approxScalingLevel = int32_t(
-			round(log(scalingAmount) / log(ZOOM_SENSITIVITY)));
+	int32_t approxScalingLevel = int32_t(round(log(scalingAmount) / log(ZOOM_SENSITIVITY)));
 	ui->preview->SetScalingLevel(approxScalingLevel);
 	ui->preview->SetScalingAmount(scalingAmount);
 	emit ui->preview->DisplayResized();

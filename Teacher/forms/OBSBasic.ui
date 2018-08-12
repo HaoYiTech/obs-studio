@@ -154,8 +154,17 @@
     <addaction name="actionMoveToTop"/>
     <addaction name="actionMoveToBottom"/>
    </widget>
+   <widget class="QMenu" name="scalingMenu">
+    <property name="title">
+     <string>Basic.MainMenu.Edit.Scale</string>
+    </property>
+    <addaction name="actionScaleWindow"/>
+    <addaction name="actionScaleCanvas"/>
+    <addaction name="actionScaleOutput"/>
+   </widget>
    <addaction name="transformMenu"/>
    <addaction name="orderMenu"/>
+   <addaction name="scalingMenu"/>
   </widget>
   <widget class="OBSBasicStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="scenesDock">
