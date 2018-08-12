@@ -10,6 +10,7 @@ public:
 	void   doCaptureFocus();
 	void   doReleaseFocus();
 	void   setBKColor(QColor inColor);
+	bool   IsFoucs() { return m_bFocus; }
 private:
 	void   doUpdateFocusRegion();
 protected:

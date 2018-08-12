@@ -151,6 +151,9 @@
     <addaction name="separator"/>
     <addaction name="actionCameraStart"/>
     <addaction name="actionCameraStop"/>
+    <addaction name="separator"/>
+    <addaction name="actionCameraPreview"/>
+    <addaction name="actionCameraPTZ"/>
    </widget>
    <widget class="QMenu" name="pageMenu">
     <property name="title">
@@ -337,6 +340,16 @@
    </property>
    <property name="text">
     <string>Basic.Setting.Reconnect</string>
+   </property>
+  </action>
+  <action name="actionCameraPreview">
+   <property name="text">
+    <string>Basic.Camera.Preview</string>
+   </property>
+  </action>
+  <action name="actionCameraPTZ">
+   <property name="text">
+    <string>Basic.Camera.PTZ</string>
    </property>
   </action>
  </widget>

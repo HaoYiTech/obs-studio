@@ -19,11 +19,14 @@ protected:
 private slots:
 	void doWebThreadMsg(int nMessageID, int nWParam, int nLParam);
 	void onTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID);
+	void on_LeftViewCustomContextMenuRequested(const QPoint &pos);
 	void on_actionSettingReconnect_triggered();
 	void on_actionSettingSystem_triggered();
 	void on_actionSystemFullscreen_triggered();
 	void on_actionSystemToolbar_triggered();
 	void on_actionSystemExit_triggered();
+	void on_actionCameraPreview_triggered();
+	void on_actionCameraPTZ_triggered();
 	void on_actionCameraAdd_triggered();
 	void on_actionCameraMod_triggered();
 	void on_actionCameraDel_triggered();

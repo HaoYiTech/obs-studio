@@ -66,10 +66,13 @@ StudentWindow::StudentWindow(QWidget *parent)
 	m_ui.actionCameraAdd->setDisabled(true);
 	m_ui.actionCameraMod->setDisabled(true);
 	m_ui.actionCameraDel->setDisabled(true);
+	// 设置左侧窗口右键菜单模式 => 自定义模式...
+	m_ui.LeftView->setContextMenuPolicy(Qt::CustomContextMenu);
 	// 设置通道菜单按钮信号槽...
 	this->connect(m_ui.LeftView, SIGNAL(enableCameraAdd(bool)), m_ui.actionCameraAdd, SLOT(setEnabled(bool)));
 	this->connect(m_ui.LeftView, SIGNAL(enableCameraMod(bool)), m_ui.actionCameraMod, SLOT(setEnabled(bool)));
 	this->connect(m_ui.LeftView, SIGNAL(enableCameraDel(bool)), m_ui.actionCameraDel, SLOT(setEnabled(bool)));
+	this->connect(m_ui.LeftView, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(on_LeftViewCustomContextMenuRequested(const QPoint&)));
 	// 设置配置菜单按钮...
 	m_ui.mainToolBar->addAction(m_ui.actionSettingReconnect);
 	m_ui.mainToolBar->addAction(m_ui.actionSettingSystem);
@@ -99,6 +102,41 @@ StudentWindow::StudentWindow(QWidget *parent)
 			setGeometry(QStyle::alignedRect(Qt::LeftToRight,Qt::AlignCenter,size(), rect));
 		}
 	}
+}
+
+// 响应左侧窗口的右键菜单事件...
+void StudentWindow::on_LeftViewCustomContextMenuRequested(const QPoint &pos)
+{
+	// 获取右键位置的摄像头窗口对象...
+	CViewCamera * lpViewCamera = qobject_cast<CViewCamera*>(m_ui.LeftView->childAt(pos));
+	if (lpViewCamera == NULL)
+		return;
+	// 如果选中摄像头窗口不是焦点窗口，或焦点窗口的编号与摄像头里面的编号不一致，直接返回...
+	if (!lpViewCamera->IsFoucs() || m_ui.LeftView->GetFocusID() != lpViewCamera->GetDBCameraID())
+		return;
+	// 根据摄像头窗口的当前状态进行右键菜单项的配置...
+	QMenu popup(this);
+	bool bIsPrevew = lpViewCamera->IsCameraPreview();
+	m_ui.actionCameraPreview->setCheckable(true);
+	m_ui.actionCameraPreview->setChecked(bIsPrevew);
+	popup.addAction(m_ui.actionCameraPreview);
+	popup.addAction(m_ui.actionCameraPTZ);
+	popup.exec(QCursor::pos());
+}
+
+void StudentWindow::on_actionCameraPreview_triggered()
+{
+	// 查找左侧窗口包含的当前焦点摄像头窗口对象...
+	int nFocusID = m_ui.LeftView->GetFocusID();
+	CViewCamera * lpViewCamera = m_ui.LeftView->FindDBCameraByID(nFocusID);
+	if (lpViewCamera == NULL)
+		return;
+	// 执行摄像头窗口的预览事件...
+	lpViewCamera->doTogglePreview();
+}
+
+void StudentWindow::on_actionCameraPTZ_triggered()
+{
 }
 
 // 响应服务器发送的UDP连接对象被删除的事件通知...

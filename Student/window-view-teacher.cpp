@@ -146,8 +146,9 @@ void CViewTeacher::DrawRenderArea()
 
 void CViewTeacher::mousePressEvent(QMouseEvent *event)
 {
-	// 鼠标左键事件点击 => 处理焦点事件...
-	if (event->button() == Qt::LeftButton) {
+	// 鼠标左键或右键事件点击 => 处理焦点事件...
+	Qt::MouseButton theBtn = event->button();
+	if (theBtn == Qt::LeftButton || theBtn == Qt::RightButton) {
 		this->doCaptureFocus();
 	}
 	return QWidget::mousePressEvent(event);

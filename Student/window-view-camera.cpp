@@ -24,6 +24,7 @@ CViewCamera::CViewCamera(QWidget *parent, int nDBCameraID)
   : OBSQTDisplay(parent, 0)
   , m_nDBCameraID(nDBCameraID)
   , m_lpPushThread(NULL)
+  , m_bIsPreview(false)
   , m_lpViewLeft(NULL)
 {
 	ASSERT(m_nDBCameraID > 0 && parent != NULL);
@@ -63,8 +64,9 @@ void CViewCamera::paintEvent(QPaintEvent *event)
 
 void CViewCamera::mousePressEvent(QMouseEvent *event)
 {
-	// 鼠标左键事件点击 => 处理焦点事件...
-	if (event->button() == Qt::LeftButton) {
+	// 鼠标左键或右键事件点击 => 处理焦点事件...
+	Qt::MouseButton theBtn = event->button();
+	if (theBtn == Qt::LeftButton || theBtn == Qt::RightButton) {
 		this->doCaptureFocus();
 	}
 	return QWidget::mousePressEvent(event);
@@ -292,4 +294,9 @@ bool CViewCamera::doCameraStop()
 	// 更新显示状态...
 	this->update();
 	return true;
+}
+
+// 处理菜单的预览事件 => 开启或关闭SDL播放窗口...
+void CViewCamera::doTogglePreview()
+{
 }
