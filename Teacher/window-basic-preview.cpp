@@ -1286,8 +1286,10 @@ void OBSBasicPreview::SetScalingAmount(float newScalingAmountVal) {
 // 处理场景资源显示位置的交换操作...
 void OBSBasicPreview::mouseDoubleClickEvent(QMouseEvent *event)
 {
+	// 获取主窗口对象指针...
+	OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
 	// 先找到当前鼠标双击位置的场景资源...
-	vec2 posMouse, posItem;
+	vec2 posMouse, posItem, posDisp;
 	posMouse = this->GetMouseEventPos(event);
 	OBSSceneItem itemSelect = this->GetItemAtPos(posMouse, false);
 	// 如果没有找到对应的场景资源，直接返回...
@@ -1298,7 +1300,37 @@ void OBSBasicPreview::mouseDoubleClickEvent(QMouseEvent *event)
 	// 如果当前资源本身就是第一个窗口，直接返回...
 	if (posItem.x <= 0.0f && posItem.y <= 0.0f)
 		return;
+	// 初始化场景资源算子对象 => 根据序号寻找第一个资源...
+	BaseSceneItem theRtpSceneItem = { 0 };
+	theRtpSceneItem.first_item = true;
+	// 每个场景资源的回调接口函数...
+	auto func = [](obs_scene_t *, obs_sceneitem_t *item, void *param)
+	{
+		// 有视频的资源才进行显示位置重排处理...
+		obs_source_t *source = obs_sceneitem_get_source(item);
+		uint32_t flags = obs_source_get_output_flags(source);
+		if ((flags & OBS_SOURCE_VIDEO) == 0)
+			return true;
+		// 对传入的参数结构进行转换处理...
+		BaseSceneItem * out_item = reinterpret_cast<BaseSceneItem*>(param);
+		// 判断是否是第一个显示资源 => 根据序号进行判定...
+		if (out_item->first_item) {
+			out_item->scene_item = item;
+			return false;
+		}
+		return true;
+	};
+	// 遍历所有的场景资源查找第一个资源对象，并进行显示位置交换...
+	obs_scene_enum_items(main->GetCurrentScene(), func, &theRtpSceneItem);
+	obs_sceneitem_t * lpFirstSceneItem = theRtpSceneItem.scene_item;
+	// 判断第一个序号资源的位置是否需要变换...
+	if (lpFirstSceneItem != NULL) {
+		obs_sceneitem_get_pos(lpFirstSceneItem, &posDisp);
+		// 如果第一个序号资源不在第一个显示位置，进行位置交换...
+		if (posDisp.x != 0.0f || posDisp.y != 0.0f) {
+			main->doSceneItemExchangePos(lpFirstSceneItem);
+		}
+	}
 	// 向主窗口通知，鼠标双击事件，进行位置切换...
-	OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
 	main->doSceneItemExchangePos(itemSelect);
 }

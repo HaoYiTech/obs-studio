@@ -3898,17 +3898,17 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 	QPointer<QMenu> sourceProjector;
 
 	if (preview) {
-		QAction *action = popup.addAction(
+		// ÆÁ±Î ¿ªÆôÔ¤ÀÀ ²Ëµ¥¿ª¹Ø => ÓÀÔ¶¿ªÆôÔ¤ÀÀ...
+		/*QAction *action = popup.addAction(
 				QTStr("Basic.Main.PreviewConextMenu.Enable"),
 				this, SLOT(TogglePreview()));
 		action->setCheckable(true);
-		action->setChecked(
-				obs_display_enabled(ui->preview->GetDisplay()));
-		if (IsPreviewProgramMode())
-			action->setEnabled(false);
+		action->setChecked(obs_display_enabled(ui->preview->GetDisplay()));
+		if (IsPreviewProgramMode())	action->setEnabled(false);*/
 
-		popup.addAction(ui->actionLockPreview);
-		popup.addMenu(ui->scalingMenu);
+		// ÆÁ±Î Ëø¶¨Ô¤ÀÀºÍÔ¤ÀÀËõ·Å ²Ëµ¥Ñ¡Ïî...
+		//popup.addAction(ui->actionLockPreview);
+		//popup.addMenu(ui->scalingMenu);
 
 		previewProjector = new QMenu(QTStr("PreviewProjector"));
 		AddProjectorMenuMonitors(previewProjector, this,
