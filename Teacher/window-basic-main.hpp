@@ -28,7 +28,7 @@
 #include "window-basic-properties.hpp"
 #include "window-basic-transform.hpp"
 #include "window-basic-adv-audio.hpp"
-//#include "window-basic-filters.hpp"
+#include "window-basic-filters.hpp"
 #include "window-projector.hpp"
 #include "json.h"
 
@@ -157,7 +157,7 @@ private:
 	QPointer<OBSBasicProperties> properties;
 	QPointer<OBSBasicTransform> transformWindow;
 	QPointer<OBSBasicAdvAudio> advAudioWindow;
-	//QPointer<OBSBasicFilters> filters;
+	QPointer<OBSBasicFilters> filters;
 
 	QPointer<QTimer>    cpuUsageTimer;
 	os_cpu_usage_info_t *cpuUsageInfo = nullptr;

@@ -1938,8 +1938,8 @@ OBSBasic::~OBSBasic()
 	if (transformWindow)
 		delete transformWindow;
 
-	/*if (filters)
-		delete filters;*/
+	if (filters)
+		delete filters;
 
 	if (advAudioWindow)
 		delete advAudioWindow;
@@ -2137,12 +2137,12 @@ void OBSBasic::CreatePropertiesWindow(obs_source_t *source)
 
 void OBSBasic::CreateFiltersWindow(obs_source_t *source)
 {
-	/*if (filters)
+	if (filters)
 		filters->close();
 
 	filters = new OBSBasicFilters(this, source);
 	filters->Init();
-	filters->setAttribute(Qt::WA_DeleteOnClose, true);*/
+	filters->setAttribute(Qt::WA_DeleteOnClose, true);
 }
 
 /* Qt callbacks for invokeMethod */
@@ -3998,16 +3998,15 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 		popup.addAction(sourceWindow);
 		popup.addSeparator();
 
-		// ÆÁ±Î ½»»¥ | ÂË¾µ ²Ëµ¥...
+		// ÆÁ±Î ½»»¥ ²Ëµ¥...
 		/*action = popup.addAction(QTStr("Interact"), this,
 				SLOT(on_actionInteract_triggered()));
 		action->setEnabled(obs_source_get_output_flags(source) &
-				OBS_SOURCE_INTERACTION);
-		popup.addAction(QTStr("Filters"), this,
-				SLOT(OpenFilters()));*/
+				OBS_SOURCE_INTERACTION);*/
 
-		popup.addAction(QTStr("Properties"), this,
-				SLOT(on_actionSourceProperties_triggered()));
+		// ¿ªÆô ÂË¾µ | ÊôĞÔ ²Ëµ¥...
+		popup.addAction(QTStr("Filters"), this, SLOT(OpenFilters()));
+		popup.addAction(QTStr("Properties"), this, SLOT(on_actionSourceProperties_triggered()));
 
 		//ui->actionCopyFilters->setEnabled(true);
 		//ui->actionCopySource->setEnabled(true);
