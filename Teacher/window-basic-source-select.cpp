@@ -192,8 +192,10 @@ void OBSBasicSourceSelect::on_buttonBox_accepted()
 	bool useExisting = ui->selectExisting->isChecked();
 	bool visible = ui->sourceVisible->isChecked();
 
+	// 当前新添加的资源是否是 => rtp_source => 互动教室...
+	bool bIsNewRtpSource = ((astrcmpi(id, "rtp_source") == 0) ? true : false);
 	// 如果已经有了rtp_source资源，就不能再添加新的rtp_source资源了...
-	if (m_bHasRtpSource && astrcmpi(id, "rtp_source") == 0) {
+	if (m_bHasRtpSource && bIsNewRtpSource) {
 		OBSMessageBox::information(this, 
 			QTStr("SingleRtpSource.Title"), 
 			QTStr("SingleRtpSource.Text"));
@@ -213,13 +215,52 @@ void OBSBasicSourceSelect::on_buttonBox_accepted()
 					QTStr("NoNameEntered.Text"));
 			return;
 		}
-
-		if (!AddNew(this, id, QT_TO_UTF8(ui->sourceName->text()),
-					visible, newSource))
+		// 如果添加新的场景资源失败，直接返回...
+		if (!AddNew(this, id, QT_TO_UTF8(ui->sourceName->text()), visible, newSource))
 			return;
+		// 如果新添加资源是互动教室 => 需要屏蔽音频输出，开启本地监视...
+		if (bIsNewRtpSource) {
+			obs_source_set_monitoring_type(newSource, OBS_MONITORING_TYPE_MONITOR_ONLY);
+			blog(LOG_INFO, "User changed audio monitoring for source '%s' to: %s", obs_source_get_name(newSource), "monitor only");
+		}
+		// 给单音频资源添加噪音抑制过滤器，互动教室也要加上音频过滤器...
+		AddNoiseFilterForAudioSource(newSource, bIsNewRtpSource);
 	}
 
 	done(DialogCode::Accepted);
+}
+
+void OBSBasicSourceSelect::AddNoiseFilterForAudioSource(obs_source_t *source, bool bIsRtpSource)
+{
+	// 如果输入资源不是互动教室，并且包含视频，不是单独音频，直接返回...
+	uint32_t flags = obs_source_get_output_flags(source);
+	if (!bIsRtpSource && (flags & OBS_SOURCE_VIDEO) != 0)
+		return;
+	// 如果输入资源没有音频数据，直接返回...
+	if ((flags & OBS_SOURCE_AUDIO) == 0)
+		return;
+	// 目前只添加噪音抑制过滤器，不添加噪音阈值过滤器...
+	//AddFilterToSourceByID(source, "noise_gate_filter");
+	AddFilterToSourceByID(source, "noise_suppress_filter");
+}
+
+void OBSBasicSourceSelect::AddFilterToSourceByID(obs_source_t *source, const char * lpFilterID)
+{
+	// 通过id名称查找过滤器资源名称...
+	string strFilterName = obs_source_get_display_name(lpFilterID);
+	obs_source_t * existing_filter = obs_source_get_filter_by_name(source, strFilterName.c_str());
+	// 如果资源上已经挂载了相同名称的过滤器，直接返回...
+	if (existing_filter != nullptr)
+		return;
+	// 创建一个新的过滤器资源对象，创建失败，直接返回...
+	obs_source_t * new_filter = obs_source_create(lpFilterID, strFilterName.c_str(), nullptr, nullptr);
+	if (new_filter == nullptr)
+		return;
+	// 获取资源名称，打印信息，挂载过滤器到当前资源，释放过滤器的引用计数...
+	const char *sourceName = obs_source_get_name(source);
+	blog(LOG_INFO, "User added filter '%s' (%s) to source '%s'", strFilterName.c_str(), lpFilterID, sourceName);
+	obs_source_filter_add(source, new_filter);
+	obs_source_release(new_filter);
 }
 
 void OBSBasicSourceSelect::on_buttonBox_rejected()

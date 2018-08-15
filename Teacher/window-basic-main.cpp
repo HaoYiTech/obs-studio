@@ -3272,12 +3272,14 @@ void OBSBasic::ResetAudioDevice(const char *sourceId, const char *deviceId,
 	} else if (!disable) {
 		settings = obs_data_create();
 		obs_data_set_string(settings, "device_id", deviceId);
-		source = obs_source_create(sourceId, deviceDesc, settings,
-				nullptr);
+		source = obs_source_create(sourceId, deviceDesc, settings, nullptr);
 		obs_data_release(settings);
-
 		obs_set_output_source(channel, source);
 		obs_source_release(source);
+		// 如果是音频输入设备，自动加入噪音抑制过滤器...
+		if (strcmp(sourceId, App()->InputAudioSource()) == 0) {
+			OBSBasicSourceSelect::AddNoiseFilterForAudioSource(source, false);
+		}
 	}
 }
 

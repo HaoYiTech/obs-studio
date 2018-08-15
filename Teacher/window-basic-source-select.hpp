@@ -36,7 +36,6 @@ private:
 
 	static void OBSSourceRemoved(void *data, calldata_t *calldata);
 	static void OBSSourceAdded(void *data, calldata_t *calldata);
-
 private slots:
 	void on_buttonBox_accepted();
 	void on_buttonBox_rejected();
@@ -50,4 +49,7 @@ public:
 	OBSSource newSource;
 
 	static void SourcePaste(const char *name, bool visible, bool duplicate);
+
+	static void AddNoiseFilterForAudioSource(obs_source_t *source, bool bIsRtpSource);
+	static void AddFilterToSourceByID(obs_source_t *source, const char * lpFilterID);
 };
