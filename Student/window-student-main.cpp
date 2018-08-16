@@ -291,10 +291,14 @@ void StudentWindow::on_actionCameraMod_triggered()
 	lpViewCamera = m_ui.LeftView->FindDBCameraByID(nDBCameraID);
 	if (nDBCameraID <= 0 || lpViewCamera == NULL)
 		return;
-	// 弹出通道配置修改框...
+	// 屏蔽自动重连 => 修改时，不能自动重连...
+	m_ui.LeftView->SetCanAutoLink(false);
+	// 弹出通道配置修改框 => 注意恢复自动重连标志...
 	CDlgPush dlg(this, nDBCameraID, lpViewCamera->IsCameraLogin());
-	if (dlg.exec() == QDialog::Rejected)
+	if (dlg.exec() == QDialog::Rejected) {
+		m_ui.LeftView->SetCanAutoLink(true);
 		return;
+	}
 	// 点击确定之后的处理过程...
 	CWebThread * lpWebThread = App()->GetWebThread();
 	GM_MapData & theMapData = dlg.GetPushData();
@@ -303,6 +307,8 @@ void StudentWindow::on_actionCameraMod_triggered()
 	((lpViewCamera != NULL) ? lpViewCamera->update() : NULL);
 	// 直接启动通道 => 通过左侧的焦点窗口...
 	m_ui.LeftView->onCameraStart();
+	// 恢复左侧窗口的自动重连标志...
+	m_ui.LeftView->SetCanAutoLink(true);
 }
 
 void StudentWindow::on_actionCameraDel_triggered()

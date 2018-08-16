@@ -35,6 +35,7 @@ public:
 	CViewCamera * FindDBCameraByID(int nDBCameraID);
 	CViewCamera * AddNewCamera(GM_MapData & inWebData);
 public:
+	void SetCanAutoLink(bool bIsCanAuto) { m_bCanAutoLink = bIsCanAuto; }
 	int  GetCurPage() { return m_nCurPage; }
 	int  GetMaxPage() { return m_nMaxPage; }
 	int  GetFocusID() { return m_nFocusID; }
@@ -48,17 +49,23 @@ public:
 	void onPageJump();					// 点击跳转页...
 	void onPageNext();					// 点击下一页...
 private:
+	void doAutoLinkIPC();
 	void LayoutViewCamera(int cx, int cy);
+	int  GetNextAutoID(int nCurDBCameraID);
 	void doStopCurUdpSendThread(int nNewDBCameraID);
 	CViewCamera * BuildWebCamera(GM_MapData & inWebData);
 protected:
 	void wheelEvent(QWheelEvent *event) override;
 	void paintEvent(QPaintEvent *event) override;
 	void resizeEvent(QResizeEvent *event) override;
+	void timerEvent(QTimerEvent * inEvent) override;
 private:
+	int             m_nAutoTimer;		// IPC自动重连时钟...
 	int				m_nCurPage;			// 当前页...
 	int				m_nMaxPage;			// 总页数...
 	int				m_nFirstID;			// 第一个摄像头窗口的编号...
 	int				m_nFocusID;			// 当前有效焦点摄像头窗口的编号...
+	int             m_nCurAutoID;       // 当前需要重连的摄像头数据库编号...
+	bool            m_bCanAutoLink;		// 能否自动重连标志 => 修改通道时不能自动重连...
 	GM_MapCamera	m_MapCamera;		// 摄像头窗口集合 => DBCameraID => CViewCamera
 };

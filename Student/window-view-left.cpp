@@ -14,10 +14,13 @@
 
 CViewLeft::CViewLeft(QWidget *parent, Qt::WindowFlags flags)
   : OBSQTDisplay(parent, flags)
+  , m_bCanAutoLink(true)
+  , m_nCurAutoID(-1)
+  , m_nAutoTimer(-1)
+  , m_nFocusID(-1)
   , m_nCurPage(0)
   , m_nMaxPage(0)
   , m_nFirstID(0)
-  , m_nFocusID(-1)
 {
 	m_bkColor = QColor(64, 64, 64);
 	QFont theFont = this->font();
@@ -46,6 +49,68 @@ void CViewLeft::onTriggerConnected()
 			lpRemoteSession->doSendStartCameraCmd(itorItem->first);
 		}
 	}
+	// 启动一个每隔两秒进行拉流检测的时钟对象 => 先删除原来的时钟...
+	(m_nAutoTimer >= 0) ? this->killTimer(m_nAutoTimer) : NULL;
+	m_nAutoTimer = this->startTimer(2 * 1000);
+	// 立即自动重连第一个没有被重连的IPC摄像头...
+	this->doAutoLinkIPC();
+}
+
+void CViewLeft::timerEvent(QTimerEvent *inEvent)
+{
+	int nTimerID = inEvent->timerId();
+	if (nTimerID == m_nAutoTimer) {
+		this->doAutoLinkIPC();
+	}
+}
+
+void CViewLeft::doAutoLinkIPC()
+{
+	// 如果摄像头列表对象为空，直接返回...
+	if (m_MapCamera.size() <= 0)
+		return;
+	// 如果当前的自动标志为否，直接返回...
+	if (!m_bCanAutoLink)
+		return;
+	ASSERT(m_bCanAutoLink);
+	// 计算出需要重连的摄像头编号 => 用当前的编号查找下一个连接编号...
+	m_nCurAutoID = this->GetNextAutoID(m_nCurAutoID);
+	// 如果找到的摄像头编号无效，直接返回...
+	if (m_nCurAutoID <= 0)
+		return;
+	// 通过新的摄像头编号找到摄像头视图对象...
+	CViewCamera * lpViewCamera = this->FindDBCameraByID(m_nCurAutoID);
+	if (lpViewCamera == NULL)
+		return;
+	// 调用接口直接启动摄像头通道，开始拉取数据流...
+	bool bResult = lpViewCamera->doCameraStart();
+	// 如果当前摄像头编号与焦点摄像头编号一致，更新主界面工具栏...
+	if (m_nCurAutoID == m_nFocusID) {
+		emit this->enableCameraStart(!bResult);
+		emit this->enableCameraStop(bResult);
+	}
+}
+
+// 得到下一个需要重连的窗口编号...
+int CViewLeft::GetNextAutoID(int nCurDBCameraID)
+{
+	// 如果摄像头列表对象为空，返回-1...
+	if (m_MapCamera.size() <= 0)
+		return -1;
+	// 将第一个摄像头对象做为备用节点对象...
+	GM_MapCamera::iterator itorFirst = m_MapCamera.begin();
+	// 如果输入的摄像头编号是无效的，返回第一个有效节点...
+	GM_MapCamera::iterator itorItem = m_MapCamera.find(nCurDBCameraID);
+	if (itorItem == m_MapCamera.end()) {
+		return itorFirst->first;
+	}
+	// 如果下一个节点是无效的，回滚到第一个节点...
+	if ((++itorItem) == m_MapCamera.end()) {
+		return itorFirst->first;
+	}
+	// 下一个节点有效，返回对应的编号...
+	ASSERT(itorItem != m_MapCamera.end());
+	return itorItem->first;
 }
 
 // 停止所有正在推流的通道，如果通道编号与新通道一致，不处理...
@@ -167,6 +232,11 @@ void CViewLeft::doDestoryResource()
 	}
 	// 更新界面信息...
 	this->update();
+	// 删除自动重连时钟...
+	if (m_nAutoTimer >= 0) {
+		this->killTimer(m_nAutoTimer);
+		m_nAutoTimer = -1;
+	}
 }
 
 // 网络线程注册学生端成功之后的操作...
