@@ -142,6 +142,7 @@ BOOL CUDPRecvThread::InitThread(string & strUdpAddr, int nUdpPort)
 
 void CUDPRecvThread::Entry()
 {
+	blog(LOG_INFO, "CUDPRecvThread::Entry()");
 	while( !this->IsStopRequested() ) {
 		// 设置休息标志 => 只要有发包或收包就不能休息...
 		m_bNeedSleep = true;

@@ -496,6 +496,21 @@ CAudioThread::~CAudioThread()
 	circlebuf_free(&m_circle);
 }
 
+#ifdef DEBUG_AEC
+static void DoSaveTeacherPCM(uint8_t * lpBufData, int nBufSize, int nAudioRate, int nAudioChannel)
+{
+	// 注意：PCM数据必须用二进制方式打开文件...
+	static char szFullPath[MAX_PATH] = { 0 };
+	sprintf(szFullPath, "F:/MP4/PCM/Teacher_%d_%d.pcm", nAudioRate, nAudioChannel);
+	FILE * lpFile = fopen(szFullPath, "ab+");
+	// 打开文件成功，开始写入音频PCM数据内容...
+	if (lpFile != NULL) {
+		fwrite(lpBufData, nBufSize, 1, lpFile);
+		fclose(lpFile);
+	}
+}
+#endif // DEBUG_AEC
+
 void CAudioThread::doDecodeFrame()
 {
 	OSMutexLocker theLock(&m_Mutex);
@@ -544,6 +559,9 @@ void CAudioThread::doDecodeFrame()
 	if( nResult > 0 ) {
 		circlebuf_push_back(&m_circle, &frame_pts_ms, sizeof(int64_t));
 		circlebuf_push_back(&m_circle, m_out_buffer_ptr, m_out_buffer_size);
+#ifdef DEBUG_AEC
+		DoSaveTeacherPCM(m_out_buffer_ptr, m_out_buffer_size, m_audio_sample_rate, m_audio_channel_num);
+#endif // DEBUG_AEC
 	}
 	// 这里是引用，必须先free再erase...
 	av_free_packet(&thePacket);

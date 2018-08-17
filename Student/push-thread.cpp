@@ -1,4 +1,5 @@
 
+#include "speex-aec.h"
 #include "student-app.h"
 #include "pull-thread.h"
 #include "push-thread.h"
@@ -10,6 +11,7 @@ CPushThread::CPushThread(CViewCamera * lpViewCamera)
   : m_lpViewCamera(lpViewCamera)
   , m_lpUDPSendThread(NULL)
   , m_lpRtspThread(NULL)
+  , m_lpSpeexAEC(NULL)
   , m_nCurRecvByte(0)
   , m_dwTimeOutMS(0)
   , m_nFlowTimer(-1)
@@ -32,6 +34,11 @@ CPushThread::~CPushThread()
 	if (m_lpUDPSendThread != NULL) {
 		delete m_lpUDPSendThread;
 		m_lpUDPSendThread = NULL;
+	}
+	// 删除回音消除对象...
+	if (m_lpSpeexAEC != NULL) {
+		delete m_lpSpeexAEC;
+		m_lpSpeexAEC = NULL;
 	}
 	blog(LOG_INFO, "== [~CPushThread Thread] - Exit End ==");
 }
@@ -126,6 +133,27 @@ bool CPushThread::InitThread()
 	return true;
 }
 
+// rtsp拉流线程已经准备就绪...
+void CPushThread::onRtspReady()
+{
+	blog(LOG_INFO, "CPushThread::onRtspReady() => ID: %d", m_nDBCameraID);
+	// 通知摄像头窗口向服务器汇报状态...
+	if (m_lpViewCamera != NULL) {
+		m_lpViewCamera->doStatReport();
+	}
+	// 重建并初始化音频回音消除对象...
+	if (m_lpSpeexAEC != NULL) {
+		delete m_lpSpeexAEC;
+		m_lpSpeexAEC = NULL;
+	}
+	// 获取音频相关的格式头信息...
+	int nRateIndex = this->GetAudioRateIndex();
+	int nChannelNum = this->GetAudioChannelNum();
+	// 创建并初始化回音消除对象...
+	m_lpSpeexAEC = new CSpeexAEC(this);
+	m_lpSpeexAEC->InitSpeex(nRateIndex, nChannelNum);
+}
+
 void CPushThread::timerEvent(QTimerEvent * inEvent)
 {
 	int nTimerID = inEvent->timerId();
@@ -145,7 +173,7 @@ void CPushThread::CalcFlowKbps()
 
 void CPushThread::onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID)
 {
-	OSMutexLocker theLock(&m_Mutex);
+	//OSMutexLocker theLock(&m_Mutex);
 	// 如果是通道开始推流命令 => 创建推流线程...
 	if (bIsStartCmd) {
 		// 如果推流线程已经创建了，直接返回...
@@ -174,7 +202,7 @@ void CPushThread::onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID)
 void CPushThread::PushFrame(FMS_FRAME & inFrame)
 {
 	// 这里使用了互斥，拉流对象已经被删除，直接返回...
-	OSMutexLocker theLock(&m_Mutex);
+	//OSMutexLocker theLock(&m_Mutex);
 	if (m_lpRtspThread == NULL)
 		return;
 	// 将超时计时点复位，重新计时...
@@ -185,7 +213,10 @@ void CPushThread::PushFrame(FMS_FRAME & inFrame)
 	if (m_lpUDPSendThread != NULL && !m_lpUDPSendThread->IsNeedDelete()) {
 		m_lpUDPSendThread->PushFrame(inFrame);
 	}
-	// 可以进一步的对数据帧进行加工处理...
+	// 如果是音频数据帧，需要进行回音消除...
+	if (m_lpSpeexAEC != NULL && inFrame.typeFlvTag == PT_TAG_AUDIO) {
+		m_lpSpeexAEC->PushFrame(inFrame);
+	}
 }
 
 QString CPushThread::GetStreamPushUrl()
@@ -218,7 +249,7 @@ int CPushThread::GetSendPushKbps()
 bool CPushThread::IsDataFinished()
 {
 	// 这里使用了互斥，避免拉流对象无效...
-	OSMutexLocker theLock(&m_Mutex);
+	//OSMutexLocker theLock(&m_Mutex);
 	if (m_lpRtspThread != NULL) {
 		return m_lpRtspThread->IsFinished();
 	}

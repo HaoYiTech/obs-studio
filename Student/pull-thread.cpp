@@ -102,9 +102,12 @@ void CRtspThread::Entry()
 
 void CRtspThread::StartPushThread()
 {
-	/*if( m_lpPushThread == NULL )
+	// 通知宿主，rtsp已经准备就绪...
+	if (m_lpPushThread == NULL)
 		return;
-	ASSERT( m_lpPushThread != NULL );*/
+	ASSERT(m_lpPushThread != NULL);
+	m_lpPushThread->onRtspReady();
+
 	// 启动UDP推流线程...
 	//m_lpPushThread->StartUDPSendThread();
 	// 设置流的播放状态...

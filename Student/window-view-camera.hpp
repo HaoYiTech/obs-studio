@@ -18,6 +18,7 @@ public:
 	void doTogglePreview();
 	bool doCameraStart();
 	bool doCameraStop();
+	void doStatReport();
 private:
 	bool IsLiveState();
 	void DrawTitleArea();

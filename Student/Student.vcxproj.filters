@@ -147,6 +147,9 @@
     <ClCompile Include="platform-windows.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="speex-aec.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="window-login-base.h">
@@ -337,6 +340,9 @@
       <Filter>rtp Files</Filter>
     </ClInclude>
     <ClInclude Include="platform.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="speex-aec.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

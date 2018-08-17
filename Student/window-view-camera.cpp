@@ -259,6 +259,13 @@ bool CViewCamera::doCameraStart()
 		m_lpPushThread = NULL;
 		return false;
 	}
+	// 这里无需更新状态，每秒都会自动更新 => CPushThread::timerEvent()
+	// 状态汇报，需要等rtsp连接成功之后才能进行 => doStatReport()
+	return true;
+}
+
+void CViewCamera::doStatReport()
+{
 	// 向中转服务器汇报通道信息和状态 => 重建成功之后再发送命令...
 	CRemoteSession * lpRemoteSession = App()->GetRemoteSession();
 	if (lpRemoteSession != NULL) {
@@ -269,9 +276,7 @@ bool CViewCamera::doCameraStart()
 	if (lpWebThread != NULL) {
 		lpWebThread->doWebStatCamera(m_nDBCameraID, kCameraRun);
 	}
-	// 更新显示状态...
-	this->update();
-	return true;
+	// 这里无需更新状态，每秒都会自动更新 => CPushThread::timerEvent()
 }
 
 bool CViewCamera::doCameraStop()
@@ -291,7 +296,7 @@ bool CViewCamera::doCameraStop()
 		delete m_lpPushThread;
 		m_lpPushThread = NULL;
 	}
-	// 更新显示状态...
+	// 这里必须更新状态，因为推流管理器已经删除...
 	this->update();
 	return true;
 }
