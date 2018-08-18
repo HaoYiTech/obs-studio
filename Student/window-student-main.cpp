@@ -294,7 +294,7 @@ void StudentWindow::on_actionCameraMod_triggered()
 	// 屏蔽自动重连 => 修改时，不能自动重连...
 	m_ui.LeftView->SetCanAutoLink(false);
 	// 弹出通道配置修改框 => 注意恢复自动重连标志...
-	CDlgPush dlg(this, nDBCameraID, lpViewCamera->IsCameraLogin());
+	CDlgPush dlg(this, nDBCameraID, lpViewCamera->IsCameraOffLine());
 	if (dlg.exec() == QDialog::Rejected) {
 		m_ui.LeftView->SetCanAutoLink(true);
 		return;

@@ -5,7 +5,7 @@
 #include "window-dlg-push.hpp"
 #include "md5.h"
 
-CDlgPush::CDlgPush(QWidget *parent, int nDBCameraID, bool bIsLogin)
+CDlgPush::CDlgPush(QWidget *parent, int nDBCameraID, bool bIsOffLine)
   : QDialog (parent)
   , m_nDBCameraID(nDBCameraID)
 {
@@ -53,8 +53,8 @@ CDlgPush::CDlgPush(QWidget *parent, int nDBCameraID, bool bIsLogin)
 	// 对获取到的链接地址进行格式转换，从UTF8转换成Unicode...
 	os_utf8_to_wcs(strStreamUrl.c_str(), strStreamUrl.size(), szWBuffer, MAX_PATH);
 	m_ui.streamUrl->setText(QString((QChar*)szWBuffer));
-	// 如果通道处于运行状态 => 禁止修改...
-	if (bIsLogin) {
+	// 如果通道处于运行状态(正在连接 或 已连接) => 禁止修改...
+	if (!bIsOffLine) {
 		m_ui.streamUrl->setReadOnly(true);
 		m_ui.cameraName->setReadOnly(true);
 		m_ui.streamMode->setEnabled(false);

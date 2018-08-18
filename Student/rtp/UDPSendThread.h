@@ -6,12 +6,11 @@
 #include "OSThread.h"
 
 class UDPSocket;
-class CViewCamera;
-class CPushThread;
+class CDataThread;
 class CUDPSendThread : public OSThread
 {
 public:
-	CUDPSendThread(CPushThread * lpPushThread, int nDBRoomID, int nDBCameraID);
+	CUDPSendThread(CDataThread * lpDataThread, int nDBRoomID, int nDBCameraID);
 	virtual ~CUDPSendThread();
 	virtual void Entry();
 public:
@@ -64,7 +63,7 @@ private:
 
 	OSMutex			m_Mutex;				// 互斥对象
 	UDPSocket	*	m_lpUDPSocket;			// UDP对象
-	CPushThread *   m_lpPushThread;         // 推流管理
+	CDataThread *   m_lpDataThread;         // 推流管理
 
 	uint16_t		m_HostServerPort;		// 服务器端口 => host
 	uint32_t	    m_HostServerAddr;		// 服务器地址 => host

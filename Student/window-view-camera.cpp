@@ -2,9 +2,9 @@
 #include <QPainter>
 #include "student-app.h"
 #include "pull-thread.h"
-#include "push-thread.h"
 #include "web-thread.h"
 #include "FastSession.h"
+#include "UDPSendThread.h"
 #include "window-view-left.hpp"
 #include "window-view-camera.hpp"
 
@@ -22,10 +22,16 @@
 
 CViewCamera::CViewCamera(QWidget *parent, int nDBCameraID)
   : OBSQTDisplay(parent, 0)
+  , m_nCameraState(kCameraOffLine)
   , m_nDBCameraID(nDBCameraID)
-  , m_lpPushThread(NULL)
+  , m_lpUDPSendThread(NULL)
+  , m_lpDataThread(NULL)
   , m_bIsPreview(false)
   , m_lpViewLeft(NULL)
+  , m_nCurRecvByte(0)
+  , m_dwTimeOutMS(0)
+  , m_nFlowTimer(-1)
+  , m_nRecvKbps(0)
 {
 	ASSERT(m_nDBCameraID > 0 && parent != NULL);
 	m_lpViewLeft = qobject_cast<CViewLeft*>(parent);
@@ -37,17 +43,49 @@ CViewCamera::CViewCamera(QWidget *parent, int nDBCameraID)
 	QFont theFont = this->font();
 	theFont.setPointSize(TITLE_FONT_HEIGHT);
 	this->setFont(theFont);
+	// 注意：只有QT线程当中才能启动时钟对象...
+	// 开启一个定时检测时钟 => 每隔1秒执行一次...
+	m_nFlowTimer = this->startTimer(1 * 1000);
 }
 
 CViewCamera::~CViewCamera()
 {
-	// 释放推流数据管理器 => 数据源头...
-	if (m_lpPushThread != NULL) {
-		delete m_lpPushThread;
-		m_lpPushThread = NULL;
+	// 如果时钟有效，删除时钟对象...
+	if (m_nFlowTimer >= 0) {
+		killTimer(m_nFlowTimer);
+		m_nFlowTimer = -1;
+	}
+	// 删除UDP推流线程 => 数据使用者...
+	if (m_lpUDPSendThread != NULL) {
+		delete m_lpUDPSendThread;
+		m_lpUDPSendThread = NULL;
+	}
+	// 删除数据拉取线程对象...
+	if (m_lpDataThread != NULL) {
+		delete m_lpDataThread;
+		m_lpDataThread = NULL;
 	}
 	// 如果自己就是那个焦点窗口，需要重置...
 	App()->doResetFocus(this);
+}
+
+void CViewCamera::timerEvent(QTimerEvent * inEvent)
+{
+	int nTimerID = inEvent->timerId();
+	if (nTimerID == m_nFlowTimer) {
+		this->CalcFlowKbps();
+	}
+}
+
+void CViewCamera::CalcFlowKbps()
+{
+	// 计算实际的接收码率 => Kbps...
+	m_nRecvKbps = (m_nCurRecvByte * 8) / 1024;
+	m_nCurRecvByte = 0;
+	// 通道不是离线(正在连接或已连接)，就需要更新界面...
+	if (m_nCameraState != kCameraOffLine) {
+		this->update();
+	}
 }
 
 // 注意：更新时钟放在 CPushThread::timerEvent() => 每秒更新一次...
@@ -90,8 +128,8 @@ void CViewCamera::DrawTitleArea()
 	QString strTitleContent = App()->GetCameraQName(m_nDBCameraID);
 	QString strTitleText = QString("%1%2 - %3").arg(QStringLiteral("ID：")).arg(m_nDBCameraID).arg(strTitleContent);
 	painter.drawText(nPosX, nPosY, strTitleText);
-	// 绘制在线LIVE文字信息...
-	if (this->IsLiveState()) {
+	// 绘制在线LIVE文字信息 => UDP线程有效...
+	if (m_lpUDPSendThread != NULL) {
 		painter.setPen(TITLE_LIVE_COLOR);
 		QFontMetrics & fontMetrics = painter.fontMetrics();
 		QString strLive = QTStr("Camera.Window.Live");
@@ -145,7 +183,15 @@ void CViewCamera::DrawStatusText()
 	// 显示通道状态具体内容...
 	int xDataPos = xNamePos + fontMetrics.width(strTitleName);
 	int yDataPos = yNamePos;
-	QString strDataValue = QTStr(this->IsCameraLogin() ? "Camera.Window.OnLine" : "Camera.Window.OffLine");
+	// 获取通道状态文字...
+	QString strDataValue;
+	switch(m_nCameraState)
+	{
+	case kCameraOffLine: strDataValue = QTStr("Camera.Window.OffLine"); break;
+	case kCameraConnect: strDataValue = QTStr("Camera.Window.Connect"); break;
+	case kCameraOnLine:  strDataValue = QTStr("Camera.Window.OnLine");  break;
+	default:             strDataValue = QTStr("Camera.Window.OffLine"); break;
+	}
 	painter.drawText(xDataPos, yDataPos, strDataValue);
 	// 显示拉流地址标题栏 => 注意是左下角坐标...
 	strTitleName = QTStr("Camera.Window.PullName");
@@ -193,10 +239,41 @@ void CViewCamera::DrawStatusText()
 	painter.drawText(xDataPos, yDataPos, strDataValue);
 }
 
+QString CViewCamera::GetStreamPushUrl()
+{
+	if (m_lpUDPSendThread == NULL) {
+		return QTStr("Camera.Window.None");
+	}
+	string & strServerAddr = m_lpUDPSendThread->GetServerAddrStr();
+	QString strQServerStr = QString::fromUtf8(strServerAddr.c_str());
+	int nServerPort = m_lpUDPSendThread->GetServerPortInt();
+	return QString("udp://%1/%2").arg(strQServerStr).arg(nServerPort);
+}
+
+bool CViewCamera::IsDataFinished()
+{
+	return ((m_lpDataThread != NULL) ? m_lpDataThread->IsFinished() : true);
+}
+
+bool CViewCamera::IsFrameTimeout()
+{
+	// 首先判断数据线程是否已经结束了...
+	if (this->IsDataFinished())
+		return true;
+	// 一直没有新数据到达，超过 1 分钟，则判定为超时...
+	int nWaitMinute = 1;
+	DWORD dwElapseSec = (::GetTickCount() - m_dwTimeOutMS) / 1000;
+	return ((dwElapseSec >= nWaitMinute * 60) ? true : false);
+}
+
 QString CViewCamera::GetRecvPullRate()
 {
-	// 获取接收码率的具体数字 => 直接从推流管理器当中获取...
-	int nRecvKbps = ((m_lpPushThread != NULL) ? m_lpPushThread->GetRecvPullKbps() : 0);
+	// 设置默认的拉流计算值...
+	int nRecvKbps = m_nRecvKbps;
+	// 如果状态不是离线(正在连接或已连接)，就需要判断是否超时，超时设置为 -1 ...
+	if (m_nCameraState != kCameraOffLine) {
+		nRecvKbps = (this->IsFrameTimeout() ? -1 : nRecvKbps);
+	}
 	// 如果码率为负数，需要停止通道，同时，更新菜单...
 	if ( nRecvKbps < 0 ) {
 		// 先停止通道...
@@ -215,8 +292,8 @@ QString CViewCamera::GetRecvPullRate()
 
 QString CViewCamera::GetSendPushRate()
 {
-	// 获取发送码率的具体数字 => 直接从推流管理器当中获取...
-	int nSendKbps = ((m_lpPushThread != NULL) ? m_lpPushThread->GetSendPushKbps() : -1);
+	// 获取发送码率的具体数字 => 直接从UDP发送线程当中获取 => 注意：默认值是0...
+	int nSendKbps = ((m_lpUDPSendThread != NULL) ? m_lpUDPSendThread->GetSendTotalKbps() : 0);
 	// 如果为负数，需要删除UDP推流线程对象...
 	if (nSendKbps < 0) {
 		// 先删除UDP推流线程对象...
@@ -228,43 +305,45 @@ QString CViewCamera::GetSendPushRate()
 	return QString("%1 Kbps").arg(nSendKbps);
 }
 
-bool CViewCamera::IsLiveState()
-{
-	return ((m_lpPushThread != NULL) ? m_lpPushThread->IsLiveState() : false);
-}
-
-QString CViewCamera::GetStreamPushUrl()
-{
-	return ((m_lpPushThread != NULL) ? m_lpPushThread->GetStreamPushUrl() : QTStr("Camera.Window.None"));
-}
-
 void CViewCamera::onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID)
 {
-	if (m_lpPushThread == NULL || nDBCameraID != m_nDBCameraID)
+	// 输入摄像头编号必须与当前窗口一致...
+	if (m_lpDataThread == NULL || nDBCameraID != m_nDBCameraID) {
+		blog(LOG_INFO, "onTriggerUdpSendThread => Error, CDataThread is NULL");
 		return;
-	m_lpPushThread->onTriggerUdpSendThread(bIsStartCmd, nDBCameraID);
-}
-
-bool CViewCamera::doCameraStart()
-{
-	// 如果推流对象有效，直接返回...
-	if (m_lpPushThread != NULL)
-		return true;
-	// 重建推流对象管理器...
-	ASSERT(m_lpPushThread == NULL);
-	m_lpPushThread = new CPushThread(this);
-	// 初始化失败，直接返回 => 删除对象...
-	if (!m_lpPushThread->InitThread()) {
-		delete m_lpPushThread;
-		m_lpPushThread = NULL;
-		return false;
 	}
-	// 这里无需更新状态，每秒都会自动更新 => CPushThread::timerEvent()
-	// 状态汇报，需要等rtsp连接成功之后才能进行 => doStatReport()
-	return true;
+	ASSERT(m_lpDataThread != NULL && nDBCameraID == m_nDBCameraID);
+	// 如果通道拉流状态不是在线状态，直接返回...
+	if (m_nCameraState != kCameraOnLine) {
+		blog(LOG_INFO, "onTriggerUdpSendThread => Error, CameraState: %d", m_nCameraState);
+		return;
+	}
+	// 如果是通道开始推流命令 => 创建推流线程...
+	if (bIsStartCmd) {
+		// 如果推流线程已经创建了，直接返回...
+		if (m_lpUDPSendThread != NULL)
+			return;
+		ASSERT(m_lpUDPSendThread == NULL);
+		// 创建UDP推流线程，使用服务器传递过来的参数...
+		int nRoomID = atoi(App()->GetRoomIDStr().c_str());
+		string & strUdpAddr = App()->GetUdpAddr();
+		int nUdpPort = App()->GetUdpPort();
+		m_lpUDPSendThread = new CUDPSendThread(m_lpDataThread, nRoomID, nDBCameraID);
+		// 如果初始化UDP推流线程失败，删除已经创建的对象...
+		if (!m_lpUDPSendThread->InitThread(strUdpAddr, nUdpPort)) {
+			delete m_lpUDPSendThread;
+			m_lpUDPSendThread = NULL;
+		}
+	} else {
+		// 如果是通道停止推流命令 => 删除推流线程...
+		if (m_lpUDPSendThread != NULL) {
+			delete m_lpUDPSendThread;
+			m_lpUDPSendThread = NULL;
+		}
+	}
 }
 
-void CViewCamera::doStatReport()
+void CViewCamera::doStartPushThread()
 {
 	// 向中转服务器汇报通道信息和状态 => 重建成功之后再发送命令...
 	CRemoteSession * lpRemoteSession = App()->GetRemoteSession();
@@ -274,29 +353,90 @@ void CViewCamera::doStatReport()
 	// 调用接口通知服务器 => 修改通道状态 => 重建成功之后再发送命令...
 	CWebThread * lpWebThread = App()->GetWebThread();
 	if (lpWebThread != NULL) {
-		lpWebThread->doWebStatCamera(m_nDBCameraID, kCameraRun);
+		lpWebThread->doWebStatCamera(m_nDBCameraID, kCameraOnLine);
 	}
-	// 这里无需更新状态，每秒都会自动更新 => CPushThread::timerEvent()
+	// 设置通道状态为已连接在线状态...
+	m_nCameraState = kCameraOnLine;
+}
+
+void CViewCamera::doPushFrame(FMS_FRAME & inFrame)
+{
+	// 如果通道不是拉流状态，不能推流...
+	if (m_nCameraState != kCameraOnLine)
+		return;
+	// 将超时计时点复位，重新计时...
+	m_dwTimeOutMS = ::GetTickCount();
+	// 累加接收数据包的字节数，加入缓存队列...
+	m_nCurRecvByte += inFrame.strData.size();
+	// 如果UDP推流线程有效，并且，推流线程没有发生严重拥塞，继续传递数据...
+	if (m_lpUDPSendThread != NULL && !m_lpUDPSendThread->IsNeedDelete()) {
+		m_lpUDPSendThread->PushFrame(inFrame);
+	}
+}
+
+bool CViewCamera::doCameraStart()
+{
+	// 如果数据线程对象有效，直接返回...
+	if (m_lpDataThread != NULL)
+		return true;
+	// 获取当前通道的配置参数...
+	GM_MapData theMapData;
+	App()->GetCamera(m_nDBCameraID, theMapData);
+	ASSERT(theMapData.size() > 0);
+	// 获取当前的流数据类型编号...
+	string & strStreamProp = theMapData["stream_prop"];
+	int  nStreamProp = atoi(strStreamProp.c_str());
+	// 重建推流对象管理器...
+	ASSERT(m_lpDataThread == NULL);
+	m_lpDataThread = new CRtspThread(this);
+	// 初始化失败，直接返回 => 删除对象...
+	if (!m_lpDataThread->InitThread()) {
+		delete m_lpDataThread;
+		m_lpDataThread = NULL;
+		return false;
+	}
+	// 初始化接收数据超时时间记录起点 => 超过 1 分钟无数据接收，则判定为连接超时...
+	m_dwTimeOutMS = ::GetTickCount();
+	// 设置通道状态为正在连接状态...
+	m_nCameraState = kCameraConnect;
+	// 这里必须更新状态，状态时钟还没起作用，会造成延时...
+	this->update();
+	// 状态汇报，需要等rtsp连接成功之后才能进行 => CViewCamera::StartPushThread()
+	return true;
 }
 
 bool CViewCamera::doCameraStop()
 {
-	// 向中转服务器汇报通道信息和状态...
-	CRemoteSession * lpRemoteSession = App()->GetRemoteSession();
-	if (lpRemoteSession != NULL) {
-		lpRemoteSession->doSendStopCameraCmd(m_nDBCameraID);
+	// 只有当通道处于拉流成功状态，才需要在停止时向服务器汇报状态...
+	if (m_nCameraState == kCameraOnLine) {
+		// 向中转服务器汇报通道信息和状态...
+		CRemoteSession * lpRemoteSession = App()->GetRemoteSession();
+		if (lpRemoteSession != NULL) {
+			lpRemoteSession->doSendStopCameraCmd(m_nDBCameraID);
+		}
+		// 调用接口通知服务器 => 修改通道状态...
+		CWebThread * lpWebThread = App()->GetWebThread();
+		if (lpWebThread != NULL) {
+			lpWebThread->doWebStatCamera(m_nDBCameraID, kCameraOffLine);
+		}
 	}
-	// 调用接口通知服务器 => 修改通道状态...
-	CWebThread * lpWebThread = App()->GetWebThread();
-	if (lpWebThread != NULL) {
-		lpWebThread->doWebStatCamera(m_nDBCameraID, kCameraWait);
+	// 删除UDP推流线程 => 数据使用者...
+	if (m_lpUDPSendThread != NULL) {
+		delete m_lpUDPSendThread;
+		m_lpUDPSendThread = NULL;
 	}
-	// 直接删除推流管理器...
-	if (m_lpPushThread != NULL) {
-		delete m_lpPushThread;
-		m_lpPushThread = NULL;
+	// 直接删除数据线程管理器...
+	if (m_lpDataThread != NULL) {
+		delete m_lpDataThread;
+		m_lpDataThread = NULL;
 	}
-	// 这里必须更新状态，因为推流管理器已经删除...
+	// 设置通道状态为离线未连接状态...
+	m_nCameraState = kCameraOffLine;
+	// 重置与拉流相关的变量信息...
+	m_nRecvKbps = 0;
+	m_dwTimeOutMS = 0;
+	m_nCurRecvByte = 0;
+	// 这里必须更新状态，处于离线状态，必须强制更新...
 	this->update();
 	return true;
 }

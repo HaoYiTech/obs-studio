@@ -7,7 +7,7 @@
 class CDlgPush : public QDialog {
 	Q_OBJECT
 public:
-	CDlgPush(QWidget *parent, int nDBCameraID, bool bIsLogin);
+	CDlgPush(QWidget *parent, int nDBCameraID, bool bIsOffLine);
 	virtual ~CDlgPush();
 public:
 	GM_MapData & GetPushData() { return m_MapData; }

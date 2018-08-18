@@ -44,16 +44,15 @@ void CViewLeft::onTriggerConnected()
 	// 遍历所有正在拉流的摄像头通道，汇报给服务器，...
 	for(itorItem = m_MapCamera.begin(); itorItem != m_MapCamera.end(); ++itorItem) {
 		CViewCamera * lpViewCamera = itorItem->second;
-		// 如果当前摄像头对象正在拉取数据 => 发起汇报命令...
-		if (lpRemoteSession != NULL && lpViewCamera->IsCameraLogin()) {
+		// 如果当前摄像头对象正在拉取数据(已连接) => 发起汇报命令...
+		if (lpRemoteSession != NULL && lpViewCamera->IsCameraOnLine()) {
 			lpRemoteSession->doSendStartCameraCmd(itorItem->first);
 		}
 	}
 	// 启动一个每隔两秒进行拉流检测的时钟对象 => 先删除原来的时钟...
 	(m_nAutoTimer >= 0) ? this->killTimer(m_nAutoTimer) : NULL;
 	m_nAutoTimer = this->startTimer(2 * 1000);
-	// 立即自动重连第一个没有被重连的IPC摄像头...
-	this->doAutoLinkIPC();
+	// 不要立即开始自动连接，需要延时连接，避免互相争抢资源...
 }
 
 void CViewLeft::timerEvent(QTimerEvent *inEvent)
@@ -439,9 +438,9 @@ void CViewLeft::doEnableCamera(OBSQTDisplay * lpNewDisplay)
 	// 保存当前焦点摄像头的窗口编号...
 	m_nFocusID = lpViewCamera->GetDBCameraID();
 	// 根据摄像头窗口登录状态设置开始|停止菜单状态...
-	bool bIsLogin = lpViewCamera->IsCameraLogin();
-	emit this->enableCameraStart(!bIsLogin);
-	emit this->enableCameraStop(bIsLogin);
+	bool bIsOffLine = lpViewCamera->IsCameraOffLine();
+	emit this->enableCameraStart(bIsOffLine);
+	emit this->enableCameraStop(!bIsOffLine);
 }
 
 void CViewLeft::onCameraStart()

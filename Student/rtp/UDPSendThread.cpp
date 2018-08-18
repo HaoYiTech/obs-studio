@@ -1,12 +1,12 @@
 
 #include "student-app.h"
+#include "pull-thread.h"
 #include "UDPSocket.h"
 #include "SocketUtils.h"
 #include "UDPSendThread.h"
-#include "push-thread.h"
 
-CUDPSendThread::CUDPSendThread(CPushThread * lpPushThread, int nDBRoomID, int nDBCameraID)
-  : m_lpPushThread(lpPushThread)
+CUDPSendThread::CUDPSendThread(CDataThread * lpDataThread, int nDBRoomID, int nDBCameraID)
+  : m_lpDataThread(lpDataThread)
   , m_total_output_bytes(0)
   , m_audio_output_bytes(0)
   , m_video_output_bytes(0)
@@ -36,6 +36,7 @@ CUDPSendThread::CUDPSendThread(CPushThread * lpPushThread, int nDBRoomID, int nD
   , m_p2p_rtt_var_ms(-1)
   , m_p2p_rtt_ms(-1)
 {
+	ASSERT(m_lpDataThread != NULL);
 	// 初始化发包路线 => 服务器方向...
 	m_dt_to_dir = DT_TO_SERVER;
 	// 初始化命令状态...
@@ -126,28 +127,28 @@ BOOL CUDPSendThread::InitAudio(int nRateIndex, int nChannelNum)
 BOOL CUDPSendThread::ParseAVHeader()
 {
 	// 如果推流管理器无效，返回失败...
-	if (m_lpPushThread == NULL)
+	if (m_lpDataThread == NULL)
 		return false;
 	// 如果既没有音频也没有视频，返回失败...
-	string strAACHeader = m_lpPushThread->GetAACHeader();
-	string strAVCHeader = m_lpPushThread->GetAVCHeader();
+	string strAACHeader = m_lpDataThread->GetAACHeader();
+	string strAVCHeader = m_lpDataThread->GetAVCHeader();
 	if (strAACHeader.size() <= 0 && strAVCHeader.size() <= 0) {
 		blog(LOG_INFO, "%s ParseAVHeader error => No Audio and No Video!", TM_SEND_NAME);
 		return false;
 	}
 	// 获取视频相关的格式头信息...
-	int nVideoFPS = m_lpPushThread->GetVideoFPS();
-	int nVideoWidth = m_lpPushThread->GetVideoWidth();
-	int nVideoHeight = m_lpPushThread->GetVideoHeight();
-	string strSPS = m_lpPushThread->GetVideoSPS();
-	string strPPS = m_lpPushThread->GetVideoPPS();
+	int nVideoFPS = m_lpDataThread->GetVideoFPS();
+	int nVideoWidth = m_lpDataThread->GetVideoWidth();
+	int nVideoHeight = m_lpDataThread->GetVideoHeight();
+	string strSPS = m_lpDataThread->GetVideoSPS();
+	string strPPS = m_lpDataThread->GetVideoPPS();
 	// 如果有视频格式头信息，对视频进行初始化...
 	if (strAVCHeader.size() > 0) {
 		this->InitVideo(strSPS, strPPS, nVideoWidth, nVideoHeight, nVideoFPS);
 	}
 	// 获取音频相关的格式头信息...
-	int nRateIndex = m_lpPushThread->GetAudioRateIndex();
-	int nChannelNum = m_lpPushThread->GetAudioChannelNum();
+	int nRateIndex = m_lpDataThread->GetAudioRateIndex();
+	int nChannelNum = m_lpDataThread->GetAudioChannelNum();
 	// 如果有音频格式头信息，对音频进行初始化...
 	if (strAACHeader.size() > 0) {
 		this->InitAudio(nRateIndex, nChannelNum);

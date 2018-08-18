@@ -75,9 +75,9 @@ enum STREAM_PROP
 
 enum CAMERA_STATE
 {
-	kCameraWait = 0,		// 未连接
-	kCameraRun = 1,			// 运行中
-	kCameraRec = 2,			// 录像中
+	kCameraOffLine = 0,		// 未连接
+	kCameraConnect = 1,		// 正在连接
+	kCameraOnLine  = 2,		// 已连接
 };
 
 // define client type...

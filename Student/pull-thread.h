@@ -1,55 +1,65 @@
 
 #pragma once
 
-#include "OSMutex.h"
 #include "OSThread.h"
-#include "myRTSPClient.h"
 
-class CPushThread;
-class CRtspThread : public OSThread
+class CViewCamera;
+class CDataThread
 {
 public:
-	CRtspThread();
-	~CRtspThread();
+	CDataThread(CViewCamera * lpViewCamera);
+	virtual ~CDataThread();
 public:
-	void			StartPushThread();
-	void			PushFrame(FMS_FRAME & inFrame);
-	BOOL			InitRtsp(CPushThread * lpPushThread, BOOL bUsingTCP, string & strRtspUrl);
+	virtual bool	InitThread() = 0;
+	virtual void	ResetEventLoop() = 0;
+public:
+	void	StartPushThread();
+	void	PushFrame(FMS_FRAME & inFrame);
+	void	WriteAVCSequenceHeader(string & inSPS, string & inPPS);
+	void	WriteAACSequenceHeader(int inAudioRate, int inAudioChannel);
+public:
+	bool			IsFinished() { return m_bFinished; }
 	int				GetVideoFPS() { return m_nVideoFPS; }
-	int				GetVideoWidth(){ return m_nVideoWidth; }
+	int				GetVideoWidth() { return m_nVideoWidth; }
 	int				GetVideoHeight() { return m_nVideoHeight; }
-	string	 &		GetAVCHeader() { return m_strAVCHeader; }
-	string	 &		GetAACHeader() { return m_strAACHeader; }
-	bool			IsFinished()   { return m_bFinished; }
-	void			WriteAVCSequenceHeader(string & inSPS, string & inPPS);
-	void			WriteAACSequenceHeader(int inAudioRate, int inAudioChannel);
-	void			ResetEventLoop() { m_rtspEventLoopWatchVariable = 1; }
-
-	string   &		GetVideoSPS() { return m_strSPS; }
-	string   &      GetVideoPPS() { return m_strPPS; }
 	int				GetAudioRateIndex() { return m_audio_rate_index; }
 	int				GetAudioChannelNum() { return m_audio_channel_num; }
-private:
-	virtual void	Entry();
-private:
-	OSMutex			m_Mutex;
-	string			m_strRtspUrl;
-	CPushThread  *  m_lpPushThread;
-
+	string	 &		GetAVCHeader() { return m_strAVCHeader; }
+	string	 &		GetAACHeader() { return m_strAACHeader; }
+	string   &		GetVideoSPS() { return m_strSPS; }
+	string   &      GetVideoPPS() { return m_strPPS; }
+protected:
+	CViewCamera  *  m_lpViewCamera;         // 摄像头窗口对象
 	bool			m_bFinished;			// 网络流是否结束了
 
-	int				m_audio_rate_index;
-	int				m_audio_channel_num;
+	int				m_audio_rate_index;     // 音频采样率索引
+	int				m_audio_channel_num;    // 音频声道数
 
-	int             m_nVideoFPS;
-	int				m_nVideoWidth;
-	int				m_nVideoHeight;
+	int             m_nVideoFPS;            // 视频帧率
+	int				m_nVideoWidth;          // 视频宽度
+	int				m_nVideoHeight;         // 视频高度
 
 	string			m_strSPS;				// SPS
 	string			m_strPPS;				// PPS
 	string			m_strAACHeader;			// AAC
 	string			m_strAVCHeader;			// AVC
+};
 
+class TaskScheduler;
+class ourRTSPClient;
+class UsageEnvironment;
+class CRtspThread : public OSThread, public CDataThread
+{
+public:
+	CRtspThread(CViewCamera * lpViewCamera);
+	virtual ~CRtspThread();
+public:
+	virtual bool    InitThread();
+	virtual void	ResetEventLoop() { m_rtspEventLoopWatchVariable = 1; }
+private:
+	virtual void	Entry();
+private:
+	string			m_strRtspUrl;           // rtsp链接地址
 	TaskScheduler * m_scheduler_;			// rtsp需要的任务对象
 	UsageEnvironment * m_env_;				// rtsp需要的环境
 	ourRTSPClient * m_rtspClient_;			// rtsp对象

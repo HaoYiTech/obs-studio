@@ -27,7 +27,7 @@ public:
 	double m_duration;
 };
 
-class CRtspThread;
+class CDataThread;
 class ourRTSPClient : public RTSPClient
 {
 public:
@@ -36,10 +36,10 @@ public:
 					int verbosityLevel,
 					char const* applicationName,
 					BOOL bStreamUsingTCP,
-					CRtspThread * lpRtspThread);
+					CDataThread * lpDataThread);
 protected: // called only by createNew();
 	ourRTSPClient(UsageEnvironment& env, char const* rtspURL, int verbosityLevel,
-				  char const* applicationName, BOOL bStreamUsingTCP, CRtspThread * lpRtspThread);
+				  char const* applicationName, BOOL bStreamUsingTCP, CDataThread * lpDataThread);
 	virtual ~ourRTSPClient();
 public:
 	StreamClientState	m_scs;
@@ -55,7 +55,7 @@ public:
 	BOOL				m_bUsingTCP;			// 是否使用TCP获取数据
 	BOOL				m_bHasVideo;			// 视频有效标志 => H.264
 	BOOL				m_bHasAudio;			// 音频有效标志 => AAC
-	CRtspThread		*	m_lpRtspThread;			// rtsp推流线程
+	CDataThread		*	m_lpDataThread;			// 数据推流线程
 };
 
 // Define a data sink (a subclass of "MediaSink") to receive the data for each subsession (i.e., each audio or video 'substream').

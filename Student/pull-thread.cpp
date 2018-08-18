@@ -1,195 +1,48 @@
 
 #include "student-app.h"
 #include "pull-thread.h"
-#include "push-thread.h"
 #include "BitWritter.h"
 #include "ReadSPS.h"
 
-CRtspThread::CRtspThread()
-{
-	m_nVideoHeight = 0;
-	m_nVideoWidth = 0;
-	m_nVideoFPS = 25;
+#include "myRTSPClient.h"
+#include "window-view-camera.hpp"
 
-	m_bFinished = false;
-	m_strRtspUrl.clear();
-	m_strAVCHeader.clear();
-	m_strAACHeader.clear();
-	m_lpPushThread = NULL;
-	
-	m_strPPS.clear();
-	m_strSPS.clear();
+CDataThread::CDataThread(CViewCamera * lpViewCamera)
+  : m_lpViewCamera(lpViewCamera)
+  , m_bFinished(false)
+{
+	ASSERT(m_lpViewCamera != NULL);
 
 	m_audio_rate_index = 0;
 	m_audio_channel_num = 0;
 
-	m_env_ = NULL;
-	m_scheduler_ = NULL;
-	m_rtspClient_ = NULL;
+	m_nVideoHeight = 0;
+	m_nVideoWidth = 0;
+	m_nVideoFPS = 25;
 
-	m_rtspEventLoopWatchVariable = 0;
+	m_strPPS.clear();
+	m_strSPS.clear();
+	m_strAVCHeader.clear();
+	m_strAACHeader.clear();
 }
 
-CRtspThread::~CRtspThread()
+CDataThread::~CDataThread()
 {
-	// 设置rtsp循环退出标志...
-	m_rtspEventLoopWatchVariable = 1;
-
-	blog(LOG_INFO, "== [~CRtspThread Thread] - Exit Start ==");
-
-	// 停止线程...
-	this->StopAndWaitForThread();
-
-	blog(LOG_INFO, "== [~CRtspThread Thread] - Exit End ==");
 }
 
-BOOL CRtspThread::InitRtsp(CPushThread * lpPushThread, BOOL bUsingTCP, string & strRtspUrl)
+// 注意：这里使用接口直接调用，否则，可能会由于异步而造成数据帧丢失...
+void CDataThread::StartPushThread()
 {
-	// 保存传递的参数...
-	m_strRtspUrl = strRtspUrl;
-	m_lpPushThread = lpPushThread;
-
-	// 创建rtsp链接环境...
-	m_scheduler_ = BasicTaskScheduler::createNew();
-	m_env_ = BasicUsageEnvironment::createNew(*m_scheduler_);
-	m_rtspClient_ = ourRTSPClient::createNew(*m_env_, m_strRtspUrl.c_str(), 1, "rtspTransfer", bUsingTCP, this);
-	
-	// 2017.07.21 - by jackey => 有些服务器必须先发OPTIONS...
-	// 发起第一次rtsp握手 => 先发起 OPTIONS 命令...
-	m_rtspClient_->sendOptionsCommand(continueAfterOPTIONS); 
-
-	//启动rtsp检测线程...
-	this->Start();
-	
-	return true;
+	m_lpViewCamera->doStartPushThread();
 }
 
-void CRtspThread::Entry()
+// 注意：这里使用接口直接调用，否则，无法传递参数...
+void CDataThread::PushFrame(FMS_FRAME & inFrame)
 {
-	// 进行任务循环检测，修改 g_rtspEventLoopWatchVariable 可以让任务退出...
-	ASSERT( m_env_ != NULL && m_rtspClient_ != NULL );
-	m_env_->taskScheduler().doEventLoop(&m_rtspEventLoopWatchVariable);
-
-	// 设置数据结束标志...
-	m_bFinished = true;
-
-	// 2017.06.12 - by jackey => 这里是拉流模式，不能调用 doErrNotify，需要整个断开的方式...
-	// 在超时机制中会首先检测m_bFinished标志，速度快...
-	// 这里只需要设置标志，超时机制会自动删除...
-	//if( m_lpPushThread != NULL ) {
-	//	m_lpPushThread->doErrNotify();
-	//}
-
-	// 任务退出之后，再释放rtsp相关资源...
-	// 只能在这里调用 shutdownStream() 其它地方不要调用...
-	if( m_rtspClient_ != NULL ) {
-		m_rtspClient_->shutdownStream();
-		m_rtspClient_ = NULL;
-	}
-
-	// 释放任务对象...
-	if( m_scheduler_ != NULL ) {
-		delete m_scheduler_;
-		m_scheduler_ = NULL;
-	}
-
-	// 释放环境变量...
-	if( m_env_ != NULL ) {
-		m_env_->reclaim();
-		m_env_ = NULL;
-	}
+	m_lpViewCamera->doPushFrame(inFrame);
 }
 
-void CRtspThread::StartPushThread()
-{
-	// 通知宿主，rtsp已经准备就绪...
-	if (m_lpPushThread == NULL)
-		return;
-	ASSERT(m_lpPushThread != NULL);
-	m_lpPushThread->onRtspReady();
-
-	// 启动UDP推流线程...
-	//m_lpPushThread->StartUDPSendThread();
-	// 设置流的播放状态...
-	//m_lpPushThread->SetStreamPlaying(true);
-
-	/*// 如果是流转发模式，只设置流播放状态...
-	if( !m_lpPushThread->IsCameraDevice() ) {
-		m_lpPushThread->SetStreamPlaying(true);
-		return;
-	}
-	// 至少有一个音频或视频已经准备好了...
-	ASSERT( m_lpPushThread->IsCameraDevice() );
-	ASSERT( m_strAACHeader.size() > 0 || m_strAVCHeader.size() > 0 );
-	// 直接启动rtmp推送线程，开始启动rtmp推送过程...
-	m_lpPushThread->Start();*/
-}
-
-void CRtspThread::PushFrame(FMS_FRAME & inFrame)
-{
-	// 将数据帧加入待发送队列当中...
-	ASSERT(m_lpPushThread != NULL);
-	m_lpPushThread->PushFrame(inFrame);
-}
-
-void CRtspThread::WriteAACSequenceHeader(int inAudioRate, int inAudioChannel)
-{
-	// 首先解析并存储传递过来的参数...
-	if (inAudioRate == 48000)
-		m_audio_rate_index = 0x03;
-	else if (inAudioRate == 44100)
-		m_audio_rate_index = 0x04;
-	else if (inAudioRate == 32000)
-		m_audio_rate_index = 0x05;
-	else if (inAudioRate == 24000)
-		m_audio_rate_index = 0x06;
-	else if (inAudioRate == 22050)
-		m_audio_rate_index = 0x07;
-	else if (inAudioRate == 16000)
-		m_audio_rate_index = 0x08;
-	else if (inAudioRate == 12000)
-		m_audio_rate_index = 0x09;
-	else if (inAudioRate == 11025)
-		m_audio_rate_index = 0x0a;
-	else if (inAudioRate == 8000)
-		m_audio_rate_index = 0x0b;
-
-	m_audio_channel_num = inAudioChannel;
-
-	char   aac_seq_buf[4096] = {0};
-    char * pbuf = aac_seq_buf;
-
-    unsigned char flag = 0;
-    flag = (10 << 4) |  // soundformat "10 == AAC"
-        (3 << 2) |      // soundrate   "3  == 44-kHZ"
-        (1 << 1) |      // soundsize   "1  == 16bit"
-        1;              // soundtype   "1  == Stereo"
-
-    pbuf = UI08ToBytes(pbuf, flag);
-    pbuf = UI08ToBytes(pbuf, 0);    // aac packet type (0, header)
-
-    // AudioSpecificConfig
-
-	PutBitContext pb;
-	init_put_bits(&pb, pbuf, 1024);
-	put_bits(&pb, 5, 2);					//object type - AAC-LC
-	put_bits(&pb, 4, m_audio_rate_index);	// sample rate index
-	put_bits(&pb, 4, m_audio_channel_num);  // channel configuration
-
-	//GASpecificConfig
-	put_bits(&pb, 1, 0);    // frame length - 1024 samples
-	put_bits(&pb, 1, 0);    // does not depend on core coder
-	put_bits(&pb, 1, 0);    // is not extension
-
-	flush_put_bits(&pb);
-	pbuf += 2;
-
-	// 保存AAC数据头信息...
-	int aac_len = (int)(pbuf - aac_seq_buf);
-	m_strAACHeader.assign(aac_seq_buf, aac_len);
-}
-
-void CRtspThread::WriteAVCSequenceHeader(string & inSPS, string & inPPS)
+void CDataThread::WriteAVCSequenceHeader(string & inSPS, string & inPPS)
 {
 	// 获取 width 和 height...
 	int nPicFPS = 0;
@@ -251,4 +104,145 @@ void CRtspThread::WriteAVCSequenceHeader(string & inSPS, string & inPPS)
 	// 保存AVC数据头信息...
 	int avc_len = (int)(pbuf - avc_seq_buf);
 	m_strAVCHeader.assign(avc_seq_buf, avc_len);
+}
+
+void CDataThread::WriteAACSequenceHeader(int inAudioRate, int inAudioChannel)
+{
+	// 首先解析并存储传递过来的参数...
+	if (inAudioRate == 48000)
+		m_audio_rate_index = 0x03;
+	else if (inAudioRate == 44100)
+		m_audio_rate_index = 0x04;
+	else if (inAudioRate == 32000)
+		m_audio_rate_index = 0x05;
+	else if (inAudioRate == 24000)
+		m_audio_rate_index = 0x06;
+	else if (inAudioRate == 22050)
+		m_audio_rate_index = 0x07;
+	else if (inAudioRate == 16000)
+		m_audio_rate_index = 0x08;
+	else if (inAudioRate == 12000)
+		m_audio_rate_index = 0x09;
+	else if (inAudioRate == 11025)
+		m_audio_rate_index = 0x0a;
+	else if (inAudioRate == 8000)
+		m_audio_rate_index = 0x0b;
+
+	m_audio_channel_num = inAudioChannel;
+
+	char   aac_seq_buf[4096] = {0};
+    char * pbuf = aac_seq_buf;
+
+    unsigned char flag = 0;
+    flag = (10 << 4) |  // soundformat "10 == AAC"
+        (3 << 2) |      // soundrate   "3  == 44-kHZ"
+        (1 << 1) |      // soundsize   "1  == 16bit"
+        1;              // soundtype   "1  == Stereo"
+
+    pbuf = UI08ToBytes(pbuf, flag);
+    pbuf = UI08ToBytes(pbuf, 0);    // aac packet type (0, header)
+
+    // AudioSpecificConfig
+
+	PutBitContext pb;
+	init_put_bits(&pb, pbuf, 1024);
+	put_bits(&pb, 5, 2);					//object type - AAC-LC
+	put_bits(&pb, 4, m_audio_rate_index);	// sample rate index
+	put_bits(&pb, 4, m_audio_channel_num);  // channel configuration
+
+	//GASpecificConfig
+	put_bits(&pb, 1, 0);    // frame length - 1024 samples
+	put_bits(&pb, 1, 0);    // does not depend on core coder
+	put_bits(&pb, 1, 0);    // is not extension
+
+	flush_put_bits(&pb);
+	pbuf += 2;
+
+	// 保存AAC数据头信息...
+	int aac_len = (int)(pbuf - aac_seq_buf);
+	m_strAACHeader.assign(aac_seq_buf, aac_len);
+}
+
+CRtspThread::CRtspThread(CViewCamera * lpViewCamera)
+  : CDataThread(lpViewCamera)
+{
+	m_env_ = NULL;
+	m_scheduler_ = NULL;
+	m_rtspClient_ = NULL;
+	m_rtspEventLoopWatchVariable = 0;
+}
+
+CRtspThread::~CRtspThread()
+{
+	// 设置rtsp循环退出标志...
+	m_rtspEventLoopWatchVariable = 1;
+
+	blog(LOG_INFO, "== [~CRtspThread Thread] - Exit Start ==");
+
+	// 停止线程...
+	this->StopAndWaitForThread();
+
+	blog(LOG_INFO, "== [~CRtspThread Thread] - Exit End ==");
+}
+
+bool CRtspThread::InitThread()
+{
+	if (m_lpViewCamera == NULL)
+		return false;
+	// 获取相关通道的配置...
+	GM_MapData theMapData;
+	int nDBCameraID = m_lpViewCamera->GetDBCameraID();
+	App()->GetCamera(nDBCameraID, theMapData);
+	// 获取需要的流转发参数信息...
+	string & strUsingTCP = theMapData["use_tcp"];
+	string & strStreamMP4 = theMapData["stream_mp4"];
+	string & strStreamUrl = theMapData["stream_url"];
+	string & strStreamProp = theMapData["stream_prop"];
+	int  nStreamProp = atoi(strStreamProp.c_str());
+	bool bFileMode = ((nStreamProp == kStreamUrlLink) ? false : true);
+	bool bUsingTCP = ((strUsingTCP.size() > 0) ? atoi(strUsingTCP.c_str()) : false);
+	// 目前暂时只能处理rtsp数据流格式...
+	if (bFileMode || strnicmp("rtsp://", strStreamUrl.c_str(), strlen("rtsp://")) != 0)
+		return false;
+	// 保存后续需要的参数内容...
+	m_strRtspUrl = strStreamUrl;
+	// 创建rtsp链接环境...
+	m_scheduler_ = BasicTaskScheduler::createNew();
+	m_env_ = BasicUsageEnvironment::createNew(*m_scheduler_);
+	m_rtspClient_ = ourRTSPClient::createNew(*m_env_, m_strRtspUrl.c_str(), 1, "rtspTransfer", bUsingTCP, this);
+	// 2017.07.21 - by jackey => 有些服务器必须先发OPTIONS...
+	// 发起第一次rtsp握手 => 先发起 OPTIONS 命令...
+	m_rtspClient_->sendOptionsCommand(continueAfterOPTIONS);
+	//启动rtsp检测线程...
+	this->Start();
+	return true;
+}
+
+void CRtspThread::Entry()
+{
+	// 进行任务循环检测，修改 g_rtspEventLoopWatchVariable 可以让任务退出...
+	ASSERT(m_env_ != NULL && m_rtspClient_ != NULL);
+	m_env_->taskScheduler().doEventLoop(&m_rtspEventLoopWatchVariable);
+
+	// 设置数据结束标志...
+	m_bFinished = true;
+
+	// 任务退出之后，再释放rtsp相关资源...
+	// 只能在这里调用 shutdownStream() 其它地方不要调用...
+	if (m_rtspClient_ != NULL) {
+		m_rtspClient_->shutdownStream();
+		m_rtspClient_ = NULL;
+	}
+
+	// 释放任务对象...
+	if (m_scheduler_ != NULL) {
+		delete m_scheduler_;
+		m_scheduler_ = NULL;
+	}
+
+	// 释放环境变量...
+	if (m_env_ != NULL) {
+		m_env_->reclaim();
+		m_env_ = NULL;
+	}
 }

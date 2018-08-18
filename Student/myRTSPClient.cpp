@@ -61,14 +61,14 @@ StreamClientState::~StreamClientState()
 }
 
 ourRTSPClient* ourRTSPClient::createNew(UsageEnvironment& env, char const* rtspURL,	int verbosityLevel,
-							char const* applicationName, BOOL bStreamUsingTCP, CRtspThread * lpRtspThread)
+							char const* applicationName, BOOL bStreamUsingTCP, CDataThread * lpDataThread)
 {
-	return new ourRTSPClient(env, rtspURL, verbosityLevel, applicationName, bStreamUsingTCP, lpRtspThread);
+	return new ourRTSPClient(env, rtspURL, verbosityLevel, applicationName, bStreamUsingTCP, lpDataThread);
 }
 
-ourRTSPClient::ourRTSPClient(UsageEnvironment& env, char const* rtspURL, int verbosityLevel, char const* applicationName, BOOL bStreamUsingTCP, CRtspThread * lpRtspThread)
+ourRTSPClient::ourRTSPClient(UsageEnvironment& env, char const* rtspURL, int verbosityLevel, char const* applicationName, BOOL bStreamUsingTCP, CDataThread * lpDataThread)
   : RTSPClient(env, rtspURL, verbosityLevel, applicationName, 0, -1)
-  , m_lpRtspThread(lpRtspThread)
+  , m_lpDataThread(lpDataThread)
   , m_bUsingTCP(bStreamUsingTCP)
   , m_bHasVideo(false)
   , m_bHasAudio(false)
@@ -94,8 +94,8 @@ void ourRTSPClient::myAfterOPTIONS(int resultCode, char* resultString)
 	}while( 0 );
 
 	// 发生错误，让任务循环退出，然后自动停止会话...
-	if( m_lpRtspThread != NULL ) {
-		m_lpRtspThread->ResetEventLoop();
+	if( m_lpDataThread != NULL ) {
+		m_lpDataThread->ResetEventLoop();
 	}
 	/*// 发生错误，停止录像线程...
 	if( m_lpRecThread != NULL ) {
@@ -141,8 +141,8 @@ void ourRTSPClient::myAfterDESCRIBE(int resultCode, char* resultString)
 	} while (0);
 	
 	// 发生错误，让任务循环退出，然后自动停止会话...
-	if( m_lpRtspThread != NULL ) {
-		m_lpRtspThread->ResetEventLoop();
+	if( m_lpDataThread != NULL ) {
+		m_lpDataThread->ResetEventLoop();
 	}
 	/*// 发生错误，停止录像线程...
 	if( m_lpRecThread != NULL ) {
@@ -204,8 +204,8 @@ void ourRTSPClient::myAfterSETUP(int resultCode, char* resultString)
 			// 因此：还是在这里处理启动流程，后期如果再遇到问题，可以在数据区获取到新的PPS、SPS后再次发起WriteAVC，并直接发送给服务器试试....
 			/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			// 通知rtsp线程，格式头已经准备好了...
-			if( m_lpRtspThread != NULL ) {
-				m_lpRtspThread->WriteAVCSequenceHeader(strSPS, strPPS);
+			if( m_lpDataThread != NULL ) {
+				m_lpDataThread->WriteAVCSequenceHeader(strSPS, strPPS);
 			}
 			/*// 通知录像线程，格式头已经准备好了...
 			if( m_lpRecThread != NULL ) {
@@ -230,8 +230,8 @@ void ourRTSPClient::myAfterSETUP(int resultCode, char* resultString)
 				goto _audio_ok;
 			}
 			// 通知rtsp线程，格式头已经准备好了...
-			if( m_lpRtspThread != NULL ) {
-				m_lpRtspThread->WriteAACSequenceHeader(audio_rate, audio_channels);
+			if( m_lpDataThread != NULL ) {
+				m_lpDataThread->WriteAACSequenceHeader(audio_rate, audio_channels);
 			}
 			/*// 通知录像线程，格式头已经准备好了...
 			if( m_lpRecThread != NULL ) {
@@ -255,7 +255,7 @@ _audio_ok:
 
 		// 创建新的帧数据处理对象...		
 		// perhaps use your own custom "MediaSink" subclass instead
-		ASSERT( m_lpRtspThread != NULL );
+		ASSERT( m_lpDataThread != NULL );
 		scs.m_subsession->sink = DummySink::createNew(env, *scs.m_subsession, this->url(), this);
 
 		// 创建失败，打印错误信息...
@@ -281,8 +281,8 @@ _audio_ok:
 	} while (0);
 
 	// 发生错误，让任务循环退出，然后自动停止会话...
-	if( m_lpRtspThread != NULL ) {
-		m_lpRtspThread->ResetEventLoop();
+	if( m_lpDataThread != NULL ) {
+		m_lpDataThread->ResetEventLoop();
 	}
 	/*// 发生错误，停止录像线程...
 	if( m_lpRecThread != NULL ) {
@@ -301,8 +301,8 @@ void ourRTSPClient::WriteSample(bool bIsVideo, string & inFrame, DWORD inTimeSta
 	theFrame.is_keyframe = bIsKeyFrame;
 	theFrame.strData = inFrame;
 	// 推送给rtsp线程，新的数据帧到达...
-	if( m_lpRtspThread != NULL ) {
-		m_lpRtspThread->PushFrame(theFrame);
+	if( m_lpDataThread != NULL ) {
+		m_lpDataThread->PushFrame(theFrame);
 	}
 	/*// 通知录像线程，保存一帧数据包...
 	if( m_lpRecThread != NULL ) {
@@ -337,8 +337,8 @@ void ourRTSPClient::myAfterPLAY(int resultCode, char* resultString)
 		// 一切正常，打印信息，直接返回...
 		blog(LOG_INFO, "Started playing session.(for up to %.2f)", scs.m_duration);
 		// 正式启动rtmp推送线程...
-		if( m_lpRtspThread != NULL ) {
-			m_lpRtspThread->StartPushThread();
+		if( m_lpDataThread != NULL ) {
+			m_lpDataThread->StartPushThread();
 		}
 		/*// 正式启动录像过程...
 		if( m_lpRecThread != NULL ) {
@@ -349,8 +349,8 @@ void ourRTSPClient::myAfterPLAY(int resultCode, char* resultString)
 	} while (0);
 
 	// 发生错误，让任务循环退出，然后自动停止会话...
-	if( m_lpRtspThread != NULL ) {
-		m_lpRtspThread->ResetEventLoop();
+	if( m_lpDataThread != NULL ) {
+		m_lpDataThread->ResetEventLoop();
 	}
 	/*// 发生错误，停止录像线程...
 	if( m_lpRecThread != NULL ) {
@@ -457,8 +457,8 @@ void subsessionAfterPlaying(void* clientData)
 	}
 	
 	// 让任务循环退出，然后自动停止会话...
-	if( rtspClient->m_lpRtspThread != NULL ) {
-		rtspClient->m_lpRtspThread->ResetEventLoop();
+	if( rtspClient->m_lpDataThread != NULL ) {
+		rtspClient->m_lpDataThread->ResetEventLoop();
 	}
 	/*// 让录像线程退出...
 	if( rtspClient->m_lpRecThread != NULL ) {
@@ -486,8 +486,8 @@ void streamTimerHandler(void* clientData)
 	scs.m_streamTimerTask = NULL;
 	
 	// 让任务循环退出，然后自动停止会话...
-	if( rtspClient->m_lpRtspThread != NULL ) {
-		rtspClient->m_lpRtspThread->ResetEventLoop();
+	if( rtspClient->m_lpDataThread != NULL ) {
+		rtspClient->m_lpDataThread->ResetEventLoop();
 	}
 	/*// 让录像线程退出...
 	if( rtspClient->m_lpRecThread != NULL ) {

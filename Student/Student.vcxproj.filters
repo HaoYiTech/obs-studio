@@ -120,9 +120,6 @@
     <ClCompile Include="ReadSPS.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="push-thread.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="window-dlg-push.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -180,9 +177,6 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="window-view-teacher.hpp">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="push-thread.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="window-dlg-push.hpp">
