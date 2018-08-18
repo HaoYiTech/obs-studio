@@ -41,7 +41,7 @@ MPEG4GenericRTPSink
     size_t const len = strlen(mpeg4Mode) + 1;
     char* m = new char[len];
 
-    Locale l("POSIX");
+    //Locale l("POSIX"); // 2018.08.18 will be blocked
     for (size_t i = 0; i < len; ++i) m[i] = tolower(mpeg4Mode[i]); 
 
     if (strcmp(m, "aac-hbr") != 0) {

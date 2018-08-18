@@ -1023,25 +1023,25 @@ Boolean MediaSubsession::parseSDPAttribute_rtpmap(char const* sdpLine) {
   unsigned rtpTimestampFrequency = 0;
   unsigned numChannels = 1;
   if (sscanf(sdpLine, "a=rtpmap: %u %[^/]/%u/%u",
-	     &rtpmapPayloadFormat, codecName, &rtpTimestampFrequency,
-	     &numChannels) == 4
-      || sscanf(sdpLine, "a=rtpmap: %u %[^/]/%u",
-	     &rtpmapPayloadFormat, codecName, &rtpTimestampFrequency) == 3
-      || sscanf(sdpLine, "a=rtpmap: %u %s",
-		&rtpmapPayloadFormat, codecName) == 2) {
-    parseSuccess = True;
-    if (rtpmapPayloadFormat == fRTPPayloadFormat) {
-      // This "rtpmap" matches our payload format, so set our
-      // codec name and timestamp frequency:
-      // (First, make sure the codec name is upper case)
-      {
-	Locale l("POSIX");
-	for (char* p = codecName; *p != '\0'; ++p) *p = toupper(*p);
-      }
-      delete[] fCodecName; fCodecName = strDup(codecName);
-      fRTPTimestampFrequency = rtpTimestampFrequency;
-      fNumChannels = numChannels;
-    }
+	  &rtpmapPayloadFormat, codecName, &rtpTimestampFrequency,
+	  &numChannels) == 4
+	  || sscanf(sdpLine, "a=rtpmap: %u %[^/]/%u",
+		  &rtpmapPayloadFormat, codecName, &rtpTimestampFrequency) == 3
+	  || sscanf(sdpLine, "a=rtpmap: %u %s",
+		  &rtpmapPayloadFormat, codecName) == 2) {
+	  parseSuccess = True;
+	  if (rtpmapPayloadFormat == fRTPPayloadFormat) {
+		  // This "rtpmap" matches our payload format, so set our
+		  // codec name and timestamp frequency:
+		  // (First, make sure the codec name is upper case)
+		  {
+			  //Locale l("POSIX"); // 2018.08.18 will be blocked
+			  for (char* p = codecName; *p != '\0'; ++p) *p = toupper(*p);
+		  }
+		  delete[] fCodecName; fCodecName = strDup(codecName);
+		  fRTPTimestampFrequency = rtpTimestampFrequency;
+		  fNumChannels = numChannels;
+	  }
   }
   delete[] codecName;
 
@@ -1115,29 +1115,30 @@ Boolean MediaSubsession::parseSDPAttribute_fmtp(char const* sdpLine) {
     char* nameStr = new char[sdpLineLen+1];
     char* valueStr = new char[sdpLineLen+1];
 
-    while (*sdpLine != '\0' && *sdpLine != '\r' && *sdpLine != '\n') {
-      int sscanfResult = sscanf(sdpLine, " %[^=; \t\r\n] = %[^; \t\r\n]", nameStr, valueStr);
-      if (sscanfResult >= 1) {
-	// <name> or <name>=<value>
-	// Convert <name> to lower-case, to ease comparison:
-	Locale l("POSIX");
-	for (char* c = nameStr; *c != '\0'; ++c) *c = tolower(*c);
-	
-	if (sscanfResult == 1) {
-	  // <name>
-	  setAttribute(nameStr);
-	} else {
-	  // <name>=<value>
-	  setAttribute(nameStr, valueStr);
-	}
-      }
+	while (*sdpLine != '\0' && *sdpLine != '\r' && *sdpLine != '\n') {
+		int sscanfResult = sscanf(sdpLine, " %[^=; \t\r\n] = %[^; \t\r\n]", nameStr, valueStr);
+		if (sscanfResult >= 1) {
+			// <name> or <name>=<value>
+			// Convert <name> to lower-case, to ease comparison:
+			//Locale l("POSIX"); // 2018.08.18 will be blocked
+			for (char* c = nameStr; *c != '\0'; ++c) *c = tolower(*c);
 
-      // Move to the next parameter assignment string:
-      while (*sdpLine != '\0' && *sdpLine != '\r' && *sdpLine != '\n' && *sdpLine != ';') ++sdpLine;
-      while (*sdpLine == ';') ++sdpLine;
-    }
-    delete[] nameStr; delete[] valueStr;
-    return True;
+			if (sscanfResult == 1) {
+				// <name>
+				setAttribute(nameStr);
+			}
+			else {
+				// <name>=<value>
+				setAttribute(nameStr, valueStr);
+			}
+		}
+
+		// Move to the next parameter assignment string:
+		while (*sdpLine != '\0' && *sdpLine != '\r' && *sdpLine != '\n' && *sdpLine != ';') ++sdpLine;
+		while (*sdpLine == ';') ++sdpLine;
+	}
+	delete[] nameStr; delete[] valueStr;
+	return True;
   } while (0);
 
   return False;
@@ -1430,7 +1431,7 @@ SDPAttribute::SDPAttribute(char const* strValue, Boolean valueIsHexadecimal)
     fIntValue = 1;
   } else {
     // Create a 'tolower' version of "fStrValue", in case it's needed:
-    Locale l("POSIX");
+	//Locale l("POSIX"); // 2018.08.18 will be blocked
     size_t strSize;
 
     fStrValueToLower = strDupSize(fStrValue, strSize);
