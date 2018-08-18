@@ -1,7 +1,8 @@
 
 #include "speex-aec.h"
 #include "BitWritter.h"
-#include "push-thread.h"
+
+#include "window-view-camera.hpp"
 
 extern "C"
 {
@@ -13,8 +14,8 @@ extern "C"
 #include "libavutil/opt.h"
 };
 
-CSpeexAEC::CSpeexAEC(CPushThread * lpPushThread)
-  : m_lpPushThread(lpPushThread)
+CSpeexAEC::CSpeexAEC(CViewCamera * lpViewCamera)
+  : m_lpViewCamera(lpViewCamera)
   , m_lpADecoder(nullptr)
   , m_lpACodec(nullptr)
   , m_lpDFrame(nullptr)
@@ -121,6 +122,10 @@ void CSpeexAEC::doSaveAudioPCM(uint8_t * lpBufData, int nBufSize, int nAudioRate
 
 BOOL CSpeexAEC::PushFrame(FMS_FRAME & inFrame)
 {
+	// 如果解码对象为空，直接返回失败...
+	if (m_lpADecoder == NULL || m_lpACodec == NULL)
+		return false;
+	// 加上ADTS数据包头...
 	string & inData = inFrame.strData;
 	uint32_t inPTS = inFrame.dwSendTime;
 	uint32_t inOffset = inFrame.dwRenderOffset;
@@ -177,7 +182,7 @@ BOOL CSpeexAEC::PushFrame(FMS_FRAME & inFrame)
 		nResult = swr_convert(m_au_convert_ctx, &m_out_buffer_ptr, m_out_buffer_size, (const uint8_t **)m_lpDFrame->data, m_lpDFrame->nb_samples);
 		// 格式转换成功，将数据存入PCM文件当中 => 必须用二进制方式打开文件...
 		if (nResult > 0) {
-			this->doSaveAudioPCM(m_out_buffer_ptr, m_out_buffer_size, m_audio_sample_rate, m_audio_channel_num, m_lpPushThread->GetDBCameraID());
+			this->doSaveAudioPCM(m_out_buffer_ptr, m_out_buffer_size, m_audio_sample_rate, m_audio_channel_num, m_lpViewCamera->GetDBCameraID());
 		}
 	} while (false);
 	// 释放AVPacket数据包...

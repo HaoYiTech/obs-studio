@@ -7,11 +7,11 @@ struct AVCodec;
 struct SwrContext;
 struct AVCodecContext;
 
-class CPushThread;
+class CViewCamera;
 class CSpeexAEC
 {
 public:
-	CSpeexAEC(CPushThread * lpPushThread);
+	CSpeexAEC(CViewCamera * lpViewCamera);
 	~CSpeexAEC();
 public:
 	BOOL    InitSpeex(int nRateIndex, int nChannelNum);
@@ -22,7 +22,7 @@ private:
 	int                 m_audio_rate_index;
 	int                 m_audio_channel_num;
 	int                 m_audio_sample_rate;
-	CPushThread     *   m_lpPushThread;     // 推流管理器...
+	CViewCamera     *   m_lpViewCamera;     // 通道对象...
 	AVCodec         *   m_lpACodec;			// 解码器...
 	AVFrame         *   m_lpDFrame;			// 解码结构体...
 	AVCodecContext  *   m_lpADecoder;		// 解码器描述...

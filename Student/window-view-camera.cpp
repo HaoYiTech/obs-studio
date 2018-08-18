@@ -1,5 +1,6 @@
 
 #include <QPainter>
+#include "speex-aec.h"
 #include "student-app.h"
 #include "pull-thread.h"
 #include "web-thread.h"
@@ -28,6 +29,7 @@ CViewCamera::CViewCamera(QWidget *parent, int nDBCameraID)
   , m_lpDataThread(NULL)
   , m_bIsPreview(false)
   , m_lpViewLeft(NULL)
+  , m_lpSpeexAEC(NULL)
   , m_nCurRecvByte(0)
   , m_dwTimeOutMS(0)
   , m_nFlowTimer(-1)
@@ -54,6 +56,11 @@ CViewCamera::~CViewCamera()
 	if (m_nFlowTimer >= 0) {
 		killTimer(m_nFlowTimer);
 		m_nFlowTimer = -1;
+	}
+	// 删除音频回音消除对象 => 数据使用者...
+	if (m_lpSpeexAEC != NULL) {
+		delete m_lpSpeexAEC;
+		m_lpSpeexAEC = NULL;
 	}
 	// 删除UDP推流线程 => 数据使用者...
 	if (m_lpUDPSendThread != NULL) {
@@ -355,6 +362,21 @@ void CViewCamera::doStartPushThread()
 	if (lpWebThread != NULL) {
 		lpWebThread->doWebStatCamera(m_nDBCameraID, kCameraOnLine);
 	}
+	// 重建并初始化音频回音消除对象...
+	if (m_lpSpeexAEC != NULL) {
+		delete m_lpSpeexAEC;
+		m_lpSpeexAEC = NULL;
+	}
+	// 获取音频相关的格式头信息...
+	int nRateIndex = m_lpDataThread->GetAudioRateIndex();
+	int nChannelNum = m_lpDataThread->GetAudioChannelNum();
+	// 创建并初始化回音消除对象...
+	m_lpSpeexAEC = new CSpeexAEC(this);
+	// 初始化失败，删除回音消除对象...
+	if (!m_lpSpeexAEC->InitSpeex(nRateIndex, nChannelNum)) {
+		delete m_lpSpeexAEC; m_lpSpeexAEC = NULL;
+		blog(LOG_INFO, "CSpeexAEC::InitSpeex() => Error");
+	}
 	// 设置通道状态为已连接在线状态...
 	m_nCameraState = kCameraOnLine;
 }
@@ -371,6 +393,10 @@ void CViewCamera::doPushFrame(FMS_FRAME & inFrame)
 	// 如果UDP推流线程有效，并且，推流线程没有发生严重拥塞，继续传递数据...
 	if (m_lpUDPSendThread != NULL && !m_lpUDPSendThread->IsNeedDelete()) {
 		m_lpUDPSendThread->PushFrame(inFrame);
+	}
+	// 如果是音频数据帧，需要进行回音消除...
+	if (m_lpSpeexAEC != NULL && inFrame.typeFlvTag == PT_TAG_AUDIO) {
+		m_lpSpeexAEC->PushFrame(inFrame);
 	}
 }
 
@@ -419,6 +445,11 @@ bool CViewCamera::doCameraStop()
 		if (lpWebThread != NULL) {
 			lpWebThread->doWebStatCamera(m_nDBCameraID, kCameraOffLine);
 		}
+	}
+	// 删除音频回音消除对象 => 数据使用者...
+	if (m_lpSpeexAEC != NULL) {
+		delete m_lpSpeexAEC;
+		m_lpSpeexAEC = NULL;
 	}
 	// 删除UDP推流线程 => 数据使用者...
 	if (m_lpUDPSendThread != NULL) {
