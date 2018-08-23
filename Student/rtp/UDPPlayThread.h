@@ -82,25 +82,30 @@ public:
 public:
 	BOOL	InitAudio(int nRateIndex, int nChannelNum);
 	void	doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, int inOffset);
-	int     GetCircleSize() { return (m_circle.size/(sizeof(int64_t)+m_out_buffer_size)); }
+	int     GetCircleSize() { return m_frame_num; }
 private:
+	void	doConvertAudio(int64_t in_pts_ms, AVFrame * lpDFrame);
 	void	doDecodeFrame();
 	void	doDisplaySDL();
 private:
-	int					m_audio_rate_index;
-	int					m_audio_channel_num;
-	int				    m_audio_sample_rate;
-	int					m_nSampleDuration;
+	int					m_in_rate_index;       // 输入采样索引
+	int					m_in_channel_num;      // 输入声道数
+	int				    m_in_sample_rate;      // 输入采样率
+	int                 m_out_channel_num;     // 输出声道数
+	int                 m_out_sample_rate;     // 输出采样率
+	int                 m_out_frame_bytes;     // 输出每帧占用字节数
+	int					m_out_frame_duration;  // 输出每帧持续时间(ms)
 
-	SwrContext   *		m_au_convert_ctx;	// 音频格式转换
-	uint8_t		 *		m_out_buffer_ptr;	// 单帧输出空间
-	int					m_out_buffer_size;	// 单帧输出大小
+	SwrContext   *		m_out_convert_ctx;	   // 音频格式转换
+	uint8_t		 *		m_max_buffer_ptr;	   // 单帧最大输出空间
+	int					m_max_buffer_size;	   // 单帧最大输出大小
 
-	circlebuf			m_circle;			// PCM数据环形队列
-	SDL_AudioDeviceID	m_nDeviceID;		// 音频设备编号
+	int                 m_frame_num;           // PCM数据帧总数
+	circlebuf			m_circle;			   // PCM数据环形队列
+	SDL_AudioDeviceID	m_nDeviceID;		   // 音频设备编号
 
-	OSMutex				m_Mutex;			// 互斥对象
-	CPlaySDL	 *		m_lpPlaySDL;		// 播放控制
+	OSMutex				m_Mutex;			   // 互斥对象
+	CPlaySDL	 *		m_lpPlaySDL;		   // 播放控制
 };
 
 class CPlaySDL

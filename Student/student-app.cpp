@@ -642,6 +642,14 @@ CStudentApp::~CStudentApp()
 	CoUninitialize();
 }
 
+void CStudentApp::doEchoCancel(void * lpBufData, int nBufSize)
+{
+	if (m_studentWindow != NULL) {
+		CViewLeft * lpViewLeft = m_studentWindow->GetViewLeft();
+		((lpViewLeft != NULL) ? lpViewLeft->doEchoCancel(lpBufData, nBufSize) : NULL);
+	}
+}
+
 bool CStudentApp::InitMacIPAddr()
 {
 	// 2018.01.11 - 解决 ERROR_BUFFER_OVERFLOW 的问题...

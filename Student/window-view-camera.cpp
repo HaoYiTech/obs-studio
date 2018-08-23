@@ -396,8 +396,15 @@ void CViewCamera::doPushFrame(FMS_FRAME & inFrame)
 	}
 	// 如果是音频数据帧，需要进行回音消除...
 	if (m_lpSpeexAEC != NULL && inFrame.typeFlvTag == PT_TAG_AUDIO) {
-		m_lpSpeexAEC->PushFrame(inFrame);
+		m_lpSpeexAEC->PushMicFrame(inFrame);
 	}
+}
+
+void CViewCamera::doEchoCancel(void * lpBufData, int nBufSize)
+{
+	if (m_lpSpeexAEC == NULL)
+		return;
+	m_lpSpeexAEC->PushHornPCM(lpBufData, nBufSize);
 }
 
 bool CViewCamera::doCameraStart()

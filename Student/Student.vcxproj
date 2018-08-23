@@ -32,6 +32,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>E:\obs-studio\vsbuild\student\Debug\bin\32bit\</OutDir>
+    <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>E:\obs-studio\vsbuild\student\Release\bin\32bit\</OutDir>
@@ -68,7 +69,7 @@
       <OutputFile>$(OutDir)\$(ProjectName).exe</OutputFile>
       <AdditionalLibraryDirectories>libs;$(QTDIR)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;Ws2_32.lib;qtmaind.lib;libcurl_imp.lib;Qt5Cored.lib;Qt5Guid.lib;Qt5Widgetsd.lib;Qt5Networkd.lib;E:\obs-deps\win32\bin\avcodec.lib;E:\obs-deps\win32\bin\avutil.lib;E:\obs-deps\win32\bin\avformat.lib;E:\obs-deps\win32\bin\swscale.lib;E:\obs-deps\win32\bin\swresample.lib;E:\obs-studio\vsbuild\libobs\Debug\obs.lib;E:\obs-studio\vsbuild\librtsp\Debug\librtspD.lib;E:\obs-studio\vsbuild\deps\jansson\lib\Debug\jansson_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;Ws2_32.lib;qtmaind.lib;libcurl_imp.lib;Qt5Cored.lib;Qt5Guid.lib;Qt5Widgetsd.lib;Qt5Networkd.lib;E:\obs-deps\win32\bin\speexdsp.lib;E:\obs-deps\win32\bin\avcodec.lib;E:\obs-deps\win32\bin\avutil.lib;E:\obs-deps\win32\bin\avformat.lib;E:\obs-deps\win32\bin\swscale.lib;E:\obs-deps\win32\bin\swresample.lib;E:\obs-studio\vsbuild\libobs\Debug\obs.lib;E:\obs-studio\vsbuild\librtsp\Debug\librtspD.lib;E:\obs-studio\vsbuild\deps\jansson\lib\Debug\jansson_d.lib;E:\obs-studio\vsbuild\deps\w32-pthreads\Debug\w32-pthreads.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <QtMoc>
@@ -113,7 +114,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <OutputFile>$(OutDir)\$(ProjectName).exe</OutputFile>
       <AdditionalLibraryDirectories>libs;$(QTDIR)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>No</GenerateDebugInformation>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;Ws2_32.lib;qtmaind.lib;libcurl_imp.lib;Qt5Network.lib;Qt5Widgets.lib;Qt5Gui.lib;Qt5Core.lib;E:\obs-deps\win32\bin\avcodec.lib;E:\obs-deps\win32\bin\avutil.lib;E:\obs-deps\win32\bin\avformat.lib;E:\obs-deps\win32\bin\swscale.lib;E:\obs-deps\win32\bin\swresample.lib;E:\obs-studio\vsbuild\libobs\Release\obs.lib;E:\obs-studio\vsbuild\librtsp\Release\librtsp.lib;E:\obs-studio\vsbuild\deps\jansson\lib\Release\jansson.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;Ws2_32.lib;qtmaind.lib;libcurl_imp.lib;Qt5Network.lib;Qt5Widgets.lib;Qt5Gui.lib;Qt5Core.lib;E:\obs-deps\win32\bin\avcodec.lib;E:\obs-deps\win32\bin\avutil.lib;E:\obs-deps\win32\bin\avformat.lib;E:\obs-deps\win32\bin\swscale.lib;E:\obs-deps\win32\bin\swresample.lib;E:\obs-studio\vsbuild\libobs\Release\obs.lib;E:\obs-studio\vsbuild\librtsp\Release\librtsp.lib;E:\obs-studio\vsbuild\deps\jansson\lib\Release\jansson.lib;E:\obs-studio\vsbuild\deps\w32-pthreads\Release\w32-pthreads.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <QtMoc>

@@ -461,15 +461,20 @@ void CVideoThread::doDecodeFrame()
 
 CAudioThread::CAudioThread(CPlaySDL * lpPlaySDL)
 {
+	m_frame_num = 0;
 	m_nDeviceID = 0;
-	m_nSampleDuration = 0;
 	m_lpPlaySDL = lpPlaySDL;
-	m_audio_sample_rate = 0;
-	m_audio_rate_index = 0;
-	m_audio_channel_num = 0;
-	m_out_buffer_ptr = NULL;
-	m_au_convert_ctx = NULL;
-	m_out_buffer_size = 0;
+	m_in_rate_index = 0;
+	m_in_sample_rate = 0;
+	m_in_channel_num = 0;
+	m_max_buffer_size = 0;
+	m_max_buffer_ptr = NULL;
+	m_out_convert_ctx = NULL;
+	// 设置输出声道、输出采样率...
+	m_out_channel_num = 1;
+	m_out_sample_rate = 8000;
+	m_out_frame_bytes = 0;
+	m_out_frame_duration = 0;
 	// 初始化PCM数据环形队列...
 	circlebuf_init(&m_circle);
 	circlebuf_reserve(&m_circle, DEF_CIRCLE_SIZE/4);
@@ -479,15 +484,16 @@ CAudioThread::~CAudioThread()
 {
 	// 等待线程退出...
 	this->StopAndWaitForThread();
-	// 关闭缓冲区...
-	if( m_out_buffer_ptr != NULL ) {
-		av_free(m_out_buffer_ptr);
-		m_out_buffer_ptr = NULL;
+	// 关闭音频转换对象...
+	if (m_out_convert_ctx != NULL) {
+		swr_free(&m_out_convert_ctx);
+		m_out_convert_ctx = NULL;
 	}
-	// 关闭音频播放对象...
-	if( m_au_convert_ctx != NULL ) {
-		swr_free(&m_au_convert_ctx);
-		m_au_convert_ctx = NULL;
+	// 关闭单帧最大缓冲区...
+	if (m_max_buffer_ptr != NULL) {
+		av_free(m_max_buffer_ptr);
+		m_max_buffer_ptr = NULL;
+		m_max_buffer_size = 0;
 	}
 	// 关闭音频设备...
 	SDL_CloseAudio();
@@ -552,22 +558,60 @@ void CAudioThread::doDecodeFrame()
 	// 这样，一旦由于解码失败造成的数据中断，也不会造成音频播放的延迟问题...
 	////////////////////////////////////////////////////////////////////////////////////////////
 	int64_t frame_pts_ms = thePacket.pts;
-	// 对解码后的音频进行类型转换...
-	memset(m_out_buffer_ptr, 0, m_out_buffer_size);
-	nResult = swr_convert(m_au_convert_ctx, &m_out_buffer_ptr, m_out_buffer_size, (const uint8_t **)m_lpDFrame->data , m_lpDFrame->nb_samples);
-	// 转换后的数据存放到环形队列当中...
-	if( nResult > 0 ) {
-		circlebuf_push_back(&m_circle, &frame_pts_ms, sizeof(int64_t));
-		circlebuf_push_back(&m_circle, m_out_buffer_ptr, m_out_buffer_size);
-#ifdef DEBUG_AEC
-		DoSaveTeacherPCM(m_out_buffer_ptr, m_out_buffer_size, m_audio_sample_rate, m_audio_channel_num);
-#endif // DEBUG_AEC
-	}
+	// 对解码后的音频进行格式转换...
+	this->doConvertAudio(frame_pts_ms, m_lpDFrame);
 	// 这里是引用，必须先free再erase...
 	av_free_packet(&thePacket);
 	m_MapPacket.erase(itorItem);
 	// 修改休息状态 => 已经有播放，不能休息...
 	m_bNeedSleep = false;
+}
+
+void CAudioThread::doConvertAudio(int64_t in_pts_ms, AVFrame * lpDFrame)
+{
+	// 输入声道和输出声道 => 转换成单声道...
+	int in_audio_channel_num = m_in_channel_num;
+	int out_audio_channel_num = m_out_channel_num;
+	// 输入输出的音频格式...
+	AVSampleFormat in_sample_fmt = m_lpDecoder->sample_fmt; // => AV_SAMPLE_FMT_FLTP
+	AVSampleFormat out_sample_fmt = AV_SAMPLE_FMT_S16;
+	// 设置输入输出采样率 => 转换成8K采样率...
+	int in_sample_rate = m_in_sample_rate;
+	int out_sample_rate = m_out_sample_rate;
+	// 输入输出音频采样个数 => AAC-1024 | MP3-1152
+	// 注意：已经开始转换，swr_get_delay()将返回上次转换遗留的样本数，因此，要准备比正常样本大的空间...
+	int in_nb_samples = swr_get_delay(m_out_convert_ctx, in_sample_rate) + lpDFrame->nb_samples;
+	int out_nb_samples = av_rescale_rnd(in_nb_samples, out_sample_rate, in_sample_rate, AV_ROUND_UP);
+	// 获取音频解码后输出的缓冲区大小 => 分配新的空间，由于有上次转换遗留样本，需要的空间会有变化...
+	int out_buffer_size = av_samples_get_buffer_size(NULL, out_audio_channel_num, out_nb_samples, out_sample_fmt, 1);
+	// 如果新需要的空间大于了当前单帧最大空间，需要重建空间...
+	if (out_buffer_size > m_max_buffer_size) {
+		// 删除之前分配的单帧最大空间...
+		if (m_max_buffer_ptr != NULL) {
+			av_free(m_max_buffer_ptr);
+			m_max_buffer_ptr = NULL;
+		}
+		// 重新分配最新的单帧最大空间...
+		m_max_buffer_size = out_buffer_size;
+		m_max_buffer_ptr = (uint8_t *)av_malloc(out_buffer_size);
+	}
+	// 调用音频转换接口，转换音频数据 => 返回值很重要，它是实际获取的已转换的样本数 => 使用最大空间去接收转换后的数据内容...
+	int nResult = swr_convert(m_out_convert_ctx, &m_max_buffer_ptr, m_max_buffer_size, (const uint8_t **)lpDFrame->data, lpDFrame->nb_samples);
+	// 转换失败，直接返回 => 没有需要抽取的转换后数据内容...
+	if (nResult <= 0) return;
+	// 需要将转换后的样本数，转换成实际的缓存大小，这就能解释为啥，在SDL播放时，总是会出现数据无法播放完的问题，因为，给了太多数据...
+	int cur_data_size = av_samples_get_buffer_size(NULL, out_audio_channel_num, nResult, out_sample_fmt, 1);
+	// 将获取到缓存放入缓冲队列当中 => PTS|Size|Data => 从最大单帧空间中抽取本次转换的有效数据内容...
+	circlebuf_push_back(&m_circle, &in_pts_ms, sizeof(int64_t));
+	circlebuf_push_back(&m_circle, &cur_data_size, sizeof(int));
+	circlebuf_push_back(&m_circle, m_max_buffer_ptr, cur_data_size);
+	//blog(LOG_INFO, "[Audio] HornPCM => PTS: %I64d, Size: %d", in_pts_ms, cur_data_size);
+	// 累加环形队列中有效数据帧的个数...
+	++m_frame_num;
+#ifdef DEBUG_AEC
+	// 注意：格式统一成8K采样率，单声道...
+	DoSaveTeacherPCM(m_max_buffer_ptr, cur_data_size, m_out_sample_rate, m_out_channel_num);
+#endif // DEBUG_AEC
 }
 
 void CAudioThread::doDisplaySDL()
@@ -599,41 +643,43 @@ void CAudioThread::doDisplaySDL()
 	// 累加人为设定的延时毫秒数 => 相减...
 	sys_cur_ms -= m_lpPlaySDL->GetZeroDelayMS();
 	// 获取第一个已解码数据帧 => 时间最小的数据帧...
-	int64_t frame_pts_ms = 0;
+	int64_t frame_pts_ms = 0; int out_buffer_size = 0;
 	int nQueueBytes = SDL_GetQueuedAudioSize(m_nDeviceID);
-	int frame_per_size = sizeof(int64_t) + m_out_buffer_size;
 	circlebuf_peek_front(&m_circle, &frame_pts_ms, sizeof(int64_t));
 	// 不能超前投递数据，会造成硬件层数据堆积，造成缓存积压，引发缓存清理...
 	if( frame_pts_ms > sys_cur_ms ) {
 		m_play_next_ns = os_gettime_ns() + (frame_pts_ms - sys_cur_ms)*1000000;
-		//blog(LOG_INFO, "%s [Audio] Advance => PTS: %I64d ms, Delay: %I64d ms, AudioSize: %d, QueueBytes: %d", TM_RECV_NAME, frame_pts_ms + inStartPtsMS, frame_pts_ms - sys_cur_ms, m_circle.size/frame_per_size, nQueueBytes);
 		return;
 	}
-	// 当前帧长度从环形队列当中移除 => 后面就是音频数据帧...
+	// 当前帧时间戳从环形队列当中移除 => 后面是数据帧长度...
 	circlebuf_pop_front(&m_circle, NULL, sizeof(int64_t));
-	// 从环形队列当中，取出音频数据帧内容，固定长度...
-	memset(m_out_buffer_ptr, 0, m_out_buffer_size);
-	circlebuf_peek_front(&m_circle, m_out_buffer_ptr, m_out_buffer_size);
-	///////////////////////////////////////////////////////////////////////////////////////////
+	// 从环形队列当中，取出音频数据帧内容，动态长度...
+	circlebuf_pop_front(&m_circle, &out_buffer_size, sizeof(int));
+	// 当前数据帧长度一定小于或等于最大单帧输出空间...
+	ASSERT(m_max_buffer_size >= out_buffer_size);
+	// 从环形队列读取当前帧内容，因为是顺序执行，可以再次使用单帧最大输出空间...
+	circlebuf_peek_front(&m_circle, m_max_buffer_ptr, out_buffer_size);
+	////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 注意：必须对音频播放内部的缓存做定期伐值清理 => CPU过高时，DirectSound会堆积缓存...
-	// 投递数据前，先查看正在排队的音频数据 => 缓存超过500毫秒就清理...
-	///////////////////////////////////////////////////////////////////////////////////////////
-	int nAllowQueueSize = (int)(500.0f / m_nSampleDuration * m_out_buffer_size);
+	// 投递数据前，先查看正在排队的音频数据 => 缓存超过500毫秒就清理 => 计算出500毫秒包含的总帧数(总字节数)...
+	////////////////////////////////////////////////////////////////////////////////////////////////////////
+	int nAllowQueueSize = (int)(500.0f / m_out_frame_duration * m_out_frame_bytes);
 	// 清理之后，立即继续灌音频数据，避免数据进一步堆积...
 	if( nQueueBytes > nAllowQueueSize ) {
-		blog(LOG_INFO, "%s [Audio] Clear Audio Buffer, QueueBytes: %d, AVPacket: %d, AVFrame: %d", TM_RECV_NAME, nQueueBytes, m_MapPacket.size(), m_circle.size/frame_per_size);
+		blog(LOG_INFO, "%s [Audio] Clear Audio Buffer, QueueBytes: %d, AVPacket: %d, AVFrame: %d", TM_RECV_NAME, nQueueBytes, m_MapPacket.size(), m_frame_num);
 		SDL_ClearQueuedAudio(m_nDeviceID);
 	}
 	// 注意：失败也不要返回，继续执行，目的是移除缓存...
 	// 将音频解码后的数据帧投递给音频设备...
-	if( SDL_QueueAudio(m_nDeviceID, m_out_buffer_ptr, m_out_buffer_size) < 0 ) {
+	if( SDL_QueueAudio(m_nDeviceID, m_max_buffer_ptr, out_buffer_size) < 0 ) {
 		blog(LOG_INFO, "%s [Audio] Failed to queue audio: %s", TM_RECV_NAME, SDL_GetError());
 	}
-	// 打印已经投递的音频数据信息...
-	//nQueueBytes = SDL_GetQueuedAudioSize(m_nDeviceID);
-	//blog(LOG_INFO, "%s [Audio] Player => PTS: %I64d ms, Delay: %I64d ms, AVPackSize: %d, AudioSize: %d, QueueBytes: %d", TM_RECV_NAME, frame_pts_ms + inStartPtsMS, sys_cur_ms - frame_pts_ms, m_MapPacket.size(), m_circle.size/frame_per_size, nQueueBytes);
+	// 把解码后的音频数据投递给当前正在被拉取的通道进行回音消除...
+	App()->doEchoCancel(m_max_buffer_ptr, out_buffer_size);
 	// 删除已经使用的音频数据 => 从环形队列中移除...
-	circlebuf_pop_front(&m_circle, NULL, m_out_buffer_size);
+	circlebuf_pop_front(&m_circle, NULL, out_buffer_size);
+	// 减少环形队列中有效数据帧的个数...
+	--m_frame_num;
 	// 修改休息状态 => 已经有播放，不能休息...
 	m_bNeedSleep = false;
 }
@@ -648,20 +694,20 @@ BOOL CAudioThread::InitAudio(int nRateIndex, int nChannelNum)
 	// 根据索引获取采样率...
 	switch( nRateIndex )
 	{
-	case 0x03: m_audio_sample_rate = 48000; break;
-	case 0x04: m_audio_sample_rate = 44100; break;
-	case 0x05: m_audio_sample_rate = 32000; break;
-	case 0x06: m_audio_sample_rate = 24000; break;
-	case 0x07: m_audio_sample_rate = 22050; break;
-	case 0x08: m_audio_sample_rate = 16000; break;
-	case 0x09: m_audio_sample_rate = 12000; break;
-	case 0x0a: m_audio_sample_rate = 11025; break;
-	case 0x0b: m_audio_sample_rate =  8000; break;
-	default:   m_audio_sample_rate = 48000; break;
+	case 0x03: m_in_sample_rate = 48000; break;
+	case 0x04: m_in_sample_rate = 44100; break;
+	case 0x05: m_in_sample_rate = 32000; break;
+	case 0x06: m_in_sample_rate = 24000; break;
+	case 0x07: m_in_sample_rate = 22050; break;
+	case 0x08: m_in_sample_rate = 16000; break;
+	case 0x09: m_in_sample_rate = 12000; break;
+	case 0x0a: m_in_sample_rate = 11025; break;
+	case 0x0b: m_in_sample_rate =  8000; break;
+	default:   m_in_sample_rate = 48000; break;
 	}
-	// 保存采样率索引和声道...
-	m_audio_rate_index = nRateIndex;
-	m_audio_channel_num = nChannelNum;
+	// 保存输入采样率索引和声道...
+	m_in_rate_index = nRateIndex;
+	m_in_channel_num = nChannelNum;
 	// 初始化ffmpeg解码器...
 	av_register_all();
 	// 准备一些特定的参数...
@@ -672,23 +718,37 @@ BOOL CAudioThread::InitAudio(int nRateIndex, int nChannelNum)
 	// 打开获取到的解码器...
 	if( avcodec_open2(m_lpDecoder, m_lpCodec, NULL) != 0 )
 		return false;
-	// 输入声道和输出声道是一样的...
-	int in_audio_channel_num = m_audio_channel_num;
-	int out_audio_channel_num = m_audio_channel_num;
+	// 准备一个全局的解码结构体 => 解码数据帧是相互关联的...
+	m_lpDFrame = av_frame_alloc();
+	ASSERT(m_lpDFrame != NULL);
+	// 输入声道和输出声道 => 转换成单声道...
+	int in_audio_channel_num = m_in_channel_num;
+	int out_audio_channel_num = m_out_channel_num;
 	int64_t in_channel_layout = av_get_default_channel_layout(in_audio_channel_num);
 	int64_t out_channel_layout = (out_audio_channel_num <= 1) ? AV_CH_LAYOUT_MONO : AV_CH_LAYOUT_STEREO;
-	// 输出音频采样格式...
+	// 输入输出的音频格式...
+	AVSampleFormat in_sample_fmt = m_lpDecoder->sample_fmt; // => AV_SAMPLE_FMT_FLTP
 	AVSampleFormat out_sample_fmt = AV_SAMPLE_FMT_S16;
-	// out_nb_samples: AAC-1024 MP3-1152
-	int out_nb_samples = 1024;
-	// 设置输入输出采样率 => 不变...
-	int in_sample_rate = m_audio_sample_rate;
-	int out_sample_rate = m_audio_sample_rate;
+	// 设置输入输出采样率 => 转换成8K采样率...
+	int in_sample_rate = m_in_sample_rate;
+	int out_sample_rate = m_out_sample_rate;
+	// 分配并初始化转换器...
+	m_out_convert_ctx = swr_alloc();
+	m_out_convert_ctx = swr_alloc_set_opts(m_out_convert_ctx, out_channel_layout, out_sample_fmt, out_sample_rate,
+										  in_channel_layout, in_sample_fmt, in_sample_rate, 0, NULL);
+	swr_init(m_out_convert_ctx);
 
+	// 输入输出音频采样个数 => AAC-1024 | MP3-1152
+	// 注意：还没有开始转换，swr_get_delay()返回0，out_nb_samples是正常的样本数，不会变...
+	int in_nb_samples = swr_get_delay(m_out_convert_ctx, in_sample_rate) + 1024;
+	int out_nb_samples = av_rescale_rnd(in_nb_samples, out_sample_rate, in_sample_rate, AV_ROUND_UP);
+	// 计算输出每帧持续时间(毫秒)，每帧字节数 => 只需要计算一次就够了...
+	m_out_frame_duration = out_nb_samples * 1000 / out_sample_rate;
+	m_out_frame_bytes = av_samples_get_buffer_size(NULL, out_audio_channel_num, out_nb_samples, out_sample_fmt, 1);
 	//SDL_AudioSpec => 不能使用系统推荐参数 => 不用回调模式，主动投递...
 	SDL_AudioSpec audioSpec = {0};
 	audioSpec.freq = out_sample_rate; 
-	audioSpec.format = AUDIO_S16SYS; //m_lpDecoder->sample_fmt => AV_SAMPLE_FMT_FLTP
+	audioSpec.format = AUDIO_S16SYS;
 	audioSpec.channels = out_audio_channel_num; 
 	audioSpec.samples = out_nb_samples;
 	audioSpec.callback = NULL; 
@@ -701,32 +761,13 @@ BOOL CAudioThread::InitAudio(int nRateIndex, int nChannelNum)
 		blog(LOG_INFO, "%s [Audio] Failed to open audio: %s", TM_RECV_NAME, SDL_GetError());
 		return false;
 	}
-
-	// 准备一个全局的解码结构体 => 解码数据帧是相互关联的...
-	m_lpDFrame = av_frame_alloc();
-	ASSERT( m_lpDFrame != NULL );
-
-	// 计算每帧间隔时间 => 毫秒...
-	m_nSampleDuration = out_nb_samples * 1000 / out_sample_rate;
-	// 设置打开的主设备编号...
+	// 打开的主设备编号...
 	m_nDeviceID = 1;
-	// 获取音频解码后输出的缓冲区大小...
-	m_out_buffer_size = av_samples_get_buffer_size(NULL, out_audio_channel_num, out_nb_samples, out_sample_fmt, 1);
-	m_out_buffer_ptr = (uint8_t *)av_malloc(m_out_buffer_size);
-	
-	// 分配并初始化转换器...
-	m_au_convert_ctx = swr_alloc();
-	m_au_convert_ctx = swr_alloc_set_opts(m_au_convert_ctx, out_channel_layout, out_sample_fmt, out_sample_rate,
-										  in_channel_layout, m_lpDecoder->sample_fmt, in_sample_rate, 0, NULL);
-	swr_init(m_au_convert_ctx);
-
 	// 开始播放 => 使用默认主设备...
 	SDL_PauseAudioDevice(m_nDeviceID, 0);
 	SDL_ClearQueuedAudio(m_nDeviceID);
-
 	// 启动线程...
 	this->Start();
-
 	return true;
 }
 
@@ -769,9 +810,9 @@ void CAudioThread::doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, in
     put_bits(&pb, 2, 0);        /* layer */    
     put_bits(&pb, 1, 1);        /* protection_absent */    
     put_bits(&pb, 2, 2);		/* profile_objecttype */    
-    put_bits(&pb, 4, m_audio_rate_index);    
+    put_bits(&pb, 4, m_in_rate_index);    
     put_bits(&pb, 1, 0);        /* private_bit */    
-    put_bits(&pb, 3, m_audio_channel_num); /* channel_configuration */    
+    put_bits(&pb, 3, m_in_channel_num); /* channel_configuration */    
     put_bits(&pb, 1, 0);        /* original_copy */    
     put_bits(&pb, 1, 0);        /* home */    
     /* adts_variable_header */    

@@ -55,6 +55,7 @@ public:
 	void onWebAuthExpired();
 	void doSaveFocus(OBSQTDisplay * lpNewDisplay);
 	void doResetFocus(OBSQTDisplay * lpCurDisplay);
+	void doEchoCancel(void * lpBufData, int nBufSize);
 public:
 	static char * GetServerOS();
 	static char * GetServerDNSName();

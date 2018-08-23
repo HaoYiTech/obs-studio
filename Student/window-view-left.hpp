@@ -34,6 +34,7 @@ public slots:
 public:
 	CViewCamera * FindDBCameraByID(int nDBCameraID);
 	CViewCamera * AddNewCamera(GM_MapData & inWebData);
+	void doEchoCancel(void * lpBufData, int nBufSize);
 public:
 	void SetCanAutoLink(bool bIsCanAuto) { m_bCanAutoLink = bIsCanAuto; }
 	int  GetCurPage() { return m_nCurPage; }

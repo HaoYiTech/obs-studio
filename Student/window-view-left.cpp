@@ -219,6 +219,17 @@ void CViewLeft::LayoutViewCamera(int cx, int cy)
 	lpFirstWnd->doCaptureFocus();
 }
 
+// 向正在被拉取的通道投递扬声器的音频数据内容...
+void CViewLeft::doEchoCancel(void * lpBufData, int nBufSize)
+{
+	GM_MapCamera::iterator itorItem = m_MapCamera.begin();
+	while (itorItem != m_MapCamera.end()) {
+		CViewCamera * lpViewCamera = itorItem->second;
+		lpViewCamera->doEchoCancel(lpBufData, nBufSize);
+		++itorItem;
+	}
+}
+
 // 删除所有摄像头对象资源...
 void CViewLeft::doDestoryResource()
 {

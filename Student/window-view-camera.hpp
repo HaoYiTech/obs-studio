@@ -21,6 +21,7 @@ public:
 	int			GetDBCameraID() { return m_nDBCameraID; }
 public:
 	void		onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID);
+	void        doEchoCancel(void * lpBufData, int nBufSize);
 	void		doPushFrame(FMS_FRAME & inFrame);
 	void		doStartPushThread();
 	void		doTogglePreview();
