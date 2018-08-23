@@ -80,7 +80,7 @@ public:
 	virtual ~CAudioThread();
 	virtual void Entry();
 public:
-	BOOL	InitAudio(int nRateIndex, int nChannelNum);
+	BOOL	InitAudio(int nInRateIndex, int nInChannelNum, int nOutSampleRate, int nOutChannelNum);
 	void	doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, int inOffset);
 	int     GetCircleSize() { return m_frame_num; }
 private:
@@ -114,8 +114,8 @@ public:
 	~CPlaySDL();
 public:
 	void		PushPacket(int zero_delay_ms, string & inData, int inTypeTag, bool bIsKeyFrame, uint32_t inSendTime);
+	BOOL		InitAudio(int nInRateIndex, int nInChannelNum, int nOutSampleRate, int nOutChannelNum);
 	BOOL		InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS);
-	BOOL		InitAudio(int nRateIndex, int nChannelNum);
 	int			GetAPacketSize() { return ((m_lpAudioThread != NULL) ? m_lpAudioThread->GetMapPacketSize() : 0); }
 	int			GetVPacketSize() { return ((m_lpVideoThread != NULL) ? m_lpVideoThread->GetMapPacketSize() : 0); }
 	int			GetAFrameSize() { return ((m_lpAudioThread != NULL) ? m_lpAudioThread->GetCircleSize() : 0); }

@@ -38,6 +38,11 @@ using namespace std;
 #include <util/platform.h>
 #include <util/circlebuf.h>
 
+#define DEF_AUDIO_OUT_CHANNEL_NUM   1                           // 默认音频播放、压缩声道数
+#define DEF_AUDIO_OUT_SAMPLE_RATE   16000                       // 默认音频播放、压缩采样率
+#define DEF_SPEEX_HORN_DELAY        200                         // 默认的扬声器延迟
+#define DEF_SPEEX_FILTER_MS         400                         // 回音消除尾音长度
+#define DEF_SPEEX_FRAME_MS          16                          // 回音消除单次长度
 #define DEF_CAMERA_START_ID			1							// 默认摄像头开始ID
 #define DEF_MAX_CAMERA              8							// 默认最大摄像头数目
 #define DEF_CLOUD_CLASS				"http://edu.ihaoyi.cn"		// 云教室地址

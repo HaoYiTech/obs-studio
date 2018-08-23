@@ -624,6 +624,13 @@ CStudentApp::CStudentApp(int &argc, char **argv)
 	m_loginWindow = NULL;
 	m_RemoteSession = NULL;
 	m_studentWindow = NULL;
+	// 设置默认的音频播放、输出采样率，输出声道数...
+	m_nAudioOutSampleRate = DEF_AUDIO_OUT_SAMPLE_RATE;
+	m_nAudioOutChannelNum = DEF_AUDIO_OUT_CHANNEL_NUM;
+	// 设置默认的扬声器延迟、回音消除尾音长度、单次消除长度...
+	m_nSpeexHornDelayMS = DEF_SPEEX_HORN_DELAY;
+	m_nSpeexFilterMS = DEF_SPEEX_FILTER_MS;
+	m_nSpeexFrameMS = DEF_SPEEX_FRAME_MS;
 }
 
 CStudentApp::~CStudentApp()

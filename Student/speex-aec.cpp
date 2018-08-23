@@ -21,6 +21,15 @@ CSpeexAEC::CSpeexAEC(CViewCamera * lpViewCamera)
   , m_lpADecoder(nullptr)
   , m_lpACodec(nullptr)
   , m_lpDFrame(nullptr)
+  , m_lpSpeexEcho(NULL)
+  , m_lpSpeexDen(NULL)
+  , m_lpSpeexSem(NULL)
+  , m_lpEchoBufNN(NULL)
+  , m_lpHornBufNN(NULL)
+  , m_lpMicBufNN(NULL)
+  , m_horn_delay_ms(0)
+  , m_nSpeexTAIL(0)
+  , m_nSpeexNN(0)
 {
 	m_in_rate_index = 0;
 	m_in_sample_rate = 0;
@@ -28,26 +37,14 @@ CSpeexAEC::CSpeexAEC(CViewCamera * lpViewCamera)
 	m_out_convert_ctx = NULL;
 	m_max_buffer_ptr = NULL;
 	m_max_buffer_size = 0;
-	// 设置输出声道、输出采样率...
+	// 设置默认输出声道、输出采样率...
 	m_out_channel_num = 1;
 	m_out_sample_rate = 8000;
-	m_lpSpeexEcho = NULL;
-	m_lpSpeexDen = NULL;
-	m_lpSpeexSem = NULL;
 	// 设置默认的0点时刻点...
 	m_mic_pts_ms_zero = -1;
 	m_mic_sys_ns_zero = -1;
 	m_horn_sys_ns_zero = -1;
-	// 计算每次处理16毫秒占用的样本数...
-	m_nSpeexNN = 16 * (m_out_sample_rate/1000);
-	// 计算尾音为450毫秒占用的样本数 => 允许的同步落差，越大，计算量越大，消除效果越好...
-	m_nSpeexTAIL = 450 * (m_out_sample_rate/1000);
-	//// 麦克风要预先丢弃大概100毫秒的音频数据包...
-	//m_mic_drop_bytes = (m_out_sample_rate / 1000) * sizeof(short) * 100;
-	// 根据计算结果分配回音消除需要用到的数据空间...
-	m_lpMicBufNN = new short[m_nSpeexNN];
-	m_lpHornBufNN = new short[m_nSpeexNN];
-	m_lpEchoBufNN = new short[m_nSpeexNN];
+	// 初始化各个环形队列对象...
 	circlebuf_init(&m_circle_mic);
 	circlebuf_init(&m_circle_horn);
 	circlebuf_init(&m_circle_echo);
@@ -122,10 +119,11 @@ CSpeexAEC::~CSpeexAEC()
 	pthread_mutex_destroy(&m_SpeexMutex);
 }
 
-BOOL CSpeexAEC::InitSpeex(int nRateIndex, int nChannelNum)
+BOOL CSpeexAEC::InitSpeex(int nInRateIndex, int nInChannelNum, int nOutSampleRate, int nOutChannelNum,
+                          int nHornDelayMS, int nSpeexFrameMS, int nSpeexFilterMS)
 {
 	// 根据索引获取采样率...
-	switch (nRateIndex)
+	switch (nInRateIndex)
 	{
 	case 0x03: m_in_sample_rate = 48000; break;
 	case 0x04: m_in_sample_rate = 44100; break;
@@ -139,8 +137,21 @@ BOOL CSpeexAEC::InitSpeex(int nRateIndex, int nChannelNum)
 	default:   m_in_sample_rate = 48000; break;
 	}
 	// 保存采样率索引和声道...
-	m_in_rate_index = nRateIndex;
-	m_in_channel_num = nChannelNum;
+	m_in_rate_index = nInRateIndex;
+	m_in_channel_num = nInChannelNum;
+	// 保存输出采样率和输出声道...
+	m_out_sample_rate = nOutSampleRate;
+	m_out_channel_num = nOutChannelNum;
+	// 扬声器设定的播放延迟时间(毫秒)...
+	m_horn_delay_ms = nHornDelayMS;
+	// 计算每次处理设定毫秒数占用的样本数(默认16毫秒)
+	m_nSpeexNN = nSpeexFrameMS * (m_out_sample_rate / 1000) * m_out_channel_num;
+	// 计算尾音为设定毫秒占用的样本数(默认400毫秒) => 允许的同步落差，越大，计算量越大，消除效果越好...
+	m_nSpeexTAIL = nSpeexFilterMS * (m_out_sample_rate / 1000) * m_out_channel_num;
+	// 根据计算结果分配回音消除需要用到的数据空间...
+	m_lpMicBufNN = new short[m_nSpeexNN];
+	m_lpHornBufNN = new short[m_nSpeexNN];
+	m_lpEchoBufNN = new short[m_nSpeexNN];
 	// 初始化ffmpeg解码器...
 	av_register_all();
 	// 准备一些特定的参数...
@@ -206,21 +217,25 @@ void CSpeexAEC::doSaveAudioPCM(uint8_t * lpBufData, int nBufSize, int nAudioRate
 	}
 }
 
-void CSpeexAEC::PushHornPCM(void * lpBufData, int nBufSize)
+BOOL CSpeexAEC::PushHornPCM(void * lpBufData, int nBufSize)
 {
 	// 如果线程已经退出，直接返回...
 	if (this->IsStopRequested())
-		return;
+		return false;
 	// 如果是第一个数据包，记录扬声器系统0点时刻...
+	pthread_mutex_lock(&m_SpeexMutex);
 	if (m_horn_sys_ns_zero < 0) {
+		// 每毫秒样本数 * 样本长度 * 延时毫秒数 * 声道数...
+		int nDelayBytes = (m_out_sample_rate / 1000) * sizeof(short) * m_horn_delay_ms * m_out_channel_num;
+		circlebuf_push_back_zero(&m_circle_horn, nDelayBytes);
 		m_horn_sys_ns_zero = os_gettime_ns();
 	}
 	// 将扬声器音频数据内容放入环形队列，只存储PCM数据内容...
-	pthread_mutex_lock(&m_SpeexMutex);
 	circlebuf_push_back(&m_circle_horn, lpBufData, nBufSize);
 	pthread_mutex_unlock(&m_SpeexMutex);
 	// 发起信号量变化通知，可以进行回音消除操作了...
 	((m_lpSpeexSem != NULL) ? os_sem_post(m_lpSpeexSem) : NULL);
+	return true;
 }
 
 BOOL CSpeexAEC::PushMicFrame(FMS_FRAME & inFrame)

@@ -477,7 +477,7 @@ CAudioThread::CAudioThread(CPlaySDL * lpPlaySDL)
 	m_max_buffer_size = 0;
 	m_max_buffer_ptr = NULL;
 	m_out_convert_ctx = NULL;
-	// 设置输出声道、输出采样率...
+	// 默认输出声道、输出采样率...
 	m_out_channel_num = 1;
 	m_out_sample_rate = 8000;
 	m_out_frame_bytes = 0;
@@ -677,6 +677,7 @@ void CAudioThread::doDisplaySDL()
 		blog(LOG_INFO, "%s [Audio] Clear Audio Buffer, QueueBytes: %d, AVPacket: %d, AVFrame: %d", TM_RECV_NAME, nQueueBytes, m_MapPacket.size(), m_frame_num);
 		SDL_ClearQueuedAudio(m_nDeviceID);
 	}
+	//blog(LOG_INFO, "[Audio] Delay: %d ms", nQueueBytes / 16);
 	// 注意：失败也不要返回，继续执行，目的是移除缓存...
 	// 将音频解码后的数据帧投递给音频设备...
 	if( SDL_QueueAudio(m_nDeviceID, m_max_buffer_ptr, out_buffer_size) < 0 ) {
@@ -692,14 +693,14 @@ void CAudioThread::doDisplaySDL()
 	m_bNeedSleep = false;
 }
 
-BOOL CAudioThread::InitAudio(int nRateIndex, int nChannelNum)
+BOOL CAudioThread::InitAudio(int nInRateIndex, int nInChannelNum, int nOutSampleRate, int nOutChannelNum)
 {
 	// 如果已经初始化，直接返回...
 	if( m_lpCodec != NULL || m_lpDecoder != NULL )
 		return false;
 	ASSERT( m_lpCodec == NULL && m_lpDecoder == NULL );
 	// 根据索引获取采样率...
-	switch( nRateIndex )
+	switch(nInRateIndex)
 	{
 	case 0x03: m_in_sample_rate = 48000; break;
 	case 0x04: m_in_sample_rate = 44100; break;
@@ -713,8 +714,11 @@ BOOL CAudioThread::InitAudio(int nRateIndex, int nChannelNum)
 	default:   m_in_sample_rate = 48000; break;
 	}
 	// 保存输入采样率索引和声道...
-	m_in_rate_index = nRateIndex;
-	m_in_channel_num = nChannelNum;
+	m_in_rate_index = nInRateIndex;
+	m_in_channel_num = nInChannelNum;
+	// 保存输出采样率和输出声道...
+	m_out_sample_rate = nOutSampleRate;
+	m_out_channel_num = nOutChannelNum;
 	// 初始化ffmpeg解码器...
 	av_register_all();
 	// 准备一些特定的参数...
@@ -896,7 +900,7 @@ BOOL CPlaySDL::InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight
 	return true;
 }
 
-BOOL CPlaySDL::InitAudio(int nRateIndex, int nChannelNum)
+BOOL CPlaySDL::InitAudio(int nInRateIndex, int nInChannelNum, int nOutSampleRate, int nOutChannelNum)
 {
 	// 创建新的音频对象...
 	if( m_lpAudioThread != NULL ) {
@@ -906,7 +910,7 @@ BOOL CPlaySDL::InitAudio(int nRateIndex, int nChannelNum)
 	// 创建音频线程对象...
 	m_lpAudioThread = new CAudioThread(this);
 	// 初始化音频对象失败，直接删除音频对象，返回失败...
-	if (!m_lpAudioThread->InitAudio(nRateIndex, nChannelNum)) {
+	if (!m_lpAudioThread->InitAudio(nInRateIndex, nInChannelNum, nOutSampleRate, nOutChannelNum)) {
 		delete m_lpAudioThread;
 		m_lpAudioThread = NULL;
 		return false;

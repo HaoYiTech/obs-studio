@@ -445,9 +445,11 @@ void CUDPRecvThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
 	} 
 	// 如果有音频，初始化音频线程...
 	if( m_rtp_header.hasAudio ) {
-		int nRateIndex = m_rtp_header.rateIndex;
-		int nChannelNum = m_rtp_header.channelNum;
-		m_lpPlaySDL->InitAudio(nRateIndex, nChannelNum);
+		int nInRateIndex = m_rtp_header.rateIndex;
+		int nInChannelNum = m_rtp_header.channelNum;
+		int nOutSampleRate = App()->GetAudioSampleRate();
+		int nOutChannelNum = App()->GetAudioChannelNum();
+		m_lpPlaySDL->InitAudio(nInRateIndex, nInChannelNum, nOutSampleRate, nOutChannelNum);
 	}
 }
 

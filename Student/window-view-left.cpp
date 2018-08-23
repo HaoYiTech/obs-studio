@@ -50,8 +50,8 @@ void CViewLeft::onTriggerConnected()
 		}
 	}
 	// 启动一个每隔两秒进行拉流检测的时钟对象 => 先删除原来的时钟...
-	(m_nAutoTimer >= 0) ? this->killTimer(m_nAutoTimer) : NULL;
-	m_nAutoTimer = this->startTimer(2 * 1000);
+	//(m_nAutoTimer >= 0) ? this->killTimer(m_nAutoTimer) : NULL;
+	//m_nAutoTimer = this->startTimer(2 * 1000);
 	// 不要立即开始自动连接，需要延时连接，避免互相争抢资源...
 }
 
@@ -59,7 +59,7 @@ void CViewLeft::timerEvent(QTimerEvent *inEvent)
 {
 	int nTimerID = inEvent->timerId();
 	if (nTimerID == m_nAutoTimer) {
-		this->doAutoLinkIPC();
+		//this->doAutoLinkIPC();
 	}
 }
 

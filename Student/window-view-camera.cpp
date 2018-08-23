@@ -367,13 +367,18 @@ void CViewCamera::doStartPushThread()
 		delete m_lpSpeexAEC;
 		m_lpSpeexAEC = NULL;
 	}
-	// 获取音频相关的格式头信息...
-	int nRateIndex = m_lpDataThread->GetAudioRateIndex();
-	int nChannelNum = m_lpDataThread->GetAudioChannelNum();
+	// 获取音频相关的格式头信息，以及回音消除参数...
+	int nInRateIndex = m_lpDataThread->GetAudioRateIndex();
+	int nInChannelNum = m_lpDataThread->GetAudioChannelNum();
+	int nOutSampleRate = App()->GetAudioSampleRate();
+	int nOutChannelNum = App()->GetAudioChannelNum();
+	int nHornDelayMS = App()->GetSpeexHornDelayMS();
+	int nSpeexFrameMS = App()->GetSpeexFrameMS();
+	int nSpeexFilterMS = App()->GetSpeexFilterMS();
 	// 创建并初始化回音消除对象...
 	m_lpSpeexAEC = new CSpeexAEC(this);
 	// 初始化失败，删除回音消除对象...
-	if (!m_lpSpeexAEC->InitSpeex(nRateIndex, nChannelNum)) {
+	if (!m_lpSpeexAEC->InitSpeex(nInRateIndex, nInChannelNum, nOutSampleRate, nOutChannelNum, nHornDelayMS, nSpeexFrameMS, nSpeexFilterMS)) {
 		delete m_lpSpeexAEC; m_lpSpeexAEC = NULL;
 		blog(LOG_INFO, "CSpeexAEC::InitSpeex() => Error");
 	}
