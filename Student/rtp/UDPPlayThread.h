@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include "OSMutex.h"
 #include "OSThread.h"
+#include <util/threading.h>
 
 extern "C"
 {
@@ -37,8 +37,9 @@ protected:
 	AVCodecContext  *   m_lpDecoder;		// 解码器描述...
 	GM_MapPacket		m_MapPacket;		// 解码前的数据帧...
 	GM_MapFrame			m_MapFrame;			// 解码后的数据帧....
-	int64_t				m_play_next_ns;		// 下一个要播放帧的系统纳秒值...
 	bool				m_bNeedSleep;		// 休息标志 => 只要有解码或播放就不能休息...
+	int64_t				m_play_next_ns;		// 下一个要播放帧的系统纳秒值...
+	pthread_mutex_t     m_DecoderMutex;     // 解码器互斥体对象...
 };
 
 class CVideoThread : public CDecoder, public OSThread
@@ -66,7 +67,6 @@ private:
 	SDL_Renderer *  m_sdlRenderer;		// SDL渲染
     SDL_Texture  *  m_sdlTexture;		// SDL纹理
 
-	OSMutex			m_Mutex;			// 互斥对象
 	CPlaySDL	 *  m_lpPlaySDL;		// 播放控制
 
 	uint8_t      *  m_img_buffer_ptr;   // 单帧图像输出空间
@@ -104,7 +104,6 @@ private:
 	circlebuf			m_circle;			   // PCM数据环形队列
 	SDL_AudioDeviceID	m_nDeviceID;		   // 音频设备编号
 
-	OSMutex				m_Mutex;			   // 互斥对象
 	CPlaySDL	 *		m_lpPlaySDL;		   // 播放控制
 };
 

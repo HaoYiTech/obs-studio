@@ -11,6 +11,8 @@ CDecoder::CDecoder()
   , m_play_next_ns(-1)
   , m_bNeedSleep(false)
 {
+	// 初始化解码器互斥对象...
+	pthread_mutex_init_value(&m_DecoderMutex);
 }
 
 CDecoder::~CDecoder()
@@ -37,6 +39,8 @@ CDecoder::~CDecoder()
 		av_frame_free(&itorFrame->second);
 	}
 	m_MapFrame.clear();
+	// 释放解码器互斥对象...
+	pthread_mutex_destroy(&m_DecoderMutex);
 }
 
 void CDecoder::doPushPacket(AVPacket & inPacket)
@@ -145,7 +149,6 @@ void CVideoThread::doReBuildSDL()
 
 BOOL CVideoThread::InitVideo(CViewRender * lpViewRender, string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS)
 {
-	OSMutexLocker theLock(&m_Mutex);
 	// 如果已经初始化，直接返回...
 	if( m_lpCodec != NULL || m_lpDecoder != NULL )
 		return false;
@@ -217,8 +220,6 @@ void CVideoThread::doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, in
 	// 线程正在退出中，直接返回...
 	if( this->IsStopRequested() )
 		return;
-	// 进入线程互斥状态中...
-	OSMutexLocker theLock(&m_Mutex);
 	// 每个关键帧都放入sps和pps，播放会加快...
 	string strCurFrame;
 	// 如果是关键帧，必须先写入sps，再写如pps...
@@ -246,14 +247,19 @@ void CVideoThread::doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, in
 	theNewPacket.dts = inPTS - inOffset;
 	theNewPacket.flags = bIsKeyFrame;
 	theNewPacket.stream_index = 1;
-	// 将数据压入解码前队列当中...
+	// 将数据压入解码前队列当中 => 需要与解码线程互斥...
+	pthread_mutex_lock(&m_DecoderMutex);
 	this->doPushPacket(theNewPacket);
+	pthread_mutex_unlock(&m_DecoderMutex);
 }
 //
 // 取出一帧解码后的视频，比对系统时间，看看能否播放...
 void CVideoThread::doDisplaySDL()
 {
-	OSMutexLocker theLock(&m_Mutex);
+	/////////////////////////////////////////////////////////////////
+	// 注意：这里产生的AVFrame是同一个线程顺序执行，无需互斥...
+	/////////////////////////////////////////////////////////////////
+
 	// 如果没有已解码数据帧，直接返回休息最大毫秒数...
 	if( m_MapFrame.size() <= 0 ) {
 		m_play_next_ns = os_gettime_ns() + MAX_SLEEP_MS * 1000000;
@@ -392,7 +398,6 @@ static void DoSaveNetFile(AVFrame * lpAVFrame, bool bError, AVPacket & inPacket)
 
 void CVideoThread::doDecodeFrame()
 {
-	OSMutexLocker theLock(&m_Mutex);
 	// 没有要解码的数据包，直接返回最大休息毫秒数...
 	if( m_MapPacket.size() <= 0 ) {
 		m_play_next_ns = os_gettime_ns() + MAX_SLEEP_MS * 1000000;
@@ -403,8 +408,12 @@ void CVideoThread::doDecodeFrame()
 	// 抽取一个AVPacket进行解码操作，理论上一个AVPacket一定能解码出一个Picture...
 	// 由于数据丢失或B帧，投递一个AVPacket不一定能返回Picture，这时解码器就会将数据缓存起来，造成解码延时...
 	int got_picture = 0, nResult = 0;
+	// 为了快速解码，只要有数据就解码，同时与数据输入线程互斥...
+	pthread_mutex_lock(&m_DecoderMutex);
 	GM_MapPacket::iterator itorItem = m_MapPacket.begin();
-	AVPacket & thePacket = itorItem->second;
+	AVPacket thePacket = itorItem->second;
+	m_MapPacket.erase(itorItem);
+	pthread_mutex_unlock(&m_DecoderMutex);
 	//////////////////////////////////////////////////////////////////////////////////////////////////
 	// 注意：由于只有 I帧 和 P帧，没有B帧，要让解码器快速丢掉解码错误数据，通过设置has_b_frames来完成
 	// 技术文档 => https://bbs.csdn.net/topics/390692774
@@ -428,7 +437,6 @@ void CVideoThread::doDecodeFrame()
 		m_lpDecoder->has_b_frames = 0;
 		// 丢掉解码失败的数据帧...
 		av_free_packet(&thePacket);
-		m_MapPacket.erase(itorItem);
 		return;
 	}
 	// 如果调试解码器，进行数据存盘...
@@ -447,9 +455,8 @@ void CVideoThread::doDecodeFrame()
 	// 重新克隆AVFrame，自动分配空间，按时间排序...
 	m_MapFrame[frame_pts_ms] = av_frame_clone(m_lpDFrame);
 	//DoProcSaveJpeg(m_lpDFrame, m_lpDecoder->pix_fmt, frame_pts, "F:/MP4/Src");
-	// 这里是引用，必须先free再erase...
+	// 这里需要释放AVPacket的缓存...
 	av_free_packet(&thePacket);
-	m_MapPacket.erase(itorItem);
 	// 修改休息状态 => 已经有解码，不能休息...
 	m_bNeedSleep = false;
 
@@ -519,7 +526,6 @@ static void DoSaveTeacherPCM(uint8_t * lpBufData, int nBufSize, int nAudioRate, 
 
 void CAudioThread::doDecodeFrame()
 {
-	OSMutexLocker theLock(&m_Mutex);
 	// 没有要解码的数据包，直接返回最大休息毫秒数...
 	if( m_MapPacket.size() <= 0 || m_nDeviceID <= 0 ) {
 		m_play_next_ns = os_gettime_ns() + MAX_SLEEP_MS * 1000000;
@@ -529,8 +535,12 @@ void CAudioThread::doDecodeFrame()
 	int64_t inStartPtsMS = m_lpPlaySDL->GetStartPtsMS();
 	// 抽取一个AVPacket进行解码操作，一个AVPacket不一定能解码出一个Picture...
 	int got_picture = 0, nResult = 0;
+	// 为了快速解码，只要有数据就解码，同时与数据输入线程互斥...
+	pthread_mutex_lock(&m_DecoderMutex);
 	GM_MapPacket::iterator itorItem = m_MapPacket.begin();
-	AVPacket & thePacket = itorItem->second;
+	AVPacket thePacket = itorItem->second;
+	m_MapPacket.erase(itorItem);
+	pthread_mutex_unlock(&m_DecoderMutex);
 	// 注意：这里解码后的格式是4bit，需要转换成16bit，调用swr_convert
 	nResult = avcodec_decode_audio4(m_lpDecoder, m_lpDFrame, &got_picture, &thePacket);
 	////////////////////////////////////////////////////////////////////////////////////////////////
@@ -546,7 +556,6 @@ void CAudioThread::doDecodeFrame()
 			blog(LOG_INFO, "%s [Audio] Error => %s ", TM_RECV_NAME, szErrBuf);
 		}
 		av_free_packet(&thePacket);
-		m_MapPacket.erase(itorItem);
 		return;
 	}
 	// 打印解码之后的数据帧信息...
@@ -560,9 +569,8 @@ void CAudioThread::doDecodeFrame()
 	int64_t frame_pts_ms = thePacket.pts;
 	// 对解码后的音频进行格式转换...
 	this->doConvertAudio(frame_pts_ms, m_lpDFrame);
-	// 这里是引用，必须先free再erase...
+	// 这里需要释放AVPacket的缓存...
 	av_free_packet(&thePacket);
-	m_MapPacket.erase(itorItem);
 	// 修改休息状态 => 已经有播放，不能休息...
 	m_bNeedSleep = false;
 }
@@ -618,8 +626,8 @@ void CAudioThread::doDisplaySDL()
 {
 	//////////////////////////////////////////////////////////////////
 	// 注意：使用主动投递方式，可以有效降低回调造成的延时...
-	//////////////////////////////////////////////////////////////////
-	OSMutexLocker theLock(&m_Mutex);
+	// 注意：这里产生的PCM数据是同一个线程顺序执行，无需互斥...
+	/////////////////////////////////////////////////////////////////
 
 	/*////////////////////////////////////////////////////////////////
 	// 测试：这里可以明显看出，网络抖动之后，后面数据一下子就被灌入，
@@ -686,7 +694,6 @@ void CAudioThread::doDisplaySDL()
 
 BOOL CAudioThread::InitAudio(int nRateIndex, int nChannelNum)
 {
-	OSMutexLocker theLock(&m_Mutex);
 	// 如果已经初始化，直接返回...
 	if( m_lpCodec != NULL || m_lpDecoder != NULL )
 		return false;
@@ -796,8 +803,6 @@ void CAudioThread::doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, in
 	// 线程正在退出中，直接返回...
 	if (this->IsStopRequested())
 		return;
-	// 进入线程互斥状态中...
-	OSMutexLocker theLock(&m_Mutex);
 	// 先加入ADTS头，再加入数据帧内容...
 	int nTotalSize = ADTS_HEADER_SIZE + inData.size();
 	// 构造ADTS帧头...
@@ -836,8 +841,10 @@ void CAudioThread::doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, in
 	theNewPacket.dts = inPTS - inOffset;
 	theNewPacket.flags = bIsKeyFrame;
 	theNewPacket.stream_index = 0;
-	// 将数据压入解码前队列当中...
+	// 将数据压入解码前队列当中 => 需要与解码线程互斥...
+	pthread_mutex_lock(&m_DecoderMutex);
 	this->doPushPacket(theNewPacket);
+	pthread_mutex_unlock(&m_DecoderMutex);
 }
 
 CPlaySDL::CPlaySDL(CViewRender * lpViewRender, int64_t inSysZeroNS)
