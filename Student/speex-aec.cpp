@@ -185,7 +185,7 @@ BOOL CSpeexAEC::InitSpeex(int nInRateIndex, int nInChannelNum, int nOutSampleRat
 	// 注意：还没有开始转换，swr_get_delay()返回0，out_nb_samples是正常的样本数，不会变...
 	int in_nb_samples = swr_get_delay(m_out_convert_ctx, in_sample_rate) + 1024;
 	int out_nb_samples = av_rescale_rnd(in_nb_samples, out_sample_rate, in_sample_rate, AV_ROUND_UP);
-	// 计算输出每帧持续时间(毫秒)，每帧字节数 => 只需要计算一次就够了...
+	// 计算输出每帧持续毫秒数(与声道无关)，每帧字节数(与声道有关) => 只需要计算一次就够了...
 	int out_frame_duration = out_nb_samples * 1000 / out_sample_rate;
 	int out_frame_bytes = av_samples_get_buffer_size(NULL, out_audio_channel_num, out_nb_samples, out_sample_fmt, 1);
 	// 初始化回音消除信号量...
@@ -353,6 +353,7 @@ void CSpeexAEC::doConvertAudio(int64_t in_pts_ms, AVFrame * lpDFrame)
 	pthread_mutex_lock(&m_SpeexMutex);
 	circlebuf_push_back(&m_circle_mic, m_max_buffer_ptr, cur_data_size);
 	pthread_mutex_unlock(&m_SpeexMutex);
+	// 最终不是通过删除麦克风数据，而是通过给扬声器缓存增加空数据的方式解决...
 	// 计算每个AAC数据帧占用的持续时间(毫秒)，每个AAC数据帧使用1024个PCM样本；计算每毫秒占用字节数...
 	/*int in_frame_duration = 1024 * 1000 / m_in_sample_rate;
 	int in_bytes_per_ms = m_in_sample_rate / 1000 * sizeof(short);
@@ -397,6 +398,7 @@ void CSpeexAEC::Entry()
 
 void CSpeexAEC::doEchoCancel()
 {
+	// 注意：这里并不考虑扬声器数据是否足够，尽最大可能降低麦克风延时...
 	// 麦克风数据必须大于一个处理单元 => 样本数 * 每个样本占用字节数...
 	int nNeedBufBytes = m_nSpeexNN * sizeof(short);
 	if (m_circle_mic.size < nNeedBufBytes)
@@ -407,7 +409,6 @@ void CSpeexAEC::doEchoCancel()
 	pthread_mutex_unlock(&m_SpeexMutex);
 	// 如果扬声器数据足够，读取扬声器数据到待处理样本缓存当中..
 	if (m_circle_horn.size >= nNeedBufBytes) {
-		int tail_ms = (int)(abs(m_mic_sys_ns_zero - m_horn_sys_ns_zero) / 1000000) + 2;
 		// 从扬声器环形队列当中读取数据到扬声器样本空间当中...
 		pthread_mutex_lock(&m_SpeexMutex);
 		circlebuf_pop_front(&m_circle_horn, m_lpHornBufNN, nNeedBufBytes);
@@ -415,7 +416,8 @@ void CSpeexAEC::doEchoCancel()
 		// 麦克风和扬声器样本数据准备就绪，先进行回音消除，再进行一个额外处理...
 		speex_echo_cancellation(m_lpSpeexEcho, m_lpMicBufNN, m_lpHornBufNN, m_lpEchoBufNN);
 		speex_preprocess_run(m_lpSpeexDen, m_lpEchoBufNN);
-		this->doSaveAudioPCM((uint8_t*)m_lpHornBufNN, nNeedBufBytes, m_out_sample_rate, tail_ms, m_lpViewCamera->GetDBCameraID());
+		// 将扬声器的PCM数据进行存盘处理 => 必须用二进制方式打开文件...
+		this->doSaveAudioPCM((uint8_t*)m_lpHornBufNN, nNeedBufBytes, m_out_sample_rate, 1, m_lpViewCamera->GetDBCameraID());
 	} else {
 		// 扬声器数据不够，把麦克风样本数据直接当成回音消除后的样本数据...
 		memcpy(m_lpEchoBufNN, m_lpMicBufNN, nNeedBufBytes);
