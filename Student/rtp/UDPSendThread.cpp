@@ -124,7 +124,7 @@ BOOL CUDPSendThread::InitAudio(int nRateIndex, int nChannelNum)
 	return true;
 }
 
-BOOL CUDPSendThread::ParseAVHeader()
+BOOL CUDPSendThread::ParseAVHeader(int nAudioRateIndex, int nAudioChannelNum)
 {
 	// 如果推流管理器无效，返回失败...
 	if (m_lpDataThread == NULL)
@@ -146,9 +146,9 @@ BOOL CUDPSendThread::ParseAVHeader()
 	if (strAVCHeader.size() > 0) {
 		this->InitVideo(strSPS, strPPS, nVideoWidth, nVideoHeight, nVideoFPS);
 	}
-	// 获取音频相关的格式头信息...
-	int nRateIndex = m_lpDataThread->GetAudioRateIndex();
-	int nChannelNum = m_lpDataThread->GetAudioChannelNum();
+	// 获取音频相关的格式头信息 => 不直接使用摄像头参数...
+	int nRateIndex = nAudioRateIndex;
+	int nChannelNum = nAudioChannelNum;
 	// 如果有音频格式头信息，对音频进行初始化...
 	if (strAACHeader.size() > 0) {
 		this->InitAudio(nRateIndex, nChannelNum);
@@ -156,7 +156,7 @@ BOOL CUDPSendThread::ParseAVHeader()
 	return true;
 }
 
-BOOL CUDPSendThread::InitThread(string & strUdpAddr, int nUdpPort)
+BOOL CUDPSendThread::InitThread(string & strUdpAddr, int nUdpPort, int nAudioRateIndex, int nAudioChannelNum)
 {
 	// 判断输入参数是否有效...
 	if (strUdpAddr.size() <= 0 || nUdpPort <= 0) {
@@ -164,7 +164,7 @@ BOOL CUDPSendThread::InitThread(string & strUdpAddr, int nUdpPort)
 		return false;
 	}
 	// 从CPushThread当中解析音视频格式头，解析失败，直接返回...
-	if (!this->ParseAVHeader())
+	if (!this->ParseAVHeader(nAudioRateIndex, nAudioChannelNum))
 		return false;
 	// 首先，关闭socket...
 	this->CloseSocket();

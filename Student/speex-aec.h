@@ -20,13 +20,16 @@ public:
 	virtual void Entry();
 public:
 	BOOL    InitSpeex(int nInRateIndex, int nInChannelNum, int nOutSampleRate, int nOutChannelNum,
-                      int nHornDelayMS, int nSpeexFrameMS, int nSpeexFilterMS);
+                      int nOutBitrateAAC, int nHornDelayMS, int nSpeexFrameMS, int nSpeexFilterMS);
 	BOOL    PushHornPCM(void * lpBufData, int nBufSize);
 	BOOL    PushMicFrame(FMS_FRAME & inFrame);
 private:
+	BOOL    doInitDecoder();
+	BOOL    doInitEncoder();
 	void    doEncodeAAC();
 	void    doEchoCancel();
-	void	doConvertAudio(int64_t in_pts_ms, AVFrame * lpDFrame);
+	void    doConvertEchoAudio(uint8_t * lpEchoData, int nEchoSize);
+	void	doConvertDecodeAudio(int64_t in_pts_ms, AVFrame * lpDFrame);
 	void    doSaveAudioPCM(uint8_t * lpBufData, int nBufSize, int nAudioRate, int nAudioChannel, int nDBCameraID);
 private:
 	int                 m_in_rate_index;    // 输入采样索引
@@ -34,10 +37,20 @@ private:
 	int                 m_in_sample_rate;   // 输入采样率
 	int                 m_out_channel_num;  // 输出声道数
 	int                 m_out_sample_rate;  // 输出采样率
+	int                 m_aac_out_bitrate;  // AAC压缩输出码流
+	int                 m_aac_frame_count;  // AAC已压缩帧计数器
+	int                 m_aac_nb_samples;   // AAC包含每帧样本数
+	int                 m_aac_frame_size;   // AAC包含每帧PCM长度
+	int                 m_max_frame_size;   // 回音转换PCM最大长度
+	uint8_t         *   m_max_frame_ptr;    // 回音转换PCM空间数据
+	SwrContext      *   m_aac_convert_ctx;	// AAC音频格式转换
 	CViewCamera     *   m_lpViewCamera;     // 通道对象...
-	AVCodec         *   m_lpACodec;			// 解码器...
-	AVFrame         *   m_lpDFrame;			// 解码结构体...
-	AVCodecContext  *   m_lpADecoder;		// 解码器描述...
+	AVCodec         *   m_lpDeCodec;		// 解码器...
+	AVFrame         *   m_lpDeFrame;		// 解码结构体...
+	AVCodecContext  *   m_lpDeContext;		// 解码器描述...
+	AVCodec         *   m_lpEnCodec;		// 压缩器...
+	AVFrame         *   m_lpEnFrame;		// 压缩结构体...
+	AVCodecContext  *   m_lpEnContext;		// 压缩器描述...
 	SwrContext      *   m_out_convert_ctx;	// 音频格式转换
 	uint8_t         *   m_max_buffer_ptr;	// 单帧最大输出空间
 	int                 m_max_buffer_size;	// 单帧最大输出大小

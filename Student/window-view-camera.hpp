@@ -14,6 +14,10 @@ class CViewCamera : public OBSQTDisplay {
 public:
 	CViewCamera(QWidget *parent, int nDBCameraID);
 	virtual ~CViewCamera();
+signals:
+	void		doTriggerStartPushThread();
+protected slots:
+	void		onTriggerStartPushThread();
 public:
 	bool		IsCameraOffLine() { return ((m_nCameraState == kCameraOffLine) ? true : false); }
 	bool		IsCameraOnLine() { return ((m_nCameraState == kCameraOnLine) ? true : false); }
@@ -22,6 +26,7 @@ public:
 public:
 	void		onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID);
 	void        doEchoCancel(void * lpBufData, int nBufSize);
+	void        doPushAudioAEC(FMS_FRAME & inFrame);
 	void		doPushFrame(FMS_FRAME & inFrame);
 	void		doStartPushThread();
 	void		doTogglePreview();
@@ -38,6 +43,8 @@ private:
 	bool		IsDataFinished();
 	bool		IsFrameTimeout();
 	void		CalcFlowKbps();
+	void        BuildSendThread();
+	void        ReBuildSpeexAEC();
 protected:
 	void		paintEvent(QPaintEvent *event) override;
 	void		timerEvent(QTimerEvent * inEvent) override;

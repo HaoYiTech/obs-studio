@@ -627,6 +627,7 @@ CStudentApp::CStudentApp(int &argc, char **argv)
 	// 设置默认的音频播放、输出采样率，输出声道数...
 	m_nAudioOutSampleRate = DEF_AUDIO_OUT_SAMPLE_RATE;
 	m_nAudioOutChannelNum = DEF_AUDIO_OUT_CHANNEL_NUM;
+	m_nAudioOutBitrateAAC = DEF_AUDIO_OUT_BITRATE_AAC;
 	// 设置默认的扬声器延迟、回音消除尾音长度、单次消除长度...
 	m_nSpeexHornDelayMS = DEF_SPEEX_HORN_DELAY;
 	m_nSpeexFilterMS = DEF_SPEEX_FILTER_MS;
@@ -647,6 +648,31 @@ CStudentApp::~CStudentApp()
 	}
 	// 释放Com系统对象...
 	CoUninitialize();
+}
+
+int CStudentApp::GetAudioRateIndex()
+{
+	int inAudioRate = m_nAudioOutSampleRate;
+	int audio_rate_index = 0x0;
+	if (inAudioRate == 48000)
+		audio_rate_index = 0x03;
+	else if (inAudioRate == 44100)
+		audio_rate_index = 0x04;
+	else if (inAudioRate == 32000)
+		audio_rate_index = 0x05;
+	else if (inAudioRate == 24000)
+		audio_rate_index = 0x06;
+	else if (inAudioRate == 22050)
+		audio_rate_index = 0x07;
+	else if (inAudioRate == 16000)
+		audio_rate_index = 0x08;
+	else if (inAudioRate == 12000)
+		audio_rate_index = 0x09;
+	else if (inAudioRate == 11025)
+		audio_rate_index = 0x0a;
+	else if (inAudioRate == 8000)
+		audio_rate_index = 0x0b;
+	return audio_rate_index;
 }
 
 void CStudentApp::doEchoCancel(void * lpBufData, int nBufSize)

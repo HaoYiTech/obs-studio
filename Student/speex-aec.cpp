@@ -18,9 +18,12 @@ extern "C"
 
 CSpeexAEC::CSpeexAEC(CViewCamera * lpViewCamera)
   : m_lpViewCamera(lpViewCamera)
-  , m_lpADecoder(nullptr)
-  , m_lpACodec(nullptr)
-  , m_lpDFrame(nullptr)
+  , m_lpDeContext(nullptr)
+  , m_lpDeCodec(nullptr)
+  , m_lpDeFrame(nullptr)
+  , m_lpEnContext(nullptr)
+  , m_lpEnCodec(nullptr)
+  , m_lpEnFrame(nullptr)
   , m_lpSpeexEcho(NULL)
   , m_lpSpeexDen(NULL)
   , m_lpSpeexSem(NULL)
@@ -31,6 +34,15 @@ CSpeexAEC::CSpeexAEC(CViewCamera * lpViewCamera)
   , m_nSpeexTAIL(0)
   , m_nSpeexNN(0)
 {
+	// 设置AAC每帧样本数...
+	m_aac_nb_samples = 1024;
+	m_max_frame_ptr = NULL;
+	m_max_frame_size = 0;
+	m_aac_frame_size = 0;
+	m_aac_frame_count = 0;
+	m_aac_out_bitrate = 0;
+	m_aac_convert_ctx = NULL;
+	// 设置默认参数值...
 	m_in_rate_index = 0;
 	m_in_sample_rate = 0;
 	m_in_channel_num = 0;
@@ -64,14 +76,37 @@ CSpeexAEC::~CSpeexAEC()
 	// 等待线程退出...
 	this->StopAndWaitForThread();
 	// 释放解码结构体...
-	if (m_lpDFrame != NULL) {
-		av_frame_free(&m_lpDFrame);
-		m_lpDFrame = NULL;
+	if (m_lpDeFrame != NULL) {
+		av_frame_free(&m_lpDeFrame);
+		m_lpDeFrame = NULL;
 	}
 	// 释放解码器对象...
-	if (m_lpADecoder != nullptr) {
-		avcodec_close(m_lpADecoder);
-		av_free(m_lpADecoder);
+	if (m_lpDeContext != nullptr) {
+		avcodec_close(m_lpDeContext);
+		av_free(m_lpDeContext);
+		m_lpDeContext = NULL;
+	}
+	// 释放压缩结构体...
+	if (m_lpEnFrame != NULL) {
+		av_frame_free(&m_lpEnFrame);
+		m_lpEnFrame = NULL;
+	}
+	// 关闭aac单帧压缩原始PCM空间...
+	if (m_max_frame_ptr != NULL) {
+		av_free(m_max_frame_ptr);
+		m_max_frame_ptr = NULL;
+		m_max_frame_size = 0;
+	}
+	// 关闭aac音频数据转换器...
+	if (m_aac_convert_ctx != NULL) {
+		swr_free(&m_aac_convert_ctx);
+		m_aac_convert_ctx = NULL;
+	}
+	// 释放压缩器对象...
+	if (m_lpEnContext != nullptr) {
+		avcodec_close(m_lpEnContext);
+		av_free(m_lpEnContext);
+		m_lpEnContext = NULL;
 	}
 	// 关闭音频转换对象...
 	if (m_out_convert_ctx != nullptr) {
@@ -120,7 +155,7 @@ CSpeexAEC::~CSpeexAEC()
 }
 
 BOOL CSpeexAEC::InitSpeex(int nInRateIndex, int nInChannelNum, int nOutSampleRate, int nOutChannelNum,
-                          int nHornDelayMS, int nSpeexFrameMS, int nSpeexFilterMS)
+                          int nOutBitrateAAC, int nHornDelayMS, int nSpeexFrameMS, int nSpeexFilterMS)
 {
 	// 根据索引获取采样率...
 	switch (nInRateIndex)
@@ -136,6 +171,8 @@ BOOL CSpeexAEC::InitSpeex(int nInRateIndex, int nInChannelNum, int nOutSampleRat
 	case 0x0b: m_in_sample_rate = 8000; break;
 	default:   m_in_sample_rate = 48000; break;
 	}
+	// 保存AAC压缩输出码流...
+	m_aac_out_bitrate = nOutBitrateAAC;
 	// 保存采样率索引和声道...
 	m_in_rate_index = nInRateIndex;
 	m_in_channel_num = nInChannelNum;
@@ -152,42 +189,6 @@ BOOL CSpeexAEC::InitSpeex(int nInRateIndex, int nInChannelNum, int nOutSampleRat
 	m_lpMicBufNN = new short[m_nSpeexNN];
 	m_lpHornBufNN = new short[m_nSpeexNN];
 	m_lpEchoBufNN = new short[m_nSpeexNN];
-	// 初始化ffmpeg解码器...
-	av_register_all();
-	// 准备一些特定的参数...
-	AVCodecID src_codec_id = AV_CODEC_ID_AAC;
-	// 查找需要的解码器和相关容器、解析器...
-	m_lpACodec = avcodec_find_decoder(src_codec_id);
-	m_lpADecoder = avcodec_alloc_context3(m_lpACodec);
-	// 打开获取到的解码器...
-	if (avcodec_open2(m_lpADecoder, m_lpACodec, NULL) != 0)
-		return false;
-	// 准备一个全局的解码结构体 => 解码数据帧是相互关联的...
-	m_lpDFrame = av_frame_alloc();
-	ASSERT(m_lpDFrame != NULL);
-	// 输入声道和输出声道 => 转换成单声道...
-	int in_audio_channel_num = m_in_channel_num;
-	int out_audio_channel_num = m_out_channel_num;
-	int64_t in_channel_layout = av_get_default_channel_layout(in_audio_channel_num);
-	int64_t out_channel_layout = (out_audio_channel_num <= 1) ? AV_CH_LAYOUT_MONO : AV_CH_LAYOUT_STEREO;
-	// 输入输出的音频格式...
-	AVSampleFormat in_sample_fmt = m_lpADecoder->sample_fmt; // => AV_SAMPLE_FMT_FLTP
-	AVSampleFormat out_sample_fmt = AV_SAMPLE_FMT_S16;
-	// 设置输入输出采样率 => 转换成8K采样率...
-	int in_sample_rate = m_in_sample_rate;
-	int out_sample_rate = m_out_sample_rate;
-	// 分配并初始化转换器...
-	m_out_convert_ctx = swr_alloc();
-	m_out_convert_ctx = swr_alloc_set_opts(m_out_convert_ctx, out_channel_layout, out_sample_fmt, out_sample_rate,
-										  in_channel_layout, in_sample_fmt, in_sample_rate, 0, NULL);
-	swr_init(m_out_convert_ctx);
-	// 输入输出音频采样个数 => AAC-1024 | MP3-1152
-	// 注意：还没有开始转换，swr_get_delay()返回0，out_nb_samples是正常的样本数，不会变...
-	int in_nb_samples = swr_get_delay(m_out_convert_ctx, in_sample_rate) + 1024;
-	int out_nb_samples = av_rescale_rnd(in_nb_samples, out_sample_rate, in_sample_rate, AV_ROUND_UP);
-	// 计算输出每帧持续毫秒数(与声道无关)，每帧字节数(与声道有关) => 只需要计算一次就够了...
-	int out_frame_duration = out_nb_samples * 1000 / out_sample_rate;
-	int out_frame_bytes = av_samples_get_buffer_size(NULL, out_audio_channel_num, out_nb_samples, out_sample_fmt, 1);
 	// 初始化回音消除信号量...
 	if (os_sem_init(&m_lpSpeexSem, 0) != 0)
 		return false;
@@ -199,8 +200,112 @@ BOOL CSpeexAEC::InitSpeex(int nInRateIndex, int nInChannelNum, int nOutSampleRat
 	m_lpSpeexDen = speex_preprocess_state_init(m_nSpeexNN, m_out_sample_rate);
 	speex_echo_ctl(m_lpSpeexEcho, SPEEX_ECHO_SET_SAMPLING_RATE, &m_out_sample_rate);
 	speex_preprocess_ctl(m_lpSpeexDen, SPEEX_PREPROCESS_SET_ECHO_STATE, m_lpSpeexEcho);
+	// 初始化ffmpeg...
+	av_register_all();
+	// 初始化AAC解码器对象...
+	if (!this->doInitDecoder())
+		return false;
+	// 初始化AAC压缩器对象...
+	if (!this->doInitEncoder())
+		return false;
 	// 启动回声消除线程...
 	this->Start();
+	return true;
+}
+
+// 初始化AAC解码器对象...
+BOOL CSpeexAEC::doInitDecoder()
+{
+	// 准备一些特定的参数...
+	AVCodecID src_codec_id = AV_CODEC_ID_AAC;
+	// 查找需要的解码器和相关容器、解析器...
+	m_lpDeCodec = avcodec_find_decoder(src_codec_id);
+	m_lpDeContext = avcodec_alloc_context3(m_lpDeCodec);
+	// 打开获取到的解码器...
+	if (avcodec_open2(m_lpDeContext, m_lpDeCodec, NULL) != 0)
+		return false;
+	// 准备一个全局的解码结构体 => 解码数据帧是相互关联的...
+	m_lpDeFrame = av_frame_alloc();
+	ASSERT(m_lpDeFrame != NULL);
+	// 输入声道和输出声道 => 转换成单声道...
+	int in_audio_channel_num = m_in_channel_num;
+	int out_audio_channel_num = m_out_channel_num;
+	int64_t in_channel_layout = av_get_default_channel_layout(in_audio_channel_num);
+	int64_t out_channel_layout = av_get_default_channel_layout(out_audio_channel_num);
+	// 输入输出的音频格式...
+	AVSampleFormat in_sample_fmt = m_lpDeContext->sample_fmt; // => AV_SAMPLE_FMT_FLTP
+	AVSampleFormat out_sample_fmt = AV_SAMPLE_FMT_S16;
+	// 设置输入输出采样率 => 转换成8K采样率...
+	int in_sample_rate = m_in_sample_rate;
+	int out_sample_rate = m_out_sample_rate;
+	// 分配并初始化转换器...
+	m_out_convert_ctx = swr_alloc();
+	m_out_convert_ctx = swr_alloc_set_opts(m_out_convert_ctx, out_channel_layout, out_sample_fmt, out_sample_rate,
+										  in_channel_layout, in_sample_fmt, in_sample_rate, 0, NULL);
+	if (AVERROR(swr_init(m_out_convert_ctx)) < 0)
+		return false;
+	// 输入输出音频采样个数 => AAC-1024 | MP3-1152
+	// 注意：还没有开始转换，swr_get_delay()返回0，out_nb_samples是正常的样本数，不会变...
+	int in_nb_samples = swr_get_delay(m_out_convert_ctx, in_sample_rate) + m_aac_nb_samples;
+	int out_nb_samples = av_rescale_rnd(in_nb_samples, out_sample_rate, in_sample_rate, AV_ROUND_UP);
+	// 计算输出每帧持续毫秒数(与声道无关)，每帧字节数(与声道有关) => 只需要计算一次就够了...
+	int out_frame_duration = out_nb_samples * 1000 / out_sample_rate;
+	int out_frame_bytes = av_samples_get_buffer_size(NULL, out_audio_channel_num, out_nb_samples, out_sample_fmt, 1);
+	return true;
+}
+
+// 初始化AAC压缩器对象...
+BOOL CSpeexAEC::doInitEncoder()
+{
+	// 设置压缩器ID...
+	AVCodecID src_codec_id = AV_CODEC_ID_AAC;
+	// 设置压缩器需要转换的PCM音频数据格式...
+	AVSampleFormat in_sample_fmt = AV_SAMPLE_FMT_S16;
+	AVSampleFormat out_sample_fmt = AV_SAMPLE_FMT_FLTP;
+	// 设置压缩器需要转换的声道数 => 声道数不变...
+	int in_audio_channel_num = m_out_channel_num;
+	int out_audio_channel_num = m_out_channel_num;
+	int64_t in_channel_layout = av_get_default_channel_layout(in_audio_channel_num);
+	int64_t out_channel_layout = av_get_default_channel_layout(out_audio_channel_num);
+	// 设置压缩器需要转换的输入输出采样率 => 采样率不变...
+	int in_sample_rate = m_out_sample_rate;
+	int out_sample_rate = m_out_sample_rate;
+	// 计算输入输出的音频采样个数...
+	int in_nb_samples = m_aac_nb_samples;
+	int out_nb_samples = av_rescale_rnd(in_nb_samples, out_sample_rate, in_sample_rate, AV_ROUND_UP);
+	// 计算AAC压缩器需要的PCM数据帧的字节数，并预先分配缓存...
+	m_aac_frame_size = av_samples_get_buffer_size(NULL, out_audio_channel_num, out_nb_samples, out_sample_fmt, 1);
+	m_max_frame_ptr = (uint8_t *)av_malloc(m_aac_frame_size);
+	m_max_frame_size = m_aac_frame_size;
+	// 分配并初始化转换器...
+	m_aac_convert_ctx = swr_alloc();
+	m_aac_convert_ctx = swr_alloc_set_opts(m_aac_convert_ctx, out_channel_layout, out_sample_fmt, out_sample_rate,
+                                           in_channel_layout, in_sample_fmt, in_sample_rate, 0, NULL);
+	if (AVERROR(swr_init(m_aac_convert_ctx)) < 0)
+		return false;
+	// 查找需要的压缩器和相关容器、解析器...
+	m_lpEnCodec = avcodec_find_encoder(src_codec_id);
+	m_lpEnContext = avcodec_alloc_context3(m_lpEnCodec);
+	// 配置压缩器的相关参数信息...
+	m_lpEnContext->codec_id = src_codec_id;
+	m_lpEnContext->codec_type = AVMEDIA_TYPE_AUDIO;
+	m_lpEnContext->sample_fmt = out_sample_fmt;
+	m_lpEnContext->sample_rate = out_sample_rate;
+	m_lpEnContext->channels = out_audio_channel_num;
+	m_lpEnContext->channel_layout = av_get_default_channel_layout(out_audio_channel_num);
+	m_lpEnContext->bit_rate = m_aac_out_bitrate;
+	// 打开获取到的压缩器对象...
+	int errCode = avcodec_open2(m_lpEnContext, m_lpEnCodec, NULL);
+	if (errCode < 0) {
+		char errBuf[MAX_PATH] = { 0 };
+		av_strerror(errCode, errBuf, MAX_PATH);
+		blog(LOG_INFO, "[AAC-Encoder] Error => %s", errBuf);
+		return false;
+	}
+	// 准备一个全局的压缩结构体 => 压缩数据帧是相互关联的...
+	m_lpEnFrame = av_frame_alloc();
+	ASSERT(m_lpEnFrame != NULL);
+	// 初始化成功...
 	return true;
 }
 
@@ -244,7 +349,7 @@ BOOL CSpeexAEC::PushMicFrame(FMS_FRAME & inFrame)
 	if (this->IsStopRequested())
 		return false;
 	// 如果解码对象为空，直接返回失败...
-	if (m_lpADecoder == NULL || m_lpACodec == NULL)
+	if (m_lpDeContext == NULL || m_lpDeCodec == NULL)
 		return false;
 	// 加上ADTS数据包头...
 	string & inData = inFrame.strData;
@@ -291,7 +396,7 @@ BOOL CSpeexAEC::PushMicFrame(FMS_FRAME & inFrame)
 	theNewPacket.stream_index = 0;
 	int got_picture = 0, nResult = 0;
 	// 注意：这里解码后的格式是4bit，需要转换成16bit，调用swr_convert
-	nResult = avcodec_decode_audio4(m_lpADecoder, m_lpDFrame, &got_picture, &theNewPacket);
+	nResult = avcodec_decode_audio4(m_lpDeContext, m_lpDeFrame, &got_picture, &theNewPacket);
 	// 如果没有解出完整数据包，打印信息，释放数据包...
 	if (nResult < 0 || !got_picture) {
 		blog(LOG_INFO, "[Audio] Error => decode_audio failed, PTS: %I64d, DecodeSize: %d, PacketSize: %d", theNewPacket.pts, nResult, theNewPacket.size);
@@ -299,19 +404,19 @@ BOOL CSpeexAEC::PushMicFrame(FMS_FRAME & inFrame)
 		return false;
 	}
 	// 对解码后的音频进行格式转换 => 采样率、声道、数据格式...
-	this->doConvertAudio(theNewPacket.dts, m_lpDFrame);
+	this->doConvertDecodeAudio(theNewPacket.dts, m_lpDeFrame);
 	// 释放AVPacket数据包...
 	av_free_packet(&theNewPacket);
 	return true;
 }
 
-void CSpeexAEC::doConvertAudio(int64_t in_pts_ms, AVFrame * lpDFrame)
+void CSpeexAEC::doConvertDecodeAudio(int64_t in_pts_ms, AVFrame * lpDFrame)
 {
 	// 输入声道和输出声道 => 转换成单声道...
 	int in_audio_channel_num = m_in_channel_num;
 	int out_audio_channel_num = m_out_channel_num;
 	// 输入输出的音频格式...
-	AVSampleFormat in_sample_fmt = m_lpADecoder->sample_fmt; // => AV_SAMPLE_FMT_FLTP
+	AVSampleFormat in_sample_fmt = m_lpDeContext->sample_fmt; // => AV_SAMPLE_FMT_FLTP
 	AVSampleFormat out_sample_fmt = AV_SAMPLE_FMT_S16;
 	// 设置输入输出采样率 => 转换成8K采样率...
 	int in_sample_rate = m_in_sample_rate;
@@ -355,7 +460,7 @@ void CSpeexAEC::doConvertAudio(int64_t in_pts_ms, AVFrame * lpDFrame)
 	pthread_mutex_unlock(&m_SpeexMutex);
 	// 最终不是通过删除麦克风数据，而是通过给扬声器缓存增加空数据的方式解决...
 	// 计算每个AAC数据帧占用的持续时间(毫秒)，每个AAC数据帧使用1024个PCM样本；计算每毫秒占用字节数...
-	/*int in_frame_duration = 1024 * 1000 / m_in_sample_rate;
+	/*int in_frame_duration = m_aac_nb_samples * 1000 / m_in_sample_rate;
 	int in_bytes_per_ms = m_in_sample_rate / 1000 * sizeof(short);
 	// 设定PCM数据指针和数据大小...
 	uint8_t * lpPCMDataPtr = m_max_buffer_ptr;
@@ -417,22 +522,101 @@ void CSpeexAEC::doEchoCancel()
 		speex_echo_cancellation(m_lpSpeexEcho, m_lpMicBufNN, m_lpHornBufNN, m_lpEchoBufNN);
 		speex_preprocess_run(m_lpSpeexDen, m_lpEchoBufNN);
 		// 将扬声器的PCM数据进行存盘处理 => 必须用二进制方式打开文件...
-		this->doSaveAudioPCM((uint8_t*)m_lpHornBufNN, nNeedBufBytes, m_out_sample_rate, 1, m_lpViewCamera->GetDBCameraID());
+		//this->doSaveAudioPCM((uint8_t*)m_lpHornBufNN, nNeedBufBytes, m_out_sample_rate, 1, m_lpViewCamera->GetDBCameraID());
 	} else {
 		// 扬声器数据不够，把麦克风样本数据直接当成回音消除后的样本数据...
 		memcpy(m_lpEchoBufNN, m_lpMicBufNN, nNeedBufBytes);
 	}
 	// 对回音消除后的数据进行存盘处理 => 必须用二进制方式打开文件...
-	this->doSaveAudioPCM((uint8_t*)m_lpMicBufNN, nNeedBufBytes, m_out_sample_rate, 0, m_lpViewCamera->GetDBCameraID());
-	this->doSaveAudioPCM((uint8_t*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 2, m_lpViewCamera->GetDBCameraID());
-	// 对回音消除后的数据放入AAC压缩打包处理环形队列当中，进行下一步的压缩打包投递处理 => 注意，这里不需要用互斥对象...
-	//circlebuf_push_back(&m_circle_echo, m_lpEchoBufNN, nNeedBufBytes);
+	//this->doSaveAudioPCM((uint8_t*)m_lpMicBufNN, nNeedBufBytes, m_out_sample_rate, 0, m_lpViewCamera->GetDBCameraID());
+	//this->doSaveAudioPCM((uint8_t*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 2, m_lpViewCamera->GetDBCameraID());
+	// 对回音消除后的数据需要进行转换成AAC压缩器需要的格式之后，再进行环形队列缓存的填充...
+	this->doConvertEchoAudio((uint8_t*)m_lpEchoBufNN, nNeedBufBytes);
 	// 如果麦克风环形队列里面还有足够的数据块需要进行回音消除，发起信号量变化事件...
 	if (m_circle_mic.size >= nNeedBufBytes) {
 		((m_lpSpeexSem != NULL) ? os_sem_post(m_lpSpeexSem) : NULL);
 	}
 }
 
+void CSpeexAEC::doConvertEchoAudio(uint8_t * lpEchoData, int nEchoSize)
+{
+	// 计算消除回声后的样本大小 => 与每次回音处理样本数一致...
+	int nEchoSample = nEchoSize / sizeof(short);
+	ASSERT(nEchoSample == m_nSpeexNN);
+	// 设置压缩器需要转换的PCM音频数据格式...
+	AVSampleFormat in_sample_fmt = AV_SAMPLE_FMT_S16;
+	AVSampleFormat out_sample_fmt = AV_SAMPLE_FMT_FLTP;
+	// 设置压缩器需要转换的声道数 => 声道数不变...
+	int in_audio_channel_num = m_out_channel_num;
+	int out_audio_channel_num = m_out_channel_num;
+	// 设置输入输出采样率 => 采样率不变...
+	int in_sample_rate = m_out_sample_rate;
+	int out_sample_rate = m_out_sample_rate;
+	// 注意：已经开始转换，swr_get_delay()将返回上次转换遗留的样本数，因此，要准备比正常样本大的空间...
+	int in_nb_samples = swr_get_delay(m_aac_convert_ctx, in_sample_rate) + nEchoSample;
+	int out_nb_samples = av_rescale_rnd(in_nb_samples, out_sample_rate, in_sample_rate, AV_ROUND_UP);
+	// 获取音频解码后输出的缓冲区大小 => 分配新的空间，由于有上次转换遗留样本，需要的空间会有变化...
+	int out_buffer_size = av_samples_get_buffer_size(NULL, out_audio_channel_num, out_nb_samples, out_sample_fmt, 1);
+	// 如果新需要的空间大于了当前单帧最大空间，需要重建空间...
+	if (out_buffer_size > m_max_frame_size) {
+		// 删除之前分配的单帧最大空间...
+		if (m_max_frame_ptr != NULL) {
+			av_free(m_max_frame_ptr);
+			m_max_frame_ptr = NULL;
+		}
+		// 重新分配最新的单帧最大空间...
+		m_max_frame_size = out_buffer_size;
+		m_max_frame_ptr = (uint8_t *)av_malloc(out_buffer_size);
+	}
+	// 调用音频转换接口，转换音频数据 => 返回值很重要，它是实际获取的已转换的样本数 => 使用最大空间去接收转换后的数据内容...
+	int nResult = swr_convert(m_aac_convert_ctx, &m_max_frame_ptr, m_max_frame_size, (const uint8_t**)&lpEchoData, nEchoSample);
+	// 转换失败，直接返回 => 没有需要抽取的转换后数据内容...
+	if (nResult <= 0) return;
+	// 需要将转换后的样本数，转换成实际的缓存大小...
+	int cur_data_size = av_samples_get_buffer_size(NULL, out_audio_channel_num, nResult, out_sample_fmt, 1);
+	// 对回音消除后的数据放入AAC压缩打包处理环形队列当中，进行下一步的压缩打包投递处理 => 注意，这里不需要用互斥对象...
+	circlebuf_push_back(&m_circle_echo, m_max_frame_ptr, cur_data_size);
+}
+
 void CSpeexAEC::doEncodeAAC()
 {
+	// 回音消除后的环形队列缓存不够，直接返回...
+	if (m_circle_echo.size < m_aac_frame_size)
+		return;
+	ASSERT(m_max_frame_size >= m_aac_frame_size);
+	// 计算AAC单帧持续的毫秒数，便于累加时间戳...
+	int aac_frame_duration = m_aac_nb_samples * 1000 / m_out_sample_rate;
+	// 从环形队列中抽取AAC压缩器需要的数据内容 => 不需要互斥对象，都是顺序执行...
+	circlebuf_pop_front(&m_circle_echo, m_max_frame_ptr, m_aac_frame_size);
+	// 调用AAC压缩器，进行音频的压缩处理...
+	// 计算当前AAC压缩后的数据帧的PTS...
+	int64_t aac_cur_pts = m_mic_pts_ms_zero + m_aac_frame_count * aac_frame_duration;
+	// 累加AAC已压缩帧计数器...
+	++m_aac_frame_count;
+	// 为AVFrame准备相关的类型格式...
+	m_lpEnFrame->nb_samples = m_lpEnContext->frame_size;
+	m_lpEnFrame->format = m_lpEnContext->sample_fmt;
+	m_lpEnFrame->pts = aac_cur_pts;
+	// 使用原始的PCM数据填充AVFrame，准备开始压缩...
+	int nFillSize = avcodec_fill_audio_frame(m_lpEnFrame, m_lpEnContext->channels, m_lpEnContext->sample_fmt, m_max_frame_ptr, m_aac_frame_size, 1);
+	if (nFillSize < 0)
+		return;
+	int got_frame = 0;
+	AVPacket pkt = { 0 };
+	// 采用新的压缩函数，将PCM数据压缩成AAC数据...
+	int nResult = avcodec_encode_audio2(m_lpEnContext, &pkt, m_lpEnFrame, &got_frame);
+	// 压缩失败或没有得到完整AAC数据帧，直接返回，AVPacket没有数据...
+	if (nResult < 0 || !got_frame)
+		return;
+	// 构造返回需要的数据帧...
+	FMS_FRAME theAACFrame;
+	theAACFrame.strData.assign((char*)pkt.data, pkt.size);
+	theAACFrame.typeFlvTag = FLV_TAG_TYPE_AUDIO;
+	theAACFrame.dwSendTime = aac_cur_pts;
+	theAACFrame.dwRenderOffset = 0;
+	theAACFrame.is_keyframe = true;
+	// 对压缩后的AAC数据帧进行投递处理...
+	m_lpViewCamera->doPushAudioAEC(theAACFrame);
+	// 释放ffmpeg内部分配的资源...
+	av_packet_unref(&pkt);
 }

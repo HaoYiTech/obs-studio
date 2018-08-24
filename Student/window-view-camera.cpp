@@ -48,6 +48,8 @@ CViewCamera::CViewCamera(QWidget *parent, int nDBCameraID)
 	// 注意：只有QT线程当中才能启动时钟对象...
 	// 开启一个定时检测时钟 => 每隔1秒执行一次...
 	m_nFlowTimer = this->startTimer(1 * 1000);
+	// 建立摄像头数据拉取成功的信号槽，为了避免RTSP数据线程调用QT的socket造成的问题...
+	this->connect(this, SIGNAL(doTriggerStartPushThread()), this, SLOT(onTriggerStartPushThread()));
 }
 
 CViewCamera::~CViewCamera()
@@ -314,12 +316,6 @@ QString CViewCamera::GetSendPushRate()
 
 void CViewCamera::onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID)
 {
-	// 输入摄像头编号必须与当前窗口一致...
-	if (m_lpDataThread == NULL || nDBCameraID != m_nDBCameraID) {
-		blog(LOG_INFO, "onTriggerUdpSendThread => Error, CDataThread is NULL");
-		return;
-	}
-	ASSERT(m_lpDataThread != NULL && nDBCameraID == m_nDBCameraID);
 	// 如果通道拉流状态不是在线状态，直接返回...
 	if (m_nCameraState != kCameraOnLine) {
 		blog(LOG_INFO, "onTriggerUdpSendThread => Error, CameraState: %d", m_nCameraState);
@@ -327,21 +323,25 @@ void CViewCamera::onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID)
 	}
 	// 如果是通道开始推流命令 => 创建推流线程...
 	if (bIsStartCmd) {
+		// 如果摄像头数据线程无效，打印错误，返回...
+		if (m_lpDataThread == NULL) {
+			blog(LOG_INFO, "onTriggerUdpSendThread => Error, CDataThread is NULL");
+			return;
+		}
 		// 如果推流线程已经创建了，直接返回...
 		if (m_lpUDPSendThread != NULL)
 			return;
 		ASSERT(m_lpUDPSendThread == NULL);
-		// 创建UDP推流线程，使用服务器传递过来的参数...
-		int nRoomID = atoi(App()->GetRoomIDStr().c_str());
-		string & strUdpAddr = App()->GetUdpAddr();
-		int nUdpPort = App()->GetUdpPort();
-		m_lpUDPSendThread = new CUDPSendThread(m_lpDataThread, nRoomID, nDBCameraID);
-		// 如果初始化UDP推流线程失败，删除已经创建的对象...
-		if (!m_lpUDPSendThread->InitThread(strUdpAddr, nUdpPort)) {
-			delete m_lpUDPSendThread;
-			m_lpUDPSendThread = NULL;
-		}
+		// 重建回音消除对象 => 通道必须在线...
+		this->ReBuildSpeexAEC();
+		// 创建UDP发送线程对象 => 通道必须在线...
+		this->BuildSendThread();
 	} else {
+		// 先删除回音消除对象...
+		if (m_lpSpeexAEC != NULL) {
+			delete m_lpSpeexAEC;
+			m_lpSpeexAEC = NULL;
+		}
 		// 如果是通道停止推流命令 => 删除推流线程...
 		if (m_lpUDPSendThread != NULL) {
 			delete m_lpUDPSendThread;
@@ -350,7 +350,58 @@ void CViewCamera::onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID)
 	}
 }
 
-void CViewCamera::doStartPushThread()
+void CViewCamera::BuildSendThread()
+{
+	// 通道必须是在线状态...
+	if (m_nCameraState != kCameraOnLine)
+		return;
+	ASSERT(m_nCameraState == kCameraOnLine);
+	// 音频参数需要特殊处理，要看回音消除对象是否有效，有效，使用全局的音频设定，无效，直接用摄像头设定的音频参数...
+	int nAudioRateIndex = ((m_lpSpeexAEC != NULL) ? App()->GetAudioRateIndex() : m_lpDataThread->GetAudioRateIndex());
+	int nAudioChannelNum = ((m_lpSpeexAEC != NULL) ? App()->GetAudioChannelNum() : m_lpDataThread->GetAudioChannelNum());
+	// 创建UDP推流线程，使用服务器传递过来的参数...
+	int nRoomID = atoi(App()->GetRoomIDStr().c_str());
+	string & strUdpAddr = App()->GetUdpAddr();
+	int nUdpPort = App()->GetUdpPort();
+	int nDBCameraID = m_nDBCameraID;
+	m_lpUDPSendThread = new CUDPSendThread(m_lpDataThread, nRoomID, nDBCameraID);
+	// 如果初始化UDP推流线程失败，删除已经创建的对象...
+	if (!m_lpUDPSendThread->InitThread(strUdpAddr, nUdpPort, nAudioRateIndex, nAudioChannelNum)) {
+		delete m_lpUDPSendThread;
+		m_lpUDPSendThread = NULL;
+	}
+}
+
+void CViewCamera::ReBuildSpeexAEC()
+{
+	// 通道必须是在线状态...
+	if (m_nCameraState != kCameraOnLine)
+		return;
+	ASSERT(m_nCameraState == kCameraOnLine);
+	// 重建并初始化音频回音消除对象...
+	if (m_lpSpeexAEC != NULL) {
+		delete m_lpSpeexAEC;
+		m_lpSpeexAEC = NULL;
+	}
+	// 获取音频相关的格式头信息，以及回音消除参数...
+	int nInRateIndex = m_lpDataThread->GetAudioRateIndex();
+	int nInChannelNum = m_lpDataThread->GetAudioChannelNum();
+	int nOutSampleRate = App()->GetAudioSampleRate();
+	int nOutChannelNum = App()->GetAudioChannelNum();
+	int nOutBitrateAAC = App()->GetAudioBitrateAAC();
+	int nHornDelayMS = App()->GetSpeexHornDelayMS();
+	int nSpeexFrameMS = App()->GetSpeexFrameMS();
+	int nSpeexFilterMS = App()->GetSpeexFilterMS();
+	// 创建并初始化回音消除对象...
+	m_lpSpeexAEC = new CSpeexAEC(this);
+	// 初始化失败，删除回音消除对象...
+	if (!m_lpSpeexAEC->InitSpeex(nInRateIndex, nInChannelNum, nOutSampleRate, nOutChannelNum, nOutBitrateAAC, nHornDelayMS, nSpeexFrameMS, nSpeexFilterMS)) {
+		delete m_lpSpeexAEC; m_lpSpeexAEC = NULL;
+		blog(LOG_INFO, "CSpeexAEC::InitSpeex() => Error");
+	}
+}
+
+void CViewCamera::onTriggerStartPushThread()
 {
 	// 向中转服务器汇报通道信息和状态 => 重建成功之后再发送命令...
 	CRemoteSession * lpRemoteSession = App()->GetRemoteSession();
@@ -362,28 +413,14 @@ void CViewCamera::doStartPushThread()
 	if (lpWebThread != NULL) {
 		lpWebThread->doWebStatCamera(m_nDBCameraID, kCameraOnLine);
 	}
-	// 重建并初始化音频回音消除对象...
-	if (m_lpSpeexAEC != NULL) {
-		delete m_lpSpeexAEC;
-		m_lpSpeexAEC = NULL;
-	}
-	// 获取音频相关的格式头信息，以及回音消除参数...
-	int nInRateIndex = m_lpDataThread->GetAudioRateIndex();
-	int nInChannelNum = m_lpDataThread->GetAudioChannelNum();
-	int nOutSampleRate = App()->GetAudioSampleRate();
-	int nOutChannelNum = App()->GetAudioChannelNum();
-	int nHornDelayMS = App()->GetSpeexHornDelayMS();
-	int nSpeexFrameMS = App()->GetSpeexFrameMS();
-	int nSpeexFilterMS = App()->GetSpeexFilterMS();
-	// 创建并初始化回音消除对象...
-	m_lpSpeexAEC = new CSpeexAEC(this);
-	// 初始化失败，删除回音消除对象...
-	if (!m_lpSpeexAEC->InitSpeex(nInRateIndex, nInChannelNum, nOutSampleRate, nOutChannelNum, nHornDelayMS, nSpeexFrameMS, nSpeexFilterMS)) {
-		delete m_lpSpeexAEC; m_lpSpeexAEC = NULL;
-		blog(LOG_INFO, "CSpeexAEC::InitSpeex() => Error");
-	}
 	// 设置通道状态为已连接在线状态...
 	m_nCameraState = kCameraOnLine;
+}
+
+// 这里必须用信号槽，关联到同一线程，避免QTSocket的多线程访问故障...
+void CViewCamera::doStartPushThread()
+{
+	emit this->doTriggerStartPushThread();
 }
 
 void CViewCamera::doPushFrame(FMS_FRAME & inFrame)
@@ -397,14 +434,31 @@ void CViewCamera::doPushFrame(FMS_FRAME & inFrame)
 	m_nCurRecvByte += inFrame.strData.size();
 	// 如果UDP推流线程有效，并且，推流线程没有发生严重拥塞，继续传递数据...
 	if (m_lpUDPSendThread != NULL && !m_lpUDPSendThread->IsNeedDelete()) {
-		m_lpUDPSendThread->PushFrame(inFrame);
-	}
-	// 如果是音频数据帧，需要进行回音消除...
-	if (m_lpSpeexAEC != NULL && inFrame.typeFlvTag == PT_TAG_AUDIO) {
-		m_lpSpeexAEC->PushMicFrame(inFrame);
+		// 如果是音频，回音消除对象有效，投递给回音消除对象，无效，还是投递给UDP发送线程...
+		if (inFrame.typeFlvTag == PT_TAG_AUDIO) {
+			if (m_lpSpeexAEC != NULL) {
+				m_lpSpeexAEC->PushMicFrame(inFrame);
+			} else {
+				m_lpUDPSendThread->PushFrame(inFrame);
+			}
+		}
+		// 如果是视频，投递到UDP发送线程，进行打包发送...
+		if (inFrame.typeFlvTag == PT_TAG_VIDEO) {
+			m_lpUDPSendThread->PushFrame(inFrame);
+		}
 	}
 }
 
+// 把回音消除之后的AAC音频，返回给UDP发送对象当中...
+void CViewCamera::doPushAudioAEC(FMS_FRAME & inFrame)
+{
+	// 如果UDP推流线程有效，并且，推流线程没有发生严重拥塞，继续传递数据...
+	if (m_lpUDPSendThread != NULL && !m_lpUDPSendThread->IsNeedDelete()) {
+		m_lpUDPSendThread->PushFrame(inFrame);
+	}
+}
+
+// 把投递到扬声器的PCM音频，放入回音消除当中...
 void CViewCamera::doEchoCancel(void * lpBufData, int nBufSize)
 {
 	if (m_lpSpeexAEC == NULL)

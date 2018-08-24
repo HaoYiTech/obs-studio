@@ -92,8 +92,10 @@ public:
 	int      GetDBHaoYiGatherID() { return m_nDBHaoYiGatherID; }
 	int      GetRtpTCPSockFD() { return m_nRtpTCPSockFD; }
 
+	int      GetAudioRateIndex();
 	int      GetAudioChannelNum() { return m_nAudioOutChannelNum; }
 	int      GetAudioSampleRate() { return m_nAudioOutSampleRate; }
+	int      GetAudioBitrateAAC() { return m_nAudioOutBitrateAAC; }
 	int      GetSpeexHornDelayMS() { return m_nSpeexHornDelayMS; }
 	int      GetSpeexFilterMS() { return m_nSpeexFilterMS; }
 	int      GetSpeexFrameMS() { return m_nSpeexFrameMS; }
@@ -215,6 +217,7 @@ private:
 	int                 m_nRtpTCPSockFD;                // CRemoteSession在服务器端的套接字号码...
 	int                 m_nAudioOutSampleRate;          // 音频播放、压缩输出采样率 
 	int                 m_nAudioOutChannelNum;          // 音频播放、压缩输出声道数
+	int                 m_nAudioOutBitrateAAC;          // 回音消除后AAC压缩输出码流
 	int                 m_nSpeexHornDelayMS;            // 扬声器输出延时(SDL数据缓存)
 	int                 m_nSpeexFilterMS;               // 回音消除尾音毫秒数(同步落差)
 	int                 m_nSpeexFrameMS;                // 回音消除单次处理毫秒数

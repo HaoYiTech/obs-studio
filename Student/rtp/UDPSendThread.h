@@ -21,12 +21,12 @@ public:
 	int            GetSendVideoKbps() { return (m_bNeedDelete ? -1 : m_video_output_kbps); }
 	bool           IsNeedDelete() { return m_bNeedDelete; }
 public:
-	BOOL			InitThread(string & strUdpAddr, int nUdpPort);
+	BOOL			InitThread(string & strUdpAddr, int nUdpPort, int nAudioRateIndex, int nAudioChannelNum);
 	BOOL			PushFrame(FMS_FRAME & inFrame);
 protected:
 	BOOL			InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS);
 	BOOL			InitAudio(int nRateIndex, int nChannelNum);
-	BOOL			ParseAVHeader();
+	BOOL			ParseAVHeader(int nAudioRateIndex, int nAudioChannelNum);
 private:
 	void			CloseSocket();
 	void			doCalcAVBitRate();
