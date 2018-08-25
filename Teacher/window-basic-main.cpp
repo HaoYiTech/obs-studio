@@ -577,13 +577,13 @@ void OBSBasic::CreateFirstRunSources()
 {
 	bool hasDesktopAudio = HasAudioDevices(App()->OutputAudioSource());
 	bool hasInputAudio   = HasAudioDevices(App()->InputAudioSource());
-
-	if (hasDesktopAudio)
-		ResetAudioDevice(App()->OutputAudioSource(), "default",
-				Str("Basic.DesktopDevice1"), 1);
-	if (hasInputAudio)
-		ResetAudioDevice(App()->InputAudioSource(), "default",
-				Str("Basic.AuxDevice1"), 3);
+	// 直接屏蔽电脑输出声音，彻底避免互动时的声音啸叫...
+	//if (hasDesktopAudio) {
+	//	ResetAudioDevice(App()->OutputAudioSource(), "default",	Str("Basic.DesktopDevice1"), 1);
+	//}
+	if (hasInputAudio) {
+		ResetAudioDevice(App()->InputAudioSource(), "default", Str("Basic.AuxDevice1"), 3);
+	}
 }
 
 void OBSBasic::CreateDefaultScene(bool firstStart)
@@ -598,8 +598,9 @@ void OBSBasic::CreateDefaultScene(bool firstStart)
 
 	obs_scene_t  *scene  = obs_scene_create(Str("Basic.Scene"));
 
-	if (firstStart)
+	if (firstStart) {
 		CreateFirstRunSources();
+	}
 
 	AddScene(obs_scene_get_source(scene));
 	SetCurrentScene(scene, true);
@@ -3244,8 +3245,7 @@ bool OBSBasic::ResetAudio()
 	return obs_reset_audio(&ai);
 }
 
-void OBSBasic::ResetAudioDevice(const char *sourceId, const char *deviceId,
-		const char *deviceDesc, int channel)
+void OBSBasic::ResetAudioDevice(const char *sourceId, const char *deviceId,	const char *deviceDesc, int channel)
 {
 	bool disable = deviceId && strcmp(deviceId, "disabled") == 0;
 	obs_source_t *source;
@@ -3257,11 +3257,9 @@ void OBSBasic::ResetAudioDevice(const char *sourceId, const char *deviceId,
 			obs_set_output_source(channel, nullptr);
 		} else {
 			settings = obs_source_get_settings(source);
-			const char *oldId = obs_data_get_string(settings,
-					"device_id");
+			const char *oldId = obs_data_get_string(settings, "device_id");
 			if (strcmp(oldId, deviceId) != 0) {
-				obs_data_set_string(settings, "device_id",
-						deviceId);
+				obs_data_set_string(settings, "device_id", deviceId);
 				obs_source_update(source, settings);
 			}
 			obs_data_release(settings);
@@ -3279,6 +3277,10 @@ void OBSBasic::ResetAudioDevice(const char *sourceId, const char *deviceId,
 		// 如果是音频输入设备，自动加入噪音抑制过滤器...
 		if (strcmp(sourceId, App()->InputAudioSource()) == 0) {
 			OBSBasicSourceSelect::AddNoiseFilterForAudioSource(source, false);
+		}
+		// 如果是音频输出设备，自动设置为静音状态，避免发生多次叠加啸叫...
+		if (strcmp(sourceId, App()->OutputAudioSource()) == 0) {
+			obs_source_set_muted(source, true);
 		}
 	}
 }
