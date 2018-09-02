@@ -184,6 +184,22 @@ void LoginWindow::onClickLoginButton()
 		json_decref(theRoot);
 		return;
 	}
+	// 继续解析获取到的房间里的讲师和学生数量...
+	json_t * theTeacherCount = json_object_get(theRoot, "teacher");
+	json_t * theStudentCount = json_object_get(theRoot, "student");
+	if (theTeacherCount == NULL || theStudentCount == NULL) {
+		OBSMessageBox::information(this, QTStr("Teacher.Error.Title"), QTStr("Teacher.Room.Json"));
+		json_decref(theRoot);
+		return;
+	}
+	// 计算并判断房间里的讲师数量，大于0，不能登录...
+	int nTeacherCount = atoi(json_string_value(theTeacherCount));
+	int nStudentCount = atoi(json_string_value(theStudentCount));
+	if (nTeacherCount > 0) {
+		OBSMessageBox::information(this, QTStr("Teacher.Error.Title"), QTStr("Teacher.Room.Login"));
+		json_decref(theRoot);
+		return;
+	}
 	// 获取到直播的分解数据，并将直播地址保存到 => obs-teacher/global.ini...
 	config_set_string(App()->GlobalConfig(), "General", "LiveRoomID", strRoomID.c_str());
 	//config_set_string(App()->GlobalConfig(), "General", "TrackerAddr", lpTrackerAddr);
