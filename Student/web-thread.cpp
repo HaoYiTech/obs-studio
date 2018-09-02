@@ -148,12 +148,6 @@ bool CWebThread::RegisterGather()
 	// 获取Tracker|Remote|Local，并存放到配置文件，但不存盘...
 	int nDBGatherID = atoi(CStudentApp::getJsonString(value["gather_id"]).c_str());
 	int nWebType = atoi(CStudentApp::getJsonString(value["web_type"]).c_str());
-	string strTrackerAddr = CStudentApp::getJsonString(value["tracker_addr"]);
-	int nTrackerPort = atoi(CStudentApp::getJsonString(value["tracker_port"]).c_str());
-	string strRemoteAddr = CStudentApp::getJsonString(value["transmit_addr"]);
-	int nRemotePort = atoi(CStudentApp::getJsonString(value["transmit_port"]).c_str());
-	string strUdpAddr = CStudentApp::getJsonString(value["udp_addr"]);
-	int nUdpPort = atoi(CStudentApp::getJsonString(value["udp_port"]).c_str());
 	string strWebName = CStudentApp::getJsonString(value["web_name"]);
 	string strWebTag = CStudentApp::getJsonString(value["web_tag"]);
 	string strWebVer = CStudentApp::getJsonString(value["web_ver"]);
@@ -210,12 +204,6 @@ bool CWebThread::RegisterGather()
 	App()->SetWebTag(strWebTag);
 	App()->SetWebType(nWebType);
 	App()->SetWebName(strWebName);
-	App()->SetTrackerAddr(strTrackerAddr);
-	App()->SetTrackerPort(nTrackerPort);
-	App()->SetRemoteAddr(strRemoteAddr);
-	App()->SetRemotePort(nRemotePort);
-	App()->SetUdpAddr(strUdpAddr);
-	App()->SetUdpPort(nUdpPort);
 	// 存放新增的采集端配置信息 => 字符串都是UTF8格式...
 	App()->SetMainName(strMainName);
 	App()->SetInterVal(nInterVal);

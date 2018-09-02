@@ -160,8 +160,53 @@ void LoginWindow::onClickLoginButton()
 		json_decref(theRoot);
 		return;
 	}
+	// 继续解析获取到的存储服务器地址和端口...
+	json_t * theTrackerAddr = json_object_get(theRoot, "tracker_addr");
+	json_t * theTrackerPort = json_object_get(theRoot, "tracker_port");
+	if (theTrackerAddr == NULL || theTrackerPort == NULL) {
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
+		json_decref(theRoot);
+		return;
+	}
+	// 继续解析获取到的远程中转服务器地址和端口...
+	json_t * theRemoteAddr = json_object_get(theRoot, "remote_addr");
+	json_t * theRemotePort = json_object_get(theRoot, "remote_port");
+	if (theRemoteAddr == NULL || theRemotePort == NULL) {
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
+		json_decref(theRoot);
+		return;
+	}
+	// 继续解析获取到的udp服务器地址和端口...
+	json_t * theUdpAddr = json_object_get(theRoot, "udp_addr");
+	json_t * theUdpPort = json_object_get(theRoot, "udp_port");
+	if (theUdpAddr == NULL || theUdpPort == NULL) {
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
+		json_decref(theRoot);
+		return;
+	}
+	// 继续解析获取到的房间里的讲师和学生数量...
+	json_t * theTeacherCount = json_object_get(theRoot, "teacher");
+	json_t * theStudentCount = json_object_get(theRoot, "student");
+	if (theTeacherCount == NULL || theStudentCount == NULL) {
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
+		json_decref(theRoot);
+		return;
+	}
 	// 获取到直播的分解数据，并将直播地址保存到 => obs-student/global.ini...
 	config_set_string(App()->GlobalConfig(), "General", "LiveRoomID", strRoomID.c_str());
+	// 将获取到的相关地址信息存放到全局对象当中...
+	const char * lpTrackerAddr = json_string_value(theTrackerAddr);
+	const char * lpTrackerPort = json_string_value(theTrackerPort);
+	const char * lpRemoteAddr = json_string_value(theRemoteAddr);
+	const char * lpRemotePort = json_string_value(theRemotePort);
+	const char * lpUdpAddr = json_string_value(theUdpAddr);
+	const char * lpUdpPort = json_string_value(theUdpPort);
+	App()->SetTrackerAddr(string(lpTrackerAddr));
+	App()->SetTrackerPort(atoi(lpTrackerPort));
+	App()->SetRemoteAddr(string(lpRemoteAddr));
+	App()->SetRemotePort(atoi(lpRemotePort));
+	App()->SetUdpAddr(string(lpUdpAddr));
+	App()->SetUdpPort(atoi(lpUdpPort));
 	// 数据处理完毕，释放json数据包...
 	json_decref(theRoot);
 	// 通知主进程主窗口可以启动了...
