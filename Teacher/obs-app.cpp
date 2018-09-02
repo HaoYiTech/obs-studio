@@ -1868,7 +1868,7 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 #define CRASH_MESSAGE \
 	"Woops, OBS has crashed!\n\nWould you like to copy the crash log " \
 	"to the clipboard?  (Crash logs will still be saved to the " \
-	"%appdata%\\obs-studio\\crashes directory)"
+	"%appdata%\\obs-teacher\\crashes directory)"
 
 static void main_crash_handler(const char *format, va_list args, void *param)
 {
