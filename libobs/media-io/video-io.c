@@ -347,7 +347,7 @@ static inline bool video_output_cur_frame(struct video_output *video)
 		struct video_data frame = frame_info->frame;
 
 		// 将原始数据存盘成JPEG文件...
-		DoProcSaveJpeg(video, &frame);
+		//DoProcSaveJpeg(video, &frame);
 
 		if (scale_video_output(input, &frame))
 			input->callback(input->param, &frame);
