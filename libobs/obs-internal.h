@@ -229,9 +229,11 @@ struct obs_core_video {
 	graphics_t                      *graphics;
 	gs_stagesurf_t                  *copy_surfaces[NUM_TEXTURES];
 	gs_texture_t                    *render_textures[NUM_TEXTURES];
+	gs_texture_t                    *export_textures[NUM_TEXTURES];
 	gs_texture_t                    *output_textures[NUM_TEXTURES];
 	gs_texture_t                    *convert_textures[NUM_TEXTURES];
 	bool                            textures_rendered[NUM_TEXTURES];
+	bool                            textures_exported[NUM_TEXTURES];
 	bool                            textures_output[NUM_TEXTURES];
 	bool                            textures_copied[NUM_TEXTURES];
 	bool                            textures_converted[NUM_TEXTURES];

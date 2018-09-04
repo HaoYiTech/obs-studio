@@ -204,6 +204,13 @@ static bool obs_init_textures(struct obs_video_info *ovi)
 		if (!video->render_textures[i])
 			return false;
 
+		// 为了输出第一个数据源准备的纹理对象...
+		video->export_textures[i] = gs_texture_create(
+				ovi->base_width, ovi->base_height,
+				GS_RGBA, 1, NULL, GS_RENDER_TARGET);
+		if (!video->export_textures[i])
+			return false;
+
 		video->output_textures[i] = gs_texture_create(
 				ovi->output_width, ovi->output_height,
 				GS_RGBA, 1, NULL, GS_RENDER_TARGET);
@@ -432,11 +439,13 @@ static void obs_free_video(void)
 			gs_texture_destroy(video->render_textures[i]);
 			gs_texture_destroy(video->convert_textures[i]);
 			gs_texture_destroy(video->output_textures[i]);
+			gs_texture_destroy(video->export_textures[i]);
 
 			video->copy_surfaces[i]    = NULL;
 			video->render_textures[i]  = NULL;
 			video->convert_textures[i] = NULL;
 			video->output_textures[i]  = NULL;
+			video->export_textures[i]  = NULL;
 		}
 
 		gs_leave_context();
@@ -445,6 +454,8 @@ static void obs_free_video(void)
 
 		memset(&video->textures_rendered, 0,
 				sizeof(video->textures_rendered));
+		memset(&video->textures_exported, 0,
+				sizeof(video->textures_exported));
 		memset(&video->textures_output, 0,
 				sizeof(video->textures_output));
 		memset(&video->textures_copied, 0,

@@ -19,6 +19,7 @@
 #include <stdlib.h>
 
 #include "obs.h"
+#include "obs-scene.h"
 #include "obs-internal.h"
 #include "graphics/vec4.h"
 #include "media-io/format-conversion.h"
@@ -143,6 +144,182 @@ static inline void render_main_texture(struct obs_core_video *video,
 	profile_end(render_main_texture_name);
 }
 
+// 枚举所有的数据源对象，找到第一个场景数据源对象...
+static inline obs_scene_t * doFindSceneSource()
+{
+	pthread_mutex_lock(&obs->data.sources_mutex);
+	obs_source_t * source = obs->data.first_source;
+	obs_scene_t * scence = NULL;
+	while (source) {
+		obs_source_t *next_source = (obs_source_t*)source->context.next;
+		if (source->info.type == OBS_SOURCE_TYPE_SCENE) {
+			scence = obs_scene_from_source(source);
+			break;
+		}
+		source = next_source;
+	}
+	pthread_mutex_unlock(&obs->data.sources_mutex);
+	return scence;
+}
+
+// 遍历场景数据源列表，找到第一个0点位置的数据源...
+static inline bool doEnumZeroSource(obs_scene_t *scence, obs_sceneitem_t *item, void *param)
+{
+	struct vec2 posDisp = { 0 };
+	obs_sceneitem_get_pos(item, &posDisp);
+	obs_sceneitem_t ** out_item = (obs_sceneitem_t**)(param);
+	if (posDisp.x <= 0.0f && posDisp.y <= 0.0f) {
+		*out_item = item;
+		return false;
+	}
+	return true;
+}
+
+static void calculate_bounds_data(struct obs_scene_item *item,
+	struct vec2 *bounds, struct vec2 *origin, 
+	struct vec2 *scale, uint32_t *cx, uint32_t *cy)
+{
+	float    width = (float)(*cx) * fabsf(scale->x);
+	float    height = (float)(*cy) * fabsf(scale->y);
+	float    item_aspect = width / height;
+	float    bounds_aspect = bounds->x / bounds->y;
+	uint32_t bounds_type = item->bounds_type;
+	float    width_diff, height_diff;
+
+	if (item->bounds_type == OBS_BOUNDS_MAX_ONLY)
+		if (width > bounds->x || height > bounds->y)
+			bounds_type = OBS_BOUNDS_SCALE_INNER;
+
+	if (bounds_type == OBS_BOUNDS_SCALE_INNER ||
+		bounds_type == OBS_BOUNDS_SCALE_OUTER) {
+		bool  use_width = (bounds_aspect < item_aspect);
+		float mul;
+
+		if (item->bounds_type == OBS_BOUNDS_SCALE_OUTER)
+			use_width = !use_width;
+
+		mul = use_width ?
+			bounds->x / width :
+			bounds->y / height;
+
+		vec2_mulf(scale, scale, mul);
+	} else if (bounds_type == OBS_BOUNDS_SCALE_TO_WIDTH) {
+		vec2_mulf(scale, scale, bounds->x / width);
+	} else if (bounds_type == OBS_BOUNDS_SCALE_TO_HEIGHT) {
+		vec2_mulf(scale, scale, bounds->y / height);
+	} else if (bounds_type == OBS_BOUNDS_STRETCH) {
+		scale->x = bounds->x / (float)(*cx);
+		scale->y = bounds->y / (float)(*cy);
+	}
+
+	width = (float)(*cx) * scale->x;
+	height = (float)(*cy) * scale->y;
+	width_diff = bounds->x - width;
+	height_diff = bounds->y - height;
+	*cx = (uint32_t)bounds->x;
+	*cy = (uint32_t)bounds->y;
+
+	add_alignment(origin, item->bounds_align, (int)-width_diff, (int)-height_diff);
+}
+
+static inline uint32_t calc_cx(const struct obs_scene_item *item, uint32_t width)
+{
+	uint32_t crop_cx = item->crop.left + item->crop.right;
+	return (crop_cx > width) ? 2 : (width - crop_cx);
+}
+
+static inline uint32_t calc_cy(const struct obs_scene_item *item, uint32_t height)
+{
+	uint32_t crop_cy = item->crop.top + item->crop.bottom;
+	return (crop_cy > height) ? 2 : (height - crop_cy);
+}
+
+// 计算第一个0点位置的数据源临时变换矩阵...
+static inline void doCalcDrawTransform(obs_sceneitem_t * item, struct vec2 * bounds, struct matrix4 * out_transform)
+{
+	uint32_t        width = obs_source_get_width(item->source);
+	uint32_t        height = obs_source_get_height(item->source);
+	uint32_t        cx = calc_cx(item, width);
+	uint32_t        cy = calc_cy(item, height);
+	struct vec2     base_origin;
+	struct vec2     origin;
+	struct vec2     scale = item->scale;
+
+	width = cx;
+	height = cy;
+
+	vec2_zero(&base_origin);
+	vec2_zero(&origin);
+
+	if (item->bounds_type != OBS_BOUNDS_NONE) {
+		calculate_bounds_data(item, bounds, &origin, &scale, &cx, &cy);
+	} else {
+		cx = (uint32_t)((float)cx * scale.x);
+		cy = (uint32_t)((float)cy * scale.y);
+	}
+
+	add_alignment(&origin, item->align, (int)cx, (int)cy);
+
+	matrix4_identity(out_transform);
+	matrix4_scale3f(out_transform, out_transform, scale.x, scale.y, 1.0f);
+	matrix4_translate3f(out_transform, out_transform, -origin.x, -origin.y, 0.0f);
+	matrix4_rotate_aa4f(out_transform, out_transform, 0.0f, 0.0f, 1.0f, RAD(item->rot));
+	matrix4_translate3f(out_transform, out_transform, item->pos.x, item->pos.y, 0.0f);
+}
+
+// 将第一个0点位置的数据源渲染到特定的输出纹理对象当中...
+static const char *render_export_texture_name = "render_export_texture";
+static inline void render_export_texture(struct obs_core_video *video, int cur_texture)
+{
+	// 开始记录执行函数的名称...
+	profile_start(render_export_texture_name);
+	// 找到第一个场景会话对象 => 只有一个场景会话对象...
+	obs_scene_t * lpCurScene = doFindSceneSource();
+	// 没有找到，结束记录执行函数，并返回...
+	if (lpCurScene == NULL) {
+		profile_end(render_export_texture_name);
+		return;
+	}
+	// 在当前场景会话当中寻找0点显示位置的数据源...
+	obs_source_t * lpOutSourceItem = NULL;
+	obs_sceneitem_t * lpOutSceneItem = NULL;
+	obs_scene_enum_items(lpCurScene, doEnumZeroSource, &lpOutSceneItem);
+	lpOutSourceItem = obs_sceneitem_get_source(lpOutSceneItem);
+	// 没有找到，结束记录执行函数，并返回...
+	if (lpOutSceneItem == NULL || lpOutSourceItem == NULL) {
+		profile_end(render_export_texture_name);
+		return;
+	}
+	// 计算数据源在绘制画布上的缩放矩阵...
+	struct vec2 dstBounds = { 0 };
+	struct matrix4 draw_transform = { 0 };
+	vec2_set(&dstBounds, (float)video->base_width, (float)video->base_height);
+	doCalcDrawTransform(lpOutSceneItem, &dstBounds, &draw_transform);
+	// 设置背景色...
+	struct vec4 clear_color;
+	vec4_set(&clear_color, 0.0f, 0.0f, 0.0f, 1.0f);
+	// 设置渲染目标纹理对象...
+	gs_set_render_target(video->export_textures[cur_texture], NULL);
+	gs_clear(GS_CLEAR_COLOR, &clear_color, 1.0f, 0);
+	// 设定并初始化渲染画布大小...
+	set_render_size(video->base_width, video->base_height);
+	// 保存并初始化当前变换状态...
+	gs_blend_state_push();
+	gs_reset_blend_state();
+	// 保存并更新变换矩阵...
+	gs_matrix_push();
+	gs_matrix_mul(&draw_transform);
+	// 将数据源渲染到设定的渲染画布上面...
+	obs_source_video_render(lpOutSourceItem);
+	// 恢复变换矩阵和变换状态...
+	gs_matrix_pop();
+	gs_blend_state_pop();
+	// 设定当前渲染纹理状态...
+	video->textures_exported[cur_texture] = true;
+	// 结束记录执行函数...
+	profile_end(render_export_texture_name);
+}
+
 static inline gs_effect_t *get_scale_effect_internal(
 		struct obs_core_video *video)
 {
@@ -196,7 +373,8 @@ static inline void render_output_texture(struct obs_core_video *video,
 {
 	profile_start(render_output_texture_name);
 
-	gs_texture_t *texture = video->render_textures[prev_texture];
+	// 注意：这里改用了专门特定的输出纹理对象 => 只渲染第一个0点位置的数据源...
+	gs_texture_t *texture = video->export_textures[prev_texture];
 	gs_texture_t *target  = video->output_textures[cur_texture];
 	uint32_t     width   = gs_texture_get_width(target);
 	uint32_t     height  = gs_texture_get_height(target);
@@ -209,13 +387,11 @@ static inline void render_output_texture(struct obs_core_video *video,
 	gs_effect_t    *effect  = get_scale_effect(video, width, height);
 	gs_technique_t *tech    = gs_effect_get_technique(effect, "DrawMatrix");
 	gs_eparam_t    *image   = gs_effect_get_param_by_name(effect, "image");
-	gs_eparam_t    *matrix  = gs_effect_get_param_by_name(effect,
-			"color_matrix");
-	gs_eparam_t    *bres_i  = gs_effect_get_param_by_name(effect,
-			"base_dimension_i");
+	gs_eparam_t    *matrix  = gs_effect_get_param_by_name(effect, "color_matrix");
+	gs_eparam_t    *bres_i  = gs_effect_get_param_by_name(effect, "base_dimension_i");
 	size_t      passes, i;
 
-	if (!video->textures_rendered[prev_texture])
+	if (!video->textures_exported[prev_texture])
 		goto end;
 
 	gs_set_render_target(target, NULL);
@@ -345,10 +521,11 @@ static inline void render_video(struct obs_core_video *video, bool raw_active,
 	render_main_texture(video, cur_texture);
 
 	if (raw_active) {
+		render_export_texture(video, cur_texture);
 		render_output_texture(video, cur_texture, prev_texture);
-		if (video->gpu_conversion)
+		if (video->gpu_conversion) {
 			render_convert_texture(video, cur_texture, prev_texture);
-
+		}
 		stage_output_texture(video, cur_texture, prev_texture);
 	}
 
@@ -607,6 +784,7 @@ static void clear_frame_data(void)
 {
 	struct obs_core_video *video = &obs->video;
 	memset(video->textures_rendered, 0, sizeof(video->textures_rendered));
+	memset(video->textures_exported, 0, sizeof(video->textures_exported));
 	memset(video->textures_output, 0, sizeof(video->textures_output));
 	memset(video->textures_copied, 0, sizeof(video->textures_copied));
 	memset(video->textures_converted, 0, sizeof(video->textures_converted));
