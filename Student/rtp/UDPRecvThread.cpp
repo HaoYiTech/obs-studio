@@ -447,9 +447,7 @@ void CUDPRecvThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
 	if( m_rtp_header.hasAudio ) {
 		int nInRateIndex = m_rtp_header.rateIndex;
 		int nInChannelNum = m_rtp_header.channelNum;
-		int nOutSampleRate = App()->GetAudioSampleRate();
-		int nOutChannelNum = App()->GetAudioChannelNum();
-		m_lpPlaySDL->InitAudio(nInRateIndex, nInChannelNum, nOutSampleRate, nOutChannelNum);
+		m_lpPlaySDL->InitAudio(nInRateIndex, nInChannelNum);
 	}
 }
 

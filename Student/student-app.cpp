@@ -675,11 +675,11 @@ int CStudentApp::GetAudioRateIndex()
 	return audio_rate_index;
 }
 
-void CStudentApp::doEchoCancel(void * lpBufData, int nBufSize)
+void CStudentApp::doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum)
 {
 	if (m_studentWindow != NULL) {
 		CViewLeft * lpViewLeft = m_studentWindow->GetViewLeft();
-		((lpViewLeft != NULL) ? lpViewLeft->doEchoCancel(lpBufData, nBufSize) : NULL);
+		((lpViewLeft != NULL) ? lpViewLeft->doEchoCancel(lpBufData, nBufSize, nSampleRate, nChannelNum) : NULL);
 	}
 }
 

@@ -3,6 +3,8 @@
 
 #include "OSThread.h"
 #include <util/threading.h>
+#include <mmdeviceapi.h>
+#include <audioclient.h>
 
 extern "C"
 {
@@ -80,13 +82,14 @@ public:
 	virtual ~CAudioThread();
 	virtual void Entry();
 public:
-	BOOL	InitAudio(int nInRateIndex, int nInChannelNum, int nOutSampleRate, int nOutChannelNum);
+	BOOL	InitAudio(int nInRateIndex, int nInChannelNum);
 	void	doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, int inOffset);
 	int     GetCircleSize() { return m_frame_num; }
 private:
 	void	doConvertAudio(int64_t in_pts_ms, AVFrame * lpDFrame);
 	void	doDecodeFrame();
 	void	doDisplaySDL();
+	void    doMonitorFree();
 private:
 	int					m_in_rate_index;       // 输入采样索引
 	int					m_in_channel_num;      // 输入声道数
@@ -95,6 +98,7 @@ private:
 	int                 m_out_sample_rate;     // 输出采样率
 	int                 m_out_frame_bytes;     // 输出每帧占用字节数
 	int					m_out_frame_duration;  // 输出每帧持续时间(ms)
+	AVSampleFormat		m_out_sample_fmt;      // 输出采样格式 => SDL需要的是AV_SAMPLE_FMT_S16，WSAPI需要的是AV_SAMPLE_FMT_FLT...
 
 	SwrContext   *		m_out_convert_ctx;	   // 音频格式转换
 	uint8_t		 *		m_max_buffer_ptr;	   // 单帧最大输出空间
@@ -102,9 +106,12 @@ private:
 
 	int                 m_frame_num;           // PCM数据帧总数
 	circlebuf			m_circle;			   // PCM数据环形队列
-	SDL_AudioDeviceID	m_nDeviceID;		   // 音频设备编号
 
 	CPlaySDL	 *		m_lpPlaySDL;		   // 播放控制
+
+	IMMDevice          *m_device;              // WSAPI设备接口
+	IAudioClient       *m_client;              // WSAPI客户端
+	IAudioRenderClient *m_render;              // WSAPI渲染器
 };
 
 class CPlaySDL
@@ -114,8 +121,8 @@ public:
 	~CPlaySDL();
 public:
 	void		PushPacket(int zero_delay_ms, string & inData, int inTypeTag, bool bIsKeyFrame, uint32_t inSendTime);
-	BOOL		InitAudio(int nInRateIndex, int nInChannelNum, int nOutSampleRate, int nOutChannelNum);
 	BOOL		InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS);
+	BOOL		InitAudio(int nInRateIndex, int nInChannelNum);
 	int			GetAPacketSize() { return ((m_lpAudioThread != NULL) ? m_lpAudioThread->GetMapPacketSize() : 0); }
 	int			GetVPacketSize() { return ((m_lpVideoThread != NULL) ? m_lpVideoThread->GetMapPacketSize() : 0); }
 	int			GetAFrameSize() { return ((m_lpAudioThread != NULL) ? m_lpAudioThread->GetCircleSize() : 0); }

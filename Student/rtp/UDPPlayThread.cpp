@@ -461,10 +461,31 @@ void CVideoThread::doDecodeFrame()
 	int64_t frame_pts = av_rescale_q(lpFrame->best_effort_timestamp, base_pack, base_frame);*/
 }
 
+#ifndef KSAUDIO_SPEAKER_2POINT1
+#define KSAUDIO_SPEAKER_2POINT1 (KSAUDIO_SPEAKER_STEREO|SPEAKER_LOW_FREQUENCY)
+#endif
+
+#define KSAUDIO_SPEAKER_SURROUND_AVUTIL (KSAUDIO_SPEAKER_STEREO|SPEAKER_FRONT_CENTER)
+
+#ifndef KSAUDIO_SPEAKER_4POINT1
+#define KSAUDIO_SPEAKER_4POINT1 (KSAUDIO_SPEAKER_SURROUND|SPEAKER_LOW_FREQUENCY)
+#endif
+
+#define ACTUALLY_DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
+        EXTERN_C const GUID DECLSPEC_SELECTANY name \
+                = { l, w1, w2, { b1, b2,  b3,  b4,  b5,  b6,  b7,  b8 } }
+
+ACTUALLY_DEFINE_GUID(CLSID_MMDeviceEnumerator, 0xBCDE0395, 0xE52F, 0x467C, 0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E);
+ACTUALLY_DEFINE_GUID(IID_IMMDeviceEnumerator, 0xA95664D2, 0x9614, 0x4F35, 0xA7, 0x46, 0xDE, 0x8D, 0xB6, 0x36, 0x17, 0xE6);
+ACTUALLY_DEFINE_GUID(IID_IAudioClient, 0x1CB9AD4C, 0xDBFA, 0x4C32, 0xB1, 0x78, 0xC2, 0xF5, 0x68, 0xA7, 0x03, 0xB2);
+ACTUALLY_DEFINE_GUID(IID_IAudioRenderClient, 0xF294ACFC, 0x3146, 0x4483, 0xA7, 0xBF, 0xAD, 0xDC, 0xA7, 0xC2, 0x60, 0xE2);
+
 CAudioThread::CAudioThread(CPlaySDL * lpPlaySDL)
 {
+	m_device = NULL;
+	m_client = NULL;
+	m_render = NULL;
 	m_frame_num = 0;
-	m_nDeviceID = 0;
 	m_lpPlaySDL = lpPlaySDL;
 	m_in_rate_index = 0;
 	m_in_sample_rate = 0;
@@ -477,6 +498,8 @@ CAudioThread::CAudioThread(CPlaySDL * lpPlaySDL)
 	m_out_sample_rate = 8000;
 	m_out_frame_bytes = 0;
 	m_out_frame_duration = 0;
+	// SDL需要的是AV_SAMPLE_FMT_S16，WSAPI需要的是AV_SAMPLE_FMT_FLT...
+	m_out_sample_fmt = AV_SAMPLE_FMT_FLT;
 	// 初始化PCM数据环形队列...
 	circlebuf_init(&m_circle);
 	circlebuf_reserve(&m_circle, DEF_CIRCLE_SIZE/4);
@@ -497,11 +520,15 @@ CAudioThread::~CAudioThread()
 		m_max_buffer_ptr = NULL;
 		m_max_buffer_size = 0;
 	}
-	// 关闭音频设备...
-	SDL_CloseAudio();
-	m_nDeviceID = 0;
 	// 释放音频环形队列...
 	circlebuf_free(&m_circle);
+
+	// 关闭音频监听设备...
+	this->doMonitorFree();
+
+	/*// 关闭音频设备...
+	SDL_CloseAudio();
+	m_nDeviceID = 0;*/
 }
 
 #ifdef DEBUG_AEC
@@ -522,7 +549,7 @@ static void DoSaveTeacherPCM(uint8_t * lpBufData, int nBufSize, int nAudioRate, 
 void CAudioThread::doDecodeFrame()
 {
 	// 没有要解码的数据包，直接返回最大休息毫秒数...
-	if( m_MapPacket.size() <= 0 || m_nDeviceID <= 0 ) {
+	if( m_MapPacket.size() <= 0 || m_render == NULL ) {
 		m_play_next_ns = os_gettime_ns() + MAX_SLEEP_MS * 1000000;
 		return;
 	}
@@ -577,7 +604,7 @@ void CAudioThread::doConvertAudio(int64_t in_pts_ms, AVFrame * lpDFrame)
 	int out_audio_channel_num = m_out_channel_num;
 	// 输入输出的音频格式...
 	AVSampleFormat in_sample_fmt = m_lpDecoder->sample_fmt; // => AV_SAMPLE_FMT_FLTP
-	AVSampleFormat out_sample_fmt = AV_SAMPLE_FMT_S16;
+	AVSampleFormat out_sample_fmt = m_out_sample_fmt;
 	// 设置输入输出采样率 => 转换成8K采样率...
 	int in_sample_rate = m_in_sample_rate;
 	int out_sample_rate = m_out_sample_rate;
@@ -635,7 +662,7 @@ void CAudioThread::doDisplaySDL()
 	}*/
 
 	// 如果没有已解码数据帧，直接返回最大休息毫秒数...
-	if( m_circle.size <= 0 || m_nDeviceID <= 0 ) {
+	if( m_circle.size <= 0 || m_render == NULL ) {
 		m_play_next_ns = os_gettime_ns() + MAX_SLEEP_MS * 1000000;
 		return;
 	}
@@ -647,7 +674,6 @@ void CAudioThread::doDisplaySDL()
 	sys_cur_ms -= m_lpPlaySDL->GetZeroDelayMS();
 	// 获取第一个已解码数据帧 => 时间最小的数据帧...
 	int64_t frame_pts_ms = 0; int out_buffer_size = 0;
-	int nQueueBytes = SDL_GetQueuedAudioSize(m_nDeviceID);
 	circlebuf_peek_front(&m_circle, &frame_pts_ms, sizeof(int64_t));
 	// 不能超前投递数据，会造成硬件层数据堆积，造成缓存积压，引发缓存清理...
 	if( frame_pts_ms > sys_cur_ms ) {
@@ -662,11 +688,25 @@ void CAudioThread::doDisplaySDL()
 	ASSERT(m_max_buffer_size >= out_buffer_size);
 	// 从环形队列读取当前帧内容，因为是顺序执行，可以再次使用单帧最大输出空间...
 	circlebuf_peek_front(&m_circle, m_max_buffer_ptr, out_buffer_size);
+	
+	float vol = 1.0f;
+	int nPerFrameSize = (m_out_channel_num * sizeof(float));
+	uint32_t resample_frames = out_buffer_size / nPerFrameSize;
+	// 设置音量数据的转换 => 这里保持原样...
+	/*if (!close_float(vol, 1.0f, EPSILON)) {
+		register float *cur = (float*)m_max_buffer_ptr;
+		register float *end = cur + resample_frames * m_out_channel_num;
+		while (cur < end) {
+			*(cur++) *= vol;
+		}
+	}*/
+
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 注意：必须对音频播放内部的缓存做定期伐值清理 => CPU过高时，DirectSound会堆积缓存...
 	// 投递数据前，先查看正在排队的音频数据 => 缓存超过500毫秒就清理 => 计算出500毫秒包含的总帧数(总字节数)...
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
-	int nAllowQueueSize = (int)(500.0f / m_out_frame_duration * m_out_frame_bytes);
+	//int nQueueBytes = SDL_GetQueuedAudioSize(m_nDeviceID);
+	/*int nAllowQueueSize = (int)(500.0f / m_out_frame_duration * m_out_frame_bytes);
 	// 清理之后，立即继续灌音频数据，避免数据进一步堆积...
 	if( nQueueBytes > nAllowQueueSize ) {
 		blog(LOG_INFO, "%s [Audio] Clear Audio Buffer, QueueBytes: %d, AVPacket: %d, AVFrame: %d", TM_RECV_NAME, nQueueBytes, m_MapPacket.size(), m_frame_num);
@@ -677,9 +717,31 @@ void CAudioThread::doDisplaySDL()
 	// 将音频解码后的数据帧投递给音频设备...
 	if( SDL_QueueAudio(m_nDeviceID, m_max_buffer_ptr, out_buffer_size) < 0 ) {
 		blog(LOG_INFO, "%s [Audio] Failed to queue audio: %s", TM_RECV_NAME, SDL_GetError());
+	}*/
+	
+	HRESULT hr = S_OK;
+	BYTE * output = NULL;
+	UINT32 nCurPadFrame = 0;
+	UINT32 nAllowQueueFrame = 0;
+	// 获取当前声卡已缓存的帧数量...
+	hr = m_client->GetCurrentPadding(&nCurPadFrame);
+	// 将200毫秒的声卡缓存，转换成帧数量...
+	nAllowQueueFrame = (200.0f / m_out_frame_duration * m_out_frame_bytes) / nPerFrameSize;
+	// 只有当声卡缓存小于200毫秒时，才进行数据投递，大于200毫秒，直接丢弃...
+	if (nCurPadFrame <= nAllowQueueFrame) {
+		// 得到需要填充的声卡缓存指针 => 已经计算出要填充的帧数...
+		hr = m_render->GetBuffer(resample_frames, &output);
+		if (SUCCEEDED(hr) && output != NULL) {
+			// 将数据填充到指定的缓存，并投递到声卡播放...
+			memcpy(output, m_max_buffer_ptr, out_buffer_size);
+			hr = m_render->ReleaseBuffer(resample_frames, 0);
+			// 把解码后的音频数据投递给当前正在被拉取的通道进行回音消除...
+			App()->doEchoCancel(m_max_buffer_ptr, out_buffer_size, m_out_sample_rate, m_out_channel_num);
+		}
+	} else {
+		// 声卡缓存大于200毫秒，直接丢弃，打印调试信息 => 这样声音不会出现卡顿，始终匀速播放，缓存多了就不忙灌数据，丢弃新数据...
+		blog(LOG_INFO, "%s [Audio] Delayed, Padding: %u, AVPacket: %d, AVFrame: %d", TM_RECV_NAME, nCurPadFrame, m_MapPacket.size(), m_frame_num);
 	}
-	// 把解码后的音频数据投递给当前正在被拉取的通道进行回音消除...
-	App()->doEchoCancel(m_max_buffer_ptr, out_buffer_size);
 	// 删除已经使用的音频数据 => 从环形队列中移除...
 	circlebuf_pop_front(&m_circle, NULL, out_buffer_size);
 	// 减少环形队列中有效数据帧的个数...
@@ -688,12 +750,62 @@ void CAudioThread::doDisplaySDL()
 	m_bNeedSleep = false;
 }
 
-BOOL CAudioThread::InitAudio(int nInRateIndex, int nInChannelNum, int nOutSampleRate, int nOutChannelNum)
+BOOL CAudioThread::InitAudio(int nInRateIndex, int nInChannelNum)
 {
 	// 如果已经初始化，直接返回...
 	if( m_lpCodec != NULL || m_lpDecoder != NULL )
 		return false;
 	ASSERT( m_lpCodec == NULL && m_lpDecoder == NULL );
+	// 开始对WSAPI的音频进行初始化工作...
+	IMMDeviceEnumerator *immde = NULL;
+	WAVEFORMATEX *wfex = NULL;
+	bool success = false;
+	HRESULT hr = S_OK;
+	UINT32 frames = 0;
+	do {
+		// 创建设备枚举对象...
+		hr = CoCreateInstance(CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL, IID_IMMDeviceEnumerator, (void**)&immde);
+		if (FAILED(hr))
+			break;
+		hr = immde->GetDefaultAudioEndpoint(eRender, eConsole, &m_device);
+		if (FAILED(hr))
+			break;
+		hr = m_device->Activate(IID_IAudioClient, CLSCTX_ALL, NULL, (void**)&m_client);
+		if (FAILED(hr))
+			break;
+		hr = m_client->GetMixFormat(&wfex);
+		if (FAILED(hr))
+			break;
+		hr = m_client->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 10000000, 0, wfex, NULL);
+		if (FAILED(hr))
+			break;
+		// 保存WSAPI输出的采样率和声道数...
+		m_out_sample_rate = wfex->nSamplesPerSec;
+		m_out_channel_num = wfex->nChannels;
+		m_out_sample_fmt = AV_SAMPLE_FMT_FLT;
+		hr = m_client->GetBufferSize(&frames);
+		if (FAILED(hr))
+			break;
+		hr = m_client->GetService(IID_IAudioRenderClient, (void**)&m_render);
+		if (FAILED(hr))
+			break;
+		hr = m_client->Start();
+		if (FAILED(hr))
+			break;
+		success = true;
+	} while (false);
+	// 释放不需要的中间变量...
+	if (immde != NULL) {
+		immde->Release();
+	}
+	if (wfex != NULL) {
+		CoTaskMemFree(wfex);
+	}
+	// 如果初始化失败，直接返回...
+	if (!success) {
+		this->doMonitorFree();
+		return false;
+	}
 	// 根据索引获取采样率...
 	switch(nInRateIndex)
 	{
@@ -712,8 +824,8 @@ BOOL CAudioThread::InitAudio(int nInRateIndex, int nInChannelNum, int nOutSample
 	m_in_rate_index = nInRateIndex;
 	m_in_channel_num = nInChannelNum;
 	// 保存输出采样率和输出声道...
-	m_out_sample_rate = nOutSampleRate;
-	m_out_channel_num = nOutChannelNum;
+	//m_out_sample_rate = nOutSampleRate;
+	//m_out_channel_num = nOutChannelNum;
 	// 初始化ffmpeg解码器...
 	av_register_all();
 	// 准备一些特定的参数...
@@ -734,7 +846,7 @@ BOOL CAudioThread::InitAudio(int nInRateIndex, int nInChannelNum, int nOutSample
 	int64_t out_channel_layout = (out_audio_channel_num <= 1) ? AV_CH_LAYOUT_MONO : AV_CH_LAYOUT_STEREO;
 	// 输入输出的音频格式...
 	AVSampleFormat in_sample_fmt = m_lpDecoder->sample_fmt; // => AV_SAMPLE_FMT_FLTP
-	AVSampleFormat out_sample_fmt = AV_SAMPLE_FMT_S16;
+	AVSampleFormat out_sample_fmt = m_out_sample_fmt;
 	// 设置输入输出采样率 => 转换成8K采样率...
 	int in_sample_rate = m_in_sample_rate;
 	int out_sample_rate = m_out_sample_rate;
@@ -751,7 +863,8 @@ BOOL CAudioThread::InitAudio(int nInRateIndex, int nInChannelNum, int nOutSample
 	// 计算输出每帧持续时间(毫秒)，每帧字节数 => 只需要计算一次就够了...
 	m_out_frame_duration = out_nb_samples * 1000 / out_sample_rate;
 	m_out_frame_bytes = av_samples_get_buffer_size(NULL, out_audio_channel_num, out_nb_samples, out_sample_fmt, 1);
-	//SDL_AudioSpec => 不能使用系统推荐参数 => 不用回调模式，主动投递...
+	
+	/*//SDL_AudioSpec => 不能使用系统推荐参数 => 不用回调模式，主动投递...
 	SDL_AudioSpec audioSpec = {0};
 	audioSpec.freq = out_sample_rate; 
 	audioSpec.format = AUDIO_S16SYS;
@@ -760,7 +873,6 @@ BOOL CAudioThread::InitAudio(int nInRateIndex, int nInChannelNum, int nOutSample
 	audioSpec.callback = NULL; 
 	audioSpec.userdata = NULL;
 	audioSpec.silence = 0;
-
 	// 打开SDL音频设备 => 只能打开一个设备...
 	if( SDL_OpenAudio(&audioSpec, NULL) != 0 ) {
 		//SDL_Log("[Audio] Failed to open audio: %s", SDL_GetError());
@@ -771,10 +883,31 @@ BOOL CAudioThread::InitAudio(int nInRateIndex, int nInChannelNum, int nOutSample
 	m_nDeviceID = 1;
 	// 开始播放 => 使用默认主设备...
 	SDL_PauseAudioDevice(m_nDeviceID, 0);
-	SDL_ClearQueuedAudio(m_nDeviceID);
+	SDL_ClearQueuedAudio(m_nDeviceID);*/
+
 	// 启动线程...
 	this->Start();
 	return true;
+}
+
+void CAudioThread::doMonitorFree()
+{
+	// 停止WSAPI音频资源...
+	ULONG uRef = 0;
+	HRESULT hr = S_OK;
+	if (m_client != NULL) {
+		hr = m_client->Stop();
+	}
+	// 释放WSAPI引用对象...
+	if (m_device != NULL) {
+		uRef = m_device->Release();
+	}
+	if (m_client != NULL) {
+		uRef = m_client->Release();
+	}
+	if (m_render != NULL) {
+		uRef = m_render->Release();
+	}
 }
 
 void CAudioThread::Entry()
@@ -895,7 +1028,7 @@ BOOL CPlaySDL::InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight
 	return true;
 }
 
-BOOL CPlaySDL::InitAudio(int nInRateIndex, int nInChannelNum, int nOutSampleRate, int nOutChannelNum)
+BOOL CPlaySDL::InitAudio(int nInRateIndex, int nInChannelNum)
 {
 	// 创建新的音频对象...
 	if( m_lpAudioThread != NULL ) {
@@ -905,7 +1038,7 @@ BOOL CPlaySDL::InitAudio(int nInRateIndex, int nInChannelNum, int nOutSampleRate
 	// 创建音频线程对象...
 	m_lpAudioThread = new CAudioThread(this);
 	// 初始化音频对象失败，直接删除音频对象，返回失败...
-	if (!m_lpAudioThread->InitAudio(nInRateIndex, nInChannelNum, nOutSampleRate, nOutChannelNum)) {
+	if (!m_lpAudioThread->InitAudio(nInRateIndex, nInChannelNum)) {
 		delete m_lpAudioThread;
 		m_lpAudioThread = NULL;
 		return false;

@@ -415,6 +415,9 @@ void CViewCamera::onTriggerStartPushThread()
 	}
 	// 设置通道状态为已连接在线状态...
 	m_nCameraState = kCameraOnLine;
+	
+	// 临时测试回音消除使用...
+	//this->ReBuildSpeexAEC();
 }
 
 // 这里必须用信号槽，关联到同一线程，避免QTSocket的多线程访问故障...
@@ -447,6 +450,13 @@ void CViewCamera::doPushFrame(FMS_FRAME & inFrame)
 			m_lpUDPSendThread->PushFrame(inFrame);
 		}
 	}
+
+	/*// 临时测试回音消除使用...
+	if (inFrame.typeFlvTag == PT_TAG_AUDIO) {
+		if (m_lpSpeexAEC != NULL) {
+			m_lpSpeexAEC->PushMicFrame(inFrame);
+		}
+	}*/
 }
 
 // 把回音消除之后的AAC音频，返回给UDP发送对象当中...
@@ -459,11 +469,11 @@ void CViewCamera::doPushAudioAEC(FMS_FRAME & inFrame)
 }
 
 // 把投递到扬声器的PCM音频，放入回音消除当中...
-void CViewCamera::doEchoCancel(void * lpBufData, int nBufSize)
+void CViewCamera::doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum)
 {
 	if (m_lpSpeexAEC == NULL)
 		return;
-	m_lpSpeexAEC->PushHornPCM(lpBufData, nBufSize);
+	m_lpSpeexAEC->PushHornPCM(lpBufData, nBufSize, nSampleRate, nChannelNum);
 }
 
 bool CViewCamera::doCameraStart()
