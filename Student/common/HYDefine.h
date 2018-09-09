@@ -42,7 +42,7 @@ using namespace std;
 #define DEF_AUDIO_OUT_SAMPLE_RATE   16000                       // 默认音频播放、压缩采样率
 #define DEF_AUDIO_OUT_BITRATE_AAC   32000                       // 默认回音消除后AAC压缩输出码流
 #define DEF_SPEEX_HORN_DELAY        0                           // 默认的扬声器延迟 => 采用WSAPI之后，没有扬声器延时了
-#define DEF_SPEEX_FILTER_MS         200                         // 回音消除尾音长度 => 降低尾音长度，回音快速收敛...
+#define DEF_SPEEX_FILTER_MS         400                         // 回音消除尾音长度 => 降低尾音长度，回音快速收敛...
 #define DEF_SPEEX_FRAME_MS          16                          // 回音消除单次长度
 #define DEF_CAMERA_START_ID			1							// 默认摄像头开始ID
 #define DEF_MAX_CAMERA              8							// 默认最大摄像头数目
