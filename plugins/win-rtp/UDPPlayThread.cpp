@@ -195,8 +195,9 @@ CVideoThread::CVideoThread(CPlaySDL * lpPlaySDL)
 
 CVideoThread::~CVideoThread()
 {
-	// 等待线程退出...
+	blog(LOG_INFO, "%s == [~CVideoThread] - Exit Start ==", TM_RECV_NAME);
 	this->StopAndWaitForThread();
+	blog(LOG_INFO, "%s == [~CVideoThread] - Exit End ==", TM_RECV_NAME);
 }
 
 BOOL CVideoThread::InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS)
@@ -470,8 +471,9 @@ CAudioThread::CAudioThread(CPlaySDL * lpPlaySDL)
 
 CAudioThread::~CAudioThread()
 {
-	// 等待线程退出...
+	blog(LOG_INFO, "%s == [~CAudioThread] - Exit Start ==", TM_RECV_NAME);
 	this->StopAndWaitForThread();
+	blog(LOG_INFO, "%s == [~CAudioThread] - Exit End ==", TM_RECV_NAME);
 }
 
 void CAudioThread::doDecodeFrame()
@@ -695,7 +697,7 @@ CPlaySDL::CPlaySDL(obs_source_t * lpObsSource, int64_t inSysZeroNS)
 
 CPlaySDL::~CPlaySDL()
 {
-	// 释放音视频解码对象...
+	blog(LOG_INFO, "%s == [~CPlaySDL] - Exit Start ==", TM_RECV_NAME);
 	if( m_lpAudioThread != NULL ) {
 		delete m_lpAudioThread;
 		m_lpAudioThread = NULL;
@@ -704,6 +706,7 @@ CPlaySDL::~CPlaySDL()
 		delete m_lpVideoThread;
 		m_lpVideoThread = NULL;
 	}
+	blog(LOG_INFO, "%s == [~CPlaySDL] - Exit End ==", TM_RECV_NAME);
 }
 
 BOOL CPlaySDL::InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS)
