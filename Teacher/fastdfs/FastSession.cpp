@@ -30,6 +30,31 @@ int64_t buff2long(const char *buff)
 		((int64_t)(*(p + 7)));
 }
 
+const char * get_command_name(int inCmd)
+{
+	switch (inCmd)
+	{
+	case kCmd_Student_Login:        return "Student_Login";
+	case kCmd_Student_OnLine:       return "Student_OnLine";
+	case kCmd_Teacher_Login:        return "Teacher_Login";
+	case kCmd_Teacher_OnLine:       return "Teacher_OnLine";
+	case kCmd_UDP_Logout:           return "UDP_Logout";
+	case kCmd_Camera_PullStart:     return "Camera_PullStart";
+	case kCmd_Camera_PullStop:      return "Camera_PullStop";
+	case kCmd_Camera_OnLineList:    return "Camera_OnLineList";
+	case kCmd_Camera_LiveStart:     return "Camera_LiveStart";
+	case kCmd_Camera_LiveStop:      return "Camera_LiveStop";
+	case kCmd_UdpServer_Login:      return "UdpServer_Login";
+	case kCmd_UdpServer_OnLine:     return "UdpServer_OnLine";
+	case kCmd_UdpServer_AddTeacher: return "UdpServer_AddTeacher";
+	case kCmd_UdpServer_DelTeacher: return "UdpServer_DelTeacher";
+	case kCmd_UdpServer_AddStudent: return "UdpServer_AddStudent";
+	case kCmd_UdpServer_DelStudent: return "UdpServer_DelStudent";
+	case kCmd_PHP_GetUdpServer:     return "PHP_GetUdpServer";
+	}
+	return "unknown";
+}
+
 CFastSession::CFastSession()
   : m_bIsConnected(false)
   , m_TCPSocket(NULL)
@@ -442,6 +467,8 @@ void CRemoteSession::onReadyRead()
 		if (nDataSize < lpCmdHeader->m_pkg_len)
 			return;
 		ASSERT(nDataSize >= lpCmdHeader->m_pkg_len);
+		// 打印远程控制会话对象接收到的TCP网络命令信息...
+		blog(LOG_INFO, "[RemoteSession] Command-Recv: %s", get_command_name(lpCmdHeader->m_cmd));
 		// 开始处理中转服务器发来的命令...
 		bool bResult = false;
 		switch(lpCmdHeader->m_cmd)
@@ -494,6 +521,7 @@ bool CRemoteSession::doCmdUdpLogout(const char * lpData, int nSize)
 	return true;
 }
 
+// 注意：kCmd_Teacher_Login和kCmd_Camera_LiveStart，都会回馈这个命令...
 bool CRemoteSession::doCmdTeacherLogin(const char * lpData, int nSize)
 {
 	Json::Value value;
@@ -606,6 +634,8 @@ bool CRemoteSession::SendLoginCmd(int nDBCameraID, int nSceneItemID)
 // 通用的命令发送接口...
 bool CRemoteSession::doSendCommonCmd(int nCmdID, const char * lpJsonPtr/* = NULL*/, int nJsonSize/* = 0*/)
 {
+	// 打印远程控制会话对象发送的TCP网络命令信息...
+	blog(LOG_INFO, "[RemoteSession] Command-Send: %s", get_command_name(nCmdID));
 	// 组合命令包头 => 数据长度 | 终端类型 | 命令编号
 	string     strBuffer;
 	Cmd_Header theHeader = { 0 };

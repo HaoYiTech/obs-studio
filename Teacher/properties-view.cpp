@@ -153,10 +153,8 @@ void OBSPropertiesView::RefreshProperties()
 		// 设置单选模式，设置选中记录的背景色...
 		m_listCamera->setSelectionMode(QAbstractItemView::SingleSelection);
 		m_listCamera->setStyleSheet("QListView::item:selected {background: #4FC3F7;}");
-		// 设置关联信号槽，这样可以简化很多判断操作 => 最终还是采用点击确认再获取摄像头地址...
-		//connect(m_listCamera, SIGNAL(itemSelectionChanged()), this, SLOT(onItemSelectionChanged()));
-		// 从配置文件中读取之前选中的摄像头通道编号，保存到变量当中...
-		m_nSelDBCameraID = obs_data_get_int(this->GetSettings(), "camera_id");
+		// 设置关联信号槽，这样可以简化很多判断操作...
+		this->connect(m_listCamera, SIGNAL(itemSelectionChanged()), this, SLOT(onListCameraSelectionChanged()));
 		// 调用App的接口，从中转服务器获取当前房间里在线的摄像头列表...
 		App()->doSendCameraOnLineListCmd();
 	}
@@ -183,6 +181,8 @@ void OBSPropertiesView::onTriggerCameraList(Json::Value & value)
 	// 如果不是数组，或者数组长度为0，直接返回...
 	if (!value.isArray() || value.size() <= 0)
 		return;
+	// 从配置文件中读取之前选中的摄像头通道编号，保存到变量当中...
+	int nCurSelDBCameraID = obs_data_get_int(this->GetSettings(), "camera_id");
 	// 变量数组，获取每行数据内容 => room_id|camera_id|camera_name|pc_name
 	QIcon theIcon = QIcon(QStringLiteral(":/res/images/camera.png"));
 	QListWidgetItem * theSelectItem = nullptr;
@@ -196,7 +196,7 @@ void OBSPropertiesView::onTriggerCameraList(Json::Value & value)
 		theListItem->setData(Qt::UserRole, nDBCameraID);
 		m_listCamera->insertItem(0, theListItem);
 		// 如果选中摄像头与当前条目一致，保存选中条目...
-		theSelectItem = (m_nSelDBCameraID == nDBCameraID) ? theListItem : theSelectItem;
+		theSelectItem = (nCurSelDBCameraID == nDBCameraID) ? theListItem : theSelectItem;
 	}
 	// 如果行数不为0，选中第一行内容...
 	if (theSelectItem != nullptr) {
@@ -207,20 +207,50 @@ void OBSPropertiesView::onTriggerCameraList(Json::Value & value)
 }
 
 // 处理选中摄像头发生变化的事件处理...
-/*void OBSPropertiesView::onItemSelectionChanged()
+void OBSPropertiesView::onListCameraSelectionChanged()
 {
-	if (m_listCamera == NULL) return;
-	QString theText = m_listCamera->currentItem()->text();
-	int nCameraID = m_listCamera->currentItem()->data(Qt::UserRole).toInt();
-	obs_data_set_string(this->GetSettings(), "input", theText.toStdString().c_str());
-}*/
+	// 如果不是rtp数据源，直接返回 。。。
+	if (!m_bUseRtpSource || m_listCamera == NULL)
+		return;
+	// 获取当前正在使用的拉流通道编号...
+	int nCurDBCameraID = (int)obs_data_get_int(this->GetSettings(), "camera_id");
+	// 找到当前选中的记录编号，没有选中记录，直接返回...
+	QListWidgetItem * lpCurItem = m_listCamera->currentItem();
+	if (lpCurItem == NULL || obj == NULL)
+		return;
+	// 获取当前已经选中的通道编号...
+	int nSelDBCameraID = lpCurItem->data(Qt::UserRole).toInt();
+	// 当前选中的通道编号与rtp-source里面的通道编号一致，直接返回...
+	if (nSelDBCameraID == nCurDBCameraID)
+		return;
+	// 必须从主窗口界面当中获取当前scene对象...
+	OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	obs_scene_t * scene = main->GetCurrentScene();
+	// obj(source)查找资源对应的编号，发送给服务器，便于回馈查找...
+	obs_source_t * source = (obs_source_t *)obj;
+	obs_sceneitem_t * sitem = obs_scene_find_source(scene, obs_source_get_name(source));
+	int nSceneItemID = (int)obs_sceneitem_get_id(sitem);
+	// 如果没有获取到场景资源编号，直接返回...
+	if (nSceneItemID <= 0 || sitem == NULL)
+		return;
+	// 停止当前正在运行的拉流线程对象，设置配置变化标志...
+	obs_data_set_bool(this->GetSettings(), "udp_camera", false);
+	// 直接调用接口，更新当前资源的配置信息...
+	this->UpdateSettings();
+	// 调用远程接口向中转服务器发送开启推流命令 => 服务器反馈之后，再通过 OBSBasic::onTriggerRtpSource()，重新创建拉流线程...
+	App()->doSendCameraLiveStartCmd(nSelDBCameraID, nSceneItemID);
+}
 
-// 通过中转服务器通知推流端开始推送指定通道的rtp数据...
-bool OBSPropertiesView::doSendCameraLiveStartCmd()
+// 保存选中通道编号，并停止原有的通道拉流线程...
+/*bool OBSPropertiesView::doSaveAndStopRtpSource()
 {
 	// 如果不是rtp数据源，直接返回 。。。
 	if (!m_bUseRtpSource || m_listCamera == NULL)
 		return false;
+	// 获取当前正在使用的拉流通道编号...
+	int nCurDBCameraID = (int)obs_data_get_int(this->GetSettings(), "camera_id");
+	// 初始化选中的通道编号和选中的场景资源编号...
+	m_nSelDBCameraID = m_nSelSceneItemID = 0;
 	// 找到当前选中的记录编号，没有选中记录，直接返回...
 	QListWidgetItem * lpCurItem = m_listCamera->currentItem();
 	if (lpCurItem == NULL || obj == NULL)
@@ -235,11 +265,38 @@ bool OBSPropertiesView::doSendCameraLiveStartCmd()
 	// 如果没有获取到场景资源编号，直接返回...
 	if (nSceneItemID <= 0 || sitem == NULL)
 		return false;
-	// 获取到当前记录中存放的摄像头通道编号...
-	int nDBCameraID = lpCurItem->data(Qt::UserRole).toInt();
-	// 调用远程接口向中转服务器发送开启推流命令...
-	return App()->doSendCameraLiveStartCmd(nDBCameraID, nSceneItemID);
+	// 获取当前已经选中的通道编号...
+	int nSelDBCameraID = lpCurItem->data(Qt::UserRole).toInt();
+	// 当前选中的通道编号与rtp-source里面的通道编号一致，直接返回...
+	if (nSelDBCameraID == nCurDBCameraID)
+		return false;
+	// 保存获取到当前记录中存放的摄像头通道编号和场景资源编号...
+	m_nSelDBCameraID = nSelDBCameraID;
+	m_nSelSceneItemID = nSceneItemID;
+	// 避免干扰，需停止自动检测时钟对象...
+	App()->doReBuildFastTimer(false);
+	// 停止当前正在运行的拉流线程对象，设置配置变化标志...
+	obs_data_set_bool(this->GetSettings(), "udp_camera", false);
+	// 这个标志会引发 OBSPropertiesView::UpdateSettings() 调用...
+	deferUpdate = true;
+	return true;
 }
+
+// 通过中转服务器通知推流端开始推送指定通道的rtp数据...
+bool OBSPropertiesView::doSendCameraLiveStartCmd()
+{
+	// 如果不是rtp数据源，直接返回 。。。
+	if (!m_bUseRtpSource || m_listCamera == NULL)
+		return false;
+	// 如果当前选中的通道编号和场景编号都无效，直接返回...
+	if (m_nSelDBCameraID <= 0 || m_nSelSceneItemID <= 0)
+		return false;
+	// 调用远程接口向中转服务器发送开启推流命令 => 服务器反馈之后，再通过 OBSBasic::onTriggerRtpSource()，重新创建拉流线程...
+	App()->doSendCameraLiveStartCmd(m_nSelDBCameraID, m_nSelSceneItemID);
+	// 避免干扰，重建自动检测时钟对象...
+	App()->doReBuildFastTimer(true);
+	return true;
+}*/
 
 void OBSPropertiesView::SetScrollPos(int h, int v)
 {
@@ -279,7 +336,6 @@ OBSPropertiesView::OBSPropertiesView(OBSData settings_, void *obj_,
 	  m_bUseRtpSource(inUseRtpSource)
 {
 	m_listCamera = NULL;
-	m_nSelDBCameraID = 0;
 	setFrameShape(QFrame::NoFrame);
 	ReloadProperties();
 }
@@ -294,7 +350,6 @@ OBSPropertiesView::OBSPropertiesView(OBSData settings_, const char *type_,
 	  minSize        (minSize_)
 {
 	m_listCamera = NULL;
-	m_nSelDBCameraID = 0;
 	m_bUseRtpSource = false;
 	setFrameShape(QFrame::NoFrame);
 	ReloadProperties();

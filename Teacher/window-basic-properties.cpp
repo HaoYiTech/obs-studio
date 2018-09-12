@@ -173,10 +173,6 @@ void OBSBasicProperties::on_buttonBox_clicked(QAbstractButton *button)
 		acceptClicked = true;
 		this->close();
 		
-		// 通过中转服务器通知推流端开始推送指定通道的rtp数据...
-		bool bResult = view->doSendCameraLiveStartCmd();
-
-		// 配置发生变化，直接将更新消息通知到插件层...
 		if( view->DeferUpdate() ) {
 			view->UpdateSettings();
 		}
@@ -253,9 +249,12 @@ void OBSBasicProperties::Cleanup()
 
 void OBSBasicProperties::reject()
 {
-	if (!acceptClicked && (CheckSettings() != 0)) {
-		if (!ConfirmQuit()) {
-			return;
+	// 如果不是rtp资源，点击取消，需要对配置进行还原更新处理...
+	if (!view->IsUseRtpSource()) {
+		if (!acceptClicked && (CheckSettings() != 0)) {
+			if (!ConfirmQuit()) {
+				return;
+			}
 		}
 	}
 
@@ -265,10 +264,13 @@ void OBSBasicProperties::reject()
 
 void OBSBasicProperties::closeEvent(QCloseEvent *event)
 {
-	if (!acceptClicked && (CheckSettings() != 0)) {
-		if (!ConfirmQuit()) {
-			event->ignore();
-			return;
+	// 如果不是rtp资源，点击取消，需要对配置进行还原更新处理...
+	if (!view->IsUseRtpSource()) {
+		if (!acceptClicked && (CheckSettings() != 0)) {
+			if (!ConfirmQuit()) {
+				event->ignore();
+				return;
+			}
 		}
 	}
 

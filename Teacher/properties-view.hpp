@@ -88,7 +88,6 @@ private:
 
 	bool                                     m_bUseRtpSource = false;
 	QListWidget                            * m_listCamera = nullptr;
-	int                                      m_nSelDBCameraID;
 
 	QWidget *NewWidget(obs_property_t *prop, QWidget *widget,
 			const char *signal);
@@ -116,8 +115,9 @@ private:
 	void GetScrollPos(int &h, int &v);
 	void SetScrollPos(int h, int v);
 public slots:
-	void ReloadProperties();
+	void onListCameraSelectionChanged();
 	void RefreshProperties();
+	void ReloadProperties();
 	void SignalChanged();
 
 signals:
@@ -133,8 +133,7 @@ public:
 	OBSPropertiesView(OBSData settings, const char *type,
 			PropertiesReloadCallback reloadCallback,
 			int minSize = 0);
-	
-	bool doSendCameraLiveStartCmd();
+
 	void onTriggerCameraList(Json::Value & value);
 	inline bool IsUseRtpSource() { return m_bUseRtpSource; }
 	
