@@ -67,6 +67,8 @@ CUDPSendThread::CUDPSendThread(int nTCPSockFD, int nDBRoomID)
 	m_rtp_delete.liveID = 0;
 	// 填充与远程关联的TCP套接字...
 	m_rtp_create.tcpSock = nTCPSockFD;
+	// 初始化互斥对象...
+	pthread_mutex_init_value(&m_Mutex);
 }
 
 CUDPSendThread::~CUDPSendThread()
@@ -81,6 +83,8 @@ CUDPSendThread::~CUDPSendThread()
 	// 释放音视频环形队列空间...
 	circlebuf_free(&m_audio_circle);
 	circlebuf_free(&m_video_circle);
+	// 释放互斥对象...
+	pthread_mutex_destroy(&m_Mutex);
 	blog(LOG_INFO, "%s == [~CUDPSendThread Thread] - Exit End ==", TM_SEND_NAME);
 }
 
@@ -263,7 +267,6 @@ static void DoSaveSendSeq(uint32_t inPSeq, int inPSize, bool inPST, bool inPED, 
 
 BOOL CUDPSendThread::PushFrame(encoder_packet * lpEncPacket)
 {
-	OSMutexLocker theLock(&m_Mutex);
 	// 判断线程是否已经退出...
 	if( this->IsStopRequested() ) {
 		blog(LOG_INFO, "%s Error => Send Thread has been stoped", TM_SEND_NAME);
@@ -306,6 +309,9 @@ BOOL CUDPSendThread::PushFrame(encoder_packet * lpEncPacket)
 	m_audio_input_bytes += ((pt_type == PT_TAG_AUDIO) ? nDataSize : 0);
 	m_video_input_bytes += ((pt_type == PT_TAG_VIDEO) ? nDataSize : 0);
 
+	// 对环形队列相关资源进行互斥保护...
+	pthread_mutex_lock(&m_Mutex);
+
 	// 音视频使用不同的打包对象和变量...
 	uint32_t & nCurPackSeq = (pt_type == PT_TAG_AUDIO) ? m_nAudioCurPackSeq : m_nVideoCurPackSeq;
 	circlebuf & cur_circle = (pt_type == PT_TAG_AUDIO) ? m_audio_circle : m_video_circle;
@@ -346,6 +352,8 @@ BOOL CUDPSendThread::PushFrame(encoder_packet * lpEncPacket)
 		//blog(LOG_INFO, "%s Seq: %lu, Type: %d, Key: %d, Size: %d, TS: %lu", TM_SEND_NAME,
 		//		rtpHeader.seq, rtpHeader.pt, rtpHeader.pk, rtpHeader.psize, rtpHeader.ts);
 	}
+	// 对环形队列相关资源互斥保护结束...
+	pthread_mutex_unlock(&m_Mutex);
 	return true;
 }
 
@@ -408,7 +416,6 @@ void CUDPSendThread::Entry()
 
 void CUDPSendThread::doSendDeleteCmd()
 {
-	OSMutexLocker theLock(&m_Mutex);
 	GM_Error theErr = GM_NoErr;
 	if( m_lpUDPSocket == NULL )
 		return;
@@ -423,7 +430,6 @@ void CUDPSendThread::doSendDeleteCmd()
 
 void CUDPSendThread::doSendCreateCmd()
 {
-	OSMutexLocker theLock(&m_Mutex);
 	// 如果命令状态不是创建命令，不发送命令，直接返回...
 	if( m_nCmdState != kCmdSendCreate )
 		return;
@@ -449,7 +455,6 @@ void CUDPSendThread::doSendCreateCmd()
 
 void CUDPSendThread::doSendHeaderCmd()
 {
-	OSMutexLocker theLock(&m_Mutex);
 	// 如果命令状态不是序列头命令，不发送命令，直接返回...
 	if( m_nCmdState != kCmdSendHeader )
 		return;
@@ -486,7 +491,6 @@ void CUDPSendThread::doSendHeaderCmd()
 
 void CUDPSendThread::doSendDetectCmd()
 {
-	OSMutexLocker theLock(&m_Mutex);
 	// 每隔1秒发送一个探测命令包 => 必须转换成有符号...
 	int64_t cur_time_ns = os_gettime_ns();
 	int64_t period_ns = 1000 * 1000000;
@@ -521,11 +525,13 @@ void CUDPSendThread::doSendDetectCmd()
 	m_bNeedSleep = false;
 }
 
-void CUDPSendThread::doCalcAVJamStatus()
+/*void CUDPSendThread::doCalcAVJamStatus()
 {
 	// 视频环形队列为空，没有拥塞，直接返回...
 	if( m_video_circle.size <= 0 )
 		return;
+	// 对环形队列相关资源进行互斥保护...
+	pthread_mutex_lock(&m_Mutex);
 	// 遍历环形队列，删除所有超过n秒的缓存数据包 => 不管是否是关键帧或完整包，只是为补包而存在...
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
 	static char szPacketBuffer[nPerPackSize] = {0};
@@ -559,16 +565,20 @@ void CUDPSendThread::doCalcAVJamStatus()
 		// 如果总缓存时间超过n秒，删除最小数据包，继续寻找...
 		circlebuf_pop_front(&cur_circle, NULL, nPerPackSize);
 	}
-	// 如果没有发生删除，直接返回...
-	if (min_ts <= 0 || min_seq <= 0 )
+	// 如果没有发生删除，互斥结束，返回...
+	if (min_ts <= 0 || min_seq <= 0) {
+		pthread_mutex_unlock(&m_Mutex);
 		return;
+	}
 	// 打印网络拥塞情况 => 就是视频缓存的拥塞情况...
 	//blog(LOG_INFO, "%s Video Jam => MinSeq: %lu, MaxSeq: %lu, SendSeq: %lu, Circle: %d", TM_SEND_NAME, min_seq, max_seq, cur_send_seq, cur_circle.size/nPerPackSize);
 	// 删除音频相关时间的数据包 => 包括这个时间戳之前的所有数据包都被删除...
 	this->doEarseAudioByPTS(min_ts);
+	// 对环形队列相关资源互斥保护结束...
+	pthread_mutex_unlock(&m_Mutex);
 }
 //
-// 删除音频相关时间的数据包...
+// 删除音频相关时间的数据包 => 外层已经做了互斥保护...
 void CUDPSendThread::doEarseAudioByPTS(uint32_t inTimeStamp)
 {
 	// 音频环形队列为空，直接返回...
@@ -602,167 +612,176 @@ void CUDPSendThread::doEarseAudioByPTS(uint32_t inTimeStamp)
 	}
 	// 打印音频拥塞信息 => 当前位置，已发送数据包 => 两者之差就是观看端的有效补包空间...
 	//blog(LOG_INFO, "%s Audio Jam => MinSeq: %lu, MaxSeq: %lu, SendSeq: %lu, Circle: %d", TM_SEND_NAME, min_seq, max_seq, cur_send_seq, cur_circle.size/nPerPackSize);
-}
+}*/
 
 void CUDPSendThread::doSendLosePacket(bool bIsAudio)
 {
-	OSMutexLocker theLock(&m_Mutex);
 	if( m_lpUDPSocket == NULL )
 		return;
-	// 根据数据包类型，找到丢包集合、环形队列...
-	GM_MapLose & theMapLose = bIsAudio ? m_AudioMapLose : m_VideoMapLose;
-	circlebuf  & cur_circle = bIsAudio ? m_audio_circle : m_video_circle;
-	// 丢包集合队列为空，直接返回...
-	if( theMapLose.size() <= 0 )
-		return;
-	// 拿出一个丢包记录，无论是否发送成功，都要删除这个丢包记录...
-	// 如果观看端，没有收到这个数据包，会再次发起补包命令...
-	GM_MapLose::iterator itorItem = theMapLose.begin();
-	rtp_lose_t rtpLose = itorItem->second;
-	theMapLose.erase(itorItem);
-	// 如果环形队列为空，直接返回...
-	if( cur_circle.size <= 0 )
-		return;
-	// 先找到环形队列中最前面数据包的头指针 => 最小序号...
-	GM_Error    theErr = GM_NoErr;
-	rtp_hdr_t * lpFrontHeader = NULL;
-	rtp_hdr_t * lpSendHeader = NULL;
-	size_t nSendPos = 0, nSendSize = 0;
-	/////////////////////////////////////////////////////////////////////////////////////////////////
-	// 注意：千万不能在环形队列当中进行指针操作，当start_pos > end_pos时，可能会有越界情况...
-	// 所以，一定要用接口读取完整的数据包之后，再进行操作；如果用指针，一旦发生回还，就会错误...
-	/////////////////////////////////////////////////////////////////////////////////////////////////
-	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketBuffer[nPerPackSize] = {0};
-	circlebuf_peek_front(&cur_circle, szPacketBuffer, nPerPackSize);
-	lpFrontHeader = (rtp_hdr_t*)szPacketBuffer;
-	// 如果要补充的数据包序号比最小序号还要小 => 没有找到，直接返回...
-	if( rtpLose.lose_seq < lpFrontHeader->seq ) {
-		blog(LOG_INFO, "%s Supply Error => lose: %lu, min: %lu, Type: %d", TM_SEND_NAME, rtpLose.lose_seq, lpFrontHeader->seq, rtpLose.lose_type);
-		return;
-	}
-	ASSERT( rtpLose.lose_seq >= lpFrontHeader->seq );
-	// 注意：环形队列当中的序列号一定是连续的...
-	// 两者之差就是要发送数据包的头指针位置...
-	nSendPos = (rtpLose.lose_seq - lpFrontHeader->seq) * nPerPackSize;
-	// 如果补包位置大于或等于环形队列长度 => 补包越界...
-	if( nSendPos >= cur_circle.size ) {
-		blog(LOG_INFO, "%s Supply Error => Position Excessed", TM_SEND_NAME);
-		return;
-	}
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	// 注意：不能用简单的指针操作，环形队列可能会回还，必须用接口 => 从指定相对位置拷贝指定长度数据...
-	// 获取将要发送数据包的包头位置和有效数据长度...
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	memset(szPacketBuffer, 0, nPerPackSize);
-	circlebuf_read(&cur_circle, nSendPos, szPacketBuffer, nPerPackSize);
-	lpSendHeader = (rtp_hdr_t*)szPacketBuffer;
-	// 如果找到的序号位置不对 => 缓存里面的所有包都是有效包，因为是数据源头...
-	if( lpSendHeader->seq != rtpLose.lose_seq ) {
-		blog(LOG_INFO, "%s Supply Error => Seq: %lu, Find: %lu, Type: %d", TM_SEND_NAME, rtpLose.lose_seq, lpSendHeader->seq, rtpLose.lose_type);
-		return;
-	}
-	// 获取有效的数据区长度 => 包头 + 数据...
-	nSendSize = sizeof(rtp_hdr_t) + lpSendHeader->psize;
-	// 注意：老师推流端只能有一个服务器方向的补包路线...
-	ASSERT(m_dt_to_dir == DT_TO_SERVER);
-	theErr = m_lpUDPSocket->SendTo((void*)lpSendHeader, nSendSize);
-	// 如果有错误发生，打印出来...
-	(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
-	// 累加总的输出字节数，便于计算输出平均码流...
-	m_total_output_bytes += nSendSize;
-	// 打印已经发送补包信息...
-	blog(LOG_INFO, "%s Supply Send => Dir: %d, Seq: %lu, TS: %lu, Slice: %d, Type: %d", TM_SEND_NAME, m_dt_to_dir, lpSendHeader->seq, lpSendHeader->ts, lpSendHeader->psize, lpSendHeader->pt);
-	// 修改休息状态 => 已经有发包，不能休息...
-	m_bNeedSleep = false;
+	// 对环形队列相关资源进行互斥保护...
+	pthread_mutex_lock(&m_Mutex);
+	do {
+		// 根据数据包类型，找到丢包集合、环形队列...
+		GM_MapLose & theMapLose = bIsAudio ? m_AudioMapLose : m_VideoMapLose;
+		circlebuf  & cur_circle = bIsAudio ? m_audio_circle : m_video_circle;
+		// 丢包集合队列为空，直接返回...
+		if( theMapLose.size() <= 0 )
+			break;
+		// 拿出一个丢包记录，无论是否发送成功，都要删除这个丢包记录...
+		// 如果观看端，没有收到这个数据包，会再次发起补包命令...
+		GM_MapLose::iterator itorItem = theMapLose.begin();
+		rtp_lose_t rtpLose = itorItem->second;
+		theMapLose.erase(itorItem);
+		// 如果环形队列为空，直接返回...
+		if( cur_circle.size <= 0 )
+			break;
+		// 先找到环形队列中最前面数据包的头指针 => 最小序号...
+		GM_Error    theErr = GM_NoErr;
+		rtp_hdr_t * lpFrontHeader = NULL;
+		rtp_hdr_t * lpSendHeader = NULL;
+		size_t nSendPos = 0, nSendSize = 0;
+		/////////////////////////////////////////////////////////////////////////////////////////////////
+		// 注意：千万不能在环形队列当中进行指针操作，当start_pos > end_pos时，可能会有越界情况...
+		// 所以，一定要用接口读取完整的数据包之后，再进行操作；如果用指针，一旦发生回还，就会错误...
+		/////////////////////////////////////////////////////////////////////////////////////////////////
+		const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
+		static char szPacketBuffer[nPerPackSize] = {0};
+		circlebuf_peek_front(&cur_circle, szPacketBuffer, nPerPackSize);
+		lpFrontHeader = (rtp_hdr_t*)szPacketBuffer;
+		// 如果要补充的数据包序号比最小序号还要小 => 没有找到，直接返回...
+		if( rtpLose.lose_seq < lpFrontHeader->seq ) {
+			blog(LOG_INFO, "%s Supply Error => lose: %lu, min: %lu, Type: %d", TM_SEND_NAME, rtpLose.lose_seq, lpFrontHeader->seq, rtpLose.lose_type);
+			break;
+		}
+		ASSERT( rtpLose.lose_seq >= lpFrontHeader->seq );
+		// 注意：环形队列当中的序列号一定是连续的...
+		// 两者之差就是要发送数据包的头指针位置...
+		nSendPos = (rtpLose.lose_seq - lpFrontHeader->seq) * nPerPackSize;
+		// 如果补包位置大于或等于环形队列长度 => 补包越界...
+		if( nSendPos >= cur_circle.size ) {
+			blog(LOG_INFO, "%s Supply Error => Position Excessed", TM_SEND_NAME);
+			break;
+		}
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		// 注意：不能用简单的指针操作，环形队列可能会回还，必须用接口 => 从指定相对位置拷贝指定长度数据...
+		// 获取将要发送数据包的包头位置和有效数据长度...
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		memset(szPacketBuffer, 0, nPerPackSize);
+		circlebuf_read(&cur_circle, nSendPos, szPacketBuffer, nPerPackSize);
+		lpSendHeader = (rtp_hdr_t*)szPacketBuffer;
+		// 如果找到的序号位置不对 => 缓存里面的所有包都是有效包，因为是数据源头...
+		if( lpSendHeader->seq != rtpLose.lose_seq ) {
+			blog(LOG_INFO, "%s Supply Error => Seq: %lu, Find: %lu, Type: %d", TM_SEND_NAME, rtpLose.lose_seq, lpSendHeader->seq, rtpLose.lose_type);
+			break;
+		}
+		// 获取有效的数据区长度 => 包头 + 数据...
+		nSendSize = sizeof(rtp_hdr_t) + lpSendHeader->psize;
+		// 注意：老师推流端只能有一个服务器方向的补包路线...
+		ASSERT(m_dt_to_dir == DT_TO_SERVER);
+		theErr = m_lpUDPSocket->SendTo((void*)lpSendHeader, nSendSize);
+		// 如果有错误发生，打印出来...
+		(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
+		// 累加总的输出字节数，便于计算输出平均码流...
+		m_total_output_bytes += nSendSize;
+		// 打印已经发送补包信息...
+		//blog(LOG_INFO, "%s Supply Send => Dir: %d, Seq: %lu, TS: %lu, Slice: %d, Type: %d", TM_SEND_NAME, m_dt_to_dir, lpSendHeader->seq, lpSendHeader->ts, lpSendHeader->psize, lpSendHeader->pt);
+		// 修改休息状态 => 已经有发包，不能休息...
+		m_bNeedSleep = false;
+	} while (false);
+	// 对环形队列相关资源互斥保护结束...
+	pthread_mutex_unlock(&m_Mutex);
 }
 
 void CUDPSendThread::doSendPacket(bool bIsAudio)
 {
-	OSMutexLocker theLock(&m_Mutex);
-	// 根据数据包类型，找到打包序号、发包序号、环形队列...
-	uint32_t  & nCurPackSeq = bIsAudio ? m_nAudioCurPackSeq : m_nVideoCurPackSeq;
-	uint32_t  & nCurSendSeq = bIsAudio ? m_nAudioCurSendSeq : m_nVideoCurSendSeq;
-	circlebuf  & cur_circle = bIsAudio ? m_audio_circle : m_video_circle;
-	// 如果环形队列没有可发送数据，直接返回...
-	if( cur_circle.size <= 0 || m_lpUDPSocket == NULL )
-		return;
-	// 如果要发送序列号比打包序列号还要大 => 没有数据包可以发送...
-	if( nCurSendSeq > nCurPackSeq )
-		return;
-	// 取出最前面的RTP数据包，但不从环形队列中移除 => 目的是给接收端补包用...
-	GM_Error    theErr = GM_NoErr;
-	rtp_hdr_t * lpFrontHeader = NULL;
-	rtp_hdr_t * lpSendHeader = NULL;
-	size_t nSendPos = 0, nSendSize = 0;
-	/////////////////////////////////////////////////////////////////////////////////////////////////
-	// 注意：千万不能在环形队列当中进行指针操作，当start_pos > end_pos时，可能会有越界情况...
-	// 所以，一定要用接口读取完整的数据包之后，再进行操作；如果用指针，一旦发生回还，就会错误...
-	/////////////////////////////////////////////////////////////////////////////////////////////////
-	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketBuffer[nPerPackSize] = {0};
-	circlebuf_peek_front(&cur_circle, szPacketBuffer, nPerPackSize);
-	// 计算环形队列中最前面数据包的头指针 => 最小序号...
-	lpFrontHeader = (rtp_hdr_t*)szPacketBuffer;
-	// 第一次发包 或 发包序号太小 => 使用最前面包的序列号...
-	if((nCurSendSeq <= 0) || (nCurSendSeq < lpFrontHeader->seq)) {
-		nCurSendSeq = lpFrontHeader->seq;
-	}
-	/////////////////////////////////////////////////////////////////////////////////
-	// 环形队列最小序号 => min_id => lpFrontHeader->seq
-	// 环形队列最大序号 => max_id => nCurPackSeq
-	/////////////////////////////////////////////////////////////////////////////////
-	// 将要发送的数据包序号不能小于最前面包的序列号...
-	ASSERT( nCurSendSeq >= lpFrontHeader->seq );
-	ASSERT( nCurSendSeq <= nCurPackSeq );
-	// 两者之差就是要发送数据包的头指针位置...
-	nSendPos = (nCurSendSeq - lpFrontHeader->seq) * nPerPackSize;
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	// 注意：不能用简单的指针操作，环形队列可能会回还，必须用接口 => 从指定相对位置拷贝指定长度数据...
-	// 获取将要发送数据包的包头位置和有效数据长度...
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	memset(szPacketBuffer, 0, nPerPackSize);
-	circlebuf_read(&cur_circle, nSendPos, szPacketBuffer, nPerPackSize);
-	lpSendHeader = (rtp_hdr_t*)szPacketBuffer;
-	// 如果要发送的数据位置越界或无效，直接返回...
-	if( lpSendHeader == NULL || lpSendHeader->seq <= 0 )
-		return;
-	// 获取有效的数据区长度 => 包头 + 数据...
-	nSendSize = sizeof(rtp_hdr_t) + lpSendHeader->psize;
-	// 注意：老师推流端只能有一个服务器方向的发包路线...
-	ASSERT(m_dt_to_dir == DT_TO_SERVER);
-	theErr = m_lpUDPSocket->SendTo((void*)lpSendHeader, nSendSize);
-	// 如果有错误发生，打印出来...
-	(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
-
-	// 累加总体、音视频输出总字节数...
-	m_total_output_bytes += nSendSize;
-	m_audio_output_bytes += (bIsAudio ? nSendSize : 0);
-	m_video_output_bytes += (bIsAudio ? 0 : nSendSize);
-
-	/////////////////////////////////////////////////////////////////////////////////
-	// 实验：随机丢包...
-	/////////////////////////////////////////////////////////////////////////////////
-	/*if( nCurSendSeq % 3 != 2 ) {
-		// 调用套接字接口，直接发送RTP数据包...
+	// 对环形队列相关资源进行互斥保护...
+	pthread_mutex_lock(&m_Mutex);
+	do {
+		// 根据数据包类型，找到打包序号、发包序号、环形队列...
+		uint32_t  & nCurPackSeq = bIsAudio ? m_nAudioCurPackSeq : m_nVideoCurPackSeq;
+		uint32_t  & nCurSendSeq = bIsAudio ? m_nAudioCurSendSeq : m_nVideoCurSendSeq;
+		circlebuf  & cur_circle = bIsAudio ? m_audio_circle : m_video_circle;
+		// 如果环形队列没有可发送数据，直接返回...
+		if( cur_circle.size <= 0 || m_lpUDPSocket == NULL )
+			break;
+		// 如果要发送序列号比打包序列号还要大 => 没有数据包可以发送...
+		if( nCurSendSeq > nCurPackSeq )
+			break;
+		// 取出最前面的RTP数据包，但不从环形队列中移除 => 目的是给接收端补包用...
+		GM_Error    theErr = GM_NoErr;
+		rtp_hdr_t * lpFrontHeader = NULL;
+		rtp_hdr_t * lpSendHeader = NULL;
+		size_t nSendPos = 0, nSendSize = 0;
+		/////////////////////////////////////////////////////////////////////////////////////////////////
+		// 注意：千万不能在环形队列当中进行指针操作，当start_pos > end_pos时，可能会有越界情况...
+		// 所以，一定要用接口读取完整的数据包之后，再进行操作；如果用指针，一旦发生回还，就会错误...
+		/////////////////////////////////////////////////////////////////////////////////////////////////
+		const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
+		static char szPacketBuffer[nPerPackSize] = {0};
+		circlebuf_peek_front(&cur_circle, szPacketBuffer, nPerPackSize);
+		// 计算环形队列中最前面数据包的头指针 => 最小序号...
+		lpFrontHeader = (rtp_hdr_t*)szPacketBuffer;
+		// 第一次发包 或 发包序号太小 => 使用最前面包的序列号...
+		if((nCurSendSeq <= 0) || (nCurSendSeq < lpFrontHeader->seq)) {
+			nCurSendSeq = lpFrontHeader->seq;
+		}
+		/////////////////////////////////////////////////////////////////////////////////
+		// 环形队列最小序号 => min_id => lpFrontHeader->seq
+		// 环形队列最大序号 => max_id => nCurPackSeq
+		/////////////////////////////////////////////////////////////////////////////////
+		// 将要发送的数据包序号不能小于最前面包的序列号...
+		ASSERT( nCurSendSeq >= lpFrontHeader->seq );
+		ASSERT( nCurSendSeq <= nCurPackSeq );
+		// 两者之差就是要发送数据包的头指针位置...
+		nSendPos = (nCurSendSeq - lpFrontHeader->seq) * nPerPackSize;
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		// 注意：不能用简单的指针操作，环形队列可能会回还，必须用接口 => 从指定相对位置拷贝指定长度数据...
+		// 获取将要发送数据包的包头位置和有效数据长度...
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		memset(szPacketBuffer, 0, nPerPackSize);
+		circlebuf_read(&cur_circle, nSendPos, szPacketBuffer, nPerPackSize);
+		lpSendHeader = (rtp_hdr_t*)szPacketBuffer;
+		// 如果要发送的数据位置越界或无效，直接返回...
+		if( lpSendHeader == NULL || lpSendHeader->seq <= 0 )
+			break;
+		// 获取有效的数据区长度 => 包头 + 数据...
+		nSendSize = sizeof(rtp_hdr_t) + lpSendHeader->psize;
+		// 注意：老师推流端只能有一个服务器方向的发包路线...
+		ASSERT(m_dt_to_dir == DT_TO_SERVER);
 		theErr = m_lpUDPSocket->SendTo((void*)lpSendHeader, nSendSize);
+		// 如果有错误发生，打印出来...
 		(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
-	}*/
-	/////////////////////////////////////////////////////////////////////////////////
 
-	// 成功发送数据包 => 累加发送序列号...
-	++nCurSendSeq;
-	// 修改休息状态 => 已经有发包，不能休息...
-	m_bNeedSleep = false;
+		// 累加总体、音视频输出总字节数...
+		m_total_output_bytes += nSendSize;
+		m_audio_output_bytes += (bIsAudio ? nSendSize : 0);
+		m_video_output_bytes += (bIsAudio ? 0 : nSendSize);
 
-	// 打印调试信息 => 刚刚发送的数据包...
-	//int nZeroSize = DEF_MTU_SIZE - lpSendHeader->psize;
-	//blog(LOG_INFO, "%s Type: %d, Seq: %lu, TS: %lu, pst: %d, ped: %d, Slice: %d, Zero: %d", TM_SEND_NAME, lpSendHeader->pt, lpSendHeader->seq, lpSendHeader->ts, lpSendHeader->pst, lpSendHeader->ped, lpSendHeader->psize, nZeroSize);
+		/////////////////////////////////////////////////////////////////////////////////
+		// 实验：随机丢包...
+		/////////////////////////////////////////////////////////////////////////////////
+		/*if( nCurSendSeq % 3 != 2 ) {
+			// 调用套接字接口，直接发送RTP数据包...
+			theErr = m_lpUDPSocket->SendTo((void*)lpSendHeader, nSendSize);
+			(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
+		}*/
+		/////////////////////////////////////////////////////////////////////////////////
+
+		// 成功发送数据包 => 累加发送序列号...
+		++nCurSendSeq;
+		// 修改休息状态 => 已经有发包，不能休息...
+		m_bNeedSleep = false;
+
+		// 打印调试信息 => 刚刚发送的数据包...
+		//int nZeroSize = DEF_MTU_SIZE - lpSendHeader->psize;
+		//blog(LOG_INFO, "%s Type: %d, Seq: %lu, TS: %lu, pst: %d, ped: %d, Slice: %d, Zero: %d", TM_SEND_NAME, lpSendHeader->pt, lpSendHeader->seq, lpSendHeader->ts, lpSendHeader->pst, lpSendHeader->ped, lpSendHeader->psize, nZeroSize);
+	} while (false);
+	// 对环形队列相关资源互斥保护结束...
+	pthread_mutex_unlock(&m_Mutex);
 }
 
 void CUDPSendThread::doRecvPacket()
 {
-	OSMutexLocker theLock(&m_Mutex);
 	if( m_lpUDPSocket == NULL )
 		return;
 	GM_Error theErr = GM_NoErr;
@@ -778,7 +797,10 @@ void CUDPSendThread::doRecvPacket()
 		return;
 	// 修改休息状态 => 已经成功收包，不能休息...
 	m_bNeedSleep = false;
- 
+
+	// 对环形队列相关资源进行互斥保护...
+	pthread_mutex_lock(&m_Mutex);
+
 	// 获取第一个字节的高4位，得到数据包类型...
     uint8_t ptTag = (ioBuffer[0] >> 4) & 0x0F;
 
@@ -791,6 +813,9 @@ void CUDPSendThread::doRecvPacket()
 	case PT_TAG_DETECT:	 this->doTagDetectProcess(ioBuffer, outRecvLen); break;
 	case PT_TAG_SUPPLY:  this->doTagSupplyProcess(ioBuffer, outRecvLen); break;
 	}
+
+	// 对环形队列相关资源互斥保护结束...
+	pthread_mutex_unlock(&m_Mutex);
 }
 
 void CUDPSendThread::doProcServerCreate(char * lpBuffer, int inRecvLen)
@@ -912,7 +937,7 @@ void CUDPSendThread::doTagSupplyProcess(char * lpBuffer, int inRecvLen)
 		nDataSize -= sizeof(int);
 	}
 	// 打印已收到补包命令...
-	blog(LOG_INFO, "%s Supply Recv => Count: %d, Type: %d", TM_SEND_NAME, rtpSupply.suSize / sizeof(int), rtpSupply.suType);
+	//blog(LOG_INFO, "%s Supply Recv => Count: %d, Type: %d", TM_SEND_NAME, rtpSupply.suSize / sizeof(int), rtpSupply.suType);
 }
 
 void CUDPSendThread::doProcMaxConSeq(bool bIsAudio, uint32_t inMaxConSeq)

@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "OSMutex.h"
+#include <util/threading.h>
 #include "OSThread.h"
 #include "rtp.h"
 
@@ -38,9 +38,6 @@ private:
 	void			doTagSupplyProcess(char * lpBuffer, int inRecvLen);
 
 	void			doProcMaxConSeq(bool bIsAudio, uint32_t inMaxConSeq);
-
-	void			doEarseAudioByPTS(uint32_t inTimeStamp);
-	void			doCalcAVJamStatus();
 private:
 	enum {
 		kCmdSendCreate	= 0,				// 开始发送 => 创建命令状态
@@ -52,9 +49,9 @@ private:
 	string			m_strSPS;				// 视频sps
 	string			m_strPPS;				// 视频pps
 
-	OSMutex			m_Mutex;				// 互斥对象
 	UDPSocket	 *  m_lpUDPSocket;			// UDP对象
 	obs_output_t *  m_lpObsOutput;			// obs输出对象
+	pthread_mutex_t m_Mutex;                // 互斥对象 => 保护环形队列...
 
 	uint16_t		m_HostServerPort;		// 服务器端口 => host
 	uint32_t	    m_HostServerAddr;		// 服务器地址 => host

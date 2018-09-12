@@ -1,7 +1,6 @@
 
 #pragma once
 
-#include "OSMutex.h"
 #include "OSThread.h"
 #include "rtp.h"
 
@@ -50,7 +49,6 @@ private:
 	string			m_strSPS;				// 视频sps
 	string			m_strPPS;				// 视频pps
 
-	OSMutex			m_Mutex;				// 互斥对象
 	UDPSocket    *  m_lpUDPSocket;			// UDP对象
 	obs_source_t *  m_lpObsSource;			// obs资源对象
 

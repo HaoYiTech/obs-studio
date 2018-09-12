@@ -124,7 +124,9 @@ CDecoder::CDecoder()
   , m_lpPlaySDL(NULL)
   , m_play_next_ns(-1)
   , m_bNeedSleep(false)
+  , m_Mutex(NULL)
 {
+	pthread_mutex_init_value(&m_Mutex);
 }
 
 CDecoder::~CDecoder()
@@ -151,6 +153,8 @@ CDecoder::~CDecoder()
 		av_frame_free(&itorFrame->second);
 	}
 	m_MapFrame.clear();
+	// 释放互斥对象...
+	pthread_mutex_destroy(&m_Mutex);
 }
 
 void CDecoder::doPushPacket(AVPacket & inPacket)
@@ -195,14 +199,13 @@ CVideoThread::CVideoThread(CPlaySDL * lpPlaySDL)
 
 CVideoThread::~CVideoThread()
 {
-	blog(LOG_INFO, "%s == [~CVideoThread] - Exit Start ==", TM_RECV_NAME);
+	//blog(LOG_INFO, "%s == [~CVideoThread] - Exit Start ==", TM_RECV_NAME);
 	this->StopAndWaitForThread();
-	blog(LOG_INFO, "%s == [~CVideoThread] - Exit End ==", TM_RECV_NAME);
+	//blog(LOG_INFO, "%s == [~CVideoThread] - Exit End ==", TM_RECV_NAME);
 }
 
 BOOL CVideoThread::InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS)
 {
-	OSMutexLocker theLock(&m_Mutex);
 	// 如果已经初始化，直接返回...
 	if( m_lpCodec != NULL || m_lpDecoder != NULL )
 		return false;
@@ -261,8 +264,6 @@ void CVideoThread::doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, in
 	// 线程正在退出中，直接返回...
 	if( this->IsStopRequested() )
 		return;
-	// 进入线程互斥状态中...
-	OSMutexLocker theLock(&m_Mutex);
 	// 每个关键帧都放入sps和pps，播放会加快...
 	string strCurFrame;
 	// 如果是关键帧，必须先写入sps，再写如pps...
@@ -291,13 +292,14 @@ void CVideoThread::doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, in
 	theNewPacket.flags = bIsKeyFrame;
 	theNewPacket.stream_index = 1;
 	// 将数据压入解码前队列当中...
+	pthread_mutex_lock(&m_Mutex);
 	this->doPushPacket(theNewPacket);
+	pthread_mutex_unlock(&m_Mutex);
 }
 //
 // 取出一帧解码后的视频，比对系统时间，看看能否播放...
 void CVideoThread::doDisplayFrame()
 {
-	OSMutexLocker theLock(&m_Mutex);
 	// 如果没有已解码数据帧，直接返回休息最大毫秒数...
 	if( m_MapFrame.size() <= 0 ) {
 		m_play_next_ns = os_gettime_ns() + MAX_SLEEP_MS * 1000000;
@@ -407,12 +409,13 @@ static void DoSaveNetFile(AVFrame * lpAVFrame, bool bError, AVPacket & inPacket)
 
 void CVideoThread::doDecodeFrame()
 {
-	OSMutexLocker theLock(&m_Mutex);
 	// 没有要解码的数据包，直接返回最大休息毫秒数...
 	if( m_MapPacket.size() <= 0 ) {
 		m_play_next_ns = os_gettime_ns() + MAX_SLEEP_MS * 1000000;
 		return;
 	}
+	// AVPacket互斥对象保护...
+	pthread_mutex_lock(&m_Mutex);
 	// 这是为了测试原始PTS而获取的初始PTS值 => 只在打印调试信息时使用...
 	int64_t inStartPtsMS = m_lpPlaySDL->GetStartPtsMS();
 	// 抽取一个AVPacket进行解码操作，理论上一个AVPacket一定能解码出一个Picture...
@@ -441,6 +444,7 @@ void CVideoThread::doDecodeFrame()
 		// 丢掉解码失败的数据帧...
 		av_packet_unref(&thePacket);
 		m_MapPacket.erase(itorItem);
+		pthread_mutex_unlock(&m_Mutex);
 		return;
 	}
 	// 打印解码之后的数据帧信息...
@@ -457,6 +461,7 @@ void CVideoThread::doDecodeFrame()
 	// 这里是引用，必须先free再erase...
 	av_packet_unref(&thePacket);
 	m_MapPacket.erase(itorItem);
+	pthread_mutex_unlock(&m_Mutex);
 	// 修改休息状态 => 已经有解码，不能休息...
 	m_bNeedSleep = false;
 }
@@ -471,19 +476,19 @@ CAudioThread::CAudioThread(CPlaySDL * lpPlaySDL)
 
 CAudioThread::~CAudioThread()
 {
-	blog(LOG_INFO, "%s == [~CAudioThread] - Exit Start ==", TM_RECV_NAME);
+	//blog(LOG_INFO, "%s == [~CAudioThread] - Exit Start ==", TM_RECV_NAME);
 	this->StopAndWaitForThread();
-	blog(LOG_INFO, "%s == [~CAudioThread] - Exit End ==", TM_RECV_NAME);
+	//blog(LOG_INFO, "%s == [~CAudioThread] - Exit End ==", TM_RECV_NAME);
 }
 
 void CAudioThread::doDecodeFrame()
 {
-	OSMutexLocker theLock(&m_Mutex);
 	// 没有要解码的数据包，直接返回最大休息毫秒数...
 	if( m_MapPacket.size() <= 0 ) {
 		m_play_next_ns = os_gettime_ns() + MAX_SLEEP_MS * 1000000;
 		return;
 	}
+	pthread_mutex_lock(&m_Mutex);
 	// 这是为了测试原始PTS而获取的初始PTS值 => 只在打印调试信息时使用...
 	int64_t inStartPtsMS = m_lpPlaySDL->GetStartPtsMS();
 	// 抽取一个AVPacket进行解码操作，一个AVPacket不一定能解码出一个Picture...
@@ -502,6 +507,7 @@ void CAudioThread::doDecodeFrame()
 			TM_RECV_NAME, thePacket.pts + inStartPtsMS, nResult, thePacket.size);
 		av_packet_unref(&thePacket);
 		m_MapPacket.erase(itorItem);
+		pthread_mutex_unlock(&m_Mutex);
 		return;
 	}
 	// 打印解码之后的数据帧信息...
@@ -518,13 +524,13 @@ void CAudioThread::doDecodeFrame()
 	// 这里是引用，必须先free再erase...
 	av_packet_unref(&thePacket);
 	m_MapPacket.erase(itorItem);
+	pthread_mutex_unlock(&m_Mutex);
 	// 修改休息状态 => 已经有解码，不能休息...
 	m_bNeedSleep = false;
 }
 
 void CAudioThread::doDisplayFrame()
 {
-	OSMutexLocker theLock(&m_Mutex);
 	// 如果没有已解码数据帧，直接返回休息最大毫秒数...
 	if (m_MapFrame.size() <= 0) {
 		m_play_next_ns = os_gettime_ns() + MAX_SLEEP_MS * 1000000;
@@ -573,7 +579,6 @@ void CAudioThread::doDisplayFrame()
 
 BOOL CAudioThread::InitAudio(int nRateIndex, int nChannelNum)
 {
-	OSMutexLocker theLock(&m_Mutex);
 	// 如果已经初始化，直接返回...
 	if( m_lpCodec != NULL || m_lpDecoder != NULL )
 		return false;
@@ -639,7 +644,6 @@ void CAudioThread::doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, in
 	if( this->IsStopRequested() )
 		return;
 	// 进入线程互斥状态中...
-	OSMutexLocker theLock(&m_Mutex);
 	// 先加入ADTS头，再加入数据帧内容...
 	int nTotalSize = ADTS_HEADER_SIZE + inData.size();
 	// 构造ADTS帧头...
@@ -679,7 +683,9 @@ void CAudioThread::doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, in
 	theNewPacket.flags = bIsKeyFrame;
 	theNewPacket.stream_index = 0;
 	// 将数据压入解码前队列当中...
+	pthread_mutex_lock(&m_Mutex);
 	this->doPushPacket(theNewPacket);
+	pthread_mutex_unlock(&m_Mutex);
 }
 
 CPlaySDL::CPlaySDL(obs_source_t * lpObsSource, int64_t inSysZeroNS)
@@ -756,7 +762,7 @@ void CPlaySDL::PushPacket(int zero_delay_ms, string & inData, int inTypeTag, boo
 	if((inTypeTag == PT_TAG_VIDEO) && (m_lpVideoThread != NULL) && (!m_bFindFirstVKey)) {
 		// 如果当前视频帧，不是关键帧，直接丢弃...
 		if( !bIsKeyFrame ) {
-			blog(LOG_INFO, "%s Discard for First Video KeyFrame => PTS: %lu, Type: %d", TM_RECV_NAME, inSendTime, inTypeTag);
+			//blog(LOG_INFO, "%s Discard for First Video KeyFrame => PTS: %lu, Type: %d", TM_RECV_NAME, inSendTime, inTypeTag);
 			return;
 		}
 		// 设置已经找到第一个视频关键帧标志...

@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include "OSMutex.h"
 #include "OSThread.h"
+#include <util/threading.h>
 
 extern "C"
 {
@@ -34,9 +34,9 @@ protected:
 	GM_MapPacket		m_MapPacket;		// 解码前的数据帧...
 	GM_MapFrame			m_MapFrame;			// 解码后的数据帧....
 	CPlaySDL        *   m_lpPlaySDL;		// 播放控制
-	OSMutex	            m_Mutex;			// 互斥对象
 	bool				m_bNeedSleep;		// 休息标志 => 只要有解码或播放就不能休息...
 	int64_t				m_play_next_ns;		// 下一个要播放帧的系统纳秒值...
+	pthread_mutex_t     m_Mutex;            // 互斥对象
 };
 
 class CVideoThread : public CDecoder, public OSThread

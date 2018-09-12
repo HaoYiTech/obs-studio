@@ -3,8 +3,6 @@
 #include <obs-module.h>
 #include "UDPSendThread.h"
 
-OSMutex  out_mutex;  // 输出互斥...
-
 struct win_rtp_output {
 	obs_output_t   * output;
 	int              room_id;
@@ -22,7 +20,6 @@ static const char *rtp_output_getname(void *unused)
 
 static void rtp_output_update(void *data, obs_data_t *settings)
 {
-	OSMutexLocker theLock(&out_mutex);
 	// 获取传递过来的输出对象和配置信息...
 	win_rtp_output * lpRtpStream = (win_rtp_output*)data;
 	lpRtpStream->room_id = (int)obs_data_get_int(settings, "room_id");
@@ -51,7 +48,6 @@ static void rtp_output_update(void *data, obs_data_t *settings)
 
 static void *rtp_output_create(obs_data_t *settings, obs_output_t *output)
 {
-	OSMutexLocker theLock(&out_mutex);
 	// 创建rtp数据源变量管理对象...
 	win_rtp_output * lpRtpStream = (win_rtp_output*)bzalloc(sizeof(struct win_rtp_output));
 	// 将传递过来的obs输出对象保存起来...
@@ -64,7 +60,6 @@ static void *rtp_output_create(obs_data_t *settings, obs_output_t *output)
 
 static void rtp_output_destroy(void *data)
 {
-	OSMutexLocker theLock(&out_mutex);
 	// 注意：不能再次调用 obs_output_end_data_capture，可能会引起压缩器崩溃...
 	win_rtp_output * lpRtpStream = (win_rtp_output*)data;
 	// 如果推流线程被创建过，需要被删除...
@@ -78,7 +73,6 @@ static void rtp_output_destroy(void *data)
 
 static bool rtp_output_start(void *data)
 {
-	OSMutexLocker theLock(&out_mutex);
 	win_rtp_output * lpRtpStream = (win_rtp_output*)data;
 	// 判断上层是否可以进行数据捕捉 => 查询失败，打印错误信息...
 	if (!obs_output_can_begin_data_capture(lpRtpStream->output, 0)) {
@@ -107,7 +101,6 @@ static bool rtp_output_start(void *data)
 
 static void rtp_output_stop(void *data, uint64_t ts)
 {
-	OSMutexLocker theLock(&out_mutex);
 	win_rtp_output * lpRtpStream = (win_rtp_output*)data;
 	// OBS_OUTPUT_SUCCESS 会调用 obs_output_end_data_capture...
 	obs_output_signal_stop(lpRtpStream->output, OBS_OUTPUT_SUCCESS);
@@ -120,7 +113,6 @@ static void rtp_output_stop(void *data, uint64_t ts)
 
 static void rtp_output_data(void *data, struct encoder_packet *packet)
 {
-	OSMutexLocker theLock(&out_mutex);
 	win_rtp_output * lpRtpStream = (win_rtp_output*)data;
 	// 将数据帧投递给推流线程 => 投递原始数据，不用做任何处理...
 	if (lpRtpStream->sendThread != NULL) {
