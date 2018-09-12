@@ -73,7 +73,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>Debug</GenerateDebugInformation>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>..\..\libobs\Debug\obs.lib;E:\obs-deps\win32\bin\avcodec.lib;E:\obs-deps\win32\bin\avfilter.lib;E:\obs-deps\win32\bin\avdevice.lib;E:\obs-deps\win32\bin\avutil.lib;E:\obs-deps\win32\bin\swscale.lib;E:\obs-deps\win32\bin\avformat.lib;E:\obs-deps\win32\bin\swresample.lib;Ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalDependencies>Ws2_32.lib;..\..\libobs\Debug\obs.lib;..\..\deps\w32-pthreads\Debug\w32-pthreads.lib;E:\obs-deps\win32\bin\avcodec.lib;E:\obs-deps\win32\bin\avfilter.lib;E:\obs-deps\win32\bin\avdevice.lib;E:\obs-deps\win32\bin\avutil.lib;E:\obs-deps\win32\bin\swscale.lib;E:\obs-deps\win32\bin\avformat.lib;E:\obs-deps\win32\bin\swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ProgramDatabaseFile>E:/obs-studio/vsbuild/plugins/win-rtp/Debug/win-rtp.pdb</ProgramDatabaseFile>
       <ImportLibrary>E:/obs-studio/vsbuild/plugins/win-rtp/Debug/win-rtp.lib</ImportLibrary>
@@ -147,7 +147,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <OptimizeReferences>
       </OptimizeReferences>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>..\..\libobs\Release\obs.lib;E:\obs-deps\win32\bin\avcodec.lib;E:\obs-deps\win32\bin\avfilter.lib;E:\obs-deps\win32\bin\avdevice.lib;E:\obs-deps\win32\bin\avutil.lib;E:\obs-deps\win32\bin\swscale.lib;E:\obs-deps\win32\bin\avformat.lib;E:\obs-deps\win32\bin\swresample.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Ws2_32.lib;..\..\libobs\Release\obs.lib;..\..\deps\w32-pthreads\Release\w32-pthreads.lib;E:\obs-deps\win32\bin\avcodec.lib;E:\obs-deps\win32\bin\avfilter.lib;E:\obs-deps\win32\bin\avdevice.lib;E:\obs-deps\win32\bin\avutil.lib;E:\obs-deps\win32\bin\swscale.lib;E:\obs-deps\win32\bin\avformat.lib;E:\obs-deps\win32\bin\swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ProgramDatabaseFile>E:/obs-studio/vsbuild/plugins/win-rtp/Release/win-rtp.pdb</ProgramDatabaseFile>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
@@ -197,7 +197,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\plugins\win-rtp\OSMutex.cpp" />
     <ClCompile Include="..\..\..\plugins\win-rtp\OSThread.cpp" />
     <ClCompile Include="..\..\..\plugins\win-rtp\Socket.cpp" />
     <ClCompile Include="..\..\..\plugins\win-rtp\SocketUtils.cpp" />
@@ -213,7 +212,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   <ItemGroup>
     <ClInclude Include="..\..\..\plugins\win-rtp\GMError.h" />
     <ClInclude Include="..\..\..\plugins\win-rtp\HYDefine.h" />
-    <ClInclude Include="..\..\..\plugins\win-rtp\OSMutex.h" />
     <ClInclude Include="..\..\..\plugins\win-rtp\OSThread.h" />
     <ClInclude Include="..\..\..\plugins\win-rtp\rtp.h" />
     <ClInclude Include="..\..\..\plugins\win-rtp\Socket.h" />

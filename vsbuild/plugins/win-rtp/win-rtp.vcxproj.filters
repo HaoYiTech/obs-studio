@@ -19,9 +19,6 @@
     <ClCompile Include="..\..\..\plugins\win-rtp\win-rtp-output.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\plugins\win-rtp\OSMutex.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\plugins\win-rtp\OSThread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -52,9 +49,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\plugins\win-rtp\HYDefine.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\plugins\win-rtp\OSMutex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\plugins\win-rtp\OSThread.h">
