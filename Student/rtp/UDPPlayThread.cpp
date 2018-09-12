@@ -1072,7 +1072,7 @@ void CPlaySDL::PushPacket(int zero_delay_ms, string & inData, int inTypeTag, boo
 	if((inTypeTag == PT_TAG_VIDEO) && (m_lpVideoThread != NULL) && (!m_bFindFirstVKey)) {
 		// 如果当前视频帧，不是关键帧，直接丢弃...
 		if( !bIsKeyFrame ) {
-			blog(LOG_INFO, "%s Discard for First Video KeyFrame => PTS: %lu, Type: %d", TM_RECV_NAME, inSendTime, inTypeTag);
+			//blog(LOG_INFO, "%s Discard for First Video KeyFrame => PTS: %lu, Type: %d", TM_RECV_NAME, inSendTime, inTypeTag);
 			m_lpViewRender->doUpdateNotice(QString(QTStr("Render.Window.DropVideoFrame")).arg(inSendTime));
 			return;
 		}

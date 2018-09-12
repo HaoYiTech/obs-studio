@@ -148,7 +148,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="common\md5.cpp" />
-    <ClCompile Include="common\OSMutex.cpp" />
     <ClCompile Include="common\OSThread.cpp" />
     <ClCompile Include="common\Socket.cpp" />
     <ClCompile Include="common\SocketUtils.cpp" />
@@ -227,7 +226,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="common\HYDefine.h" />
     <ClInclude Include="common\HYVersion.h" />
     <ClInclude Include="common\md5.h" />
-    <ClInclude Include="common\OSMutex.h" />
     <ClInclude Include="common\OSThread.h" />
     <ClInclude Include="common\Socket.h" />
     <ClInclude Include="common\SocketUtils.h" />

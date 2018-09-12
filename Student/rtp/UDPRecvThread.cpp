@@ -169,7 +169,6 @@ void CUDPRecvThread::Entry()
 
 void CUDPRecvThread::doSendDeleteCmd()
 {
-	OSMutexLocker theLock(&m_Mutex);
 	GM_Error theErr = GM_NoErr;
 	if( m_lpUDPSocket == NULL )
 		return;
@@ -183,7 +182,8 @@ void CUDPRecvThread::doSendDeleteCmd()
 
 void CUDPRecvThread::doSendCreateCmd()
 {
-	OSMutexLocker theLock(&m_Mutex);
+	if (m_lpUDPSocket == NULL)
+		return;
 	// 如果命令状态不是创建命令，不发送命令，直接返回...
 	if( m_nCmdState != kCmdSendCreate )
 		return;
@@ -216,7 +216,8 @@ void CUDPRecvThread::doSendCreateCmd()
 
 void CUDPRecvThread::doSendDetectCmd()
 {
-	OSMutexLocker theLock(&m_Mutex);
+	if (m_lpUDPSocket == NULL)
+		return;
 	// 每隔1秒发送一个探测命令包 => 必须转换成有符号...
 	int64_t cur_time_ns = os_gettime_ns();
 	int64_t period_ns = 1000 * 1000000;
@@ -269,7 +270,8 @@ uint32_t CUDPRecvThread::doCalcMaxConSeq(bool bIsAudio)
 
 void CUDPRecvThread::doSendSupplyCmd(bool bIsAudio)
 {
-	OSMutexLocker theLock(&m_Mutex);
+	if (m_lpUDPSocket == NULL)
+		return;
 	// 根据数据包类型，找到丢包集合...
 	GM_MapLose & theMapLose = bIsAudio ? m_AudioMapLose : m_VideoMapLose;
 	// 如果丢包集合队列为空，直接返回...
@@ -337,12 +339,11 @@ void CUDPRecvThread::doSendSupplyCmd(bool bIsAudio)
 	// 修改休息状态 => 已经有发包，不能休息...
 	m_bNeedSleep = false;
 	// 打印已发送补包命令...
-	blog(LOG_INFO, "%s Supply Send => Dir: %d, Count: %d", TM_RECV_NAME, m_dt_to_dir, m_rtp_supply.suSize/sizeof(uint32_t));
+	//blog(LOG_INFO, "%s Supply Send => Dir: %d, Count: %d", TM_RECV_NAME, m_dt_to_dir, m_rtp_supply.suSize/sizeof(uint32_t));
 }
 
 void CUDPRecvThread::doRecvPacket()
 {
-	OSMutexLocker theLock(&m_Mutex);
 	if( m_lpUDPSocket == NULL )
 		return;
 	GM_Error theErr = GM_NoErr;
@@ -847,7 +848,7 @@ void CUDPRecvThread::doEraseLoseSeq(uint8_t inPType, uint32_t inSeqID)
 	uint32_t nResendCount = rtpLose.resend_count;
 	theMapLose.erase(itorItem);
 	// 打印已收到的补包信息，还剩下的未补包个数...
-	blog(LOG_INFO, "%s Supply Erase => LoseSeq: %lu, ResendCount: %lu, LoseSize: %lu, Type: %d", TM_RECV_NAME, inSeqID, nResendCount, theMapLose.size(), inPType);
+	//blog(LOG_INFO, "%s Supply Erase => LoseSeq: %lu, ResendCount: %lu, LoseSize: %lu, Type: %d", TM_RECV_NAME, inSeqID, nResendCount, theMapLose.size(), inPType);
 }
 //
 // 给丢失数据包预留环形队列缓存空间...
@@ -880,7 +881,7 @@ void CUDPRecvThread::doFillLosePack(uint8_t inPType, uint32_t nStartLoseID, uint
 		rtpLose.resend_time = cur_time_ms + max(cur_rtt_var_ms, MAX_SLEEP_MS);
 		theMapLose[sup_id] = rtpLose;
 		// 打印已丢包信息，丢包队列长度...
-		blog(LOG_INFO, "%s Lose Seq: %lu, LoseSize: %lu, Type: %d", TM_RECV_NAME, sup_id, theMapLose.size(), inPType);
+		//blog(LOG_INFO, "%s Lose Seq: %lu, LoseSize: %lu, Type: %d", TM_RECV_NAME, sup_id, theMapLose.size(), inPType);
 		// 累加当前丢包序列号...
 		++sup_id;
 	}
@@ -953,7 +954,7 @@ void CUDPRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 	// 如果收到的补充包比当前最大播放包还要小 => 说明是多次补包的冗余包，直接扔掉...
 	// 注意：即使相等也要扔掉，因为最大播放序号包本身已经投递到了播放层，已经被删除了...
 	if( new_id <= nMaxPlaySeq ) {
-		blog(LOG_INFO, "%s Supply Discard => Seq: %lu, MaxPlaySeq: %lu, Type: %d", TM_RECV_NAME, new_id, nMaxPlaySeq, pt_tag);
+		//blog(LOG_INFO, "%s Supply Discard => Seq: %lu, MaxPlaySeq: %lu, Type: %d", TM_RECV_NAME, new_id, nMaxPlaySeq, pt_tag);
 		return;
 	}
 	// 打印收到的音频数据包信息 => 包括缓冲区填充量 => 每个数据包都是统一大小 => rtp_hdr_t + slice + Zero => 812
@@ -1013,7 +1014,7 @@ void CUDPRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 	if( max_id > new_id ) {
 		// 如果最小序号大于丢包序号 => 打印错误，直接丢掉这个补充包...
 		if( min_id > new_id ) {
-			blog(LOG_INFO, "%s Supply Discard => Seq: %lu, Min-Max: [%lu, %lu], Type: %d", TM_RECV_NAME, new_id, min_id, max_id, pt_tag);
+			//blog(LOG_INFO, "%s Supply Discard => Seq: %lu, Min-Max: [%lu, %lu], Type: %d", TM_RECV_NAME, new_id, min_id, max_id, pt_tag);
 			return;
 		}
 		// 最小序号不能比丢包序号小...
@@ -1023,7 +1024,7 @@ void CUDPRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 		// 将获取的数据内容更新到指定位置...
 		circlebuf_place(&cur_circle, nPosition, lpBuffer, inRecvLen);
 		// 打印补充包信息...
-		blog(LOG_INFO, "%s Supply Success => Seq: %lu, Min-Max: [%lu, %lu], Type: %d", TM_RECV_NAME, new_id, min_id, max_id, pt_tag);
+		//blog(LOG_INFO, "%s Supply Success => Seq: %lu, Min-Max: [%lu, %lu], Type: %d", TM_RECV_NAME, new_id, min_id, max_id, pt_tag);
 		return;
 	}
 	// 如果是其它未知包，打印信息...

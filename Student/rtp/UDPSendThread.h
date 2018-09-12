@@ -1,8 +1,8 @@
 
 #pragma once
 
+#include <util/threading.h>
 #include "HYDefine.h"
-#include "OSMutex.h"
 #include "OSThread.h"
 
 class UDPSocket;
@@ -61,9 +61,9 @@ private:
 	string			m_strSPS;				// 视频sps
 	string			m_strPPS;				// 视频pps
 
-	OSMutex			m_Mutex;				// 互斥对象
 	UDPSocket	*	m_lpUDPSocket;			// UDP对象
 	CDataThread *   m_lpDataThread;         // 推流管理
+	pthread_mutex_t m_Mutex;                // 互斥对象 => 保护环形队列...
 
 	uint16_t		m_HostServerPort;		// 服务器端口 => host
 	uint32_t	    m_HostServerAddr;		// 服务器地址 => host

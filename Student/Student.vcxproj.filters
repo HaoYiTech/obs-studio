@@ -78,9 +78,6 @@
     <ClCompile Include="window-view-teacher.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="common\OSMutex.cpp">
-      <Filter>Common Files</Filter>
-    </ClCompile>
     <ClCompile Include="common\OSThread.cpp">
       <Filter>Common Files</Filter>
     </ClCompile>
@@ -226,9 +223,6 @@
       <Filter>Common Files</Filter>
     </ClInclude>
     <ClInclude Include="common\HYDefine.h">
-      <Filter>Common Files</Filter>
-    </ClInclude>
-    <ClInclude Include="common\OSMutex.h">
       <Filter>Common Files</Filter>
     </ClInclude>
     <ClInclude Include="common\OSThread.h">
