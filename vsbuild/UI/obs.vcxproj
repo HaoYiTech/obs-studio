@@ -127,7 +127,8 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Message>			</Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/UI/Debug/obs32.exe E:/obs-studio/vsbuild/rundir/Debug/bin/32bit/obs32.exe
 if %errorlevel% neq 0 goto :cmEnd
@@ -227,17 +228,9 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Message>			</Message>
+      <Message>
+      </Message>
       <Command>setlocal
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/UI/Release/obs32.exe E:/obs-studio/vsbuild/rundir/Release/bin/32bit/obs32.exe
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd
-setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -DCONFIG=Release -DFNAME=obs32.exe -DINPUT=E:/obs-studio/vsbuild/UI/Release -DOUTPUT=E:/obs-studio/vsbuild/UI/pdbs -P E:/obs-studio/cmake/copy_on_debug_helper.cmake
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
@@ -327,7 +320,8 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Message>			</Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/UI/MinSizeRel/obs32.exe E:/obs-studio/vsbuild/rundir/MinSizeRel/bin/32bit/obs32.exe
 if %errorlevel% neq 0 goto :cmEnd
@@ -426,7 +420,8 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Message>			</Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/UI/RelWithDebInfo/obs32.exe E:/obs-studio/vsbuild/rundir/RelWithDebInfo/bin/32bit/obs32.exe
 if %errorlevel% neq 0 goto :cmEnd
