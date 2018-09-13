@@ -39,7 +39,8 @@ static inline void make_video_info(struct video_output_info *vi,
 	vi->height  = ovi->output_height;
 	vi->range   = ovi->range;
 	vi->colorspace = ovi->colorspace;
-	vi->cache_size = 6;
+	// 注意：之前设置的是6个缓存，现在改为2个，似乎并没有有效降低延时，还需进一步测试...
+	vi->cache_size = 2;
 }
 
 #define PIXEL_SIZE 4

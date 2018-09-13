@@ -765,8 +765,12 @@ static inline void output_frame(bool raw_active)
 
 	if (raw_active && frame_ready) {
 		struct obs_vframe_info vframe_info;
-		circlebuf_pop_front(&video->vframe_info_buffer, &vframe_info,
-				sizeof(vframe_info));
+		if (video->vframe_info_buffer.size > 0) {
+			circlebuf_pop_front(&video->vframe_info_buffer, &vframe_info, sizeof(vframe_info));
+		} else {
+			vframe_info.timestamp = video->video_time;
+			vframe_info.count = 1;
+		}
 
 		frame.timestamp = vframe_info.timestamp;
 		profile_start(output_frame_output_video_data_name);

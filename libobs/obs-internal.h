@@ -36,7 +36,9 @@
 
 #include "obs.h"
 
-#define NUM_TEXTURES 2
+// 注意：只用单面缓存，极大降低延时，达到500毫秒...
+// 注意：之前是双面缓存，造成延时至少在1秒以上...
+#define NUM_TEXTURES 1
 #define MICROSECOND_DEN 1000000
 
 static inline int64_t packet_dts_usec(struct encoder_packet *packet)
