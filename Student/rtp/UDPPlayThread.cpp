@@ -689,7 +689,7 @@ void CAudioThread::doDisplaySDL()
 	// 从环形队列读取当前帧内容，因为是顺序执行，可以再次使用单帧最大输出空间...
 	circlebuf_peek_front(&m_circle, m_max_buffer_ptr, out_buffer_size);
 	
-	float vol = 5.0f;
+	float vol = 3.0f;
 	int nPerFrameSize = (m_out_channel_num * sizeof(float));
 	uint32_t resample_frames = out_buffer_size / nPerFrameSize;
 	// 设置音量数据的转换 => 这里进行音量的放大...
