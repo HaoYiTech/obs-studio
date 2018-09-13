@@ -580,6 +580,7 @@ public:
 	void doSceneItemLayout(obs_sceneitem_t * scene_item = NULL);
 	void doSceneItemExchangePos(obs_sceneitem_t * select_item);
 	void doSceneItemToFirst(obs_sceneitem_t * select_item);
+	bool doCheckCanRecord();
 protected:
 	virtual void closeEvent(QCloseEvent *event) override;
 	virtual void changeEvent(QEvent *event) override;

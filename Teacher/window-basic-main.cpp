@@ -1564,6 +1564,12 @@ void OBSBasic::OBSInit()
 									"QPushButton:hover{background-color:#FF8C00; color: #E0FFFF;}"
 									"QPushButton:checked{color: #1E90FF;}");
 	ui->streamButton->setCursor(QCursor(Qt::PointingHandCursor));
+	// 设置开始录像背景色，增加按钮高度...
+	ui->recordButton->setStyleSheet("QPushButton{background-color: #FF6600; height: 30px; font-size: 18px; color: black;}"
+									"QPushButton:hover{background-color:#FF8C00; color: #E0FFFF;}"
+									"QPushButton:checked{color: #1E90FF;}");
+	ui->recordButton->setCursor(QCursor(Qt::PointingHandCursor));
+	// 设置退出按钮、设置按钮、状态按钮的字体、高度、鼠标指针...
 	ui->exitButton->setStyleSheet("QPushButton{height: 20px; font-size: 14px;}");
 	ui->exitButton->setCursor(QCursor(Qt::PointingHandCursor));
 	ui->settingsButton->setStyleSheet("QPushButton{height: 20px; font-size: 14px;}");
@@ -4791,15 +4797,38 @@ void OBSBasic::StreamingStop(int code, QString last_error)
 	}
 }
 
+bool OBSBasic::doCheckCanRecord()
+{
+	for (int i = 0; i < ui->sources->count(); i++) {
+		QListWidgetItem * listItem = ui->sources->item(i);
+		OBSSceneItem theItem = this->GetSceneItem(listItem);
+		OBSSource theSource = obs_sceneitem_get_source(theItem);
+		// 如果资源对象为空，继续寻找...
+		if (theSource == NULL)
+			continue;
+		uint32_t flags = obs_source_get_output_flags(theSource);
+		// 如果资源对象只要有一个有视频，就可以录像...
+		if (flags & OBS_SOURCE_VIDEO)
+			return true;
+	}
+	// 没有视频资源不可以录像，否则会在ffmpeg-mux当中卡死...
+	return false;
+}
+
 void OBSBasic::StartRecording()
 {
+	// 如果没有视频资源，不能录像，否则会在ffmpeg-mux当中卡死...
+	if (!this->doCheckCanRecord()) {
+		ui->recordButton->setChecked(false);
+		return;
+	}
 	if (outputHandler->RecordingActive())
 		return;
 	if (disableOutputsRef)
 		return;
-
-	if (api)
+	if (api) {
 		api->on_event(OBS_FRONTEND_EVENT_RECORDING_STARTING);
+	}
 
 	SaveProject();
 	outputHandler->StartRecording();
@@ -4807,14 +4836,14 @@ void OBSBasic::StartRecording()
 
 void OBSBasic::RecordStopping()
 {
-	/*ui->recordButton->setText(QTStr("Basic.Main.StoppingRecording"));
+	ui->recordButton->setText(QTStr("Basic.Main.StoppingRecording"));
 
 	if (sysTrayRecord)
 		sysTrayRecord->setText(ui->recordButton->text());
 
 	recordingStopping = true;
 	if (api)
-		api->on_event(OBS_FRONTEND_EVENT_RECORDING_STOPPING);*/
+		api->on_event(OBS_FRONTEND_EVENT_RECORDING_STOPPING);
 }
 
 void OBSBasic::StopRecording()
@@ -4829,7 +4858,7 @@ void OBSBasic::StopRecording()
 
 void OBSBasic::RecordingStart()
 {
-	/*ui->statusbar->RecordingStarted(outputHandler->fileOutput);
+	ui->statusbar->RecordingStarted(outputHandler->fileOutput);
 	ui->recordButton->setText(QTStr("Basic.Main.StopRecording"));
 	ui->recordButton->setChecked(true);
 
@@ -4842,12 +4871,12 @@ void OBSBasic::RecordingStart()
 
 	OnActivate();
 
-	blog(LOG_INFO, RECORDING_START);*/
+	blog(LOG_INFO, RECORDING_START);
 }
 
 void OBSBasic::RecordingStop(int code)
 {
-	/*ui->statusbar->RecordingStopped();
+	ui->statusbar->RecordingStopped();
 	ui->recordButton->setText(QTStr("Basic.Main.StartRecording"));
 	ui->recordButton->setChecked(false);
 
@@ -4887,7 +4916,7 @@ void OBSBasic::RecordingStop(int code)
 	if (api)
 		api->on_event(OBS_FRONTEND_EVENT_RECORDING_STOPPED);
 
-	OnDeactivate();*/
+	OnDeactivate();
 }
 
 #define RP_NO_HOTKEY_TITLE QTStr("Output.ReplayBuffer.NoHotkey.Title")
