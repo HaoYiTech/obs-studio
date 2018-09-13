@@ -689,17 +689,17 @@ void CAudioThread::doDisplaySDL()
 	// 从环形队列读取当前帧内容，因为是顺序执行，可以再次使用单帧最大输出空间...
 	circlebuf_peek_front(&m_circle, m_max_buffer_ptr, out_buffer_size);
 	
-	float vol = 1.0f;
+	float vol = 5.0f;
 	int nPerFrameSize = (m_out_channel_num * sizeof(float));
 	uint32_t resample_frames = out_buffer_size / nPerFrameSize;
-	// 设置音量数据的转换 => 这里保持原样...
-	/*if (!close_float(vol, 1.0f, EPSILON)) {
+	// 设置音量数据的转换 => 这里进行音量的放大...
+	if (!close_float(vol, 1.0f, EPSILON)) {
 		register float *cur = (float*)m_max_buffer_ptr;
 		register float *end = cur + resample_frames * m_out_channel_num;
 		while (cur < end) {
 			*(cur++) *= vol;
 		}
-	}*/
+	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 注意：必须对音频播放内部的缓存做定期伐值清理 => CPU过高时，DirectSound会堆积缓存...
