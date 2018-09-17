@@ -35,6 +35,7 @@ struct audio_monitor {
 	audio_resampler_t  *resampler;
 	uint32_t           sample_rate;
 	uint32_t           channels;
+	enum speaker_layout speakers;
 	bool               source_has_video;
 	bool               ignore;
 
@@ -135,6 +136,32 @@ static bool process_audio_delay(struct audio_monitor *monitor,
 	return false;
 }
 
+// 注意：不要用obs_enum_sources，互斥data.sources_mutex会跟rtp-source发生互锁...
+void doPushEchoDataToMic(struct obs_source_audio * lpObsAudio)
+{
+	struct obs_source *source;
+	struct obs_core_data *data = &obs->data;
+
+	pthread_mutex_lock(&data->audio_sources_mutex);
+
+	source = data->first_audio_source;
+	while (source) {
+		const char *id = obs_source_get_id(source);
+		// 如果找到数据源是麦克风输入对象，投递数据，退出...
+		if (astrcmpi(id, "wasapi_input_capture") == 0) {
+			// 如果找到的数据源是麦克风输入对象，查看投递接口是否有效，有效进行数据投递...
+			if (source->context.data && source->info.filter_audio) {
+				source->info.filter_audio(source->context.data, (struct obs_audio_data*)lpObsAudio);
+				break;
+			}
+		}
+		// 继续寻找麦克风数据源对象...
+		source = (struct obs_source*)source->next_audio_source;
+	}
+
+	pthread_mutex_unlock(&data->audio_sources_mutex);
+}
+
 static void on_audio_playback(void *param, obs_source_t *source,
 		const struct audio_data *audio_data, bool muted)
 {
@@ -165,20 +192,17 @@ static void on_audio_playback(void *param, obs_source_t *source,
 	UINT32 pad = 0;
 	monitor->client->lpVtbl->GetCurrentPadding(monitor->client, &pad);
 
-	bool decouple_audio =
-		source->async_unbuffered && source->async_decoupled;
+	bool decouple_audio = source->async_unbuffered && source->async_decoupled;
 
 	if (monitor->source_has_video && !decouple_audio) {
 		uint64_t ts = audio_data->timestamp - ts_offset;
 
-		if (!process_audio_delay(monitor, (float**)(&resample_data[0]),
-					&resample_frames, ts, pad)) {
+		if (!process_audio_delay(monitor, (float**)(&resample_data[0]), &resample_frames, ts, pad)) {
 			goto unlock;
 		}
 	}
 
-	HRESULT hr = render->lpVtbl->GetBuffer(render, resample_frames,
-			&output);
+	HRESULT hr = render->lpVtbl->GetBuffer(render, resample_frames, &output);
 	if (FAILED(hr)) {
 		goto unlock;
 	}
@@ -187,15 +211,24 @@ static void on_audio_playback(void *param, obs_source_t *source,
 		/* apply volume */
 		if (!close_float(vol, 1.0f, EPSILON)) {
 			register float *cur = (float*)resample_data[0];
-			register float *end = cur +
-				resample_frames * monitor->channels;
+			register float *end = cur + resample_frames * monitor->channels;
 
 			while (cur < end)
 				*(cur++) *= vol;
 		}
-		memcpy(output, resample_data[0],
-				resample_frames * monitor->channels *
-				sizeof(float));
+		// 将转换后的音频数据投递到监视器(扬声器)的缓冲区当中...
+		memcpy(output, resample_data[0], resample_frames * monitor->channels * sizeof(float));
+		// 构造需要投递给麦克风数据源的结构体 => 样本总是float格式...
+		struct obs_source_audio theEchoData = { 0 };
+		theEchoData.data[0] = resample_data[0];
+		theEchoData.frames = resample_frames;
+		theEchoData.format = AUDIO_FORMAT_FLOAT;
+		theEchoData.speakers = monitor->speakers;
+		theEchoData.samples_per_sec = monitor->sample_rate;
+		theEchoData.timestamp = audio_data->timestamp;
+		// 注意：不要用obs_enum_sources，互斥data.sources_mutex会跟rtp-source发生互锁...
+		// 枚举所有的音频数据源对象，找到麦克风对象，投递数据，进行回音消除...
+		doPushEchoDataToMic(&theEchoData);
 	}
 
 	render->lpVtbl->ReleaseBuffer(render, resample_frames,
@@ -330,11 +363,11 @@ static bool audio_monitor_init(struct audio_monitor *monitor,
 	from.format = AUDIO_FORMAT_FLOAT_PLANAR;
 
 	to.samples_per_sec = (uint32_t)wfex->nSamplesPerSec;
-	to.speakers = convert_speaker_layout(ext->dwChannelMask,
-			wfex->nChannels);
+	to.speakers = convert_speaker_layout(ext->dwChannelMask, wfex->nChannels);
 	to.format = AUDIO_FORMAT_FLOAT;
 
 	monitor->sample_rate = (uint32_t)wfex->nSamplesPerSec;
+	monitor->speakers = to.speakers;
 	monitor->channels = wfex->nChannels;
 	monitor->resampler = audio_resampler_create(&to, &from);
 	if (!monitor->resampler) {
