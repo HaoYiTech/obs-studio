@@ -3282,7 +3282,7 @@ void OBSBasic::ResetAudioDevice(const char *sourceId, const char *deviceId,	cons
 		obs_source_release(source);
 		// 如果是音频输入设备，自动加入噪音抑制过滤器...
 		if (strcmp(sourceId, App()->InputAudioSource()) == 0) {
-			OBSBasicSourceSelect::AddNoiseFilterForAudioSource(source, false);
+			OBSBasicSourceSelect::AddFilterToSourceByID(source, App()->GetNSFilter());
 		}
 		// 如果是音频输出设备，自动设置为静音状态，避免发生多次叠加啸叫...
 		if (strcmp(sourceId, App()->OutputAudioSource()) == 0) {
@@ -6525,26 +6525,3 @@ void OBSBasic::on_stats_triggered()
 	statsDlg->show();
 	stats = statsDlg;
 }
-
-// 遍历sources里面的rtp_source，发送在线状态通知...
-/*void OBSBasic::doCameraVerifyEvent()
-{
-	for (int i = 0; i < ui->sources->count(); i++) {
-		QListWidgetItem * listItem = ui->sources->item(i);
-		OBSSceneItem theItem = this->GetSceneItem(listItem);
-		OBSSource theSource = obs_sceneitem_get_source(theItem);
-		// 如果资源对象为空，继续寻找...
-		if (theSource == NULL)
-			continue;
-		// 判断是否是rtp数据源类型标志，不是rtp资源，继续寻找...
-		const char * lpID = obs_source_get_id(theSource);
-		if (astrcmpi(lpID, "rtp_source") != 0)
-			continue;
-		// 注意：这里的接口会增加引用计数，使用完毕之后要减少引用计数...
-		obs_data_t * lpSettings = obs_source_get_settings(theSource);
-		// 调用App接口，向网站发送在线状态通知...
-		App()->doCameraVerifyEvent(lpSettings);
-		// 注意：这里必须手动进行引用计数减少，否则，会造成内存泄漏...
-		obs_data_release(lpSettings);
-	}
-}*/

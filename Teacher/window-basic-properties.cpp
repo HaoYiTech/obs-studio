@@ -75,7 +75,7 @@ OBSBasicProperties::OBSBasicProperties(QWidget *parent, OBSSource source_)
 
 	// 判断是否是rtp数据源类型标志...
 	const char *id = obs_source_get_id(source);
-	bool bUseRtpSource = ((astrcmpi(id, "rtp_source") == 0) ? true : false);
+	bool bUseRtpSource = ((astrcmpi(id, App()->InteractRtpSource()) == 0) ? true : false);
 
 	view = new OBSPropertiesView(settings, source,
 			(PropertiesReloadCallback)obs_source_properties,

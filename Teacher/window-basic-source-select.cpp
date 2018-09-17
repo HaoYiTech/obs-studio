@@ -32,8 +32,18 @@ bool OBSBasicSourceSelect::EnumSources(void *data, obs_source_t *source)
 	const char *name = obs_source_get_name(source);
 	const char *id   = obs_source_get_id(source);
 
-	if (strcmp(id, window->id) == 0)
+	// 如果数据源已经存在，显示在列表框中...
+	if (strcmp(id, window->id) == 0) {
 		window->ui->sourceList->addItem(QT_UTF8(name));
+	}
+	// 如果数据源是rtp_source资源 => 设置标志...
+	if (astrcmpi(id, App()->InteractRtpSource()) == 0) {
+		window->m_bHasRtpSource = true;
+	}
+	// 如果数据源是麦克风数据源 => 设置标志...
+	if (astrcmpi(id, App()->InputAudioSource()) == 0) {
+		window->m_bHasMicSource = true;
+	}
 
 	return true;
 }
@@ -193,12 +203,22 @@ void OBSBasicSourceSelect::on_buttonBox_accepted()
 	bool visible = ui->sourceVisible->isChecked();
 
 	// 当前新添加的资源是否是 => rtp_source => 互动教室...
-	bool bIsNewRtpSource = ((astrcmpi(id, "rtp_source") == 0) ? true : false);
+	bool bIsNewRtpSource = ((astrcmpi(id, App()->InteractRtpSource()) == 0) ? true : false);
 	// 如果已经有了rtp_source资源，就不能再添加新的rtp_source资源了...
 	if (m_bHasRtpSource && bIsNewRtpSource) {
 		OBSMessageBox::information(this, 
 			QTStr("SingleRtpSource.Title"), 
 			QTStr("SingleRtpSource.Text"));
+		return;
+	}
+
+	// 当前新添加的资源是否是 => InputAudioSource => 麦克风输入...
+	bool bIsNewMicSource = ((astrcmpi(id, App()->InputAudioSource()) == 0) ? true : false);
+	// 如果已经有了麦克风资源，就不能再添加新的麦克风数据源了...
+	if (m_bHasMicSource && bIsNewMicSource) {
+		OBSMessageBox::information(this,
+			QTStr("SingleMicSource.Title"),
+			QTStr("SingleMicSource.Text"));
 		return;
 	}
 
@@ -218,30 +238,20 @@ void OBSBasicSourceSelect::on_buttonBox_accepted()
 		// 如果添加新的场景资源失败，直接返回...
 		if (!AddNew(this, id, QT_TO_UTF8(ui->sourceName->text()), visible, newSource))
 			return;
-		// 如果新添加资源是互动教室 => 需要屏蔽音频输出，开启本地监视...
+		// 如果新添加资源是互动教室 => 需要屏蔽音频输出，开启本地监视，添加噪音抑制过滤器...
 		if (bIsNewRtpSource) {
 			obs_source_set_monitoring_type(newSource, OBS_MONITORING_TYPE_MONITOR_ONLY);
 			blog(LOG_INFO, "User changed audio monitoring for source '%s' to: %s", obs_source_get_name(newSource), "monitor only");
+			// 给互动教室数据源，添加噪音抑制过滤器...
+			AddFilterToSourceByID(newSource, App()->GetNSFilter());
 		}
-		// 给单音频资源添加噪音抑制过滤器，互动教室也要加上音频过滤器...
-		AddNoiseFilterForAudioSource(newSource, bIsNewRtpSource);
+		// 给麦克风音频输入数据源添加噪音抑制过滤器...
+		if (bIsNewMicSource) {
+			AddFilterToSourceByID(newSource, App()->GetNSFilter());
+		}
 	}
 
 	done(DialogCode::Accepted);
-}
-
-void OBSBasicSourceSelect::AddNoiseFilterForAudioSource(obs_source_t *source, bool bIsRtpSource)
-{
-	// 如果输入资源不是互动教室，并且包含视频，不是单独音频，直接返回...
-	uint32_t flags = obs_source_get_output_flags(source);
-	if (!bIsRtpSource && (flags & OBS_SOURCE_VIDEO) != 0)
-		return;
-	// 如果输入资源没有音频数据，直接返回...
-	if ((flags & OBS_SOURCE_AUDIO) == 0)
-		return;
-	// 目前只添加噪音抑制过滤器，不添加噪音阈值过滤器...
-	//AddFilterToSourceByID(source, "noise_gate_filter");
-	AddFilterToSourceByID(source, "noise_suppress_filter");
 }
 
 void OBSBasicSourceSelect::AddFilterToSourceByID(obs_source_t *source, const char * lpFilterID)
@@ -289,6 +299,7 @@ OBSBasicSourceSelect::OBSBasicSourceSelect(OBSBasic *parent, const char *id_)
 	  id      (id_)
 {
 	m_bHasRtpSource = false;
+	m_bHasMicSource = false;
 
 	ui->setupUi(this);
 
@@ -334,18 +345,23 @@ OBSBasicSourceSelect::OBSBasicSourceSelect(OBSBasic *parent, const char *id_)
 	} else {
 		obs_enum_sources(EnumSources, this);
 
-		OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+		// 这部分对数据源的验证放到了EnumSources当中，可以遍历所有的数据源列表...
+		// main->ui->sources => 只能列举部分可见的数据源，不能列举其它不可见的数据源...
+		/*OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
 		for (int i = 0; i < main->ui->sources->count(); i++) {
 			QListWidgetItem * listItem = main->ui->sources->item(i);
 			OBSSceneItem theItem = main->GetSceneItem(listItem);
 			OBSSource theSource = obs_sceneitem_get_source(theItem);
 			const char * lpID = obs_source_get_id(theSource);
 			// 如果资源中包含有rtp_source资源 => 设置标志...
-			if (astrcmpi(lpID, "rtp_source") == 0) {
+			if (astrcmpi(lpID, App()->InteractRtpSource()) == 0) {
 				this->m_bHasRtpSource = true;
-				break;
 			}
-		}
+			// 如果资源中包含有麦克风数据源 => 设置标志...
+			if (astrcmpi(lpID, App()->InputAudioSource()) == 0) {
+				this->m_bHasMicSource = true;
+			}
+		}*/
 	}
 }
 

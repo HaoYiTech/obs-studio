@@ -31,6 +31,7 @@ private:
 	std::unique_ptr<Ui::OBSBasicSourceSelect> ui;
 	const char *id;
 	bool m_bHasRtpSource;
+	bool m_bHasMicSource;
 
 	static bool EnumSources(void *data, obs_source_t *source);
 
@@ -50,6 +51,5 @@ public:
 
 	static void SourcePaste(const char *name, bool visible, bool duplicate);
 
-	static void AddNoiseFilterForAudioSource(obs_source_t *source, bool bIsRtpSource);
 	static void AddFilterToSourceByID(obs_source_t *source, const char * lpFilterID);
 };

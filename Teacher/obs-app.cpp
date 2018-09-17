@@ -1182,7 +1182,7 @@ void OBSApp::FindRtpSource(int & outDBCameraID, int & outSceneItemID, bool & out
 		// 判断是否是rtp数据源类型标志，如果是rtp资源，返回false，中断...
 		const char * lpSrcID = obs_source_get_id(source);
 		// 填充参数，返回false，中断查找过程...
-		if (astrcmpi(lpSrcID, "rtp_source") == 0) {
+		if (astrcmpi(lpSrcID, App()->InteractRtpSource()) == 0) {
 			out_item->scene_item = item;
 			return false;
 		}
@@ -1434,6 +1434,19 @@ bool OBSApp::IsPortableMode()
 #define INPUT_AUDIO_SOURCE  "pulse_input_capture"
 #define OUTPUT_AUDIO_SOURCE "pulse_output_capture"
 #endif
+
+#define INTERACT_RTP_SOURCE   "rtp_source"
+#define NOISE_SUPPRESS_FILTER "noise_suppress_filter"
+
+const char *OBSApp::GetNSFilter() const
+{
+	return NOISE_SUPPRESS_FILTER;
+}
+
+const char *OBSApp::InteractRtpSource() const
+{
+	return INTERACT_RTP_SOURCE;
+}
 
 const char *OBSApp::InputAudioSource() const
 {
