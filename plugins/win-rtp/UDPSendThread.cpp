@@ -774,7 +774,7 @@ void CUDPSendThread::doSendPacket(bool bIsAudio)
 
 		// 打印调试信息 => 刚刚发送的数据包...
 		//int nZeroSize = DEF_MTU_SIZE - lpSendHeader->psize;
-		//blog(LOG_INFO, "%s Type: %d, Seq: %lu, TS: %lu, pst: %d, ped: %d, Slice: %d, Zero: %d", TM_SEND_NAME, lpSendHeader->pt, lpSendHeader->seq, lpSendHeader->ts, lpSendHeader->pst, lpSendHeader->ped, lpSendHeader->psize, nZeroSize);
+		//blog(LOG_INFO, "%s Size: %d, Type: %d, Seq: %lu, TS: %lu, pst: %d, ped: %d, Slice: %d, Zero: %d", TM_SEND_NAME, nSendSize, lpSendHeader->pt, lpSendHeader->seq, lpSendHeader->ts, lpSendHeader->pst, lpSendHeader->ped, lpSendHeader->psize, nZeroSize);
 	} while (false);
 	// 对环形队列相关资源互斥保护结束...
 	pthread_mutex_unlock(&m_Mutex);
@@ -797,6 +797,13 @@ void CUDPSendThread::doRecvPacket()
 		return;
 	// 修改休息状态 => 已经成功收包，不能休息...
 	m_bNeedSleep = false;
+
+	// 判断最大接收数据长度 => DEF_MTU_SIZE + rtp_hdr_t
+	UInt32 nMaxSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
+	if (outRecvLen > nMaxSize) {
+		blog(LOG_INFO, "[Error] Max => %lu, Addr => %lu:%d, Size => %lu", nMaxSize, outRemoteAddr, outRemotePort, outRecvLen);
+		return;
+	}
 
 	// 对环形队列相关资源进行互斥保护...
 	pthread_mutex_lock(&m_Mutex);
@@ -1007,6 +1014,8 @@ void CUDPSendThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 		rtp_detect_t rtpDetect = { 0 };
 		memcpy(&rtpDetect, lpBuffer, sizeof(rtpDetect));
 		// 只有一条探测路线 => 服务器探测方向...
+		if (rtpDetect.dtDir != DT_TO_SERVER)
+			return;
 		ASSERT(rtpDetect.dtDir == DT_TO_SERVER);
 		// 当前时间转换成毫秒，计算网络延时 => 当前时间 - 探测时间...
 		uint32_t cur_time_ms = (uint32_t)(os_gettime_ns() / 1000000);

@@ -403,7 +403,14 @@ void CUDPRecvThread::doRecvPacket()
 		return;
 	// 修改休息状态 => 已经成功收包，不能休息...
 	m_bNeedSleep = false;
-	
+
+	// 判断最大接收数据长度 => DEF_MTU_SIZE + rtp_hdr_t
+	UInt32 nMaxSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
+	if (outRecvLen > nMaxSize) {
+		blog(LOG_INFO, "[Error] Max => %lu, Addr => %lu:%d, Size => %lu", nMaxSize, outRemoteAddr, outRemotePort, outRecvLen);
+		return;
+	}
+
     // 获取第一个字节的高4位，得到数据包类型...
     uint8_t ptTag = (ioBuffer[0] >> 4) & 0x0F;
 	
