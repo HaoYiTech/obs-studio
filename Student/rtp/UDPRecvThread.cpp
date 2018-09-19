@@ -359,15 +359,18 @@ void CUDPRecvThread::doRecvPacket()
 		return;
 	// 修改休息状态 => 已经成功收包，不能休息...
 	m_bNeedSleep = false;
-	
+	// 判断最大接收数据长度 => DEF_MTU_SIZE + rtp_hdr_t
+	UInt32 nMaxSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
+	if (outRecvLen > nMaxSize) {
+		blog(LOG_INFO, "[Error] Max => %lu, Addr => %lu:%d, Size => %lu", nMaxSize, outRemoteAddr, outRemotePort, outRecvLen);
+		return;
+	}
     // 获取第一个字节的高4位，得到数据包类型...
     uint8_t ptTag = (ioBuffer[0] >> 4) & 0x0F;
-	
 	// 对收到命令包进行类型分发...
 	switch( ptTag )
 	{
 	case PT_TAG_HEADER:	 this->doProcServerHeader(ioBuffer, outRecvLen); break;
-
 	case PT_TAG_DETECT:	 this->doTagDetectProcess(ioBuffer, outRecvLen); break;
 	case PT_TAG_AUDIO:	 this->doTagAVPackProcess(ioBuffer, outRecvLen); break;
 	case PT_TAG_VIDEO:	 this->doTagAVPackProcess(ioBuffer, outRecvLen); break;
@@ -526,6 +529,10 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 		// 获取收到的探测数据包...
 		rtp_detect_t rtpDetect = {0};
 		memcpy(&rtpDetect, lpBuffer, sizeof(rtpDetect));
+		// 目前只处理来自服务器方向的探测结果...
+		if (rtpDetect.dtDir != DT_TO_SERVER)
+			return;
+		ASSERT( rtpDetect.dtDir == DT_TO_SERVER );
 		// 先处理服务器回传的音频最小序号包...
 		this->doServerMinSeq(true, rtpDetect.maxAConSeq);
 		// 再处理服务器回传的视频最小序号包...
@@ -537,8 +544,6 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 		if( m_AudioMapLose.size() <= 0 && m_VideoMapLose.size() <= 0 ) {
 			m_nMaxResendCount = 0;
 		}
-		// 目前只处理来自服务器方向的探测结果...
-		ASSERT( rtpDetect.dtDir == DT_TO_SERVER );
 		// 防止网络突发延迟增大, 借鉴 TCP 的 RTT 遗忘衰减的算法...
 		if( m_server_rtt_ms < 0 ) { m_server_rtt_ms = keep_rtt; }
 		else { m_server_rtt_ms = (7 * m_server_rtt_ms + keep_rtt) / 8; }
@@ -958,7 +963,7 @@ void CUDPRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 		return;
 	}
 	// 打印收到的音频数据包信息 => 包括缓冲区填充量 => 每个数据包都是统一大小 => rtp_hdr_t + slice + Zero => 812
-	//blog(LOG_INFO, "%s Seq: %lu, TS: %lu, Type: %d, pst: %d, ped: %d, Slice: %d, ZeroSize: %d", TM_RECV_NAME, lpNewHeader->seq, lpNewHeader->ts, lpNewHeader->pt, lpNewHeader->pst, lpNewHeader->ped, lpNewHeader->psize, nZeroSize);
+	//blog(LOG_INFO, "%s Size: %d, Seq: %lu, TS: %lu, Type: %d, pst: %d, ped: %d, Slice: %d, ZeroSize: %d", TM_RECV_NAME, inRecvLen, lpNewHeader->seq, lpNewHeader->ts, lpNewHeader->pt, lpNewHeader->pst, lpNewHeader->ped, lpNewHeader->psize, nZeroSize);
 	// 首先，将当前包序列号从丢包队列当中删除...
 	this->doEraseLoseSeq(pt_tag, new_id);
 	//////////////////////////////////////////////////////////////////////////////////////////////////
