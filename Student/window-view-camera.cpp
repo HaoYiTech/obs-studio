@@ -469,11 +469,11 @@ void CViewCamera::doPushAudioAEC(FMS_FRAME & inFrame)
 }
 
 // 把投递到扬声器的PCM音频，放入回音消除当中...
-void CViewCamera::doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum)
+void CViewCamera::doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf)
 {
 	if (m_lpSpeexAEC == NULL)
 		return;
-	m_lpSpeexAEC->PushHornPCM(lpBufData, nBufSize, nSampleRate, nChannelNum);
+	m_lpSpeexAEC->PushHornPCM(lpBufData, nBufSize, nSampleRate, nChannelNum, msInSndCardBuf);
 }
 
 bool CViewCamera::doCameraStart()

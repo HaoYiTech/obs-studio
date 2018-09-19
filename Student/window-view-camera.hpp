@@ -24,7 +24,7 @@ public:
 	bool		IsCameraPreview() { return m_bIsPreview; }
 	int			GetDBCameraID() { return m_nDBCameraID; }
 public:
-	void        doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum);
+	void        doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf);
 	void		onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID);
 	void        doPushAudioAEC(FMS_FRAME & inFrame);
 	void		doPushFrame(FMS_FRAME & inFrame);

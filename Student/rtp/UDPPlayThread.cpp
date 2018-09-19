@@ -723,8 +723,11 @@ void CAudioThread::doDisplaySDL()
 	BYTE * output = NULL;
 	UINT32 nCurPadFrame = 0;
 	UINT32 nAllowQueueFrame = 0;
+	int    msInSndCardBuf = 0;
 	// 获取当前声卡已缓存的帧数量...
 	hr = m_client->GetCurrentPadding(&nCurPadFrame);
+	// 计算在声卡中已缓存的毫秒数 => 向下取整...
+	msInSndCardBuf = (int)((nCurPadFrame * 1.0f * nPerFrameSize / m_out_frame_bytes) * m_out_frame_duration + 0.5f);
 	// 将400毫秒的声卡缓存，转换成帧数量...
 	nAllowQueueFrame = (400.0f / m_out_frame_duration * m_out_frame_bytes) / nPerFrameSize;
 	// 只有当声卡缓存小于400毫秒时，才进行数据投递，大于400毫秒，直接丢弃...
@@ -736,7 +739,8 @@ void CAudioThread::doDisplaySDL()
 			memcpy(output, m_max_buffer_ptr, out_buffer_size);
 			hr = m_render->ReleaseBuffer(resample_frames, 0);
 			// 把解码后的音频数据投递给当前正在被拉取的通道进行回音消除...
-			App()->doEchoCancel(m_max_buffer_ptr, out_buffer_size, m_out_sample_rate, m_out_channel_num);
+			App()->doEchoCancel(m_max_buffer_ptr, out_buffer_size, m_out_sample_rate, m_out_channel_num, msInSndCardBuf);
+			//blog(LOG_DEBUG, "[InSoundCard-MS] %d", msInSndCardBuf);
 		}
 	} else {
 		// 声卡缓存大于400毫秒，直接丢弃，打印调试信息 => 这样声音不会出现卡顿，始终匀速播放，缓存多了就不忙灌数据，丢弃新数据...

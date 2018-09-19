@@ -23,7 +23,7 @@ public:
 public:
 	BOOL    InitSpeex(int nInRateIndex, int nInChannelNum, int nOutSampleRate, int nOutChannelNum,
                       int nOutBitrateAAC, int nHornDelayMS, int nSpeexFrameMS, int nSpeexFilterMS);
-	BOOL    PushHornPCM(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum);
+	BOOL    PushHornPCM(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf);
 	BOOL    PushMicFrame(FMS_FRAME & inFrame);
 private:
 	void    doEncodeAAC();

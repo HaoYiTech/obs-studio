@@ -339,7 +339,7 @@ void CSpeexAEC::doSaveAudioPCM(uint8_t * lpBufData, int nBufSize, int nAudioRate
 }
 
 // 由于换成了WSAPI的音频格式，就是标准的float格式...
-BOOL CSpeexAEC::PushHornPCM(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum)
+BOOL CSpeexAEC::PushHornPCM(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf)
 {
 	// 如果线程已经退出，直接返回...
 	if (this->IsStopRequested())
