@@ -5306,21 +5306,29 @@ base_allocator_swigregister = _obspython.base_allocator_swigregister
 base_allocator_swigregister(base_allocator)
 
 
+def bmem_init() -> "void":
+    return _obspython.bmem_init()
+bmem_init = _obspython.bmem_init
+
+def bmem_free() -> "void":
+    return _obspython.bmem_free()
+bmem_free = _obspython.bmem_free
+
 def base_set_allocator(defs: 'base_allocator') -> "void":
     return _obspython.base_set_allocator(defs)
 base_set_allocator = _obspython.base_set_allocator
 
-def bmalloc(size: 'size_t') -> "void *":
-    return _obspython.bmalloc(size)
-bmalloc = _obspython.bmalloc
+def new_bfree(ptr: 'void *', lpszFileName: 'char *', nFileLine: 'size_t') -> "void":
+    return _obspython.new_bfree(ptr, lpszFileName, nFileLine)
+new_bfree = _obspython.new_bfree
 
-def brealloc(ptr: 'void *', size: 'size_t') -> "void *":
-    return _obspython.brealloc(ptr, size)
-brealloc = _obspython.brealloc
+def new_bmalloc(size: 'size_t', lpszFileName: 'char *', nFileLine: 'size_t') -> "void *":
+    return _obspython.new_bmalloc(size, lpszFileName, nFileLine)
+new_bmalloc = _obspython.new_bmalloc
 
-def bfree(ptr: 'void *') -> "void":
-    return _obspython.bfree(ptr)
-bfree = _obspython.bfree
+def new_brealloc(ptr: 'void *', size: 'size_t', lpszFileName: 'char *', nFileLine: 'size_t') -> "void *":
+    return _obspython.new_brealloc(ptr, size, lpszFileName, nFileLine)
+new_brealloc = _obspython.new_brealloc
 
 def base_get_alignment() -> "int":
     return _obspython.base_get_alignment()
@@ -5334,9 +5342,9 @@ def bmemdup(ptr: 'void const *', size: 'size_t') -> "void *":
     return _obspython.bmemdup(ptr, size)
 bmemdup = _obspython.bmemdup
 
-def bzalloc(size: 'size_t') -> "void *":
-    return _obspython.bzalloc(size)
-bzalloc = _obspython.bzalloc
+def new_bzalloc(size: 'size_t', lpszFileName: 'char *', nFileLine: 'size_t') -> "void *":
+    return _obspython.new_bzalloc(size, lpszFileName, nFileLine)
+new_bzalloc = _obspython.new_bzalloc
 
 def bstrdup_n(str: 'char const *', n: 'size_t') -> "char *":
     return _obspython.bstrdup_n(str, n)

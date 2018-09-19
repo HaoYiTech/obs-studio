@@ -38827,6 +38827,38 @@ static swig_lua_class *swig_base_allocator_bases[] = {0};
 static const char *swig_base_allocator_base_names[] = {0};
 static swig_lua_class _wrap_class_base_allocator = { "base_allocator", "base_allocator", &SWIGTYPE_p_base_allocator,_proxy__wrap_new_base_allocator, swig_delete_base_allocator, swig_base_allocator_methods, swig_base_allocator_attributes, &swig_base_allocator_Sf_SwigStatic, swig_base_allocator_meta, swig_base_allocator_bases, swig_base_allocator_base_names };
 
+static int _wrap_bmem_init(lua_State* L) {
+  int SWIG_arg = 0;
+  
+  SWIG_check_num_args("bmem_init",0,0)
+  bmem_init();
+  
+  return SWIG_arg;
+  
+  if(0) SWIG_fail;
+  
+fail:
+  lua_error(L);
+  return SWIG_arg;
+}
+
+
+static int _wrap_bmem_free(lua_State* L) {
+  int SWIG_arg = 0;
+  
+  SWIG_check_num_args("bmem_free",0,0)
+  bmem_free();
+  
+  return SWIG_arg;
+  
+  if(0) SWIG_fail;
+  
+fail:
+  lua_error(L);
+  return SWIG_arg;
+}
+
+
 static int _wrap_base_set_allocator(lua_State* L) {
   int SWIG_arg = 0;
   struct base_allocator *arg1 = (struct base_allocator *) 0 ;
@@ -38850,16 +38882,49 @@ fail:
 }
 
 
-static int _wrap_bmalloc(lua_State* L) {
+static int _wrap_new_bfree(lua_State* L) {
+  int SWIG_arg = 0;
+  void *arg1 = (void *) 0 ;
+  char *arg2 = (char *) 0 ;
+  size_t arg3 ;
+  
+  SWIG_check_num_args("new_bfree",3,3)
+  if(!SWIG_isptrtype(L,1)) SWIG_fail_arg("new_bfree",1,"void *");
+  if(!SWIG_lua_isnilstring(L,2)) SWIG_fail_arg("new_bfree",2,"char *");
+  if(!lua_isnumber(L,3)) SWIG_fail_arg("new_bfree",3,"size_t");
+  arg1=(void *)SWIG_MustGetPtr(L,1,0,0,1,"new_bfree");
+  arg2 = (char *)lua_tostring(L, 2);
+  SWIG_contract_assert((lua_tonumber(L,3)>=0),"number must not be negative")
+  arg3 = (size_t)lua_tonumber(L, 3);
+  new_bfree(arg1,arg2,arg3);
+  
+  return SWIG_arg;
+  
+  if(0) SWIG_fail;
+  
+fail:
+  lua_error(L);
+  return SWIG_arg;
+}
+
+
+static int _wrap_new_bmalloc(lua_State* L) {
   int SWIG_arg = 0;
   size_t arg1 ;
+  char *arg2 = (char *) 0 ;
+  size_t arg3 ;
   void *result = 0 ;
   
-  SWIG_check_num_args("bmalloc",1,1)
-  if(!lua_isnumber(L,1)) SWIG_fail_arg("bmalloc",1,"size_t");
+  SWIG_check_num_args("new_bmalloc",3,3)
+  if(!lua_isnumber(L,1)) SWIG_fail_arg("new_bmalloc",1,"size_t");
+  if(!SWIG_lua_isnilstring(L,2)) SWIG_fail_arg("new_bmalloc",2,"char *");
+  if(!lua_isnumber(L,3)) SWIG_fail_arg("new_bmalloc",3,"size_t");
   SWIG_contract_assert((lua_tonumber(L,1)>=0),"number must not be negative")
   arg1 = (size_t)lua_tonumber(L, 1);
-  result = (void *)bmalloc(arg1);
+  arg2 = (char *)lua_tostring(L, 2);
+  SWIG_contract_assert((lua_tonumber(L,3)>=0),"number must not be negative")
+  arg3 = (size_t)lua_tonumber(L, 3);
+  result = (void *)new_bmalloc(arg1,arg2,arg3);
   SWIG_NewPointerObj(L,result,SWIGTYPE_p_void,0); SWIG_arg++; 
   return SWIG_arg;
   
@@ -38871,39 +38936,27 @@ fail:
 }
 
 
-static int _wrap_brealloc(lua_State* L) {
+static int _wrap_new_brealloc(lua_State* L) {
   int SWIG_arg = 0;
   void *arg1 = (void *) 0 ;
   size_t arg2 ;
+  char *arg3 = (char *) 0 ;
+  size_t arg4 ;
   void *result = 0 ;
   
-  SWIG_check_num_args("brealloc",2,2)
-  if(!SWIG_isptrtype(L,1)) SWIG_fail_arg("brealloc",1,"void *");
-  if(!lua_isnumber(L,2)) SWIG_fail_arg("brealloc",2,"size_t");
-  arg1=(void *)SWIG_MustGetPtr(L,1,0,0,1,"brealloc");
+  SWIG_check_num_args("new_brealloc",4,4)
+  if(!SWIG_isptrtype(L,1)) SWIG_fail_arg("new_brealloc",1,"void *");
+  if(!lua_isnumber(L,2)) SWIG_fail_arg("new_brealloc",2,"size_t");
+  if(!SWIG_lua_isnilstring(L,3)) SWIG_fail_arg("new_brealloc",3,"char *");
+  if(!lua_isnumber(L,4)) SWIG_fail_arg("new_brealloc",4,"size_t");
+  arg1=(void *)SWIG_MustGetPtr(L,1,0,0,1,"new_brealloc");
   SWIG_contract_assert((lua_tonumber(L,2)>=0),"number must not be negative")
   arg2 = (size_t)lua_tonumber(L, 2);
-  result = (void *)brealloc(arg1,arg2);
+  arg3 = (char *)lua_tostring(L, 3);
+  SWIG_contract_assert((lua_tonumber(L,4)>=0),"number must not be negative")
+  arg4 = (size_t)lua_tonumber(L, 4);
+  result = (void *)new_brealloc(arg1,arg2,arg3,arg4);
   SWIG_NewPointerObj(L,result,SWIGTYPE_p_void,0); SWIG_arg++; 
-  return SWIG_arg;
-  
-  if(0) SWIG_fail;
-  
-fail:
-  lua_error(L);
-  return SWIG_arg;
-}
-
-
-static int _wrap_bfree(lua_State* L) {
-  int SWIG_arg = 0;
-  void *arg1 = (void *) 0 ;
-  
-  SWIG_check_num_args("bfree",1,1)
-  if(!SWIG_isptrtype(L,1)) SWIG_fail_arg("bfree",1,"void *");
-  arg1=(void *)SWIG_MustGetPtr(L,1,0,0,1,"bfree");
-  bfree(arg1);
-  
   return SWIG_arg;
   
   if(0) SWIG_fail;
@@ -38972,16 +39025,23 @@ fail:
 }
 
 
-static int _wrap_bzalloc(lua_State* L) {
+static int _wrap_new_bzalloc(lua_State* L) {
   int SWIG_arg = 0;
   size_t arg1 ;
+  char *arg2 = (char *) 0 ;
+  size_t arg3 ;
   void *result = 0 ;
   
-  SWIG_check_num_args("bzalloc",1,1)
-  if(!lua_isnumber(L,1)) SWIG_fail_arg("bzalloc",1,"size_t");
+  SWIG_check_num_args("new_bzalloc",3,3)
+  if(!lua_isnumber(L,1)) SWIG_fail_arg("new_bzalloc",1,"size_t");
+  if(!SWIG_lua_isnilstring(L,2)) SWIG_fail_arg("new_bzalloc",2,"char *");
+  if(!lua_isnumber(L,3)) SWIG_fail_arg("new_bzalloc",3,"size_t");
   SWIG_contract_assert((lua_tonumber(L,1)>=0),"number must not be negative")
   arg1 = (size_t)lua_tonumber(L, 1);
-  result = (void *)bzalloc(arg1);
+  arg2 = (char *)lua_tostring(L, 2);
+  SWIG_contract_assert((lua_tonumber(L,3)>=0),"number must not be negative")
+  arg3 = (size_t)lua_tonumber(L, 3);
+  result = (void *)new_bzalloc(arg1,arg2,arg3);
   SWIG_NewPointerObj(L,result,SWIGTYPE_p_void,0); SWIG_arg++; 
   return SWIG_arg;
   
@@ -40954,14 +41014,16 @@ static swig_lua_method swig_SwigModule_methods[]= {
     { "signal_handler_add", _wrap_signal_handler_add},
     { "signal_handler_add_array", _wrap_signal_handler_add_array},
     { "signal_handler_signal", _wrap_signal_handler_signal},
+    { "bmem_init", _wrap_bmem_init},
+    { "bmem_free", _wrap_bmem_free},
     { "base_set_allocator", _wrap_base_set_allocator},
-    { "bmalloc", _wrap_bmalloc},
-    { "brealloc", _wrap_brealloc},
-    { "bfree", _wrap_bfree},
+    { "new_bfree", _wrap_new_bfree},
+    { "new_bmalloc", _wrap_new_bmalloc},
+    { "new_brealloc", _wrap_new_brealloc},
     { "base_get_alignment", _wrap_base_get_alignment},
     { "bnum_allocs", _wrap_bnum_allocs},
     { "bmemdup", _wrap_bmemdup},
-    { "bzalloc", _wrap_bzalloc},
+    { "new_bzalloc", _wrap_new_bzalloc},
     { "bstrdup_n", _wrap_bstrdup_n},
     { "bwstrdup_n", _wrap_bwstrdup_n},
     { "bstrdup", _wrap_bstrdup},
