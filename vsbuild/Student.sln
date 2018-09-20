@@ -10,6 +10,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Student", "..\Student\Stude
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "librtsp", "librtsp\librtsp.vcxproj", "{FD7D9CD8-DC49-4C78-AA52-E75E04A141A1}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libwebrtc-aec", "libwebrtc-aec\libwebrtc-aec.vcxproj", "{39962016-3406-42C5-8E8F-CCF50589CA2E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -32,6 +34,14 @@ Global
 		{FD7D9CD8-DC49-4C78-AA52-E75E04A141A1}.Release|x64.Build.0 = Release|x64
 		{FD7D9CD8-DC49-4C78-AA52-E75E04A141A1}.Release|x86.ActiveCfg = Release|Win32
 		{FD7D9CD8-DC49-4C78-AA52-E75E04A141A1}.Release|x86.Build.0 = Release|Win32
+		{39962016-3406-42C5-8E8F-CCF50589CA2E}.Debug|x64.ActiveCfg = Debug|x64
+		{39962016-3406-42C5-8E8F-CCF50589CA2E}.Debug|x64.Build.0 = Debug|x64
+		{39962016-3406-42C5-8E8F-CCF50589CA2E}.Debug|x86.ActiveCfg = Debug|Win32
+		{39962016-3406-42C5-8E8F-CCF50589CA2E}.Debug|x86.Build.0 = Debug|Win32
+		{39962016-3406-42C5-8E8F-CCF50589CA2E}.Release|x64.ActiveCfg = Release|x64
+		{39962016-3406-42C5-8E8F-CCF50589CA2E}.Release|x64.Build.0 = Release|x64
+		{39962016-3406-42C5-8E8F-CCF50589CA2E}.Release|x86.ActiveCfg = Release|Win32
+		{39962016-3406-42C5-8E8F-CCF50589CA2E}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
