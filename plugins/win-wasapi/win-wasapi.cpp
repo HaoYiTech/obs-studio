@@ -571,14 +571,14 @@ void WASAPISource::doEchoCancel(UINT64 ts)
 		speex_echo_cancellation(m_lpSpeexEcho, m_lpMicBufNN, m_lpHornBufNN, m_lpEchoBufNN);
 		speex_preprocess_run(m_lpSpeexDen, m_lpEchoBufNN);
 		// 将扬声器的PCM数据进行存盘处理 => 必须用二进制方式打开文件...
-		doSaveAudioPCM((uint8_t*)m_lpHornBufNN, nNeedBufBytes, m_out_sample_rate, 1);
+		//doSaveAudioPCM((uint8_t*)m_lpHornBufNN, nNeedBufBytes, m_out_sample_rate, 1);
 	} else {
 		// 扬声器数据不够，把麦克风样本数据直接当成回音消除后的样本数据...
 		memcpy(m_lpEchoBufNN, m_lpMicBufNN, nNeedBufBytes);
 	}
 	// 对回音消除后的数据进行存盘处理 => 必须用二进制方式打开文件...
-	doSaveAudioPCM((uint8_t*)m_lpMicBufNN, nNeedBufBytes, m_out_sample_rate, 0);
-	doSaveAudioPCM((uint8_t*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 2);
+	//doSaveAudioPCM((uint8_t*)m_lpMicBufNN, nNeedBufBytes, m_out_sample_rate, 0);
+	//doSaveAudioPCM((uint8_t*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 2);
 
 	// 构造回音消除之后的音频数据...
 	obs_source_audio data = {};
