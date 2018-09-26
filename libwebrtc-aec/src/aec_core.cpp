@@ -21,6 +21,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "logging.h"
+
 extern "C" {
 #include "ring_buffer.h"
 }
@@ -137,7 +139,7 @@ static const float kDelayQualityThresholdMax = 0.07f;
 static const float kDelayQualityThresholdMin = 0.01f;
 static const int kInitialShiftOffset = 5;
 #if !defined(WEBRTC_ANDROID)
-static const int kDelayCorrectionStart = 1500;  // 10 ms chunks
+static const int kDelayCorrectionStart = 0;  // 10 ms chunks
 #endif
 
 // Target suppression levels for nlp modes.
@@ -900,6 +902,10 @@ static int SignalBasedDelayCorrection(AecCore* self) {
   //    comparing with the size of the far-end buffer.
   last_delay = WebRtc_last_delay(self->delay_estimator);
   self->data_dumper->DumpRaw("aec_da_reported_delay", 1, &last_delay);
+  
+  //RTC_LOG(LS_INFO) << "last_delay: " << last_delay << " previous_delay: " << self->previous_delay
+  //  << " delay_quality: " << WebRtc_last_delay_quality(self->delay_estimator);
+
   if ((last_delay >= 0) && (last_delay != self->previous_delay) &&
       (WebRtc_last_delay_quality(self->delay_estimator) >
        self->delay_quality_threshold)) {
@@ -1501,8 +1507,8 @@ AecCore* WebRtcAec_CreateAec(int instance_count) {
   // the lookahead when shifting is required.
   WebRtc_set_lookahead(aec->delay_estimator, 0);
 #else
-  aec->delay_agnostic_enabled = 0;
-  WebRtc_set_lookahead(aec->delay_estimator, kLookaheadBlocks);
+  aec->delay_agnostic_enabled = 1; // DA-AEC enabled by jackey in 2018.09.26.
+  WebRtc_set_lookahead(aec->delay_estimator, 0); //kLookaheadBlocks);
 #endif
   aec->extended_filter_enabled = 0;
   aec->refined_adaptive_filter_enabled = false;
@@ -1721,6 +1727,9 @@ int WebRtcAec_InitAec(AecCore* aec, int sampFreq) {
   aec->metricsMode = 0;
   InitMetrics(aec);
 
+  rtc::LogMessage::LogTimestamps();
+  RTC_LOG(LS_INFO) << "== WebRtcAec_InitAec ==";
+
   return 0;
 }
 
@@ -1888,6 +1897,11 @@ void WebRtcAec_ProcessFrames(AecCore* aec,
       WebRtc_SoftResetDelayEstimator(aec->delay_estimator, moved_elements);
       WebRtc_SoftResetDelayEstimatorFarend(aec->delay_estimator_farend,
                                            moved_elements);
+	  
+	  if (move_elements < 0 || moved_elements < 0) {
+		  RTC_LOG(LS_INFO) << "move: " << move_elements << " moved: " << moved_elements << " far_near_buffer_diff: " << far_near_buffer_diff;
+	  }
+
       // If we rely on reported system delay values only, a buffer underrun here
       // can never occur since we've taken care of that in 1) above.  Here, we
       // apply signal based delay correction and can therefore end up with
