@@ -1,6 +1,6 @@
 
 #include <QPainter>
-#include "speex-aec.h"
+#include "webrtc-aec.h"
 #include "student-app.h"
 #include "pull-thread.h"
 #include "web-thread.h"
@@ -29,7 +29,7 @@ CViewCamera::CViewCamera(QWidget *parent, int nDBCameraID)
   , m_lpDataThread(NULL)
   , m_bIsPreview(false)
   , m_lpViewLeft(NULL)
-  , m_lpSpeexAEC(NULL)
+  , m_lpWebrtcAEC(NULL)
   , m_nCurRecvByte(0)
   , m_dwTimeOutMS(0)
   , m_nFlowTimer(-1)
@@ -60,9 +60,9 @@ CViewCamera::~CViewCamera()
 		m_nFlowTimer = -1;
 	}
 	// 删除音频回音消除对象 => 数据使用者...
-	if (m_lpSpeexAEC != NULL) {
-		delete m_lpSpeexAEC;
-		m_lpSpeexAEC = NULL;
+	if (m_lpWebrtcAEC != NULL) {
+		delete m_lpWebrtcAEC;
+		m_lpWebrtcAEC = NULL;
 	}
 	// 删除UDP推流线程 => 数据使用者...
 	if (m_lpUDPSendThread != NULL) {
@@ -333,14 +333,14 @@ void CViewCamera::onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID)
 			return;
 		ASSERT(m_lpUDPSendThread == NULL);
 		// 重建回音消除对象 => 通道必须在线...
-		this->ReBuildSpeexAEC();
+		this->ReBuildWebrtcAEC();
 		// 创建UDP发送线程对象 => 通道必须在线...
 		this->BuildSendThread();
 	} else {
 		// 先删除回音消除对象...
-		if (m_lpSpeexAEC != NULL) {
-			delete m_lpSpeexAEC;
-			m_lpSpeexAEC = NULL;
+		if (m_lpWebrtcAEC != NULL) {
+			delete m_lpWebrtcAEC;
+			m_lpWebrtcAEC = NULL;
 		}
 		// 如果是通道停止推流命令 => 删除推流线程...
 		if (m_lpUDPSendThread != NULL) {
@@ -357,8 +357,8 @@ void CViewCamera::BuildSendThread()
 		return;
 	ASSERT(m_nCameraState == kCameraOnLine);
 	// 音频参数需要特殊处理，要看回音消除对象是否有效，有效，使用全局的音频设定，无效，直接用摄像头设定的音频参数...
-	int nAudioRateIndex = ((m_lpSpeexAEC != NULL) ? App()->GetAudioRateIndex() : m_lpDataThread->GetAudioRateIndex());
-	int nAudioChannelNum = ((m_lpSpeexAEC != NULL) ? App()->GetAudioChannelNum() : m_lpDataThread->GetAudioChannelNum());
+	int nAudioRateIndex = ((m_lpWebrtcAEC != NULL) ? App()->GetAudioRateIndex() : m_lpDataThread->GetAudioRateIndex());
+	int nAudioChannelNum = ((m_lpWebrtcAEC != NULL) ? App()->GetAudioChannelNum() : m_lpDataThread->GetAudioChannelNum());
 	// 创建UDP推流线程，使用服务器传递过来的参数...
 	int nRoomID = atoi(App()->GetRoomIDStr().c_str());
 	string & strUdpAddr = App()->GetUdpAddr();
@@ -372,16 +372,16 @@ void CViewCamera::BuildSendThread()
 	}
 }
 
-void CViewCamera::ReBuildSpeexAEC()
+void CViewCamera::ReBuildWebrtcAEC()
 {
 	// 通道必须是在线状态...
 	if (m_nCameraState != kCameraOnLine)
 		return;
 	ASSERT(m_nCameraState == kCameraOnLine);
 	// 重建并初始化音频回音消除对象...
-	if (m_lpSpeexAEC != NULL) {
-		delete m_lpSpeexAEC;
-		m_lpSpeexAEC = NULL;
+	if (m_lpWebrtcAEC != NULL) {
+		delete m_lpWebrtcAEC;
+		m_lpWebrtcAEC = NULL;
 	}
 	// 获取音频相关的格式头信息，以及回音消除参数...
 	int nInRateIndex = m_lpDataThread->GetAudioRateIndex();
@@ -389,15 +389,12 @@ void CViewCamera::ReBuildSpeexAEC()
 	int nOutSampleRate = App()->GetAudioSampleRate();
 	int nOutChannelNum = App()->GetAudioChannelNum();
 	int nOutBitrateAAC = App()->GetAudioBitrateAAC();
-	int nHornDelayMS = App()->GetSpeexHornDelayMS();
-	int nSpeexFrameMS = App()->GetSpeexFrameMS();
-	int nSpeexFilterMS = App()->GetSpeexFilterMS();
 	// 创建并初始化回音消除对象...
-	m_lpSpeexAEC = new CSpeexAEC(this);
+	m_lpWebrtcAEC = new CWebrtcAEC(this);
 	// 初始化失败，删除回音消除对象...
-	if (!m_lpSpeexAEC->InitSpeex(nInRateIndex, nInChannelNum, nOutSampleRate, nOutChannelNum, nOutBitrateAAC, nHornDelayMS, nSpeexFrameMS, nSpeexFilterMS)) {
-		delete m_lpSpeexAEC; m_lpSpeexAEC = NULL;
-		blog(LOG_INFO, "CSpeexAEC::InitSpeex() => Error");
+	if (!m_lpWebrtcAEC->InitWebrtc(nInRateIndex, nInChannelNum, nOutSampleRate, nOutChannelNum, nOutBitrateAAC)) {
+		delete m_lpWebrtcAEC; m_lpWebrtcAEC = NULL;
+		blog(LOG_INFO, "CWebrtcAEC::InitWebrtc() => Error");
 	}
 }
 
@@ -415,9 +412,6 @@ void CViewCamera::onTriggerStartPushThread()
 	}
 	// 设置通道状态为已连接在线状态...
 	m_nCameraState = kCameraOnLine;
-	
-	// 临时测试回音消除使用...
-	//this->ReBuildSpeexAEC();
 }
 
 // 这里必须用信号槽，关联到同一线程，避免QTSocket的多线程访问故障...
@@ -439,8 +433,21 @@ void CViewCamera::doPushFrame(FMS_FRAME & inFrame)
 	if (m_lpUDPSendThread != NULL && !m_lpUDPSendThread->IsNeedDelete()) {
 		// 如果是音频，回音消除对象有效，投递给回音消除对象，无效，还是投递给UDP发送线程...
 		if (inFrame.typeFlvTag == PT_TAG_AUDIO) {
-			if (m_lpSpeexAEC != NULL) {
-				m_lpSpeexAEC->PushMicFrame(inFrame);
+			if (App()->GetAudioHorn()) {
+				// 如果有音频正在播放，并且AEC为空，重建AEC...
+				if (m_lpWebrtcAEC == NULL) {
+					this->ReBuildWebrtcAEC();
+				}
+			} else {
+				// 如果没有音频在播放，并且AEC不为空，删除AEC...
+				if (m_lpWebrtcAEC != NULL) {
+					delete m_lpWebrtcAEC;
+					m_lpWebrtcAEC = NULL;
+				}
+			}
+			// 如果AEC有效，投递进行回音消除...
+			if (m_lpWebrtcAEC != NULL) {
+				m_lpWebrtcAEC->PushMicFrame(inFrame);
 			} else {
 				m_lpUDPSendThread->PushFrame(inFrame);
 			}
@@ -451,10 +458,20 @@ void CViewCamera::doPushFrame(FMS_FRAME & inFrame)
 		}
 	}
 
-	/*// 临时测试回音消除使用...
-	if (inFrame.typeFlvTag == PT_TAG_AUDIO) {
-		if (m_lpSpeexAEC != NULL) {
-			m_lpSpeexAEC->PushMicFrame(inFrame);
+	// 临时测试回音消除使用...
+	/*if (inFrame.typeFlvTag == PT_TAG_AUDIO) {
+		if (App()->GetAudioHorn()) {
+			if (m_lpWebrtcAEC == NULL) {
+				this->ReBuildWebrtcAEC();
+			}
+		} else {
+			if (m_lpWebrtcAEC != NULL) {
+				delete m_lpWebrtcAEC;
+				m_lpWebrtcAEC = NULL;
+			}
+		}
+		if (m_lpWebrtcAEC != NULL) {
+			m_lpWebrtcAEC->PushMicFrame(inFrame);
 		}
 	}*/
 }
@@ -471,9 +488,9 @@ void CViewCamera::doPushAudioAEC(FMS_FRAME & inFrame)
 // 把投递到扬声器的PCM音频，放入回音消除当中...
 void CViewCamera::doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf)
 {
-	if (m_lpSpeexAEC == NULL)
+	if (m_lpWebrtcAEC == NULL)
 		return;
-	m_lpSpeexAEC->PushHornPCM(lpBufData, nBufSize, nSampleRate, nChannelNum, msInSndCardBuf);
+	m_lpWebrtcAEC->PushHornPCM(lpBufData, nBufSize, nSampleRate, nChannelNum, msInSndCardBuf);
 }
 
 bool CViewCamera::doCameraStart()
@@ -523,9 +540,9 @@ bool CViewCamera::doCameraStop()
 		}
 	}
 	// 删除音频回音消除对象 => 数据使用者...
-	if (m_lpSpeexAEC != NULL) {
-		delete m_lpSpeexAEC;
-		m_lpSpeexAEC = NULL;
+	if (m_lpWebrtcAEC != NULL) {
+		delete m_lpWebrtcAEC;
+		m_lpWebrtcAEC = NULL;
 	}
 	// 删除UDP推流线程 => 数据使用者...
 	if (m_lpUDPSendThread != NULL) {

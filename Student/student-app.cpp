@@ -594,6 +594,7 @@ CStudentApp::CStudentApp(int &argc, char **argv)
   : QApplication(argc, argv)
   , m_lpFocusDisplay(NULL)
   , m_lpWebThread(NULL)
+  , m_bHasAudioHorn(false)
   , m_bAutoLinkFDFS(false)
   , m_bAutoLinkDVR(false)
   , m_bAuthLicense(false)
@@ -628,10 +629,6 @@ CStudentApp::CStudentApp(int &argc, char **argv)
 	m_nAudioOutSampleRate = DEF_AUDIO_OUT_SAMPLE_RATE;
 	m_nAudioOutChannelNum = DEF_AUDIO_OUT_CHANNEL_NUM;
 	m_nAudioOutBitrateAAC = DEF_AUDIO_OUT_BITRATE_AAC;
-	// 设置默认的扬声器延迟、回音消除尾音长度、单次消除长度...
-	m_nSpeexHornDelayMS = DEF_SPEEX_HORN_DELAY;
-	m_nSpeexFilterMS = DEF_SPEEX_FILTER_MS;
-	m_nSpeexFrameMS = DEF_SPEEX_FRAME_MS;
 }
 
 CStudentApp::~CStudentApp()

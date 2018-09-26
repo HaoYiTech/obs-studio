@@ -141,7 +141,7 @@
     <ClCompile Include="platform-windows.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="speex-aec.cpp">
+    <ClCompile Include="webrtc-aec.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -330,7 +330,7 @@
     <ClInclude Include="platform.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="speex-aec.h">
+    <ClInclude Include="webrtc-aec.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

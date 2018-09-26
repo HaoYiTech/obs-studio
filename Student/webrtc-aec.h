@@ -44,6 +44,7 @@ private:
 	audio_resampler_t * m_horn_resampler;   // 扬声器原始样本数据转换成回音消除样本格式 => horn 转 echo
 	audio_resampler_t * m_echo_resampler;   // 回音原始样本数据转换成AAC压缩原始样本格式 => echo 转 aac
 
+	int                 m_nWebrtcMS;        // 每次处理毫秒数
 	int                 m_nWebrtcNN;        // 每次处理样本数
 	short           *   m_lpMicBufNN;       // 麦克风原始数据 => short
 	short           *   m_lpHornBufNN;      // 扬声器原始数据 => short
@@ -56,9 +57,7 @@ private:
 	circlebuf           m_circle_horn;      // PCM环形队列 => 只存放扬声器解码后的音频数据
 	circlebuf           m_circle_echo;      // PCM环形队列 => 只存放回音消除之后的音频数据
 
-	int64_t             m_mic_pts_ms_zero;  // 麦克风输入第一个AAC数据帧的PTS(毫秒) => 0点时间，便于压缩后的PTS计算，默认-1
-	int64_t             m_mic_sys_ns_zero;  // 麦克风解压第一个AAC数据帧后的系统时间(纳秒) => 0点时间，便于与扬声器比对，寻找回音消除时刻点，默认-1
-	int64_t             m_horn_sys_ns_zero; // 扬声器输入第一个PCM数据包后的系统时间(纳秒) => 0点时间，便于与麦克风比对，寻找回音消除时刻点，默认-1
+	int64_t             m_mic_aac_ms_zero;  // 麦克风输入第一个AAC数据帧的PTS(毫秒) => 0点时间，便于压缩后的PTS计算，默认-1
 
 	CViewCamera     *   m_lpViewCamera;     // 通道对象...
 	AVCodec         *   m_lpDecCodec;		// 解码器...

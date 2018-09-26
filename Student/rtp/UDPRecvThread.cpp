@@ -560,10 +560,10 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 		blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, ACircle: %d, VCircle: %d", TM_RECV_NAME,
 				rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms, m_server_cache_time_ms, m_audio_circle.size/812, m_video_circle.size/812 );
 		// ´òÓ¡²¥·ÅÆ÷µ×²ãµÄ»º´æ×´Ì¬ÐÅÏ¢...
-		if (m_lpPlaySDL != NULL) {
+		/*if (m_lpPlaySDL != NULL) {
 			blog(LOG_INFO, "%s Recv Detect => APacket: %d, VPacket: %d, AFrame: %d, VFrame: %d", TM_RECV_NAME,
 				m_lpPlaySDL->GetAPacketSize(), m_lpPlaySDL->GetVPacketSize(), m_lpPlaySDL->GetAFrameSize(), m_lpPlaySDL->GetVFrameSize());
-		}
+		}*/
 	}
 }
 

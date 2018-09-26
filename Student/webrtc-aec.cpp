@@ -1,9 +1,11 @@
 
+#include "student-app.h"
 #include "webrtc-aec.h"
 #include "BitWritter.h"
 
 #include "window-view-camera.hpp"
 #include "echo_cancellation.h"
+#include "aec_core.h"
 
 using namespace webrtc;
 
@@ -29,6 +31,7 @@ CWebrtcAEC::CWebrtcAEC(CViewCamera * lpViewCamera)
   , m_lpHornBufNN(NULL)
   , m_lpMicBufNN(NULL)
   , m_lpAECSem(NULL)
+  , m_nWebrtcMS(0)
   , m_nWebrtcNN(0)
   , m_hAEC(NULL)
 {
@@ -49,10 +52,8 @@ CWebrtcAEC::CWebrtcAEC(CViewCamera * lpViewCamera)
 	// 设置默认输出声道、输出采样率...
 	m_out_channel_num = 1;
 	m_out_sample_rate = 16000;
-	// 设置默认的0点时刻点...
-	m_mic_pts_ms_zero = -1;
-	m_mic_sys_ns_zero = -1;
-	m_horn_sys_ns_zero = -1;
+	// 设置麦克风的0点时刻初始值...
+	m_mic_aac_ms_zero = -1;
 	// 初始化各个环形队列对象...
 	circlebuf_init(&m_circle_mic);
 	circlebuf_init(&m_circle_horn);
@@ -224,13 +225,17 @@ BOOL CWebrtcAEC::InitWebrtc(int nInRateIndex, int nInChannelNum, int nOutSampleR
 	m_hAEC = WebRtcAec_Create();
 	if (m_hAEC == NULL)
 		return false;
+	// 设置不确定延时，自动对齐波形 => 必须在初始化之前设置...
+	Aec * lpAEC = (Aec*)m_hAEC;
+	WebRtcAec_enable_delay_agnostic(lpAEC->aec, true);
+	WebRtcAec_enable_extended_filter(lpAEC->aec, true);
 	// 初始化回音消除对象失败，直接返回...
 	if (WebRtcAec_Init(m_hAEC, m_out_sample_rate, m_out_sample_rate) != 0)
 		return false;
 	// 每次回音消除处理样本数，需要乘以声道数...
 	m_nWebrtcNN = DEF_WEBRTC_AEC_NN * m_out_channel_num;
-	// 计算每次处理设定样本数占用的毫秒数 => 只计算并不适用...
-	int nFrameMS = m_nWebrtcNN / ((m_out_sample_rate / 1000) * m_out_channel_num);
+	// 计算每次处理设定样本数占用的毫秒数...
+	m_nWebrtcMS = m_nWebrtcNN / ((m_out_sample_rate / 1000) * m_out_channel_num);
 	// 根据每次处理样本数据分配回音消除需要用到的数据空间 => 数据是short格式...
 	// 注意：这里使用obs的内存管理接口，可以进行泄漏跟踪 => bzalloc => bfree
 	m_lpMicBufNN = (short*)bzalloc(m_nWebrtcNN * sizeof(short));
@@ -321,6 +326,11 @@ BOOL CWebrtcAEC::InitWebrtc(int nInRateIndex, int nInChannelNum, int nOutSampleR
 	m_mic_resampler = audio_resampler_create(&m_echo_sample_info, &micInfo);
 	// 创建AAC压缩原始数据的重采样对象，将回音消除采集到的数据样本转换成AAC压缩需要的样本格式...
 	m_echo_resampler = audio_resampler_create(&m_aac_sample_info, &m_echo_sample_info);
+	// 如果创建转换对象失败，直接返回...
+	if (m_mic_resampler == NULL || m_echo_resampler == NULL) {
+		blog(LOG_INFO, "Error => audio_resampler_create");
+		return false;
+	}
 
 	// 启动回声消除线程...
 	this->Start();
@@ -347,6 +357,8 @@ BOOL CWebrtcAEC::PushHornPCM(void * lpBufData, int nBufSize, int nSampleRate, in
 	// 如果线程已经退出，直接返回...
 	if (this->IsStopRequested())
 		return false;
+	if (!App()->GetAudioHorn())
+		return false;
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// 注意：这里不能限制扬声器投递音频数据，只要对象有效就可以投递数据...
 	// 注意：只有在线通道才能回音消除，也就是不可能发生只有扬声器数据而没有麦克风数据的情况...
@@ -361,6 +373,13 @@ BOOL CWebrtcAEC::PushHornPCM(void * lpBufData, int nBufSize, int nSampleRate, in
 		hornInfo.format = convert_sample_format(AV_SAMPLE_FMT_FLT);
 		// 创建扬声器原始数据的重采样对象，将扬声器采集到的数据样本转换成回音消除需要的样本格式...
 		m_horn_resampler = audio_resampler_create(&m_echo_sample_info, &hornInfo);
+		// 如果创建转换对象失败，直接返回...
+		if (m_horn_resampler == NULL) {
+			blog(LOG_INFO, "Error => audio_resampler_create");
+			return false;
+		}
+		// 打印第一个扬声器投递的音频数据时间戳...
+		blog(LOG_INFO, "== horn first packet: %I64d ==", os_gettime_ns() / 1000000);
 	}
 	uint64_t  ts_offset = 0;
 	uint32_t  output_frames = 0;
@@ -368,17 +387,14 @@ BOOL CWebrtcAEC::PushHornPCM(void * lpBufData, int nBufSize, int nSampleRate, in
 	uint32_t  input_frames = nBufSize / (nChannelNum * sizeof(float));
 	// 对输入的原始音频样本格式进行统一的格式转换，转换成功，放入环形队列 => 转换成short格式...
 	if (audio_resampler_resample(m_horn_resampler, output_data, &output_frames, &ts_offset, (const uint8_t *const *)&lpBufData, input_frames)) {
-		// 注意：这里需要进行互斥保护，是多线程数据访问...
-		pthread_mutex_lock(&m_AECMutex);
+		// 计算格式转换之后的数据内容长度，并将转换后的数据放入组块缓存当中...
 		int cur_data_size = get_audio_size(m_echo_sample_info.format, m_echo_sample_info.speakers, output_frames);
+		// 开启互斥，循环压入环形队列当中...
+		pthread_mutex_lock(&m_AECMutex);
 		circlebuf_push_back(&m_circle_horn, output_data[0], cur_data_size);
 		pthread_mutex_unlock(&m_AECMutex);
 		// 发起信号量变化通知，可以进行回音消除操作了...
 		((m_lpAECSem != NULL) ? os_sem_post(m_lpAECSem) : NULL);
-	}
-	// 如果是第一个数据包，记录扬声器系统0点时刻...
-	if (m_horn_sys_ns_zero < 0) {
-		m_horn_sys_ns_zero = os_gettime_ns();
 	}
 	return true;
 }
@@ -387,6 +403,8 @@ BOOL CWebrtcAEC::PushMicFrame(FMS_FRAME & inFrame)
 {
 	// 如果线程已经退出，直接返回...
 	if (this->IsStopRequested())
+		return false;
+	if (!App()->GetAudioHorn())
 		return false;
 	// 如果解码对象为空，直接返回失败...
 	if (m_lpDecContext == NULL || m_lpDecCodec == NULL || m_lpDecFrame == NULL)
@@ -451,18 +469,16 @@ BOOL CWebrtcAEC::PushMicFrame(FMS_FRAME & inFrame)
 	uint8_t * output_data[MAX_AV_PLANES] = { 0 };
 	// 对原始麦克风音频样本格式，转换成回音消除需要的样本格式，转换成功放入环形队列...
 	if (audio_resampler_resample(m_mic_resampler, output_data, &output_frames, &ts_offset, m_lpDecFrame->data, m_lpDecFrame->nb_samples)) {
-		// 计算回音消除之后的数据内容长度，并将转换后的数据放入环形队列当中...
+		// 计算格式转换之后的数据内容长度，并将转换后的数据放入组块缓存当中...
 		int cur_data_size = get_audio_size(m_echo_sample_info.format, m_echo_sample_info.speakers, output_frames);
+		// 开启互斥，循环压入环形队列当中...
 		pthread_mutex_lock(&m_AECMutex);
 		circlebuf_push_back(&m_circle_mic, output_data[0], cur_data_size);
 		pthread_mutex_unlock(&m_AECMutex);
-		// 如果是第一个数据包，需要记录系统0点时刻...
-		if (m_mic_sys_ns_zero < 0) {
-			m_mic_sys_ns_zero = os_gettime_ns();
-		}
 		// 如果是第一个数据包，需要记录PTS的0点时刻...
-		if (m_mic_pts_ms_zero < 0) {
-			m_mic_pts_ms_zero = theNewPacket.dts;
+		if (m_mic_aac_ms_zero < 0) {
+			m_mic_aac_ms_zero = theNewPacket.dts;
+			blog(LOG_INFO, "== mic first packet: %I64d ==", os_gettime_ns() / 1000000);
 		}
 		// 发起信号量变化通知，可以进行回音消除操作了...
 		((m_lpAECSem != NULL) ? os_sem_post(m_lpAECSem) : NULL);
@@ -488,43 +504,39 @@ void CWebrtcAEC::Entry()
 
 void CWebrtcAEC::doEchoCancel()
 {
-	// 注意：这里并不考虑扬声器数据是否足够，尽最大可能降低麦克风延时...
-	// 麦克风数据必须大于一个处理单元 => 样本数 * 每个样本占用字节数...
+	// 如果扬声器没有开启，不处理，直接返回...
+	if (!App()->GetAudioHorn())
+		return;
+	// 麦克风和扬声器都必须大于一个处理单元 => 样本数 * 每个样本占用字节数...
 	int nNeedBufBytes = m_nWebrtcNN * sizeof(short);
-	if (m_circle_mic.size < nNeedBufBytes)
+	if (m_circle_mic.size < nNeedBufBytes || m_circle_horn.size < nNeedBufBytes)
 		return;
 	int err_code = 0;
-	// 读取麦克风需要的处理样本内容 => 注意是读取字节数，不是样本数...
+	// 从麦克风和扬声器环形队列中同时读取数据...
 	pthread_mutex_lock(&m_AECMutex);
 	circlebuf_pop_front(&m_circle_mic, m_lpMicBufNN, nNeedBufBytes);
+	circlebuf_pop_front(&m_circle_horn, m_lpHornBufNN, nNeedBufBytes);
 	pthread_mutex_unlock(&m_AECMutex);
-	// 如果扬声器数据足够，读取扬声器数据到待处理样本缓存当中..
-	if (m_circle_horn.size >= nNeedBufBytes) {
-		// 从扬声器环形队列当中读取数据到扬声器样本空间当中...
-		pthread_mutex_lock(&m_AECMutex);
-		circlebuf_pop_front(&m_circle_horn, m_lpHornBufNN, nNeedBufBytes);
-		pthread_mutex_unlock(&m_AECMutex);
-		// 将short数据格式转换成float数据格式...
-		for (int i = 0; i < m_nWebrtcNN; ++i) {
-			m_pDMicBufNN[i] = (float)m_lpMicBufNN[i];
-			m_pDHornBufNN[i] = (float)m_lpHornBufNN[i];
-		}
-		// 麦克风和扬声器样本数据准备就绪，先进行回音消除，再进行一个额外处理...
-		err_code = WebRtcAec_BufferFarend(m_hAEC, m_pDHornBufNN, m_nWebrtcNN);
-		err_code = WebRtcAec_Process(m_hAEC, &m_pDMicBufNN, m_out_channel_num, &m_pDEchoBufNN, m_nWebrtcNN, 200, 0);
-		// 将float数据格式转换成short数据格式...
-		for (int i = 0; i < m_nWebrtcNN; ++i) {
-			m_lpEchoBufNN[i] = (short)m_pDEchoBufNN[i];
-		}
-		// 将扬声器的PCM数据进行存盘处理 => 必须用二进制方式打开文件...
-		this->doSaveAudioPCM((void*)m_lpHornBufNN, nNeedBufBytes, m_out_sample_rate, 1, m_lpViewCamera->GetDBCameraID());
-	} else {
-		// 扬声器数据不够，把麦克风样本数据直接当成回音消除后的样本数据...
-		memcpy(m_lpEchoBufNN, m_lpMicBufNN, nNeedBufBytes);
+	// 将short数据格式转换成float数据格式...
+	for (int i = 0; i < m_nWebrtcNN; ++i) {
+		m_pDMicBufNN[i] = (float)m_lpMicBufNN[i];
+		m_pDHornBufNN[i] = (float)m_lpHornBufNN[i];
 	}
+	// 注意：使用自动计算延时模式，可以将msInSndCardBuf参数设置为0...
+	// 先将扬声器数据进行远端投递，再投递麦克风数据进行回音消除 => 投递样本个数...
+	err_code = WebRtcAec_BufferFarend(m_hAEC, m_pDHornBufNN, m_nWebrtcNN);
+	err_code = WebRtcAec_Process(m_hAEC, &m_pDMicBufNN, m_out_channel_num, &m_pDEchoBufNN, m_nWebrtcNN, 0, 0);
+	// 将float数据格式转换成short数据格式...
+	for (int i = 0; i < m_nWebrtcNN; ++i) {
+		m_lpEchoBufNN[i] = (short)m_pDEchoBufNN[i];
+	}
+	// 将扬声器的PCM数据进行存盘处理 => 必须用二进制方式打开文件...
+	//this->doSaveAudioPCM((void*)m_lpHornBufNN, nNeedBufBytes, m_out_sample_rate, 1, m_lpViewCamera->GetDBCameraID());
+	// 将麦克风的PCM数据进行存盘处理 => 必须用二进制方式打开文件...
+	//this->doSaveAudioPCM((void*)m_lpMicBufNN, nNeedBufBytes, m_out_sample_rate, 0, m_lpViewCamera->GetDBCameraID());
 	// 对回音消除后的数据进行存盘处理 => 必须用二进制方式打开文件...
-	this->doSaveAudioPCM((void*)m_lpMicBufNN, nNeedBufBytes, m_out_sample_rate, 0, m_lpViewCamera->GetDBCameraID());
-	this->doSaveAudioPCM((void*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 2, m_lpViewCamera->GetDBCameraID());
+	//this->doSaveAudioPCM((void*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 2, m_lpViewCamera->GetDBCameraID());
+	//blog(LOG_INFO, "== mic_buf: %d, horn_buf: %d ==", m_circle_mic.size, m_circle_horn.size);
 
 	uint64_t  ts_offset = 0;
 	uint32_t  output_frames = 0;
@@ -537,8 +549,8 @@ void CWebrtcAEC::doEchoCancel()
 		circlebuf_push_back(&m_circle_echo, output_data[0], cur_data_size);
 	}
 
-	// 如果麦克风环形队列里面还有足够的数据块需要进行回音消除，发起信号量变化事件...
-	if (m_circle_mic.size >= nNeedBufBytes) {
+	// 如果麦克风和扬声器环形队列里面还有足够的数据块需要进行回音消除，发起信号量变化事件...
+	if (m_circle_mic.size >= nNeedBufBytes && m_circle_horn.size >= nNeedBufBytes) {
 		((m_lpAECSem != NULL) ? os_sem_post(m_lpAECSem) : NULL);
 	}
 }
@@ -554,7 +566,7 @@ void CWebrtcAEC::doEchoEncode()
 	circlebuf_pop_front(&m_circle_echo, m_aac_frame_ptr, m_aac_frame_size);
 	// 调用AAC压缩器，进行音频的压缩处理...
 	// 计算当前AAC压缩后的数据帧的PTS...
-	int64_t aac_cur_pts = m_mic_pts_ms_zero + m_aac_frame_count * aac_frame_duration;
+	int64_t aac_cur_pts = m_mic_aac_ms_zero + m_aac_frame_count * aac_frame_duration;
 	// 累加AAC已压缩帧计数器...
 	++m_aac_frame_count;
 	// 为AVFrame准备相关的类型格式...

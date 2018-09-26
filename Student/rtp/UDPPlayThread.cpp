@@ -693,13 +693,13 @@ void CAudioThread::doDisplaySDL()
 	int nPerFrameSize = (m_out_channel_num * sizeof(float));
 	uint32_t resample_frames = out_buffer_size / nPerFrameSize;
 	// 设置音量数据的转换 => 这里进行音量的放大...
-	if (!close_float(vol, 1.0f, EPSILON)) {
+	/*if (!close_float(vol, 1.0f, EPSILON)) {
 		register float *cur = (float*)m_max_buffer_ptr;
 		register float *end = cur + resample_frames * m_out_channel_num;
 		while (cur < end) {
 			*(cur++) *= vol;
 		}
-	}
+	}*/
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 注意：必须对音频播放内部的缓存做定期伐值清理 => CPU过高时，DirectSound会堆积缓存...
@@ -729,8 +729,8 @@ void CAudioThread::doDisplaySDL()
 	// 计算在声卡中已缓存的毫秒数 => 向下取整...
 	msInSndCardBuf = (int)((nCurPadFrame * 1.0f * nPerFrameSize / m_out_frame_bytes) * m_out_frame_duration + 0.5f);
 	// 将400毫秒的声卡缓存，转换成帧数量...
-	nAllowQueueFrame = (400.0f / m_out_frame_duration * m_out_frame_bytes) / nPerFrameSize;
-	// 只有当声卡缓存小于400毫秒时，才进行数据投递，大于400毫秒，直接丢弃...
+	nAllowQueueFrame = (300.0f / m_out_frame_duration * m_out_frame_bytes) / nPerFrameSize;
+	// 只有当声卡缓存小于300毫秒时，才进行数据投递，大于300毫秒，直接丢弃...
 	if (nCurPadFrame <= nAllowQueueFrame) {
 		// 得到需要填充的声卡缓存指针 => 已经计算出要填充的帧数...
 		hr = m_render->GetBuffer(resample_frames, &output);
@@ -740,10 +740,12 @@ void CAudioThread::doDisplaySDL()
 			hr = m_render->ReleaseBuffer(resample_frames, 0);
 			// 把解码后的音频数据投递给当前正在被拉取的通道进行回音消除...
 			App()->doEchoCancel(m_max_buffer_ptr, out_buffer_size, m_out_sample_rate, m_out_channel_num, msInSndCardBuf);
-			//blog(LOG_DEBUG, "[InSoundCard-MS] %d", msInSndCardBuf);
 		}
 	} else {
-		// 声卡缓存大于400毫秒，直接丢弃，打印调试信息 => 这样声音不会出现卡顿，始终匀速播放，缓存多了就不忙灌数据，丢弃新数据...
+		// 注意：经过试验，丢弃或保持原样，都会降低AEC效果...
+		// 声卡缓存大于300毫秒，重置静音，打印调试信息...
+		memset(m_max_buffer_ptr, out_buffer_size, 0);
+		App()->doEchoCancel(m_max_buffer_ptr, out_buffer_size, m_out_sample_rate, m_out_channel_num, msInSndCardBuf);
 		blog(LOG_INFO, "%s [Audio] Delayed, Padding: %u, AVPacket: %d, AVFrame: %d", TM_RECV_NAME, nCurPadFrame, m_MapPacket.size(), m_frame_num);
 	}
 	// 删除已经使用的音频数据 => 从环形队列中移除...
@@ -858,7 +860,11 @@ BOOL CAudioThread::InitAudio(int nInRateIndex, int nInChannelNum)
 	m_out_convert_ctx = swr_alloc();
 	m_out_convert_ctx = swr_alloc_set_opts(m_out_convert_ctx, out_channel_layout, out_sample_fmt, out_sample_rate,
 										  in_channel_layout, in_sample_fmt, in_sample_rate, 0, NULL);
-	swr_init(m_out_convert_ctx);
+	// 初始化转换器失败，打印信息，返回错误...
+	if (AVERROR(swr_init(m_out_convert_ctx)) < 0) {
+		blog(LOG_INFO, "error => swr_init");
+		return false;
+	}
 
 	// 输入输出音频采样个数 => AAC-1024 | MP3-1152
 	// 注意：还没有开始转换，swr_get_delay()返回0，out_nb_samples是正常的样本数，不会变...
@@ -867,7 +873,10 @@ BOOL CAudioThread::InitAudio(int nInRateIndex, int nInChannelNum)
 	// 计算输出每帧持续时间(毫秒)，每帧字节数 => 只需要计算一次就够了...
 	m_out_frame_duration = out_nb_samples * 1000 / out_sample_rate;
 	m_out_frame_bytes = av_samples_get_buffer_size(NULL, out_audio_channel_num, out_nb_samples, out_sample_fmt, 1);
-	
+
+	// 通过所有通道扬声器创建成功...
+	App()->SetAudioHorn(true);
+
 	/*//SDL_AudioSpec => 不能使用系统推荐参数 => 不用回调模式，主动投递...
 	SDL_AudioSpec audioSpec = {0};
 	audioSpec.freq = out_sample_rate; 
@@ -912,6 +921,8 @@ void CAudioThread::doMonitorFree()
 	if (m_render != NULL) {
 		uRef = m_render->Release();
 	}
+	// 通过所有通道扬声器释放完成...
+	App()->SetAudioHorn(false);
 }
 
 void CAudioThread::Entry()

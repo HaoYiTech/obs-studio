@@ -6,7 +6,7 @@
 #include "qt-display.hpp"
 
 class CViewLeft;
-class CSpeexAEC;
+class CWebrtcAEC;
 class CDataThread;
 class CUDPSendThread;
 class CViewCamera : public OBSQTDisplay {
@@ -44,7 +44,7 @@ private:
 	bool		IsFrameTimeout();
 	void		CalcFlowKbps();
 	void        BuildSendThread();
-	void        ReBuildSpeexAEC();
+	void        ReBuildWebrtcAEC();
 protected:
 	void		paintEvent(QPaintEvent *event) override;
 	void		timerEvent(QTimerEvent * inEvent) override;
@@ -59,7 +59,7 @@ private:
 	bool                m_bIsPreview;       // 通道是否正在预览画面...
 	QRect               m_rcRenderRect;     // 窗口画面渲染的矩形区域...
 	CViewLeft       *   m_lpViewLeft;       // 左侧父窗口对象...
-	CSpeexAEC       *   m_lpSpeexAEC;       // 回音处理对象...
+	CWebrtcAEC      *   m_lpWebrtcAEC;      // 回音处理对象...
 	CDataThread     *   m_lpDataThread;     // 数据基础类线程...
 	CUDPSendThread  *   m_lpUDPSendThread;  // UDP推流线程...
 };
