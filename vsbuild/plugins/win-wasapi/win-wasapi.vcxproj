@@ -82,7 +82,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;E:\obs-studio\libwebrtc-aec\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Debug/</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -151,7 +151,7 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>..\..\libobs\Debug\obs.lib;E:\obs-deps\win32\bin\speexdsp.lib;E:\obs-studio\vsbuild\deps\w32-pthreads\Debug\w32-pthreads.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\..\libobs\Debug\obs.lib;E:\obs-studio\vsbuild\libwebrtc-aec\Debug\libwebrtc-aecD.lib;E:\obs-studio\vsbuild\deps\w32-pthreads\Debug\w32-pthreads.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:X86</AdditionalOptions>
       <GenerateDebugInformation>Debug</GenerateDebugInformation>
@@ -167,7 +167,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;E:\obs-studio\libwebrtc-aec\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Release/</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4127;4201;4456;4457;4458;4459;4595</DisableSpecificWarnings>
@@ -236,7 +236,7 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>..\..\libobs\Release\obs.lib;E:\obs-deps\win32\bin\speexdsp.lib;E:\obs-studio\vsbuild\deps\w32-pthreads\Release\w32-pthreads.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\..\libobs\Release\obs.lib;E:\obs-studio\vsbuild\libwebrtc-aec\Release\libwebrtc-aec.lib;E:\obs-studio\vsbuild\deps\w32-pthreads\Release\w32-pthreads.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:X86</AdditionalOptions>
       <GenerateDebugInformation>No</GenerateDebugInformation>
