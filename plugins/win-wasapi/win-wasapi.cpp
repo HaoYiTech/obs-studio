@@ -1,3 +1,4 @@
+
 #include "enum-wasapi.hpp"
 
 #include <obs-module.h>
@@ -9,12 +10,17 @@
 #include <util/threading.h>
 
 #include <util/circlebuf.h>
-#include <speex/speex_echo.h>
-#include <speex/speex_preprocess.h>
 #include "media-io/audio-resampler.h"
 #include "media-io/audio-io.h"
+#include "echo_cancellation.h"
+#include "aec_core.h"
 
+using namespace webrtc;
 using namespace std;
+
+#define DEF_WEBRTC_AEC_NN     160         // 默认每次处理样本个数
+#define DEF_OUT_SAMPLE_RATE   16000       // 默认输出采样率
+#define DEF_OUT_CHANNEL_NUM   1           // 默认输出声道数
 
 #define OPT_DEVICE_ID         "device_id"
 #define OPT_USE_DEVICE_TIMING "use_device_timing"
@@ -46,24 +52,29 @@ class WASAPISource {
 	WinHandle                   stopSignal;
 	WinHandle                   receiveSignal;
 
-	int                         m_nSpeexNN;         // 每次处理样本数
-	int                         m_nSpeexTAIL;       // 尾音样本长度
-	short                 *     m_lpMicBufNN;       // 麦克风原始数据
-	short                 *     m_lpHornBufNN;      // 扬声器原始数据
-	short                 *     m_lpEchoBufNN;      // 回音消除后数据
-	circlebuf                   m_circle_mic;		          // PCM环形队列 => 只存放麦克风转换后的音频数据
-	circlebuf                   m_circle_horn;                // PCM环形队列 => 只存放扬声器转换后的音频数据
-	resample_info               m_mic_sample_info;            // 麦克风原始音频样本格式...
-	resample_info               m_horn_sample_info;           // 扬声器原始音频样本格式...
-	resample_info               m_echo_sample_info;           // 回音消除需要的音频样本格式...
-	audio_resampler_t     *     m_mic_resampler = nullptr;    // 麦克风原始样本数据转换成回音消除样本格式...
-	audio_resampler_t     *     m_horn_resampler = nullptr;   // 扬声器原始样本数据转换成回音消除样本格式...
-	pthread_mutex_t             m_SpeexMutex;       // 回音消除互斥体
-	SpeexEchoState_       *     m_lpSpeexEcho;      // 回音消除对象
-	SpeexPreprocessState_ *     m_lpSpeexDen;       // 回音消除对象
-	int                         m_horn_delay_ms;    // 扬声器设定的默认播放延迟时间(毫秒)，声卡内部缓存的毫秒数
-	int                         m_out_channel_num;  // 输出声道数
-	int                         m_out_sample_rate;  // 输出采样率
+	int                         m_out_channel_num;    // 输出声道数
+	int                         m_out_sample_rate;    // 输出采样率
+
+	int                         m_nWebrtcMS;          // 每次处理毫秒数
+	int                         m_nWebrtcNN;          // 每次处理样本数
+	short                 *     m_lpMicBufNN;         // 麦克风原始数据 => short
+	short                 *     m_lpHornBufNN;        // 扬声器原始数据 => short
+	short                 *     m_lpEchoBufNN;        // 回音消除后数据 => short
+	float                 *     m_pDMicBufNN;         // 麦克风原始数据 => float
+	float                 *     m_pDHornBufNN;        // 扬声器原始数据 => float
+	float                 *     m_pDEchoBufNN;        // 回音消除后数据 => float
+												     
+	circlebuf                   m_circle_mic;		  // PCM环形队列 => 只存放麦克风转换后的音频数据
+	circlebuf                   m_circle_horn;        // PCM环形队列 => 只存放扬声器转换后的音频数据
+
+	resample_info               m_mic_sample_info;    // 麦克风原始音频样本格式...
+	resample_info               m_horn_sample_info;   // 扬声器原始音频样本格式...
+	resample_info               m_echo_sample_info;   // 回音消除需要的音频样本格式...
+	audio_resampler_t     *     m_mic_resampler;      // 麦克风原始样本数据转换成回音消除样本格式 => mic 转 echo
+	audio_resampler_t     *     m_horn_resampler;     // 扬声器原始样本数据转换成回音消除样本格式 => horn 转 echo
+
+	pthread_mutex_t             m_AECMutex;           // 回音消除互斥体
+	void                  *     m_hAEC;               // 回音消除句柄...
 
 	//speaker_layout            speakers;
 	//audio_format              format;
@@ -87,8 +98,8 @@ class WASAPISource {
 	void InitCapture();
 	void Initialize();
 
-	void InitSpeexAEC();
-	void UnInitSpeexAEC();
+	void InitWebrtcAEC();
+	void UnInitWebrtcAEC();
 
 	bool TryInitialize();
 
@@ -102,10 +113,18 @@ public:
 	obs_audio_data * AudioEchoCancelFilter(obs_audio_data *audio);
 };
 
-WASAPISource::WASAPISource(obs_data_t *settings, obs_source_t *source_,
-		bool input)
-	: source          (source_),
-	  isInputDevice   (input)
+WASAPISource::WASAPISource(obs_data_t *settings, obs_source_t *source_,	bool input)
+	: source          (source_)
+	, isInputDevice   (input)
+	, m_horn_resampler(nullptr)
+	, m_mic_resampler (nullptr)
+	, m_lpMicBufNN    (nullptr)
+	, m_lpHornBufNN   (nullptr)
+	, m_lpEchoBufNN   (nullptr)
+	, m_pDMicBufNN    (nullptr)
+	, m_pDHornBufNN   (nullptr)
+	, m_pDEchoBufNN   (nullptr)
+	, m_hAEC          (nullptr)
 {
 	UpdateSettings(settings);
 
@@ -122,7 +141,7 @@ WASAPISource::WASAPISource(obs_data_t *settings, obs_source_t *source_,
 
 inline void WASAPISource::Start()
 {
-	this->InitSpeexAEC();
+	this->InitWebrtcAEC();
 
 	if (!TryInitialize()) {
 		blog(LOG_INFO, "[WASAPISource::WASAPISource] "
@@ -132,34 +151,46 @@ inline void WASAPISource::Start()
 	}
 }
 
-inline void WASAPISource::InitSpeexAEC()
+inline void WASAPISource::InitWebrtcAEC()
 {
 	// 设置默认的输出声道数，输出采样率...
-	m_out_channel_num = 1;
-	m_out_sample_rate = 16000;
-	// 扬声器设定的播放延迟时间(毫秒)...
-	m_horn_delay_ms = 0;
-	// 计算每次处理设定毫秒数占用的样本数(默认16毫秒)
-	m_nSpeexNN = 16 * (m_out_sample_rate / 1000) * m_out_channel_num;
-	// 计算尾音为设定毫秒占用的样本数(默认400毫秒) => 允许的同步落差，越大，计算量越大，消除效果越好...
-	m_nSpeexTAIL = 400 * (m_out_sample_rate / 1000) * m_out_channel_num;
-	// 根据计算结果分配回音消除需要用到的数据空间...
-	m_lpMicBufNN = new short[m_nSpeexNN];
-	m_lpHornBufNN = new short[m_nSpeexNN];
-	m_lpEchoBufNN = new short[m_nSpeexNN];
-	// 初始化回音消除管理器 => speex
-	m_lpSpeexEcho = speex_echo_state_init(m_nSpeexNN, m_nSpeexTAIL);
-	m_lpSpeexDen = speex_preprocess_state_init(m_nSpeexNN, m_out_sample_rate);
-	speex_echo_ctl(m_lpSpeexEcho, SPEEX_ECHO_SET_SAMPLING_RATE, &m_out_sample_rate);
-	speex_preprocess_ctl(m_lpSpeexDen, SPEEX_PREPROCESS_SET_ECHO_STATE, m_lpSpeexEcho);
+	m_out_channel_num = DEF_OUT_CHANNEL_NUM;
+	m_out_sample_rate = DEF_OUT_SAMPLE_RATE;
+	// 每次回音消除处理样本数，需要乘以声道数...
+	m_nWebrtcNN = DEF_WEBRTC_AEC_NN * m_out_channel_num;
+	// 计算每次处理设定样本数占用的毫秒数...
+	m_nWebrtcMS = m_nWebrtcNN / ((m_out_sample_rate / 1000) * m_out_channel_num);
+	// 根据每次处理样本数据分配回音消除需要用到的数据空间 => 数据是short格式...
+	// 注意：这里使用obs的内存管理接口，可以进行泄漏跟踪 => bzalloc => bfree
+	m_lpMicBufNN = (short*)bzalloc(m_nWebrtcNN * sizeof(short));
+	m_lpHornBufNN = (short*)bzalloc(m_nWebrtcNN * sizeof(short));
+	m_lpEchoBufNN = (short*)bzalloc(m_nWebrtcNN * sizeof(short));
+	m_pDMicBufNN = (float*)bzalloc(m_nWebrtcNN * sizeof(float));
+	m_pDHornBufNN = (float*)bzalloc(m_nWebrtcNN * sizeof(float));
+	m_pDEchoBufNN = (float*)bzalloc(m_nWebrtcNN * sizeof(float));
 	// 初始化各个环形队列对象...
 	circlebuf_init(&m_circle_mic);
 	circlebuf_init(&m_circle_horn);
 	// 初始化回音消除互斥对象...
-	pthread_mutex_init_value(&m_SpeexMutex);
+	pthread_mutex_init_value(&m_AECMutex);
+	// 初始化回音消除管理器 => webrtc => DA-AEC
+	m_hAEC = WebRtcAec_Create();
+	if (m_hAEC == NULL) {
+		blog(LOG_INFO, "== WebRtcAec_Create failed ==");
+		return;
+	}
+	// 设置不确定延时，自动对齐波形 => 必须在初始化之前设置...
+	Aec * lpAEC = (Aec*)m_hAEC;
+	WebRtcAec_enable_delay_agnostic(lpAEC->aec, true);
+	WebRtcAec_enable_extended_filter(lpAEC->aec, true);
+	// 初始化回音消除对象失败，直接返回...
+	if (WebRtcAec_Init(m_hAEC, m_out_sample_rate, m_out_sample_rate) != 0) {
+		blog(LOG_INFO, "== WebRtcAec_Init failed ==");
+		return;
+	}
 }
 
-inline void WASAPISource::UnInitSpeexAEC()
+inline void WASAPISource::UnInitWebrtcAEC()
 {
 	// 释放麦克风回音消除音频转换器...
 	if (m_mic_resampler != nullptr) {
@@ -172,32 +203,40 @@ inline void WASAPISource::UnInitSpeexAEC()
 		m_horn_resampler = nullptr;
 	}
 	// 释放回声消除相关对象...
-	if (m_lpSpeexEcho != NULL) {
-		speex_echo_state_destroy(m_lpSpeexEcho);
-		m_lpSpeexEcho = NULL;
-	}
-	if (m_lpSpeexDen != NULL) {
-		speex_preprocess_state_destroy(m_lpSpeexDen);
-		m_lpSpeexDen = NULL;
+	if (m_hAEC != NULL) {
+		WebRtcAec_Free(m_hAEC);
+		m_hAEC = NULL;
 	}
 	// 释放音频环形队列...
 	circlebuf_free(&m_circle_mic);
 	circlebuf_free(&m_circle_horn);
 	// 释放回音消除使用到的缓存空间...
 	if (m_lpMicBufNN != NULL) {
-		delete[] m_lpMicBufNN;
+		bfree(m_lpMicBufNN);
 		m_lpMicBufNN = NULL;
 	}
 	if (m_lpHornBufNN != NULL) {
-		delete[] m_lpHornBufNN;
+		bfree(m_lpHornBufNN);
 		m_lpHornBufNN = NULL;
 	}
 	if (m_lpEchoBufNN != NULL) {
-		delete[] m_lpEchoBufNN;
+		bfree(m_lpEchoBufNN);
 		m_lpEchoBufNN = NULL;
 	}
+	if (m_pDMicBufNN != NULL) {
+		bfree(m_pDMicBufNN);
+		m_pDMicBufNN = NULL;
+	}
+	if (m_pDHornBufNN != NULL) {
+		bfree(m_pDHornBufNN);
+		m_pDHornBufNN = NULL;
+	}
+	if (m_pDEchoBufNN != NULL) {
+		bfree(m_pDEchoBufNN);
+		m_pDEchoBufNN = NULL;
+	}
 	// 释放回音消除互斥对象...
-	pthread_mutex_destroy(&m_SpeexMutex);
+	pthread_mutex_destroy(&m_AECMutex);
 }
 
 inline void WASAPISource::Stop()
@@ -214,7 +253,7 @@ inline void WASAPISource::Stop()
 
 	ResetEvent(stopSignal);
 
-	UnInitSpeexAEC();
+	UnInitWebrtcAEC();
 }
 
 inline WASAPISource::~WASAPISource()
@@ -556,41 +595,52 @@ void WASAPISource::doEchoCancel(UINT64 ts)
 {
 	// 注意：这里并不考虑扬声器数据是否足够，尽最大可能降低麦克风延时...
 	// 麦克风数据必须大于一个处理单元 => 样本数 * 每个样本占用字节数...
-	size_t nNeedBufBytes = m_nSpeexNN * sizeof(short);
+	size_t nNeedBufBytes = m_nWebrtcNN * sizeof(short);
 	if (m_circle_mic.size < nNeedBufBytes)
 		return;
+	int err_code = 0;
 	// 读取麦克风需要的处理样本内容 => 注意是读取字节数，不是样本数...
 	circlebuf_pop_front(&m_circle_mic, m_lpMicBufNN, nNeedBufBytes);
 	// 如果扬声器数据足够，读取扬声器数据到待处理样本缓存当中..
 	if (m_circle_horn.size >= nNeedBufBytes) {
 		// 从扬声器环形队列当中读取数据，这里需要线程互斥...
-		pthread_mutex_lock(&m_SpeexMutex);
+		pthread_mutex_lock(&m_AECMutex);
 		circlebuf_pop_front(&m_circle_horn, m_lpHornBufNN, nNeedBufBytes);
-		pthread_mutex_unlock(&m_SpeexMutex);
-		// 麦克风和扬声器样本数据准备就绪，先进行回音消除，再进行一个额外处理...
-		speex_echo_cancellation(m_lpSpeexEcho, m_lpMicBufNN, m_lpHornBufNN, m_lpEchoBufNN);
-		speex_preprocess_run(m_lpSpeexDen, m_lpEchoBufNN);
+		pthread_mutex_unlock(&m_AECMutex);
+		// 将short数据格式转换成float数据格式...
+		for (int i = 0; i < m_nWebrtcNN; ++i) {
+			m_pDMicBufNN[i] = (float)m_lpMicBufNN[i];
+			m_pDHornBufNN[i] = (float)m_lpHornBufNN[i];
+		}
+		// 注意：使用自动计算延时模式，可以将msInSndCardBuf参数设置为0...
+		// 先将扬声器数据进行远端投递，再投递麦克风数据进行回音消除 => 投递样本个数...
+		err_code = WebRtcAec_BufferFarend(m_hAEC, m_pDHornBufNN, m_nWebrtcNN);
+		err_code = WebRtcAec_Process(m_hAEC, &m_pDMicBufNN, m_out_channel_num, &m_pDEchoBufNN, m_nWebrtcNN, 0, 0);
+		// 将float数据格式转换成short数据格式...
+		for (int i = 0; i < m_nWebrtcNN; ++i) {
+			m_lpEchoBufNN[i] = (short)m_pDEchoBufNN[i];
+		}
 		// 将扬声器的PCM数据进行存盘处理 => 必须用二进制方式打开文件...
-		//doSaveAudioPCM((uint8_t*)m_lpHornBufNN, nNeedBufBytes, m_out_sample_rate, 1);
+		doSaveAudioPCM((uint8_t*)m_lpHornBufNN, nNeedBufBytes, m_out_sample_rate, 1);
 	} else {
 		// 扬声器数据不够，把麦克风样本数据直接当成回音消除后的样本数据...
 		memcpy(m_lpEchoBufNN, m_lpMicBufNN, nNeedBufBytes);
 	}
 	// 对回音消除后的数据进行存盘处理 => 必须用二进制方式打开文件...
-	//doSaveAudioPCM((uint8_t*)m_lpMicBufNN, nNeedBufBytes, m_out_sample_rate, 0);
-	//doSaveAudioPCM((uint8_t*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 2);
+	doSaveAudioPCM((uint8_t*)m_lpMicBufNN, nNeedBufBytes, m_out_sample_rate, 0);
+	doSaveAudioPCM((uint8_t*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 2);
 
 	// 构造回音消除之后的音频数据...
 	obs_source_audio data = {};
 	data.data[0] = (uint8_t*)m_lpEchoBufNN;
-	data.frames = m_nSpeexNN;
+	data.frames = m_nWebrtcNN;
 	data.speakers = m_echo_sample_info.speakers;
 	data.samples_per_sec = m_echo_sample_info.samples_per_sec;
 	data.format = m_echo_sample_info.format;
 	data.timestamp = useDeviceTiming ? ts * 100 : os_gettime_ns();
 	// 系统计时需要一个加速...?
 	if (!useDeviceTiming) {
-		data.timestamp -= (uint64_t)m_nSpeexNN * 1000000000ULL / (uint64_t)m_mic_sample_info.samples_per_sec;
+		data.timestamp -= (uint64_t)m_nWebrtcNN * 1000000000ULL / (uint64_t)m_mic_sample_info.samples_per_sec;
 	}
 	// 向obs上层进行数据的传递工作...
 	obs_source_output_audio(source, &data);
@@ -617,17 +667,16 @@ obs_audio_data * WASAPISource::AudioEchoCancelFilter(obs_audio_data *audio)
 	// 对输入的原始音频样本格式进行统一的格式转换，转换成功，放入环形队列...
 	if (audio_resampler_resample(m_horn_resampler, output_data, &output_frames, &ts_offset, lpSourceAudio->data, lpSourceAudio->frames)) {
 		// 注意：这里需要进行互斥保护，是多线程数据访问...
-		pthread_mutex_lock(&m_SpeexMutex);
+		pthread_mutex_lock(&m_AECMutex);
 		int cur_data_size = get_audio_size(m_echo_sample_info.format, m_echo_sample_info.speakers, output_frames);
 		circlebuf_push_back(&m_circle_horn, output_data[0], cur_data_size);
-		pthread_mutex_unlock(&m_SpeexMutex);
+		pthread_mutex_unlock(&m_AECMutex);
 	}
 	// 可以返回空指针...
 	return audio;
 }
 
-static inline bool WaitForCaptureSignal(DWORD numSignals, const HANDLE *signals,
-		DWORD duration)
+static inline bool WaitForCaptureSignal(DWORD numSignals, const HANDLE *signals, DWORD duration)
 {
 	DWORD ret;
 	ret = WaitForMultipleObjects(numSignals, signals, false, duration);
