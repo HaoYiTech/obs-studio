@@ -569,7 +569,7 @@ void CWebrtcAEC::doEchoCancel()
 	//this->doSaveAudioPCM((void*)m_lpMicBufNN, nNeedBufBytes, m_out_sample_rate, 0, m_lpViewCamera->GetDBCameraID());
 	// 对回音消除后的数据进行存盘处理 => 必须用二进制方式打开文件...
 	//this->doSaveAudioPCM((void*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 2, m_lpViewCamera->GetDBCameraID());
-	blog(LOG_INFO, "== mic_buf: %d, horn_buf: %d ==", m_circle_mic.size, m_circle_horn.size);
+	//blog(LOG_INFO, "== mic_buf: %d, horn_buf: %d ==", m_circle_mic.size, m_circle_horn.size);
 
 	uint64_t  ts_offset = 0;
 	uint32_t  output_frames = 0;
