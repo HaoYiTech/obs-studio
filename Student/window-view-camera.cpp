@@ -59,15 +59,15 @@ CViewCamera::~CViewCamera()
 		killTimer(m_nFlowTimer);
 		m_nFlowTimer = -1;
 	}
-	// 删除音频回音消除对象 => 数据使用者...
-	if (m_lpWebrtcAEC != NULL) {
-		delete m_lpWebrtcAEC;
-		m_lpWebrtcAEC = NULL;
-	}
 	// 删除UDP推流线程 => 数据使用者...
 	if (m_lpUDPSendThread != NULL) {
 		delete m_lpUDPSendThread;
 		m_lpUDPSendThread = NULL;
+	}
+	// 删除音频回音消除对象 => 数据使用者...
+	if (m_lpWebrtcAEC != NULL) {
+		delete m_lpWebrtcAEC;
+		m_lpWebrtcAEC = NULL;
 	}
 	// 删除数据拉取线程对象...
 	if (m_lpDataThread != NULL) {
@@ -337,15 +337,15 @@ void CViewCamera::onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID)
 		// 创建UDP发送线程对象 => 通道必须在线...
 		this->BuildSendThread();
 	} else {
-		// 先删除回音消除对象...
-		if (m_lpWebrtcAEC != NULL) {
-			delete m_lpWebrtcAEC;
-			m_lpWebrtcAEC = NULL;
-		}
 		// 如果是通道停止推流命令 => 删除推流线程...
 		if (m_lpUDPSendThread != NULL) {
 			delete m_lpUDPSendThread;
 			m_lpUDPSendThread = NULL;
+		}
+		// 后删除回音消除对象...
+		if (m_lpWebrtcAEC != NULL) {
+			delete m_lpWebrtcAEC;
+			m_lpWebrtcAEC = NULL;
 		}
 	}
 }
@@ -353,12 +353,19 @@ void CViewCamera::onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID)
 void CViewCamera::BuildSendThread()
 {
 	// 通道必须是在线状态...
-	if (m_nCameraState != kCameraOnLine)
+	if (m_nCameraState != kCameraOnLine) {
+		blog(LOG_INFO, "== BuildSendThread Error for CameraState ==");
 		return;
+	}
 	ASSERT(m_nCameraState == kCameraOnLine);
-	// 音频参数需要特殊处理，要看回音消除对象是否有效，有效，使用全局的音频设定，无效，直接用摄像头设定的音频参数...
-	int nAudioRateIndex = ((m_lpWebrtcAEC != NULL) ? App()->GetAudioRateIndex() : m_lpDataThread->GetAudioRateIndex());
-	int nAudioChannelNum = ((m_lpWebrtcAEC != NULL) ? App()->GetAudioChannelNum() : m_lpDataThread->GetAudioChannelNum());
+	// 这里webrtc的DA-AEC回音消除对象必须有效...
+	if (m_lpWebrtcAEC == NULL) {
+		blog(LOG_INFO, "== BuildSendThread Error for WebrtcAEC ==");
+		return;
+	}
+	// 音频参数需要特殊处理，统一使用全局的音频设定，因为回音消除对象必须有效...
+	int nAudioRateIndex = App()->GetAudioRateIndex();
+	int nAudioChannelNum = App()->GetAudioChannelNum();
 	// 创建UDP推流线程，使用服务器传递过来的参数...
 	int nRoomID = atoi(App()->GetRoomIDStr().c_str());
 	string & strUdpAddr = App()->GetUdpAddr();
@@ -394,10 +401,11 @@ void CViewCamera::ReBuildWebrtcAEC()
 	// 初始化失败，删除回音消除对象...
 	if (!m_lpWebrtcAEC->InitWebrtc(nInRateIndex, nInChannelNum, nOutSampleRate, nOutChannelNum, nOutBitrateAAC)) {
 		delete m_lpWebrtcAEC; m_lpWebrtcAEC = NULL;
-		blog(LOG_INFO, "CWebrtcAEC::InitWebrtc() => Error");
+		blog(LOG_INFO, "== CWebrtcAEC::InitWebrtc() => Error ==");
 	}
 }
 
+// 信号doTriggerStartPushThread的执行函数...
 void CViewCamera::onTriggerStartPushThread()
 {
 	// 向中转服务器汇报通道信息和状态 => 重建成功之后再发送命令...
@@ -431,49 +439,16 @@ void CViewCamera::doPushFrame(FMS_FRAME & inFrame)
 	m_nCurRecvByte += inFrame.strData.size();
 	// 如果UDP推流线程有效，并且，推流线程没有发生严重拥塞，继续传递数据...
 	if (m_lpUDPSendThread != NULL && !m_lpUDPSendThread->IsNeedDelete()) {
-		// 如果是音频，回音消除对象有效，投递给回音消除对象，无效，还是投递给UDP发送线程...
+		// 如果是音频，回音消除对象必然有效，投递给回音消除对象...
+		// 注意：必须投递给回音消除对象，因为音频格式要转换...
 		if (inFrame.typeFlvTag == PT_TAG_AUDIO) {
-			if (App()->GetAudioHorn()) {
-				// 如果有音频正在播放，并且AEC为空，重建AEC...
-				if (m_lpWebrtcAEC == NULL) {
-					this->ReBuildWebrtcAEC();
-				}
-			} else {
-				// 如果没有音频在播放，并且AEC不为空，删除AEC...
-				if (m_lpWebrtcAEC != NULL) {
-					delete m_lpWebrtcAEC;
-					m_lpWebrtcAEC = NULL;
-				}
-			}
-			// 如果AEC有效，投递进行回音消除...
-			if (m_lpWebrtcAEC != NULL) {
-				m_lpWebrtcAEC->PushMicFrame(inFrame);
-			} else {
-				m_lpUDPSendThread->PushFrame(inFrame);
-			}
+			m_lpWebrtcAEC->PushMicFrame(inFrame);
 		}
 		// 如果是视频，投递到UDP发送线程，进行打包发送...
 		if (inFrame.typeFlvTag == PT_TAG_VIDEO) {
 			m_lpUDPSendThread->PushFrame(inFrame);
 		}
 	}
-
-	// 临时测试回音消除使用...
-	/*if (inFrame.typeFlvTag == PT_TAG_AUDIO) {
-		if (App()->GetAudioHorn()) {
-			if (m_lpWebrtcAEC == NULL) {
-				this->ReBuildWebrtcAEC();
-			}
-		} else {
-			if (m_lpWebrtcAEC != NULL) {
-				delete m_lpWebrtcAEC;
-				m_lpWebrtcAEC = NULL;
-			}
-		}
-		if (m_lpWebrtcAEC != NULL) {
-			m_lpWebrtcAEC->PushMicFrame(inFrame);
-		}
-	}*/
 }
 
 // 把回音消除之后的AAC音频，返回给UDP发送对象当中...
@@ -539,15 +514,15 @@ bool CViewCamera::doCameraStop()
 			lpWebThread->doWebStatCamera(m_nDBCameraID, kCameraOffLine);
 		}
 	}
-	// 删除音频回音消除对象 => 数据使用者...
-	if (m_lpWebrtcAEC != NULL) {
-		delete m_lpWebrtcAEC;
-		m_lpWebrtcAEC = NULL;
-	}
 	// 删除UDP推流线程 => 数据使用者...
 	if (m_lpUDPSendThread != NULL) {
 		delete m_lpUDPSendThread;
 		m_lpUDPSendThread = NULL;
+	}
+	// 删除音频回音消除对象 => 数据使用者...
+	if (m_lpWebrtcAEC != NULL) {
+		delete m_lpWebrtcAEC;
+		m_lpWebrtcAEC = NULL;
 	}
 	// 直接删除数据线程管理器...
 	if (m_lpDataThread != NULL) {

@@ -399,12 +399,11 @@ BOOL CWebrtcAEC::PushHornPCM(void * lpBufData, int nBufSize, int nSampleRate, in
 	return true;
 }
 
+// 注意：无论扬声器是否有效，都要对麦克风数据进行处理...
 BOOL CWebrtcAEC::PushMicFrame(FMS_FRAME & inFrame)
 {
 	// 如果线程已经退出，直接返回...
 	if (this->IsStopRequested())
-		return false;
-	if (!App()->GetAudioHorn())
 		return false;
 	// 如果解码对象为空，直接返回失败...
 	if (m_lpDecContext == NULL || m_lpDecCodec == NULL || m_lpDecFrame == NULL)
@@ -495,6 +494,8 @@ void CWebrtcAEC::Entry()
 		// 如果线程已经退出，中断循环...
 		if (this->IsStopRequested())
 			break;
+		// 进行单独麦克风处理...
+		this->doEchoMic();
 		// 进行回声消除工作...
 		this->doEchoCancel();
 		// 进行AAC压缩打包...
@@ -502,6 +503,38 @@ void CWebrtcAEC::Entry()
 	}
 }
 
+// 扬声器无效时才会执行...
+void CWebrtcAEC::doEchoMic()
+{
+	// 如果扬声器已开启，不处理，直接返回...
+	if (App()->GetAudioHorn())
+		return;
+	// 麦克风数据必须大于一个处理单元 => 样本数 * 每个样本占用字节数...
+	int nNeedBufBytes = m_nWebrtcNN * sizeof(short);
+	if (m_circle_mic.size < nNeedBufBytes)
+		return;
+	// 从环形队列当中读取一块数据...
+	pthread_mutex_lock(&m_AECMutex);
+	circlebuf_pop_front(&m_circle_mic, m_lpMicBufNN, nNeedBufBytes);
+	pthread_mutex_unlock(&m_AECMutex);
+	// 对数据进行直接转换...
+	uint64_t  ts_offset = 0;
+	uint32_t  output_frames = 0;
+	uint32_t  input_frames = m_nWebrtcNN;
+	uint8_t * output_data[MAX_AV_PLANES] = { 0 };
+	// 直接对解码后的麦克风音频样本格式，转换成AAC压缩器需要的音频样本格式，转换成功放入环形队列...
+	if (audio_resampler_resample(m_echo_resampler, output_data, &output_frames, &ts_offset, (const uint8_t *const *)&m_lpMicBufNN, input_frames)) {
+		// 对回音消除后的数据放入AAC压缩打包处理环形队列当中，进行下一步的压缩打包投递处理 => 注意，这里不需要用互斥对象...
+		int cur_data_size = get_audio_size(m_aac_sample_info.format, m_aac_sample_info.speakers, output_frames);
+		circlebuf_push_back(&m_circle_echo, output_data[0], cur_data_size);
+	}
+	// 如果麦克风环形队列里面还有足够的数据块需要进行处理，发起信号量变化事件...
+	if (m_circle_mic.size >= nNeedBufBytes) {
+		((m_lpAECSem != NULL) ? os_sem_post(m_lpAECSem) : NULL);
+	}
+}
+
+// 扬声器有效时，才会执行...
 void CWebrtcAEC::doEchoCancel()
 {
 	// 如果扬声器没有开启，不处理，直接返回...
@@ -536,7 +569,7 @@ void CWebrtcAEC::doEchoCancel()
 	//this->doSaveAudioPCM((void*)m_lpMicBufNN, nNeedBufBytes, m_out_sample_rate, 0, m_lpViewCamera->GetDBCameraID());
 	// 对回音消除后的数据进行存盘处理 => 必须用二进制方式打开文件...
 	//this->doSaveAudioPCM((void*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 2, m_lpViewCamera->GetDBCameraID());
-	//blog(LOG_INFO, "== mic_buf: %d, horn_buf: %d ==", m_circle_mic.size, m_circle_horn.size);
+	blog(LOG_INFO, "== mic_buf: %d, horn_buf: %d ==", m_circle_mic.size, m_circle_horn.size);
 
 	uint64_t  ts_offset = 0;
 	uint32_t  output_frames = 0;

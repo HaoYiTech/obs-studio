@@ -22,6 +22,7 @@ public:
 	BOOL    PushHornPCM(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf);
 	BOOL    PushMicFrame(FMS_FRAME & inFrame);
 private:
+	void    doEchoMic();
 	void    doEchoCancel();
 	void    doEchoEncode();
 	void    doSaveAudioPCM(void * lpBufData, int nBufSize, int nAudioRate, int nAudioChannel, int nDBCameraID);
