@@ -218,17 +218,21 @@ static void on_audio_playback(void *param, obs_source_t *source,
 		}
 		// 将转换后的音频数据投递到监视器(扬声器)的缓冲区当中...
 		memcpy(output, resample_data[0], resample_frames * monitor->channels * sizeof(float));
-		// 构造需要投递给麦克风数据源的结构体 => 样本总是float格式...
-		struct obs_source_audio theEchoData = { 0 };
-		theEchoData.data[0] = resample_data[0];
-		theEchoData.frames = resample_frames;
-		theEchoData.format = AUDIO_FORMAT_FLOAT;
-		theEchoData.speakers = monitor->speakers;
-		theEchoData.samples_per_sec = monitor->sample_rate;
-		theEchoData.timestamp = audio_data->timestamp;
-		// 注意：不要用obs_enum_sources，互斥data.sources_mutex会跟rtp-source发生互锁...
-		// 枚举所有的音频数据源对象，找到麦克风对象，投递数据，进行回音消除...
-		doPushEchoDataToMic(&theEchoData);
+		// 注意：目前采用折中方案，多路监视音频需要进行混音之后才能进行回音消除...
+		// 只投递互动教室的音频回放数据进行回音消除，其它音频不进行回音消除...
+		if (astrcmpi(source->info.id, "rtp_source") == 0) {
+			// 构造需要投递给麦克风数据源的结构体 => 样本总是float格式...
+			struct obs_source_audio theEchoData = { 0 };
+			theEchoData.data[0] = resample_data[0];
+			theEchoData.frames = resample_frames;
+			theEchoData.format = AUDIO_FORMAT_FLOAT;
+			theEchoData.speakers = monitor->speakers;
+			theEchoData.samples_per_sec = monitor->sample_rate;
+			theEchoData.timestamp = audio_data->timestamp;
+			// 注意：不要用obs_enum_sources，互斥data.sources_mutex会跟rtp-source发生互锁...
+			// 枚举所有的音频数据源对象，找到麦克风对象，投递数据，进行回音消除...
+			doPushEchoDataToMic(&theEchoData);
+		}
 	}
 
 	render->lpVtbl->ReleaseBuffer(render, resample_frames,
