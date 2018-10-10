@@ -134,6 +134,7 @@ public:
 			PropertiesReloadCallback reloadCallback,
 			int minSize = 0);
 
+	void onTriggerCameraLiveStop(int nDBCameraID);
 	void onTriggerCameraList(Json::Value & value);
 	inline bool IsUseRtpSource() { return m_bUseRtpSource; }
 	

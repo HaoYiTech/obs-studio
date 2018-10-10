@@ -476,12 +476,29 @@ void CRemoteSession::onReadyRead()
 		case kCmd_UDP_Logout:        bResult = this->doCmdUdpLogout(lpDataPtr, lpCmdHeader->m_pkg_len); break;
 		case kCmd_Teacher_Login:     bResult = this->doCmdTeacherLogin(lpDataPtr, lpCmdHeader->m_pkg_len); break;
 		case kCmd_Teacher_OnLine:    bResult = this->doCmdTeacherOnLine(lpDataPtr, lpCmdHeader->m_pkg_len); break;
+		case kCmd_Camera_LiveStop:   bResult = this->doCmdTeacherCameraLiveStop(lpDataPtr, lpCmdHeader->m_pkg_len); break;
 		case kCmd_Camera_OnLineList: bResult = this->doCmdTeacherCameraList(lpDataPtr, lpCmdHeader->m_pkg_len); break;
 		}
 		// 删除已经处理完毕的数据 => Header + pkg_len...
 		m_strRecv.erase(0, lpCmdHeader->m_pkg_len + sizeof(Cmd_Header));
 		// 如果还有数据，则继续解析命令...
 	}
+}
+
+// 处理由服务器返回的学生端指定通道停止推流成功的事件通知...
+bool CRemoteSession::doCmdTeacherCameraLiveStop(const char * lpData, int nSize)
+{
+	Json::Value value;
+	// 进行Json数据包的内容解析...
+	if (!this->doParseJson(lpData, nSize, value)) {
+		blog(LOG_INFO, "CRemoteSession::doParseJson Error!");
+		return false;
+	}
+	// 获取服务器发送过来的数据信息...
+	int nDBCameraID = atoi(OBSApp::getJsonString(value["camera_id"]).c_str());
+	// 通知主窗口界面层，停止指定通道成功完成...
+	emit this->doTriggerCameraLiveStop(nDBCameraID);
+	return true;
 }
 
 // 处理由服务器返回的讲师端所在房间的在线摄像头列表...
@@ -539,6 +556,8 @@ bool CRemoteSession::doCmdTeacherLogin(const char * lpData, int nSize)
 	if (App()->GetRtpTCPSockFD() != nTCPSocketFD) {
 		App()->SetRtpTCPSockFD(nTCPSocketFD);
 	}
+	// 打印命令反馈详情信息...
+	blog(LOG_INFO, "[RemoteSession] doCmdTeacherLogin => SceneItemID: %d, CameraID: %d, OnLine: %d", nSceneItemID, nDBCameraID, bIsCameraOnLine);
 	// 根据摄像头在线状态，进行rtp_source资源拉流线程的创建或删除...
 	emit this->doTriggerRtpSource(nSceneItemID, nDBCameraID, bIsCameraOnLine);
 	return true;
@@ -565,6 +584,24 @@ void CRemoteSession::onError(QAbstractSocket::SocketError nError)
 	m_bCanReBuild = true;
 	m_bIsConnected = false;
 	blog(LOG_INFO, "onError: %d", nError);
+}
+
+// 通过中转服务器向学生端发送停止通道推流工作...
+bool CRemoteSession::doSendCameraLiveStopCmd(int nDBCameraID, int nSceneItemID)
+{
+	// 没有处于链接状态，直接返回...
+	if (!m_bIsConnected)
+		return false;
+	// 组合命令需要的JSON数据包 => 通道编号|场景资源编号...
+	string strJson;	Json::Value root;
+	char szDataBuf[32] = { 0 };
+	sprintf(szDataBuf, "%d", nDBCameraID);
+	root["camera_id"] = szDataBuf;
+	sprintf(szDataBuf, "%d", nSceneItemID);
+	root["sitem_id"] = szDataBuf;
+	strJson = root.toStyledString();
+	// 调用统一的接口进行命令数据的发送操作...
+	return this->doSendCommonCmd(kCmd_Camera_LiveStop, strJson.c_str(), strJson.size());
 }
 
 // 通过中转服务器向学生端发送开启通道推流工作...

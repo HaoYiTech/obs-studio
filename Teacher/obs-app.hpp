@@ -129,6 +129,7 @@ public:
 	void doLogoutEvent();
 
 	bool doSendCameraOnLineListCmd();
+	bool doSendCameraLiveStopCmd(int nDBCameraID, int nSceneItemID);
 	bool doSendCameraLiveStartCmd(int nDBCameraID, int nSceneItemID);
 
 	void doCheckTracker();

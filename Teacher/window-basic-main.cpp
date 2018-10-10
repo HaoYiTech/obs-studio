@@ -5112,6 +5112,14 @@ void OBSBasic::onTriggerCameraList(Json::Value & value)
 	((lpView != NULL) ? lpView->onTriggerCameraList(value) : NULL);
 }
 
+// 响应服务器返回的学生端指定通道停止推流成功的事件通知...
+void OBSBasic::onTriggerCameraLiveStop(int nDBCameraID)
+{
+	if (properties == NULL) return;
+	OBSPropertiesView * lpView = properties->GetPropView();
+	((lpView != NULL) ? lpView->onTriggerCameraLiveStop(nDBCameraID) : NULL);
+}
+
 // 响应服务器发送的UDP连接对象被删除的事件通知...
 void OBSBasic::onTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID)
 {

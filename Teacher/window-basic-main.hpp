@@ -422,6 +422,7 @@ public slots:
 	void TransitionToScene(OBSSource scene, bool force = false, bool direct = false, bool quickTransition = false);
 
 	void onTriggerCameraList(Json::Value & value);
+	void onTriggerCameraLiveStop(int nDBCameraID);
 	void onTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID);
 	void onTriggerRtpSource(int nSceneItemID, int nDBCameraID, bool bIsCameraOnLine);
 private slots:

@@ -1260,6 +1260,7 @@ void OBSApp::doCheckRemote()
 	this->connect(m_RemoteSession, SIGNAL(doTriggerUdpLogout(int, int, int)), lpBasicWnd, SLOT(onTriggerUdpLogout(int, int, int)));
 	this->connect(m_RemoteSession, SIGNAL(doTriggerCameraList(Json::Value&)), lpBasicWnd, SLOT(onTriggerCameraList(Json::Value&)));
 	this->connect(m_RemoteSession, SIGNAL(doTriggerRtpSource(int, int, bool)), lpBasicWnd, SLOT(onTriggerRtpSource(int, int, bool)));
+	this->connect(m_RemoteSession, SIGNAL(doTriggerCameraLiveStop(int)), lpBasicWnd, SLOT(onTriggerCameraLiveStop(int)));
 }
 
 // 向中转服务器请求当前房间在线的摄像头列表...
@@ -1268,6 +1269,14 @@ bool OBSApp::doSendCameraOnLineListCmd()
 	if (m_RemoteSession == NULL)
 		return false;
 	return m_RemoteSession->doSendCameraOnLineListCmd();
+}
+
+// 通过中转服务器向学生端发送停止通道推流工作...
+bool OBSApp::doSendCameraLiveStopCmd(int nDBCameraID, int nSceneItemID)
+{
+	if (m_RemoteSession == NULL)
+		return false;
+	return m_RemoteSession->doSendCameraLiveStopCmd(nDBCameraID, nSceneItemID);
 }
 
 // 通过中转服务器向学生端发送开启通道推流工作...

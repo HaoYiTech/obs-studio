@@ -94,6 +94,7 @@ public:
 	CRemoteSession(int nDBCameraID, int nSceneItemID);
 	virtual ~CRemoteSession();
 signals:
+	void doTriggerCameraLiveStop(int nDBCameraID);
 	void doTriggerCameraList(Json::Value & value);
 	void doTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID);
 	void doTriggerRtpSource(int nSceneItemID, int nDBCameraID, bool bIsCameraOnLine);
@@ -101,6 +102,7 @@ public:
 	bool IsCanReBuild() { return m_bCanReBuild; }
 	bool doSendOnLineCmd();
 	bool doSendCameraOnLineListCmd();
+	bool doSendCameraLiveStopCmd(int nDBCameraID, int nSceneItemID);
 	bool doSendCameraLiveStartCmd(int nDBCameraID, int nSceneItemID);
 protected slots:
 	void onConnected() override;
@@ -115,6 +117,7 @@ private:
 	bool doCmdTeacherLogin(const char * lpData, int nSize);
 	bool doCmdTeacherOnLine(const char * lpData, int nSize);
 	bool doCmdTeacherCameraList(const char * lpData, int nSize);
+	bool doCmdTeacherCameraLiveStop(const char * lpData, int nSize);
 	bool SendLoginCmd(int nDBCameraID, int nSceneItemID);
 	bool SendData(const char * lpDataPtr, int nDataSize);
 private:
