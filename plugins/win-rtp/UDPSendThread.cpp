@@ -298,11 +298,13 @@ BOOL CUDPSendThread::PushFrame(encoder_packet * lpEncPacket)
 	//blog(LOG_INFO, "%s Frame => PTS: %lu, Offset: %d, Type: %d, Key: %d, Size: %d", TM_SEND_NAME, dwSendTime, cur_offset_ms, pt_type, is_keyframe, nDataSize);
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
-	// 连接服务器成功之后，才启动压缩器，因此，一定是链接成功状态...
+	// 2018.10.10 - by jackey => 对数据帧的接收时刻点进行了修改，不进行状态限制...
+	// 注意：为了尽量少丢数据，不能发包时的状态，也可以接收数据帧，进行数据打包...
+	// 同时，由于发包是按最快速度发包，最开始的数据包很快就能发走，不会造成延时...
 	///////////////////////////////////////////////////////////////////////////////////////////////////
+	// 处于不能发包的状态时，打印所有的音视频数据帧...
 	if( m_nCmdState == kCmdUnkownState || m_nCmdState <= kCmdSendHeader ) {
-		blog(LOG_INFO, "%s State Error => PTS: %lu, Type: %d, Size: %d", TM_SEND_NAME, dwSendTime, pt_type, nDataSize);
-		return false;
+		blog(LOG_INFO, "%s Frame => PTS: %lu, Type: %d, Key: %d, Size: %d", TM_SEND_NAME, dwSendTime, pt_type, is_keyframe, nDataSize);
 	}
 
 	// 保存输入音视频字节总数，用于计算音视频输入码率...
@@ -694,13 +696,22 @@ void CUDPSendThread::doSendLosePacket(bool bIsAudio)
 
 void CUDPSendThread::doSendPacket(bool bIsAudio)
 {
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// 2018.10.10 - by jackey => 之前是对收包限制状态，限制是对发包限制状态，可以避免数据帧由于状态原因而丢失...
+	// 注意：改进后的方式，最好加入拥塞检测，在 doSendDetectCmd() 中检测，目前没有做，学生端已加入（超过4秒缓存就认为拥塞，需要中断）
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// 如果命令状态不对，打印已缓存的音视频数据帧信息，并返回，不发包...
+	if (m_nCmdState == kCmdUnkownState || m_nCmdState <= kCmdSendHeader) {
+		//blog(LOG_INFO, "%s State Error => VideoSize: %d, AudioSize: %d", TM_SEND_NAME, m_video_circle.size, m_audio_circle.size);
+		return;
+	}
 	// 对环形队列相关资源进行互斥保护...
 	pthread_mutex_lock(&m_Mutex);
 	do {
 		// 根据数据包类型，找到打包序号、发包序号、环形队列...
 		uint32_t  & nCurPackSeq = bIsAudio ? m_nAudioCurPackSeq : m_nVideoCurPackSeq;
 		uint32_t  & nCurSendSeq = bIsAudio ? m_nAudioCurSendSeq : m_nVideoCurSendSeq;
-		circlebuf  & cur_circle = bIsAudio ? m_audio_circle : m_video_circle;
+		circlebuf & cur_circle = bIsAudio ? m_audio_circle : m_video_circle;
 		// 如果环形队列没有可发送数据，直接返回...
 		if( cur_circle.size <= 0 || m_lpUDPSocket == NULL )
 			break;
@@ -980,9 +991,9 @@ void CUDPSendThread::doProcMaxConSeq(bool bIsAudio, uint32_t inMaxConSeq)
 	circlebuf_pop_front(&cur_circle, NULL, nPopSize);
 	// 注意：环形队列当中的数据块大小是连续的，是一样大的...
 	// 打印环形队列删除结果，计算环形队列剩余的数据包个数...
-	uint32_t nRemainCount = cur_circle.size / nPerPackSize;
-	blog(LOG_INFO, "%s Detect Erase Success => %s, MaxConSeq: %lu, MinSeq: %lu, CurSendSeq: %lu, CurPackSeq: %lu, Circle: %lu", 
-		 TM_SEND_NAME, bIsAudio ? "Audio" : "Video", inMaxConSeq, lpFrontHeader->seq, nCurSendSeq, nCurPackSeq, nRemainCount );
+	//uint32_t nRemainCount = cur_circle.size / nPerPackSize;
+	//blog(LOG_INFO, "%s Detect Erase Success => %s, MaxConSeq: %lu, MinSeq: %lu, CurSendSeq: %lu, CurPackSeq: %lu, Circle: %lu", 
+	//	 TM_SEND_NAME, bIsAudio ? "Audio" : "Video", inMaxConSeq, lpFrontHeader->seq, nCurSendSeq, nCurPackSeq, nRemainCount );
 }
 
 void CUDPSendThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
