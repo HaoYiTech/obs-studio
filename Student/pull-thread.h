@@ -13,7 +13,7 @@ public:
 	virtual bool	InitThread() = 0;
 	virtual void	ResetEventLoop() = 0;
 public:
-	void	StartPushThread();
+	void	ReadyToRecvFrame();
 	void	PushFrame(FMS_FRAME & inFrame);
 	void	WriteAVCSequenceHeader(string & inSPS, string & inPPS);
 	void	WriteAACSequenceHeader(int inAudioRate, int inAudioChannel);

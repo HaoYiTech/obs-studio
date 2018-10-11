@@ -82,6 +82,7 @@ enum CAMERA_STATE
 	kCameraOffLine = 0,		// 未连接
 	kCameraConnect = 1,		// 正在连接
 	kCameraOnLine  = 2,		// 已连接
+	kCameraPusher  = 3,     // 推流中
 };
 
 // define client type...

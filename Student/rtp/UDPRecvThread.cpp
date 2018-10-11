@@ -72,6 +72,8 @@ CUDPRecvThread::~CUDPRecvThread()
 	// 释放音视频环形队列空间...
 	circlebuf_free(&m_audio_circle);
 	circlebuf_free(&m_video_circle);
+	// 通知左侧窗口，拉流线程已经停止...
+	App()->onUdpRecvThreadStop();
 
 	blog(LOG_INFO, "%s == [~CUDPRecvThread Thread] - Exit End ==", TM_RECV_NAME);
 }
@@ -557,8 +559,8 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 			m_server_cache_time_ms = m_server_rtt_ms + m_server_rtt_var_ms;
 		}
 		// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
-		blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, ACircle: %d, VCircle: %d", TM_RECV_NAME,
-				rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms, m_server_cache_time_ms, m_audio_circle.size/812, m_video_circle.size/812 );
+		//blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, ACircle: %d, VCircle: %d", TM_RECV_NAME,
+		//		rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms, m_server_cache_time_ms, m_audio_circle.size/812, m_video_circle.size/812 );
 		// 打印播放器底层的缓存状态信息...
 		/*if (m_lpPlaySDL != NULL) {
 			blog(LOG_INFO, "%s Recv Detect => APacket: %d, VPacket: %d, AFrame: %d, VFrame: %d", TM_RECV_NAME,

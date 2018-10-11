@@ -275,12 +275,20 @@ BOOL CUDPSendThread::PushFrame(FMS_FRAME & inFrame)
 	// 观看端的0点时刻：当收到服务器反馈的序列头命令之后，就可以设定0点时刻，马上就收到音视频数据；
 	// 准备就绪的命令作用：是为了获取穿透地址，便于P2P交互，不能做为收发包依据，更不能做为控制条件；
 	///////////////////////////////////////////////////////////////////////////////////////////////////
-	if( m_nCmdState == kCmdUnkownState || m_nCmdState <= kCmdSendHeader ) {
-		blog(LOG_INFO, "%s State Error => PTS: %lu, Type: %d, Size: %d", TM_SEND_NAME, inFrame.dwSendTime, inFrame.typeFlvTag, inFrame.strData.size());
+	/*if( m_nCmdState == kCmdUnkownState || m_nCmdState <= kCmdSendHeader ) {
+		blog(LOG_INFO, "%s State Error => PTS: %lu, Type: %d, Key: %d, Size: %d", TM_SEND_NAME, inFrame.dwSendTime, inFrame.typeFlvTag, inFrame.is_keyframe, inFrame.strData.size());
 		return false;
+	}*/
+	
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+	// 2018.10.10 - by jackey => 对数据帧的接收时刻点进行了修改，不进行状态限制...
+	// 注意：为了尽量少丢数据，不能发包时的状态，也可以接收数据帧，进行数据打包...
+	// 同时，由于发包是按最快速度发包，最开始的数据包很快就能发走，不会造成延时...
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+	// 处于不能发包的状态时，打印所有的音视频数据帧...
+	if (m_nCmdState == kCmdUnkownState || m_nCmdState <= kCmdSendHeader) {
+		blog(LOG_INFO, "%s Frame => PTS: %lu, Type: %d, Key: %d, Size: %d", TM_SEND_NAME, inFrame.dwSendTime, inFrame.typeFlvTag, inFrame.is_keyframe, inFrame.strData.size());
 	}
-	// 打印所有的音视频数据帧...
-	//log_trace("[Student-Pusher] Frame => PTS: %lu, Type: %d, Key: %d, Size: %d", inFrame.dwSendTime, inFrame.typeFlvTag, inFrame.is_keyframe, inFrame.strData.size());
 
 	// 保存输入音视频字节总数，用于计算音视频输入码率...
 	m_audio_input_bytes += ((inFrame.typeFlvTag == PT_TAG_AUDIO) ? inFrame.strData.size() : 0);
@@ -776,6 +784,15 @@ void CUDPSendThread::doSendLosePacket(bool bIsAudio)
 
 void CUDPSendThread::doSendPacket(bool bIsAudio)
 {
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// 2018.10.10 - by jackey => 之前是对收包限制状态，限制是对发包限制状态，可以避免数据帧由于状态原因而丢失...
+	// 注意：改进后的方式，最好加入拥塞检测，在 doSendDetectCmd() 中检测，目前已加入（超过4秒缓存就认为拥塞，需要中断）
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// 如果命令状态不对，打印已缓存的音视频数据帧信息，并返回，不发包...
+	if( m_nCmdState == kCmdUnkownState || m_nCmdState <= kCmdSendHeader ) {
+		//blog(LOG_INFO, "%s State Error => VideoSize: %d, AudioSize: %d", TM_SEND_NAME, m_video_circle.size, m_audio_circle.size);
+		return;
+	}
 	// 对环形队列相关资源进行互斥保护...
 	pthread_mutex_lock(&m_Mutex);
 	do {
@@ -817,7 +834,7 @@ void CUDPSendThread::doSendPacket(bool bIsAudio)
 		// 两者之差就是要发送数据包的头指针位置...
 		nSendPos = (nCurSendSeq - lpFrontHeader->seq) * nPerPackSize;
 		////////////////////////////////////////////////////////////////////////////////////////////////////
-		// 注意：不能用简单的指针操作，环形队列可能会回还，必须用接口 => 从指定相对位置拷贝指定长度数据...
+		// 注意：不能用简单的指针操作，环形队列可能会回环，必须用接口 => 从指定相对位置拷贝指定长度数据...
 		// 获取将要发送数据包的包头位置和有效数据长度...
 		////////////////////////////////////////////////////////////////////////////////////////////////////
 		memset(szPacketBuffer, 0, nPerPackSize);

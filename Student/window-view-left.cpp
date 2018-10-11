@@ -15,6 +15,7 @@
 CViewLeft::CViewLeft(QWidget *parent, Qt::WindowFlags flags)
   : OBSQTDisplay(parent, flags)
   , m_bCanAutoLink(true)
+  , m_nLiveCameraID(-1)
   , m_nCurAutoID(-1)
   , m_nAutoTimer(-1)
   , m_nFocusID(-1)
@@ -112,30 +113,101 @@ int CViewLeft::GetNextAutoID(int nCurDBCameraID)
 	return itorItem->first;
 }
 
-// 停止所有正在推流的通道，如果通道编号与新通道一致，不处理...
-void CViewLeft::doStopCurUdpSendThread(int nNewDBCameraID)
-{
-	GM_MapCamera::iterator itorItem;
-	for (itorItem = m_MapCamera.begin(); itorItem != m_MapCamera.end(); ++itorItem) {
-		CViewCamera * lpViewCamera= itorItem->second;
-		if (lpViewCamera->GetDBCameraID() != nNewDBCameraID) {
-			lpViewCamera->onTriggerUdpSendThread(false, itorItem->first);
-		}
-	}
-}
-
 // 响应从CRemoteSession发出的事件通知信号...
-void CViewLeft::onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID)
+void CViewLeft::onTriggerLiveStart(int nDBCameraID)
 {
-	// 如果是启动推流命令，先停止当前正在推流的通道...
-	if (bIsStartCmd) this->doStopCurUdpSendThread(nDBCameraID);
+	// 如果正在推流的通道编号有效，停止通道...
+	this->doCommonLiveStop(m_nLiveCameraID);
 	// 在摄像头通道集合中查找指定的通道编号...
 	GM_MapCamera::iterator itorItem = m_MapCamera.find(nDBCameraID);
 	if (itorItem == m_MapCamera.end())
 		return;
-	// 执行摄像头通道的开启或停止推流线程...
+	// 执行摄像头通道的开启推流线程...
 	CViewCamera * lpViewCamera = itorItem->second;
-	lpViewCamera->onTriggerUdpSendThread(bIsStartCmd, nDBCameraID);
+	lpViewCamera->doUdpSendThreadStart();
+	m_nLiveCameraID = nDBCameraID;
+	// 打印当前新的正在推流通道编号...
+	blog(LOG_INFO, "== onTriggerLiveStart => LiveID: %d ==", m_nLiveCameraID);
+}
+
+// 响应从CRemoteSession发出的事件通知信号...
+void CViewLeft::onTriggerLiveStop(int nDBCameraID)
+{
+	// 调用统一的停止推流通道接口...
+	this->doCommonLiveStop(nDBCameraID);
+	// 回应讲师端停止推流通道执行成功...
+	CRemoteSession * lpRemoteSession = App()->GetRemoteSession();
+	if (lpRemoteSession != NULL) {
+		lpRemoteSession->doSendLiveStopCmd(nDBCameraID);
+	}
+	// 打印当前正在停止推流通道编号...
+	blog(LOG_INFO, "== onTriggerLiveStop => LiveID: %d ==", nDBCameraID);
+}
+
+// 统一的停止正在推流通道停止命令接口函数...
+void CViewLeft::doCommonLiveStop(int nDBCameraID)
+{
+	// 如果正在推流通道已经无效，直接返回...
+	if (m_nLiveCameraID <= 0 || nDBCameraID <= 0 )
+		return;
+	// 如果通道编号与正在推流通道不一致，打印信息，然后返回...
+	if (m_nLiveCameraID != nDBCameraID) {
+		blog(LOG_INFO, "== doCommonLiveStop => Error, LiveID: %d, StopID: %d ==", m_nLiveCameraID, nDBCameraID);
+		return;
+	}
+	ASSERT(m_nLiveCameraID == nDBCameraID);
+	// 如果没有找到正在推流的对象，重置推流通道编号，返回...
+	GM_MapCamera::iterator itorItem = m_MapCamera.find(nDBCameraID);
+	if (itorItem == m_MapCamera.end()) {
+		m_nLiveCameraID = -1;
+		return;
+	}
+	// 找到了正在推流的对象，发起停止命令...
+	CViewCamera * lpViewCamera = itorItem->second;
+	lpViewCamera->doUdpSendThreadStop();
+	// 重置正在推流编号...
+	m_nLiveCameraID = -1;
+	// 打印已经停止的指定通道编号...
+	blog(LOG_INFO, "== doCommonLiveStop => StopID: %d ==", nDBCameraID);
+}
+
+// 停止指定的推流通道 => UDP命令 => 推流退出通知...
+void CViewLeft::doUdpPusherLogout(int nDBCameraID)
+{
+	// 调用统一的停止推流通道接口...
+	this->doCommonLiveStop(nDBCameraID);
+	// 打印已经停止的指定通道编号...
+	blog(LOG_INFO, "== doUdpPusherLogout => StopID: %d ==", nDBCameraID);
+}
+
+// 处理右侧播放线程已经停止通知 => 只通知正在推流通道...
+void CViewLeft::onUdpRecvThreadStop()
+{
+	// 查找正在推流的通道对象，没找到直接返回...
+	GM_MapCamera::iterator itorItem = m_MapCamera.find(m_nLiveCameraID);
+	if (itorItem == m_MapCamera.end())
+		return;
+	// 通知正在推流的通道，右侧播放线程已经停止...
+	CViewCamera * lpViewCamera = itorItem->second;
+	lpViewCamera->onUdpRecvThreadStop();
+}
+
+// 向正在推流的通道投递扬声器的音频数据内容...
+void CViewLeft::doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf)
+{
+	GM_MapCamera::iterator itorItem = m_MapCamera.find(m_nLiveCameraID);
+	if (itorItem == m_MapCamera.end())
+		return;
+	// 通知正在推流的通道，扬声器的音频数据到达...
+	CViewCamera * lpViewCamera = itorItem->second;
+	lpViewCamera->doEchoCancel(lpBufData, nBufSize, nSampleRate, nChannelNum, msInSndCardBuf);
+
+	/*GM_MapCamera::iterator itorItem = m_MapCamera.begin();
+	while (itorItem != m_MapCamera.end()) {
+		CViewCamera * lpViewCamera = itorItem->second;
+		lpViewCamera->doEchoCancel(lpBufData, nBufSize, nSampleRate, nChannelNum, msInSndCardBuf);
+		++itorItem;
+	}*/
 }
 
 void CViewLeft::paintEvent(QPaintEvent *event)
@@ -217,17 +289,6 @@ void CViewLeft::LayoutViewCamera(int cx, int cy)
 	// 最后，将第一个窗口设置成焦点窗口...
 	ASSERT(lpFirstWnd != NULL);
 	lpFirstWnd->doCaptureFocus();
-}
-
-// 向正在被拉取的通道投递扬声器的音频数据内容...
-void CViewLeft::doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf)
-{
-	GM_MapCamera::iterator itorItem = m_MapCamera.begin();
-	while (itorItem != m_MapCamera.end()) {
-		CViewCamera * lpViewCamera = itorItem->second;
-		lpViewCamera->doEchoCancel(lpBufData, nBufSize, nSampleRate, nChannelNum, msInSndCardBuf);
-		++itorItem;
-	}
 }
 
 // 删除所有摄像头对象资源...

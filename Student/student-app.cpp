@@ -672,11 +672,21 @@ int CStudentApp::GetAudioRateIndex()
 	return audio_rate_index;
 }
 
+// 向左侧通道投递扬声器音频数据内容...
 void CStudentApp::doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf)
 {
 	if (m_studentWindow != NULL) {
 		CViewLeft * lpViewLeft = m_studentWindow->GetViewLeft();
 		((lpViewLeft != NULL) ? lpViewLeft->doEchoCancel(lpBufData, nBufSize, nSampleRate, nChannelNum, msInSndCardBuf) : NULL);
+	}
+}
+
+// 通知左侧窗口，接收播放线程已经停止了...
+void CStudentApp::onUdpRecvThreadStop()
+{
+	if (m_studentWindow != NULL) {
+		CViewLeft * lpViewLeft = m_studentWindow->GetViewLeft();
+		((lpViewLeft != NULL) ? lpViewLeft->onUdpRecvThreadStop() : NULL);
 	}
 }
 
@@ -866,7 +876,8 @@ void CStudentApp::doCheckRemote()
 	// 建立左侧窗口与发送线程事件、连接服务器成功的信号槽...
 	CViewLeft * lpViewLeft = m_studentWindow->GetViewLeft();
 	connect(m_RemoteSession, SIGNAL(doTriggerConnected()), lpViewLeft, SLOT(onTriggerConnected()));
-	connect(m_RemoteSession, SIGNAL(doTriggerSendThread(bool, int)), lpViewLeft, SLOT(onTriggerUdpSendThread(bool, int)));
+	connect(m_RemoteSession, SIGNAL(doTriggerLiveStop(int)), lpViewLeft, SLOT(onTriggerLiveStop(int)));
+	connect(m_RemoteSession, SIGNAL(doTriggerLiveStart(int)), lpViewLeft, SLOT(onTriggerLiveStart(int)));
 	// 建立远程会话与老师窗口对象的信号槽关联函数...
 	CViewRight * lpViewRight = m_studentWindow->GetViewRight();
 	CViewTeacher * lpViewTeacher = lpViewRight->GetViewTeacher();

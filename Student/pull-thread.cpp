@@ -31,9 +31,9 @@ CDataThread::~CDataThread()
 }
 
 // 注意：这里使用接口直接调用，否则，可能会由于异步而造成数据帧丢失...
-void CDataThread::StartPushThread()
+void CDataThread::ReadyToRecvFrame()
 {
-	m_lpViewCamera->doStartPushThread();
+	m_lpViewCamera->doReadyToRecvFrame();
 }
 
 // 注意：这里使用接口直接调用，否则，无法传递参数...

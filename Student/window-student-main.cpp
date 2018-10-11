@@ -153,7 +153,7 @@ void StudentWindow::onTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID)
 	}
 	// 如果是学生推流端的删除通知 => 使用左侧窗口对象...
 	if (idTag == ID_TAG_PUSHER) {
-		m_ui.LeftView->onTriggerUdpSendThread(false, nDBCameraID);
+		m_ui.LeftView->doUdpPusherLogout(nDBCameraID);
 		return;
 	}
 }

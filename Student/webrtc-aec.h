@@ -21,6 +21,7 @@ public:
 	BOOL    InitWebrtc(int nInRateIndex, int nInChannelNum, int nOutSampleRate, int nOutChannelNum, int nOutBitrateAAC);
 	BOOL    PushHornPCM(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf);
 	BOOL    PushMicFrame(FMS_FRAME & inFrame);
+	BOOL    onUdpRecvThreadStop();
 private:
 	void    doEchoMic();
 	void    doEchoCancel();

@@ -190,6 +190,42 @@ static inline enum speaker_layout convert_speaker_layout(uint8_t channels)
 	}
 }
 
+// 处理右侧播放线程已经停止通知...
+BOOL CWebrtcAEC::onUdpRecvThreadStop()
+{
+	// 这时一定没有扬声器对象...
+	if (App()->GetAudioHorn())
+		return false;
+	ASSERT(!App()->GetAudioHorn());
+	// 释放回音消除对象...
+	if (m_hAEC != NULL) {
+		WebRtcAec_Free(m_hAEC);
+		m_hAEC = NULL;
+	}
+	// 初始化回音消除管理器 => Webrtc
+	m_hAEC = WebRtcAec_Create();
+	if (m_hAEC == NULL)
+		return false;
+	// 设置不确定延时，自动对齐波形 => 必须在初始化之前设置...
+	Aec * lpAEC = (Aec*)m_hAEC;
+	WebRtcAec_enable_delay_agnostic(lpAEC->aec, true);
+	WebRtcAec_enable_extended_filter(lpAEC->aec, true);
+	// 初始化回音消除对象失败，直接返回...
+	if (WebRtcAec_Init(m_hAEC, m_out_sample_rate, m_out_sample_rate) != 0)
+		return false;
+	// 释放扬声器回音消除音频转换器...
+	if (m_horn_resampler != nullptr) {
+		audio_resampler_destroy(m_horn_resampler);
+		m_horn_resampler = nullptr;
+	}
+	// 注意：缓存必须清理，否则会影响新的回音消除...
+	// 重新初始化扬声器环形缓存队列对象...
+	circlebuf_free(&m_circle_horn);
+	circlebuf_reserve(&m_circle_horn, DEF_CIRCLE_SIZE / 4);
+	// 重建回音消除对象成功...
+	return true;
+}
+
 BOOL CWebrtcAEC::InitWebrtc(int nInRateIndex, int nInChannelNum, int nOutSampleRate, int nOutChannelNum, int nOutBitrateAAC)
 {
 	// 根据索引获取采样率...
@@ -357,6 +393,7 @@ BOOL CWebrtcAEC::PushHornPCM(void * lpBufData, int nBufSize, int nSampleRate, in
 	// 如果线程已经退出，直接返回...
 	if (this->IsStopRequested())
 		return false;
+	// 如果扬声器不存在，直接返回...
 	if (!App()->GetAudioHorn())
 		return false;
 	////////////////////////////////////////////////////////////////////////////////////////////
@@ -568,7 +605,7 @@ void CWebrtcAEC::doEchoCancel()
 	// 将麦克风的PCM数据进行存盘处理 => 必须用二进制方式打开文件...
 	//this->doSaveAudioPCM((void*)m_lpMicBufNN, nNeedBufBytes, m_out_sample_rate, 0, m_lpViewCamera->GetDBCameraID());
 	// 对回音消除后的数据进行存盘处理 => 必须用二进制方式打开文件...
-	//this->doSaveAudioPCM((void*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 2, m_lpViewCamera->GetDBCameraID());
+	this->doSaveAudioPCM((void*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 2, m_lpViewCamera->GetDBCameraID());
 	//blog(LOG_INFO, "== mic_buf: %d, horn_buf: %d ==", m_circle_mic.size, m_circle_horn.size);
 
 	uint64_t  ts_offset = 0;

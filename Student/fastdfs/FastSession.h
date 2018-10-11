@@ -95,13 +95,15 @@ public:
 	virtual ~CRemoteSession();
 signals:
 	void doTriggerConnected();
+	void doTriggerLiveStop(int nDBCameraID);
+	void doTriggerLiveStart(int nDBCameraID);
 	void doTriggerRecvThread(bool bIsUDPTeacherOnLine);
-	void doTriggerSendThread(bool bIsStartCmd, int nDBCameraID);
 	void doTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID);
 public:
 	bool IsCanReBuild() { return m_bCanReBuild; }
 	bool doSendStartCameraCmd(int nDBCameraID);
 	bool doSendStopCameraCmd(int nDBCameraID);
+	bool doSendLiveStopCmd(int nDBCameraID);
 	bool doSendOnLineCmd();
 protected slots:
 	void onConnected() override;
@@ -113,6 +115,7 @@ private:
 	bool doSendCommonCmd(int nCmdID, const char * lpJsonPtr = NULL, int nJsonSize = 0);
 	bool doParseJson(const char * lpData, int nSize, Json::Value & outValue);
 	bool doCmdCameraLiveStart(const char * lpData, int nSize);
+	bool doCmdCameraLiveStop(const char * lpData, int nSize);
 	bool doCmdStudentOnLine(const char * lpData, int nSize);
 	bool doCmdStudentLogin(const char * lpData, int nSize);
 	bool doCmdUdpLogout(const char * lpData, int nSize);

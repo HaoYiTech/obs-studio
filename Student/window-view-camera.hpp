@@ -15,9 +15,9 @@ public:
 	CViewCamera(QWidget *parent, int nDBCameraID);
 	virtual ~CViewCamera();
 signals:
-	void		doTriggerStartPushThread();
+	void		doTriggerReadyToRecvFrame();
 protected slots:
-	void		onTriggerStartPushThread();
+	void		onTriggerReadyToRecvFrame();
 public:
 	bool		IsCameraOffLine() { return ((m_nCameraState == kCameraOffLine) ? true : false); }
 	bool		IsCameraOnLine() { return ((m_nCameraState == kCameraOnLine) ? true : false); }
@@ -25,10 +25,12 @@ public:
 	int			GetDBCameraID() { return m_nDBCameraID; }
 public:
 	void        doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf);
-	void		onTriggerUdpSendThread(bool bIsStartCmd, int nDBCameraID);
 	void        doPushAudioAEC(FMS_FRAME & inFrame);
 	void		doPushFrame(FMS_FRAME & inFrame);
-	void		doStartPushThread();
+	void		doUdpSendThreadStart();
+	void		doUdpSendThreadStop();
+	void        onUdpRecvThreadStop();
+	void		doReadyToRecvFrame();
 	void		doTogglePreview();
 	bool		doCameraStart();
 	bool		doCameraStop();

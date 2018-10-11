@@ -53,6 +53,7 @@ public:
 	void doReBuildResource();
 	void onWebLoadResource();
 	void onWebAuthExpired();
+	void onUdpRecvThreadStop();
 	void doSaveFocus(OBSQTDisplay * lpNewDisplay);
 	void doResetFocus(OBSQTDisplay * lpCurDisplay);
 	void doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf);
