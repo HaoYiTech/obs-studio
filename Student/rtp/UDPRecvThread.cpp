@@ -364,7 +364,7 @@ void CUDPRecvThread::doRecvPacket()
 	// 判断最大接收数据长度 => DEF_MTU_SIZE + rtp_hdr_t
 	UInt32 nMaxSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
 	if (outRecvLen > nMaxSize) {
-		blog(LOG_INFO, "[Error] Max => %lu, Addr => %lu:%d, Size => %lu", nMaxSize, outRemoteAddr, outRemotePort, outRecvLen);
+		blog(LOG_INFO, "[Recv-Error] Max => %lu, Addr => %lu:%d, Size => %lu", nMaxSize, outRemoteAddr, outRemotePort, outRecvLen);
 		return;
 	}
     // 获取第一个字节的高4位，得到数据包类型...
