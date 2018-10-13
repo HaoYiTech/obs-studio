@@ -86,6 +86,7 @@ class WASAPISource {
 
 	void doEchoMic(UINT64 ts, uint8_t * lpFrameData, uint32_t nFrameSize);
 	void doEchoCancel(UINT64 ts);
+	bool doFindRtpAudio();
 
 	bool ProcessCaptureData();
 
@@ -103,6 +104,7 @@ class WASAPISource {
 
 	void InitWebrtcAEC();
 	void UnInitWebrtcAEC();
+	void doReBuildWebrtcAEC();
 
 	bool TryInitialize();
 
@@ -154,6 +156,44 @@ inline void WASAPISource::Start()
 	}
 }
 
+// 重建回音消除对象，并清理扬声器缓存...
+inline void WASAPISource::doReBuildWebrtcAEC()
+{
+	// 如果回音消除对象有效，并且扬声器缓存为空，不用重建，直接返回...
+	if (m_hAEC != NULL && m_circle_horn.capacity <= 0)
+		return;
+	// 释放回音消除对象...
+	if (m_hAEC != NULL) {
+		WebRtcAec_Free(m_hAEC);
+		m_hAEC = NULL;
+	}
+	// 初始化回音消除管理器 => Webrtc
+	m_hAEC = WebRtcAec_Create();
+	if (m_hAEC == NULL) {
+		blog(LOG_INFO, "== ReBuild: WebRtcAec_Create failed ==");
+		return;
+	}
+	// 设置不确定延时，自动对齐波形 => 必须在初始化之前设置...
+	Aec * lpAEC = (Aec*)m_hAEC;
+	WebRtcAec_enable_delay_agnostic(lpAEC->aec, true);
+	WebRtcAec_enable_extended_filter(lpAEC->aec, true);
+	// 初始化回音消除对象失败，直接返回...
+	if (WebRtcAec_Init(m_hAEC, m_out_sample_rate, m_out_sample_rate) != 0) {
+		blog(LOG_INFO, "== ReBuild: WebRtcAec_Init failed ==");
+		return;
+	}
+	// 释放扬声器回音消除音频转换器...
+	if (m_horn_resampler != nullptr) {
+		audio_resampler_destroy(m_horn_resampler);
+		m_horn_resampler = nullptr;
+	}
+	// 注意：缓存必须清理，否则会影响新的回音消除...
+	// 重新初始化扬声器环形缓存队列对象...
+	circlebuf_free(&m_circle_horn);
+	// 打印webrtc的回音消除初始化完成...
+	blog(LOG_INFO, "== ReBuild: InitWebrtcAEC OK ==");
+}
+
 inline void WASAPISource::InitWebrtcAEC()
 {
 	// 设置默认的输出声道数，输出采样率...
@@ -191,6 +231,8 @@ inline void WASAPISource::InitWebrtcAEC()
 		blog(LOG_INFO, "== WebRtcAec_Init failed ==");
 		return;
 	}
+	// 打印webrtc的回音消除初始化完成...
+	blog(LOG_INFO, "== InitWebrtcAEC OK ==");
 }
 
 inline void WASAPISource::UnInitWebrtcAEC()
@@ -543,6 +585,34 @@ DWORD WINAPI WASAPISource::ReconnectThread(LPVOID param)
 	}
 }*/
 
+bool WASAPISource::doFindRtpAudio()
+{
+	// 遍历所有数据源，查找互动教室的音频状态...
+	auto cbFind = [](void *data, obs_source_t *source)
+	{
+		obs_monitoring_type theType = obs_source_get_monitoring_type(source);
+		bool * lpHasRtpAudio = static_cast<bool*>(data);
+		const char *id = obs_source_get_id(source);
+		bool   bIsMuted = obs_source_muted(source);
+		// 如果数据源不是互动教室数据源 => 返回继续寻找...
+		if (astrcmpi(id, "rtp_source") != 0)
+			return true;
+		//互动教室没有本地监听，或者已经被静音，没有扬声器数据，返回终止查找...
+		if (theType == OBS_MONITORING_TYPE_NONE || bIsMuted) {
+			*lpHasRtpAudio = false;
+			return false;
+		}
+		// 如果互动教室数据源拉流线程已启动，返回true，否则返回false，然后终止查找...
+		*lpHasRtpAudio = *(bool*)obs_source_get_type_data(source);
+		return false;
+	};
+	// 遍历资源查找互动教室...
+	bool bHasRtpAudio = false;
+	obs_enum_sources(cbFind, &bHasRtpAudio);
+	// 返回互动教室是否有效...
+	return bHasRtpAudio;
+}
+
 bool WASAPISource::ProcessCaptureData()
 {
 	HRESULT res;
@@ -576,27 +646,10 @@ bool WASAPISource::ProcessCaptureData()
 						" failed: %lX", res);
 			return false;
 		}
-		// 遍历所有数据源，查找互动教室的音频状态...
-		auto cbFind = [](void *data, obs_source_t *source)
-		{
-			obs_monitoring_type theType = obs_source_get_monitoring_type(source);
-			bool * lpHasRtpAudio = static_cast<bool*>(data);
-			const char *id = obs_source_get_id(source);
-			// 如果数据源不是互动教室数据源 => 返回继续寻找...
-			if (astrcmpi(id, "rtp_source") != 0)
-				return true;
-			// 如果互动教室数据源本地监听处于关闭状态，直接返回...
-			if (theType == OBS_MONITORING_TYPE_NONE) {
-				*lpHasRtpAudio = false;
-				return false;
-			}
-			// 如果互动教室数据源拉流线程已启动，返回true，否则返回false，然后终止查找...
-			*lpHasRtpAudio = *(bool*)obs_source_get_type_data(source);
-			return false;
-		};
-		// 每次都要判断扬声器是否有效...
-		bool bHasRtpAudio = false;
-		obs_enum_sources(cbFind, &bHasRtpAudio);
+
+		// 遍历资源查找互动教室是否有效...
+		bool bHasRtpAudio = this->doFindRtpAudio();
+		
 		// 将麦克风数据统一转换...
 		uint64_t  ts_offset = 0;
 		uint32_t  output_frames = 0;
@@ -609,6 +662,8 @@ bool WASAPISource::ProcessCaptureData()
 				circlebuf_push_back(&m_circle_mic, output_data[0], cur_data_size);
 				this->doEchoCancel(ts);
 			} else {
+				// 没有扬声器数据，需要重建回音消除对象，清理扬声器缓存...
+				this->doReBuildWebrtcAEC();
 				// 没有扬声器数据，直接投递到obs上层处理，这里使用样本数一次性处理...
 				this->doEchoMic(ts, output_data[0], output_frames);
 			}
@@ -628,8 +683,8 @@ void WASAPISource::doEchoMic(UINT64 ts, uint8_t * lpFrameData, uint32_t nFrameSi
 		audio_resampler_destroy(m_horn_resampler);
 		m_horn_resampler = nullptr;
 	}
-	// 重置扬声器环形缓存队列对象...
-	if (m_circle_horn.size > 0) {
+	// 重置扬声器环形缓存队列对象，如果扬声器队列有效才进行重置操作...
+	if (m_circle_horn.data != NULL || m_circle_horn.capacity > 0) {
 		circlebuf_free(&m_circle_horn);
 		circlebuf_init(&m_circle_horn);
 	}
