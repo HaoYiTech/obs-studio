@@ -4,6 +4,7 @@
 #include "HYDefine.h"
 #include <QMouseEvent>
 #include "qt-display.hpp"
+#include <util/threading.h>
 
 class CViewLeft;
 class CWebrtcAEC;
@@ -64,4 +65,5 @@ private:
 	CWebrtcAEC      *   m_lpWebrtcAEC;      // 回音处理对象...
 	CDataThread     *   m_lpDataThread;     // 数据基础类线程...
 	CUDPSendThread  *   m_lpUDPSendThread;  // UDP推流线程...
+	pthread_mutex_t     m_MutexAEC;         // 回音消除线程互斥体
 };

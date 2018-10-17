@@ -201,13 +201,6 @@ void CViewLeft::doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, in
 	// 通知正在推流的通道，扬声器的音频数据到达...
 	CViewCamera * lpViewCamera = itorItem->second;
 	lpViewCamera->doEchoCancel(lpBufData, nBufSize, nSampleRate, nChannelNum, msInSndCardBuf);
-
-	/*GM_MapCamera::iterator itorItem = m_MapCamera.begin();
-	while (itorItem != m_MapCamera.end()) {
-		CViewCamera * lpViewCamera = itorItem->second;
-		lpViewCamera->doEchoCancel(lpBufData, nBufSize, nSampleRate, nChannelNum, msInSndCardBuf);
-		++itorItem;
-	}*/
 }
 
 void CViewLeft::paintEvent(QPaintEvent *event)

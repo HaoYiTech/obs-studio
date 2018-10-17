@@ -50,6 +50,8 @@ CViewCamera::CViewCamera(QWidget *parent, int nDBCameraID)
 	m_nFlowTimer = this->startTimer(1 * 1000);
 	// 建立摄像头数据拉取成功的信号槽，为了避免RTSP数据线程调用QT的socket造成的问题...
 	this->connect(this, SIGNAL(doTriggerReadyToRecvFrame()), this, SLOT(onTriggerReadyToRecvFrame()));
+	// 初始化回音消除互斥对象...
+	pthread_mutex_init_value(&m_MutexAEC);
 }
 
 CViewCamera::~CViewCamera()
@@ -65,10 +67,12 @@ CViewCamera::~CViewCamera()
 		m_lpUDPSendThread = NULL;
 	}
 	// 删除音频回音消除对象 => 数据使用者...
+	pthread_mutex_lock(&m_MutexAEC);
 	if (m_lpWebrtcAEC != NULL) {
 		delete m_lpWebrtcAEC;
 		m_lpWebrtcAEC = NULL;
 	}
+	pthread_mutex_unlock(&m_MutexAEC);
 	// 删除数据拉取线程对象...
 	if (m_lpDataThread != NULL) {
 		delete m_lpDataThread;
@@ -76,6 +80,8 @@ CViewCamera::~CViewCamera()
 	}
 	// 如果自己就是那个焦点窗口，需要重置...
 	App()->doResetFocus(this);
+	// 释放回音消除互斥对象...
+	pthread_mutex_destroy(&m_MutexAEC);
 }
 
 void CViewCamera::timerEvent(QTimerEvent * inEvent)
@@ -318,9 +324,11 @@ QString CViewCamera::GetSendPushRate()
 // 处理右侧播放线程已经停止通知...
 void CViewCamera::onUdpRecvThreadStop()
 {
-	if (m_lpWebrtcAEC == NULL)
-		return;
-	m_lpWebrtcAEC->onUdpRecvThreadStop();
+	pthread_mutex_lock(&m_MutexAEC);
+	if (m_lpWebrtcAEC != NULL) {
+		m_lpWebrtcAEC->onUdpRecvThreadStop();
+	}
+	pthread_mutex_unlock(&m_MutexAEC);
 }
 
 void CViewCamera::doUdpSendThreadStart()
@@ -357,10 +365,12 @@ void CViewCamera::doUdpSendThreadStop()
 		m_lpUDPSendThread = NULL;
 	}
 	// 后删除回音消除对象...
+	pthread_mutex_lock(&m_MutexAEC);
 	if (m_lpWebrtcAEC != NULL) {
 		delete m_lpWebrtcAEC;
 		m_lpWebrtcAEC = NULL;
 	}
+	pthread_mutex_unlock(&m_MutexAEC);
 }
 
 void CViewCamera::BuildSendThread()
@@ -401,6 +411,8 @@ void CViewCamera::ReBuildWebrtcAEC()
 	if (m_nCameraState != kCameraOnLine)
 		return;
 	ASSERT(m_nCameraState == kCameraOnLine);
+	// 进入互斥保护对象...
+	pthread_mutex_lock(&m_MutexAEC);
 	// 重建并初始化音频回音消除对象...
 	if (m_lpWebrtcAEC != NULL) {
 		delete m_lpWebrtcAEC;
@@ -419,6 +431,8 @@ void CViewCamera::ReBuildWebrtcAEC()
 		delete m_lpWebrtcAEC; m_lpWebrtcAEC = NULL;
 		blog(LOG_INFO, "== CWebrtcAEC::InitWebrtc() => Error ==");
 	}
+	// 退出互斥保护对象...
+	pthread_mutex_unlock(&m_MutexAEC);
 }
 
 // 信号doTriggerReadyToRecvFrame的执行函数...
@@ -463,7 +477,11 @@ void CViewCamera::doPushFrame(FMS_FRAME & inFrame)
 		// 如果是音频，回音消除对象必然有效，投递给回音消除对象...
 		// 注意：必须投递给回音消除对象，因为音频格式要转换...
 		if (inFrame.typeFlvTag == PT_TAG_AUDIO) {
-			m_lpWebrtcAEC->PushMicFrame(inFrame);
+			pthread_mutex_lock(&m_MutexAEC);
+			if (m_lpWebrtcAEC != NULL) {
+				m_lpWebrtcAEC->PushMicFrame(inFrame);
+			}
+			pthread_mutex_unlock(&m_MutexAEC);
 		}
 		// 如果是视频，投递到UDP发送线程，进行打包发送...
 		if (inFrame.typeFlvTag == PT_TAG_VIDEO) {
@@ -484,9 +502,11 @@ void CViewCamera::doPushAudioAEC(FMS_FRAME & inFrame)
 // 把投递到扬声器的PCM音频，放入回音消除当中...
 void CViewCamera::doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf)
 {
-	if (m_lpWebrtcAEC == NULL)
-		return;
-	m_lpWebrtcAEC->PushHornPCM(lpBufData, nBufSize, nSampleRate, nChannelNum, msInSndCardBuf);
+	pthread_mutex_lock(&m_MutexAEC);
+	if (m_lpWebrtcAEC != NULL) {
+		m_lpWebrtcAEC->PushHornPCM(lpBufData, nBufSize, nSampleRate, nChannelNum, msInSndCardBuf);
+	}
+	pthread_mutex_unlock(&m_MutexAEC);
 }
 
 bool CViewCamera::doCameraStart()
@@ -541,10 +561,12 @@ bool CViewCamera::doCameraStop()
 		m_lpUDPSendThread = NULL;
 	}
 	// 删除音频回音消除对象 => 数据使用者...
+	pthread_mutex_lock(&m_MutexAEC);
 	if (m_lpWebrtcAEC != NULL) {
 		delete m_lpWebrtcAEC;
 		m_lpWebrtcAEC = NULL;
 	}
+	pthread_mutex_unlock(&m_MutexAEC);
 	// 直接删除数据线程管理器...
 	if (m_lpDataThread != NULL) {
 		delete m_lpDataThread;
