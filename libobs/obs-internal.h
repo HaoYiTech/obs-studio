@@ -390,6 +390,9 @@ struct obs_core {
 	signal_handler_t                *signals;
 	proc_handler_t                  *procs;
 
+	// 2018.10.17 - by jackey => add room_id...
+	int                             room_id;
+
 	char                            *locale;
 	char                            *module_config_path;
 	bool                            name_store_owned;

@@ -150,6 +150,11 @@ static bool DoProcSaveJpeg(struct video_output * video, struct video_data * fram
 	}
 	// 保存当前的纳秒时间值...
 	g_time_start = cur_time_ns;
+	// 判断房间号码是否正确...
+	if (obs_get_room_id() <= 0) {
+		blog(LOG_ERROR, "DoProcSaveJpeg: room_id error!");
+		return false;
+	}
 	// 获取存盘需要的配置信息 => 路径和文件名...
 	char szSaveFile[100] = { 0 };
 	char szSavePath[300] = { 0 };
@@ -160,8 +165,7 @@ static bool DoProcSaveJpeg(struct video_output * video, struct video_data * fram
 		return false;
 	}
 	sprintf(szSaveFile, "obs-teacher/live_%s.jpg", lpKey + 4);*/
-	//sprintf(szSaveFile, "obs-teacher/live_%d.jpg", 100);
-	sprintf(szSaveFile, "obs-teacher/live_%d.jpeg", 100);
+	sprintf(szSaveFile, "obs-teacher/live_%d.jpg", obs_get_room_id());
 	if (os_get_config_path(szSavePath, sizeof(szSavePath), szSaveFile) <= 0) {
 		blog(LOG_ERROR, "DoProcSaveJpeg: save path error!");
 		return false;
@@ -347,7 +351,7 @@ static inline bool video_output_cur_frame(struct video_output *video)
 		struct video_data frame = frame_info->frame;
 
 		// 将原始数据存盘成JPEG文件...
-		//DoProcSaveJpeg(video, &frame);
+		DoProcSaveJpeg(video, &frame);
 
 		if (scale_video_output(input, &frame))
 			input->callback(input->param, &frame);

@@ -253,6 +253,9 @@ struct obs_source_frame {
 EXPORT bool obs_startup(const char *locale, const char *module_config_path,
 		profiler_name_store_t *store);
 
+EXPORT int  obs_get_room_id();
+EXPORT void obs_set_room_id(int nRoomID);
+
 /** Releases all data associated with OBS and terminates the OBS context */
 EXPORT void obs_shutdown(void);
 

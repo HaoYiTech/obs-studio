@@ -792,6 +792,17 @@ extern void initialize_com(void);
 extern void uninitialize_com(void);
 #endif
 
+int obs_get_room_id()
+{
+	if (!obs) return -1;
+	return obs->room_id;
+}
+
+void obs_set_room_id(int nRoomID)
+{
+	if (obs) { obs->room_id = nRoomID; }
+}
+
 static const char *obs_startup_name = "obs_startup";
 bool obs_startup(const char *locale, const char *module_config_path,
 		profiler_name_store_t *store)
