@@ -18,7 +18,8 @@
 
 #include "HYDefine.h"
 #include "window-main.hpp"
-#include "window-login-main.h"
+
+using namespace std;
 
 std::string CurrentTimeString();
 std::string CurrentDateTimeString();
@@ -44,6 +45,7 @@ public:
 		const char *disambiguation, int n) const override;
 };
 
+class LoginWindow;
 class QListWidget;
 class CRemoteSession;
 class CTrackerSession;
