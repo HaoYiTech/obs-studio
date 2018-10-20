@@ -33,6 +33,7 @@
   <qresource prefix="/login">
     <file>css/MyTitle.css</file>
     <file>css/LoginWindow.css</file>
+    <file>images/login/loading.gif</file>
     <file>images/login/back.jpg</file>
     <file>images/login/min.png</file>
     <file>images/login/close.png</file>
