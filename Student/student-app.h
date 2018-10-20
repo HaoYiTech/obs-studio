@@ -11,9 +11,10 @@
 #include <obs-frontend-api.h>
 #include <deque>
 
-#include "window-login-main.h"
 #include "window-student-main.h"
 #include "FastSession.h"
+
+using namespace std;
 
 std::string CurrentTimeString();
 std::string CurrentDateTimeString();
@@ -36,6 +37,7 @@ public:
 };
 
 class CRemoteSession;
+class LoginWindow;
 class CWebThread;
 class CStudentApp : public QApplication {
 	Q_OBJECT

@@ -25,6 +25,7 @@
 #include <atlconv.h>
 #include "SDL2/SDL.h"
 
+#include "window-login-main.h"
 #include "window-view-teacher.hpp"
 
 #pragma comment(lib, "iphlpapi.lib")
