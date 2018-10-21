@@ -91,7 +91,7 @@ void CRoomItem::paintEvent(QPaintEvent *event)
 	int nYPos = rcRoundRect.top() + 25;
 	painter.setOpacity(1.0);
 	painter.setPen(QPen(this->m_bIsHover ? Qt::yellow : Qt::white));
-	painter.drawText(nXPos, nYPos, QString("%1%2").arg(QStringLiteral("房间：")).arg(nLiveRoomID));
+	painter.drawText(nXPos, nYPos, QString("%1%2").arg(QStringLiteral("教室：")).arg(nLiveRoomID));
 	//painter.drawText(nXPos, nYPos + 20, QString("%1%2").arg(QStringLiteral("名称：")).arg(m_strRoomName));
 	painter.drawText(nXPos, nYPos + 40, QString("%1%2").arg(QStringLiteral("讲师：")).arg(m_strTeacherName));
 	painter.drawText(nXPos, nYPos + 60, QString("%1%2").arg(QStringLiteral("时间：")).arg(m_strStartTime));
