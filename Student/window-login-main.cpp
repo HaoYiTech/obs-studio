@@ -473,8 +473,8 @@ void LoginWindow::doLoginAction(int nLiveRoomID)
 	}
 	// 如果返回的数据为空，提示错误...
 	if( m_strUTF8Data.size() <= 0 ) {
-		//OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Empty"));
-		ui->errLabel->setText(QTStr("Student.Room.Empty"));
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Empty"));
+		//ui->errLabel->setText(QTStr("Student.Room.Empty"));
 		return;
 	}
 	// 开始解析传递过来的 json 数据包...
@@ -484,15 +484,15 @@ void LoginWindow::doLoginAction(int nLiveRoomID)
 	json_t * theMsg = json_object_get(theRoot, "err_msg");
 	const char * lpStrMsg = json_string_value(theMsg);
 	if (theCode == NULL || theMsg == NULL || lpStrMsg == NULL) {
-		//OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
-		ui->errLabel->setText(QTStr("Student.Room.Json"));
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
+		//ui->errLabel->setText(QTStr("Student.Room.Json"));
 		json_decref(theRoot);
 		return;
 	}
 	if (theCode->type == JSON_TRUE) {
 		QString strErrMsg = QString::fromUtf8(lpStrMsg);
-		//OBSMessageBox::information(this, QTStr("Student.Error.Title"), strErrMsg);
-		ui->errLabel->setText(strErrMsg);
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), strErrMsg);
+		//ui->errLabel->setText(strErrMsg);
 		json_decref(theRoot);
 		return;
 	}
@@ -500,8 +500,8 @@ void LoginWindow::doLoginAction(int nLiveRoomID)
 	json_t * theTrackerAddr = json_object_get(theRoot, "tracker_addr");
 	json_t * theTrackerPort = json_object_get(theRoot, "tracker_port");
 	if (theTrackerAddr == NULL || theTrackerPort == NULL) {
-		//OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
-		ui->errLabel->setText(QTStr("Student.Room.Json"));
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
+		//ui->errLabel->setText(QTStr("Student.Room.Json"));
 		json_decref(theRoot);
 		return;
 	}
@@ -509,8 +509,8 @@ void LoginWindow::doLoginAction(int nLiveRoomID)
 	json_t * theRemoteAddr = json_object_get(theRoot, "remote_addr");
 	json_t * theRemotePort = json_object_get(theRoot, "remote_port");
 	if (theRemoteAddr == NULL || theRemotePort == NULL) {
-		//OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
-		ui->errLabel->setText(QTStr("Student.Room.Json"));
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
+		//ui->errLabel->setText(QTStr("Student.Room.Json"));
 		json_decref(theRoot);
 		return;
 	}
@@ -518,8 +518,8 @@ void LoginWindow::doLoginAction(int nLiveRoomID)
 	json_t * theUdpAddr = json_object_get(theRoot, "udp_addr");
 	json_t * theUdpPort = json_object_get(theRoot, "udp_port");
 	if (theUdpAddr == NULL || theUdpPort == NULL) {
-		//OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
-		ui->errLabel->setText(QTStr("Student.Room.Json"));
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
+		//ui->errLabel->setText(QTStr("Student.Room.Json"));
 		json_decref(theRoot);
 		return;
 	}
@@ -527,8 +527,8 @@ void LoginWindow::doLoginAction(int nLiveRoomID)
 	json_t * theTeacherCount = json_object_get(theRoot, "teacher");
 	json_t * theStudentCount = json_object_get(theRoot, "student");
 	if (theTeacherCount == NULL || theStudentCount == NULL) {
-		//OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
-		ui->errLabel->setText(QTStr("Student.Room.Json"));
+		OBSMessageBox::information(this, QTStr("Student.Error.Title"), QTStr("Student.Room.Json"));
+		//ui->errLabel->setText(QTStr("Student.Room.Json"));
 		json_decref(theRoot);
 		return;
 	}
