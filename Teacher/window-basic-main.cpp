@@ -1591,8 +1591,7 @@ void OBSBasic::OBSInit()
 			"FirstRun");
 
 	if (!first_run) {
-		config_set_bool(App()->GlobalConfig(), "General", "FirstRun",
-				true);
+		config_set_bool(App()->GlobalConfig(), "General", "FirstRun", true);
 		config_save_safe(App()->GlobalConfig(), "tmp", nullptr);
 	}
 
@@ -1616,8 +1615,9 @@ void OBSBasic::OBSInit()
 		}
 	}*/
 
-	if (config_get_bool(basicConfig, "General", "OpenStatsOnStartup"))
+	if (config_get_bool(basicConfig, "General", "OpenStatsOnStartup")) {
 		on_stats_triggered();
+	}
 
 	OBSBasicStats::InitializeValues();
 

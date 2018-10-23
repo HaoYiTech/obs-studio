@@ -256,7 +256,7 @@ bool CWebThread::RegisterHaoYi()
 		strMacAddr.c_str(), strIPAddr.c_str(), szDNS, szMainName, _T(SZ_VERSION_NAME), strWebVer.c_str(), strWebTag.c_str(), nWebType,
 		strOnlyAddr.c_str(), nWebPort, strWebProto.c_str(), szWebName, CStudentApp::GetServerOS());
 	// 这里需要用到 https 模式，因为，myhaoyi.com 全站都用 https 模式...
-	sprintf(strUrl, "%s/wxapi.php/Gather/verify", DEF_WEB_HOME);
+	sprintf(strUrl, "%s/wxapi.php/Gather/verify", App()->GetWebCenter().c_str());
 	// 调用Curl接口，汇报采集端信息...
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();
@@ -353,7 +353,7 @@ bool CWebThread::LogoutHaoYi()
 	char strUrl[MAX_PATH] = { 0 };
 	sprintf(strPost, "gather_id=%d", nDBHaoYiGatherID);
 	// 这里需要用到 https 模式，因为，myhaoyi.com 全站都用 https 模式...
-	sprintf(strUrl, "%s/wxapi.php/Gather/logout", DEF_WEB_HOME);
+	sprintf(strUrl, "%s/wxapi.php/Gather/logout", App()->GetWebCenter().c_str());
 	// 调用Curl接口，汇报摄像头数据...
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();

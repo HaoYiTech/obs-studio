@@ -361,70 +361,46 @@ static void do_log(int log_level, const char *msg, va_list args, void *param)
 
 bool OBSApp::InitGlobalConfigDefaults()
 {
-	config_set_default_string(globalConfig, "General", "Language",
-		DEFAULT_LANG);
+	config_set_default_string(globalConfig, "General", "Language", DEFAULT_LANG);
 	config_set_default_uint(globalConfig, "General", "MaxLogs", 10);
-	config_set_default_string(globalConfig, "General", "ProcessPriority",
-		"Normal");
-	config_set_default_bool(globalConfig, "General", "EnableAutoUpdates",
-		false);
+	config_set_default_string(globalConfig, "General", "ProcessPriority", "Normal");
+	config_set_default_bool(globalConfig, "General", "EnableAutoUpdates", false);
 
 #if _WIN32
-	config_set_default_string(globalConfig, "Video", "Renderer",
-		"Direct3D 11");
+	config_set_default_string(globalConfig, "Video", "Renderer", "Direct3D 11");
 #else
 	config_set_default_string(globalConfig, "Video", "Renderer", "OpenGL");
 #endif
 
-	config_set_default_bool(globalConfig, "BasicWindow", "PreviewEnabled",
-		true);
-	config_set_default_bool(globalConfig, "BasicWindow",
-		"PreviewProgramMode", false);
-	config_set_default_bool(globalConfig, "BasicWindow",
-		"SceneDuplicationMode", true);
-	config_set_default_bool(globalConfig, "BasicWindow",
-		"SwapScenesMode", true);
-	config_set_default_bool(globalConfig, "BasicWindow",
-		"SnappingEnabled", true);
-	config_set_default_bool(globalConfig, "BasicWindow",
-		"ScreenSnapping", true);
-	config_set_default_bool(globalConfig, "BasicWindow",
-		"SourceSnapping", true);
-	config_set_default_bool(globalConfig, "BasicWindow",
-		"CenterSnapping", false);
-	config_set_default_double(globalConfig, "BasicWindow",
-		"SnapDistance", 10.0);
-	config_set_default_bool(globalConfig, "BasicWindow",
-		"RecordWhenStreaming", true);
-	config_set_default_bool(globalConfig, "BasicWindow",
-		"KeepRecordingWhenStreamStops", false);
-	config_set_default_bool(globalConfig, "BasicWindow",
-		"SysTrayEnabled", true);
-	config_set_default_bool(globalConfig, "BasicWindow",
-		"SysTrayWhenStarted", false);
-	config_set_default_bool(globalConfig, "BasicWindow",
-		"SaveProjectors", false);
-	config_set_default_bool(globalConfig, "BasicWindow",
-		"ShowTransitions", true);
-	config_set_default_bool(globalConfig, "BasicWindow",
-		"ShowListboxToolbars", true);
-	config_set_default_bool(globalConfig, "BasicWindow",
-		"ShowStatusBar", true);
+	config_set_default_bool(globalConfig, "BasicWindow", "PreviewEnabled", true);
+	config_set_default_bool(globalConfig, "BasicWindow", "PreviewProgramMode", false);
+	config_set_default_bool(globalConfig, "BasicWindow", "SceneDuplicationMode", true);
+	config_set_default_bool(globalConfig, "BasicWindow", "SwapScenesMode", true);
+	config_set_default_bool(globalConfig, "BasicWindow", "SnappingEnabled", true);
+	config_set_default_bool(globalConfig, "BasicWindow", "ScreenSnapping", true);
+	config_set_default_bool(globalConfig, "BasicWindow", "SourceSnapping", true);
+	config_set_default_bool(globalConfig, "BasicWindow", "CenterSnapping", false);
+	config_set_default_double(globalConfig, "BasicWindow", "SnapDistance", 10.0);
+	config_set_default_bool(globalConfig, "BasicWindow", "RecordWhenStreaming", true);
+	config_set_default_bool(globalConfig, "BasicWindow", "KeepRecordingWhenStreamStops", false);
+	config_set_default_bool(globalConfig, "BasicWindow", "SysTrayEnabled", true);
+	config_set_default_bool(globalConfig, "BasicWindow", "SysTrayWhenStarted", false);
+	config_set_default_bool(globalConfig, "BasicWindow", "SaveProjectors", false);
+	config_set_default_bool(globalConfig, "BasicWindow", "ShowTransitions", true);
+	config_set_default_bool(globalConfig, "BasicWindow", "ShowListboxToolbars", true);
+	config_set_default_bool(globalConfig, "BasicWindow", "ShowStatusBar", true);
 
 	if (!config_get_bool(globalConfig, "General", "Pre21Defaults")) {
-		config_set_default_string(globalConfig, "General",
-			"CurrentTheme", "Default");
+		config_set_default_string(globalConfig, "General", "CurrentTheme", "Default");
 	}
 
 #ifdef _WIN32
-	config_set_default_bool(globalConfig, "Audio", "DisableAudioDucking",
-		true);
+	config_set_default_bool(globalConfig, "Audio", "DisableAudioDucking", true);
 #endif
 
 #ifdef __APPLE__
 	config_set_default_bool(globalConfig, "Video", "DisableOSXVSync", true);
-	config_set_default_bool(globalConfig, "Video", "ResetOSXVSyncOnExit",
-		true);
+	config_set_default_bool(globalConfig, "Video", "ResetOSXVSyncOnExit", true);
 #endif
 	return true;
 }
@@ -615,55 +591,64 @@ bool OBSApp::InitGlobalConfig()
 	}
 
 	if (!opt_starting_collection.empty()) {
-		string path = GetSceneCollectionFileFromName(
-			opt_starting_collection.c_str());
+		string path = GetSceneCollectionFileFromName(opt_starting_collection.c_str());
 		if (!path.empty()) {
-			config_set_string(globalConfig,
-				"Basic", "SceneCollection",
-				opt_starting_collection.c_str());
-			config_set_string(globalConfig,
-				"Basic", "SceneCollectionFile",
-				path.c_str());
+			config_set_string(globalConfig, "Basic", "SceneCollection", opt_starting_collection.c_str());
+			config_set_string(globalConfig, "Basic", "SceneCollectionFile", path.c_str());
 			changed = true;
 		}
 	}
 
 	if (!opt_starting_profile.empty()) {
-		string path = GetProfileDirFromName(
-			opt_starting_profile.c_str());
+		string path = GetProfileDirFromName(opt_starting_profile.c_str());
 		if (!path.empty()) {
-			config_set_string(globalConfig, "Basic", "Profile",
-				opt_starting_profile.c_str());
-			config_set_string(globalConfig, "Basic", "ProfileDir",
-				path.c_str());
+			config_set_string(globalConfig, "Basic", "Profile",	opt_starting_profile.c_str());
+			config_set_string(globalConfig, "Basic", "ProfileDir", path.c_str());
 			changed = true;
 		}
 	}
 
 	if (!config_has_user_value(globalConfig, "General", "Pre19Defaults")) {
-		uint32_t lastVersion = config_get_int(globalConfig, "General",
-			"LastVersion");
-		bool useOldDefaults = lastVersion &&
-			lastVersion < MAKE_SEMANTIC_VERSION(19, 0, 0);
+		uint32_t lastVersion = config_get_int(globalConfig, "General", "LastVersion");
+		bool useOldDefaults = lastVersion && lastVersion < MAKE_SEMANTIC_VERSION(19, 0, 0);
 
-		config_set_bool(globalConfig, "General", "Pre19Defaults",
-			useOldDefaults);
+		config_set_bool(globalConfig, "General", "Pre19Defaults", useOldDefaults);
 		changed = true;
 	}
 
 	if (!config_has_user_value(globalConfig, "General", "Pre21Defaults")) {
-		uint32_t lastVersion = config_get_int(globalConfig, "General",
-			"LastVersion");
-		bool useOldDefaults = lastVersion &&
-			lastVersion < MAKE_SEMANTIC_VERSION(21, 0, 0);
+		uint32_t lastVersion = config_get_int(globalConfig, "General", "LastVersion");
+		bool useOldDefaults = lastVersion && lastVersion < MAKE_SEMANTIC_VERSION(21, 0, 0);
 
-		config_set_bool(globalConfig, "General", "Pre21Defaults",
-			useOldDefaults);
+		config_set_bool(globalConfig, "General", "Pre21Defaults", useOldDefaults);
 		changed = true;
 	}
 
-	if (changed)
+	// 配置文件中没有网络配置参数，设置硬编码的网络配置参数...
+	if (!config_has_user_value(globalConfig, "General", "WebCenter")) {
+		config_set_string(globalConfig, "General", "WebCenter", DEF_WEB_CENTER);
+		changed = true;
+	}
+	// 从配置文件当中读取中心网站的地址...
+	m_strWebCenter = config_get_string(globalConfig, "General", "WebCenter");
+	// 查看节点网站地址是否有效...
+	if (!config_has_user_value(globalConfig, "General", "WebClass")) {
+		config_set_string(globalConfig, "General", "WebClass", DEF_WEB_CLASS);
+		changed = true;
+	}
+	// 从配置文件当中读取节点网站的地址...
+	m_strWebAddr = config_get_string(globalConfig, "General", "WebClass");
+	// 查看节点端口地址是否有效...
+	if (!config_has_user_value(globalConfig, "General", "WebPort")) {
+		config_set_int(globalConfig, "General", "WebPort", DEF_WEB_PORT);
+		changed = true;
+	}
+	// 从配置文件当中读取节点网站的端口地址...
+	m_nWebPort = config_get_int(globalConfig, "General", "WebPort");
+	// 配置有变化，存盘到global.ini配置文件当中...
+	if (changed) {
 		config_save_safe(globalConfig, "tmp", nullptr);
+	}
 
 	return InitGlobalConfigDefaults();
 }
@@ -800,7 +785,8 @@ OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
 	: QApplication(argc, argv),
 	profilerNameStore(store)
 {
-	m_strWebAddr = DEF_CLOUD_CLASS;
+	m_strWebCenter = DEF_WEB_CENTER;
+	m_strWebAddr = DEF_WEB_CLASS;
 	m_nWebPort = DEF_WEB_PORT;
 	m_nRtpTCPSockFD = 0;
 	m_nOnLineTimer = -1;

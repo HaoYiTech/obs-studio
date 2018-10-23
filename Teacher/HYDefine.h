@@ -7,8 +7,8 @@
 #define ASSERT assert 
 #endif // ASSERT
 
-#define DEF_CLOUD_CLASS				"http://edu.ihaoyi.cn"		// 云教室地址
-#define DEF_WEB_HOME				"https://www.myhaoyi.com"	// 默认中心网站 => 必须是 https:// 兼容小程序接口...
+#define DEF_WEB_CENTER				"https://www.myhaoyi.com"	// 默认中心网站(443) => 必须是 https:// 兼容小程序接口...
+#define DEF_WEB_CLASS				"http://edu.ihaoyi.cn"		// 云教室地址
 #define DEF_WEB_PORT				80							// Web默认端口 
 
 enum AUTH_STATE

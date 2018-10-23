@@ -38,15 +38,16 @@ using namespace std;
 #include <util/platform.h>
 #include <util/circlebuf.h>
 
+#define DEF_WEB_CENTER				"https://www.myhaoyi.com"	// 默认中心网站(443) => 必须是 https:// 兼容小程序接口...
+#define DEF_WEB_CLASS				"http://edu.ihaoyi.cn"		// 云教室地址
+#define DEF_WEB_PORT				80							// Web默认端口 
+
 #define DEF_AUDIO_OUT_CHANNEL_NUM   1                           // 默认音频播放、压缩声道数
 #define DEF_AUDIO_OUT_SAMPLE_RATE   16000                       // 默认音频播放、压缩采样率
 #define DEF_AUDIO_OUT_BITRATE_AAC   32000                       // 默认回音消除后AAC压缩输出码流
 #define DEF_WEBRTC_AEC_NN           160                         // 回音消除单次样本数(单个声道) => 采样率是16000时，刚好是10毫秒...
 #define DEF_CAMERA_START_ID			1							// 默认摄像头开始ID
 #define DEF_MAX_CAMERA              8							// 默认最大摄像头数目
-#define DEF_CLOUD_CLASS				"http://edu.ihaoyi.cn"		// 云教室地址
-#define DEF_WEB_HOME				"https://www.myhaoyi.com"	// 默认中心网站 => 必须是 https:// 兼容小程序接口...
-#define DEF_WEB_PORT				80							// Web默认端口 
 #define LINGER_TIME					500							// SOCKET停止时数据链路层BUFF清空的最大延迟时间
 
 #define WM_WEB_LOAD_RESOURCE		(WM_USER + 108)
