@@ -461,16 +461,6 @@ void CVideoThread::doDecodeFrame()
 	int64_t frame_pts = av_rescale_q(lpFrame->best_effort_timestamp, base_pack, base_frame);*/
 }
 
-#ifndef KSAUDIO_SPEAKER_2POINT1
-#define KSAUDIO_SPEAKER_2POINT1 (KSAUDIO_SPEAKER_STEREO|SPEAKER_LOW_FREQUENCY)
-#endif
-
-#define KSAUDIO_SPEAKER_SURROUND_AVUTIL (KSAUDIO_SPEAKER_STEREO|SPEAKER_FRONT_CENTER)
-
-#ifndef KSAUDIO_SPEAKER_4POINT1
-#define KSAUDIO_SPEAKER_4POINT1 (KSAUDIO_SPEAKER_SURROUND|SPEAKER_LOW_FREQUENCY)
-#endif
-
 #define ACTUALLY_DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
         EXTERN_C const GUID DECLSPEC_SELECTANY name \
                 = { l, w1, w2, { b1, b2,  b3,  b4,  b5,  b6,  b7,  b8 } }
