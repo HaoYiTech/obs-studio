@@ -785,7 +785,7 @@ BOOL CAudioThread::InitAudio(int nInRateIndex, int nInChannelNum)
 		hr = m_client->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 10000000, 0, wfex, NULL);
 		if (FAILED(hr))
 			break;
-		// 保存WSAPI输出的采样率和声道数...
+		// 保存WASAPI输出的采样率和声道数...
 		m_out_sample_rate = wfex->nSamplesPerSec;
 		m_out_channel_num = wfex->nChannels;
 		m_out_sample_fmt = AV_SAMPLE_FMT_FLT;
