@@ -144,6 +144,9 @@
     <ClCompile Include="webrtc-aec.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="play-thread.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="window-login-base.h">
@@ -331,6 +334,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="webrtc-aec.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="play-thread.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

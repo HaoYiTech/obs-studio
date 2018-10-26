@@ -2,6 +2,7 @@
 #include <QPainter>
 #include "webrtc-aec.h"
 #include "student-app.h"
+#include "play-thread.h"
 #include "pull-thread.h"
 #include "web-thread.h"
 #include "FastSession.h"
@@ -30,6 +31,9 @@ CViewCamera::CViewCamera(QWidget *parent, int nDBCameraID)
   , m_bIsPreview(false)
   , m_lpViewLeft(NULL)
   , m_lpWebrtcAEC(NULL)
+  , m_lpAudioPlay(NULL)
+  , m_start_pts_ms(-1)
+  , m_sys_zero_ns(-1)
   , m_nCurRecvByte(0)
   , m_dwTimeOutMS(0)
   , m_nFlowTimer(-1)
@@ -50,7 +54,8 @@ CViewCamera::CViewCamera(QWidget *parent, int nDBCameraID)
 	m_nFlowTimer = this->startTimer(1 * 1000);
 	// 建立摄像头数据拉取成功的信号槽，为了避免RTSP数据线程调用QT的socket造成的问题...
 	this->connect(this, SIGNAL(doTriggerReadyToRecvFrame()), this, SLOT(onTriggerReadyToRecvFrame()));
-	// 初始化回音消除互斥对象...
+	// 初始化回音消除互斥对象和播放线程互斥对象...
+	pthread_mutex_init_value(&m_MutexPlay);
 	pthread_mutex_init_value(&m_MutexAEC);
 }
 
@@ -80,7 +85,10 @@ CViewCamera::~CViewCamera()
 	}
 	// 如果自己就是那个焦点窗口，需要重置...
 	App()->doResetFocus(this);
-	// 释放回音消除互斥对象...
+	// 释放音视频播放线程对象...
+	this->doDeletePlayer();
+	// 释放回音消除互斥对象和播放互斥对象...
+	pthread_mutex_destroy(&m_MutexPlay);
 	pthread_mutex_destroy(&m_MutexAEC);
 }
 
@@ -464,6 +472,8 @@ void CViewCamera::doPushFrame(FMS_FRAME & inFrame)
 	if (m_nCameraState < kCameraOnLine)
 		return;
 	ASSERT(m_nCameraState >= kCameraOnLine);
+	// 将获取到的音视频数据进行本地解码回放...
+	this->doPushPlayer(inFrame);
 	// 将超时计时点复位，重新计时...
 	m_dwTimeOutMS = ::GetTickCount();
 	// 累加接收数据包的字节数，加入缓存队列...
@@ -586,4 +596,123 @@ bool CViewCamera::doCameraStop()
 // 处理菜单的预览事件 => 开启或关闭SDL播放窗口...
 void CViewCamera::doTogglePreview()
 {
+	// 如果通道状态比在线状态小，需要删除本地回放，并重置预览状态...
+	if (m_nCameraState < kCameraOnLine) {
+		m_bIsPreview = false;
+		this->doDeletePlayer();
+		return;
+	}
+	// 通道状态一定大于或等于在线状态...
+	ASSERT(m_nCameraState >= kCameraOnLine);
+	// 对当前的预览状态取反...
+	m_bIsPreview = !m_bIsPreview;
+	// 根据当前状态对播放对象进行删除或重建操作...
+	m_bIsPreview ? this->doCreatePlayer() : this->doDeletePlayer();
+}
+
+// 重建音视频播放线程对象...
+void CViewCamera::doCreatePlayer()
+{
+	// 首先，释放之前创建的音视频播放对象...
+	this->doDeletePlayer();
+	// 重置系统0点时刻点，为了音视频同步...
+	m_sys_zero_ns = os_gettime_ns();
+	// 进入互斥对象，创建新的音视频播放对象...
+	pthread_mutex_lock(&m_MutexPlay);
+	// 获取音频播放参数，创建音频播放对象...
+	if (m_lpDataThread->GetAACHeader().size() > 0) {
+		int nRateIndex = m_lpDataThread->GetAudioRateIndex();
+		int nChannelNum = m_lpDataThread->GetAudioChannelNum();
+		m_lpAudioPlay = new CAudioPlay(this);
+		if (!m_lpAudioPlay->doInitAudio(nRateIndex, nChannelNum)) {
+			delete m_lpAudioPlay; m_lpAudioPlay = NULL;
+		}
+	}
+	// 获取视频播放参数，创建视频播放对象...
+	/*if (m_lpDataThread->GetAVCHeader().size() > 0) {
+		int nVideoFPS = m_lpDataThread->GetVideoFPS();
+		int nVideoWidth = m_lpDataThread->GetVideoWidth();
+		int nVideoHeight = m_lpDataThread->GetVideoHeight();
+		string & strSPS = m_lpDataThread->GetVideoSPS();
+		string & strPPS = m_lpDataThread->GetVideoPPS();
+		m_lpVideoPlay = new CVideoPlay(this);
+		if (!m_lpVideoPlay->doInitVideo(strSPS, strPPS, nVideoWidth, nVideoHeight, nVideoFPS)) {
+			delete m_lpVideoPlay; m_lpVideoPlay = NULL;
+		}
+	}*/
+	pthread_mutex_unlock(&m_MutexPlay);
+}
+
+// 删除音视频播放线程对象...
+void CViewCamera::doDeletePlayer()
+{
+	pthread_mutex_lock(&m_MutexPlay);
+	// 删除音频播放对象...
+	if (m_lpAudioPlay != NULL) {
+		delete m_lpAudioPlay;
+		m_lpAudioPlay = NULL;
+	}
+	// 删除视频播放对象...
+	/*if (m_lpVideoPlay != NULL) {
+		delete m_lpVideoPlay;
+		m_lpVideoPlay = NULL;
+	}*/
+	// 重置系统0点时刻点...
+	m_sys_zero_ns = -1;
+	m_start_pts_ms = -1;
+	// 退出互斥保护对象...
+	pthread_mutex_unlock(&m_MutexPlay);
+}
+
+// 将获取到的音视频数据进行本地解码回放...
+void CViewCamera::doPushPlayer(FMS_FRAME & inFrame)
+{
+	// 如果系统0点时刻无效，直接返回...
+	if (m_sys_zero_ns < 0) return;
+	ASSERT(m_sys_zero_ns > 0);
+	// 进入互斥保护对象...
+	pthread_mutex_lock(&m_MutexPlay);
+	// 获取第一帧的PTS时间戳 => 做为启动时间戳，注意不是系统0点时刻...
+	uint32_t inSendTime = inFrame.dwSendTime;
+	bool bIsKeyFrame = inFrame.is_keyframe;
+	int inTypeTag = inFrame.typeFlvTag;
+	if (m_start_pts_ms < 0) {
+		m_start_pts_ms = inSendTime;
+		blog(LOG_INFO, "%s StartPTS: %lu, Type: %d", TM_RECV_NAME, inSendTime, inTypeTag);
+	}
+	// 如果当前帧的时间戳比第一帧的时间戳还要小，不要扔掉，设置成启动时间戳就可以了...
+	if (inSendTime < m_start_pts_ms) {
+		blog(LOG_INFO, "%s Error => SendTime: %lu, StartPTS: %I64d, Type: %d", TM_RECV_NAME, inSendTime, m_start_pts_ms, inTypeTag);
+		inSendTime = m_start_pts_ms;
+	}
+
+	// 注意：寻找第一个视频关键帧的时候，音频帧不要丢弃...
+	// 如果有视频，视频第一帧必须是视频关键帧，不丢弃的话解码会失败...
+	/*if ((inTypeTag == PT_TAG_VIDEO) && (m_lpVideoPlay != NULL) && (!m_bFindFirstVKey)) {
+		// 如果当前视频帧，不是关键帧，直接丢弃...
+		if (!bIsKeyFrame) {
+			//blog(LOG_INFO, "%s Discard for First Video KeyFrame => PTS: %lu, Type: %d", TM_RECV_NAME, inSendTime, inTypeTag);
+			pthread_mutex_unlock(&m_MutexPlay);
+			return;
+		}
+		// 设置已经找到第一个视频关键帧标志...
+		m_bFindFirstVKey = true;
+		m_bIsDrawImage = true;
+		this->update();
+		// 打印找到第一个关键帧日志信息...
+		blog(LOG_INFO, "%s Find First Video KeyFrame OK => PTS: %lu, Type: %d", TM_RECV_NAME, inSendTime, inTypeTag);
+	}*/
+
+	// 计算当前帧的时间戳 => 时间戳必须做修正，否则会混乱...
+	int nCalcPTS = inSendTime - (uint32_t)m_start_pts_ms;
+	// 如果音频播放线程有效，并且是音频数据包，才进行音频数据包投递操作...
+	if (m_lpAudioPlay != NULL && inTypeTag == PT_TAG_AUDIO) {
+		m_lpAudioPlay->doPushFrame(inFrame, nCalcPTS);
+	}
+	// 如果视频播放线程有效，并且是视频数据包，才进行视频数据包投递操作...
+	/*if (m_lpVideoPlay != NULL && inTypeTag == PT_TAG_VIDEO) {
+		m_lpVideoPlay->doPushFrame(inFrame, nCalcPTS);
+	}*/
+	// 释放互斥保护对象...
+	pthread_mutex_unlock(&m_MutexPlay);
 }
