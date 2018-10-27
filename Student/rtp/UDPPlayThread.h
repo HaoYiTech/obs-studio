@@ -47,32 +47,29 @@ protected:
 class CVideoThread : public CDecoder, public OSThread
 {
 public:
-	CVideoThread(CPlaySDL * lpPlaySDL);
+	CVideoThread(CPlaySDL * lpPlaySDL, CViewRender * lpViewRender);
 	virtual ~CVideoThread();
 	virtual void Entry();
 public:
-	BOOL	InitVideo(CViewRender * lpViewRender, string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS);
+	BOOL	InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS);
 	void	doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, int inOffset);
 private:
 	void	doDecodeFrame();
 	void	doDisplaySDL();
-	void	doReBuildSDL();
+	void	doReBuildSDL(int nPicWidth, int nPicHeight);
+	bool    IsCanRebuildSDL(int nPicWidth, int nPicHeight);
 private:
-	int				m_nDstFPS;
-	int				m_nDstWidth;
-	int				m_nDstHeight;
-	string			m_strSPS;
-	string			m_strPPS;
-
-	CViewRender  *	m_lpViewRender;	    // 播放窗口
-	SDL_Window   *  m_sdlScreen;		// SDL窗口
-	SDL_Renderer *  m_sdlRenderer;		// SDL渲染
-    SDL_Texture  *  m_sdlTexture;		// SDL纹理
-
-	CPlaySDL	 *  m_lpPlaySDL;		// 播放控制
-
-	uint8_t      *  m_img_buffer_ptr;   // 单帧图像输出空间
-	int             m_img_buffer_size;  // 单帧图像输出大小
+	string			m_strSPS;              // 保存SPS
+	string			m_strPPS;              // 保存PPS
+	CPlaySDL	 *  m_lpPlaySDL;           // 播放控制
+	CViewRender  *	m_lpViewRender;	       // 播放窗口
+	SDL_Window   *  m_sdlScreen;           // SDL窗口
+	SDL_Renderer *  m_sdlRenderer;         // SDL渲染
+    SDL_Texture  *  m_sdlTexture;          // SDL纹理
+	uint8_t      *  m_img_buffer_ptr;      // 单帧图像输出空间
+	int             m_img_buffer_size;     // 单帧图像输出大小
+	int             m_nSDLTextureWidth;    // SDL纹理的宽度...
+	int             m_nSDLTextureHeight;   // SDL纹理的高度...
 };
 
 class CAudioThread : public CDecoder, public OSThread

@@ -187,6 +187,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="window-student-main.cpp" />
     <ClCompile Include="window-view-camera.cpp" />
     <ClCompile Include="window-view-left.cpp" />
+    <ClCompile Include="window-view-player.cpp" />
     <ClCompile Include="window-view-render.cpp" />
     <ClCompile Include="window-view-right.cpp" />
     <ClCompile Include="window-view-teacher.cpp" />
@@ -245,6 +246,11 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="fastdfs\fastdfs.h" />
     <ClInclude Include="play-thread.h" />
     <ClInclude Include="webrtc-aec.h" />
+    <QtMoc Include="window-view-player.hpp">
+      <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.;.\rtp;.\json;.\curl;.\fastdfs;.\common;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName)\.;.\obs-frontend-api;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\deps\libff;E:\obs-studio\deps\blake2\src;E:\obs-studio\vsbuild\config;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork;$(QTDIR)\mkspecs\win32-msvc2015;.\..\librtsp\liveMedia\include;.\..\librtsp\groupsock\include;.\..\librtsp\UsageEnvironment\include;.\..\librtsp\BasicUsageEnvironment\include;.\..\libwebrtc-aec\inc</IncludePath>
+      <Define Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;_UNICODE</Define>
+      <Define Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">WIN32;_WINDOWS;NDEBUG;DL_OPENGL=libobs-opengl.dll;DL_D3D9= -DDL_D3D11=libobs-d3d11.dll -DUNICODE -D_UNICODE -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_WARNINGS -DHAVE_OBSCONFIG_H -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -DQT_NO_DEBUG  -I. -I.\rtp -I.\json -I.\curl -I.\fastdfs -I.\common -I.\GeneratedFiles -I.\GeneratedFiles\$(ConfigurationName)\. -I.\obs-frontend-api -IE:\obs-deps\win32\include -IE:\obs-studio\libobs -IE:\obs-studio\deps\libff -IE:\obs-studio\deps\blake2\src -IE:\obs-studio\vsbuild\config -IE:\obs-studio\deps\jansson\src -IE:\obs-studio\vsbuild\deps\jansson\include -I$(QTDIR)\include -I$(QTDIR)\include\QtCore -I$(QTDIR)\include\QtGui -I$(QTDIR)\include\QtANGLE -I$(QTDIR)\include\QtWidgets -I$(QTDIR)\include\QtNetwork -I$(QTDIR)\mkspecs\win32-msvc2015 -I.\..\librtsp\liveMedia\include -I.\..\librtsp\groupsock\include -I.\..\librtsp\UsageEnvironment\include -I.\..\librtsp\BasicUsageEnvironment\include -I.\..\libwebrtc-aec\inc</Define>
+    </QtMoc>
     <QtMoc Include="window-view-render.hpp">
       <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.;.\rtp;.\json;.\curl;.\fastdfs;.\common;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName)\.;.\obs-frontend-api;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\deps\libff;E:\obs-studio\deps\blake2\src;E:\obs-studio\vsbuild\config;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork;$(QTDIR)\mkspecs\win32-msvc2015;.\..\librtsp\liveMedia\include;.\..\librtsp\groupsock\include;.\..\librtsp\UsageEnvironment\include;.\..\librtsp\BasicUsageEnvironment\include</IncludePath>
       <Define Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;_UNICODE</Define>

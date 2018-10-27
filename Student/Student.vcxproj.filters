@@ -147,6 +147,9 @@
     <ClCompile Include="play-thread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="window-view-player.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="window-login-base.h">
@@ -186,6 +189,9 @@
       <Filter>FastDFS Files</Filter>
     </QtMoc>
     <QtMoc Include="window-view-render.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="window-view-player.hpp">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>

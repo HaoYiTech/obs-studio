@@ -1,10 +1,14 @@
 
 #include "play-thread.h"
 #include "BitWritter.h"
+#include "window-view-player.hpp"
 #include "window-view-camera.hpp"
 
-/*CVideoPlay::CVideoPlay(CViewCamera * lpViewCamera)
-  : m_lpViewCamera(lpViewCamera)
+CVideoPlay::CVideoPlay(CViewPlayer * lpViewPlayer, int64_t inSysZeroNS)
+  : m_lpViewPlayer(lpViewPlayer)
+  , m_sys_zero_ns(inSysZeroNS)
+  , m_nSDLTextureHeight(0)
+  , m_nSDLTextureWidth(0)
   , m_img_buffer_ptr(NULL)
   , m_img_buffer_size(0)
   , m_lpDecContext(NULL)
@@ -15,9 +19,6 @@
   , m_sdlRenderer(NULL)
   , m_sdlTexture(NULL)
   , m_sdlScreen(NULL)
-  , m_nDstHeight(0)
-  , m_nDstWidth(0)
-  , m_nDstFPS(0)
 {
 	// 初始化解码器互斥对象...
 	pthread_mutex_init_value(&m_VideoMutex);
@@ -45,20 +46,39 @@ CVideoPlay::~CVideoPlay()
 		m_sdlTexture = NULL;
 	}
 	// 销毁SDL窗口时会隐藏关联窗口...
-	if (m_lpViewCamera != NULL) {
-		HWND hWnd = m_lpViewCamera->GetRenderHWnd();
+	if (m_lpViewPlayer != NULL) {
+		HWND hWnd = m_lpViewPlayer->GetRenderHWnd();
 		BOOL bRet = ::ShowWindow(hWnd, SW_SHOW);
 	}
 	// 释放单帧图像转换空间...
 	if (m_img_buffer_ptr != NULL) {
 		av_free(m_img_buffer_ptr);
 		m_img_buffer_ptr = NULL;
+		m_img_buffer_size = 0;
 	}
 	// 释放解码器互斥对象...
 	pthread_mutex_destroy(&m_VideoMutex);
 }
 
-void CVideoPlay::doReBuildSDL()
+// 判断SDL是否需要重建...
+bool CVideoPlay::IsCanRebuildSDL(int nPicWidth, int nPicHeight)
+{
+	// 纹理的宽高发生变化，需要重建，需要清理窗口变化，避免重复创建...
+	if (m_nSDLTextureWidth != nPicWidth || m_nSDLTextureHeight != nPicHeight) {
+		m_lpViewPlayer->GetAndResetRenderFlag();
+		return true;
+	}
+	ASSERT(m_nSDLTextureWidth == nPicWidth && m_nSDLTextureHeight == nPicHeight);
+	// SDL相关对象无效，需要重建，需要清理窗口变化，避免重复创建...
+	if (m_sdlScreen == NULL || m_sdlRenderer == NULL || m_sdlTexture == NULL) {
+		m_lpViewPlayer->GetAndResetRenderFlag();
+		return true;
+	}
+	ASSERT(m_sdlScreen != NULL && m_sdlRenderer != NULL && m_sdlTexture != NULL);
+	return m_lpViewPlayer->GetAndResetRenderFlag();
+}
+
+void CVideoPlay::doReBuildSDL(int nPicWidth, int nPicHeight)
 {
 	// 销毁SDL窗口 => 会自动隐藏关联窗口...
 	if (m_sdlScreen != NULL) {
@@ -76,14 +96,17 @@ void CVideoPlay::doReBuildSDL()
 		m_sdlTexture = NULL;
 	}
 	// 重建SDL相关对象...
-	if (m_lpViewCamera != NULL) {
+	if (m_lpViewPlayer != NULL) {
 		// 销毁SDL窗口时会隐藏关联窗口 => 必须用Windows的API接口...
-		HWND hWnd = m_lpViewCamera->GetRenderHWnd();
+		HWND hWnd = m_lpViewPlayer->GetRenderHWnd();
 		BOOL bRet = ::ShowWindow(hWnd, SW_SHOW);
 		// 创建SDL需要的对象 => 窗口、渲染、纹理...
 		m_sdlScreen = SDL_CreateWindowFrom((void*)hWnd);
 		m_sdlRenderer = SDL_CreateRenderer(m_sdlScreen, -1, 0);
-		m_sdlTexture = SDL_CreateTexture(m_sdlRenderer, SDL_PIXELFORMAT_IYUV, SDL_TEXTUREACCESS_STREAMING, m_nDstWidth, m_nDstHeight);
+		m_sdlTexture = SDL_CreateTexture(m_sdlRenderer, SDL_PIXELFORMAT_IYUV, SDL_TEXTUREACCESS_STREAMING, nPicWidth, nPicHeight);
+		// 保存Texture的高宽，当发生高宽改变时，做为重建Texture的凭证依据...
+		m_nSDLTextureHeight = nPicHeight;
+		m_nSDLTextureWidth = nPicWidth;
 	}
 }
 
@@ -115,20 +138,16 @@ void CVideoPlay::doDecoderFree()
 
 bool CVideoPlay::doInitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS)
 {
+	///////////////////////////////////////////////////////////////////////
+	// 注意：这里丢弃了nWidth|nHeight|nFPS，使用解码之后的图片高宽更精确...
+	///////////////////////////////////////////////////////////////////////
 	// 如果已经初始化，直接返回...
 	if (m_lpDecCodec != NULL || m_lpDecContext != NULL)
 		return false;
 	ASSERT(m_lpDecCodec == NULL && m_lpDecContext == NULL);
 	// 保存传递过来的参数信息...
-	m_nDstHeight = nHeight;
-	m_nDstWidth = nWidth;
-	m_nDstFPS = nFPS;
 	m_strSPS = inSPS;
 	m_strPPS = inPPS;
-	// 强制还原渲染矩形区状态 => 默认变化，重建SDL...
-	m_lpViewCamera->GetAndResetRenderFlag();
-	// 重建SDL窗口对象...
-	this->doReBuildSDL();
 	// 初始化ffmpeg解码器...
 	av_register_all();
 	// 准备一些特定的参数...
@@ -153,14 +172,6 @@ bool CVideoPlay::doInitVideo(string & inSPS, string & inPPS, int nWidth, int nHe
 	// 准备一个全局的解码结构体 => 解码数据帧是相互关联的...
 	m_lpDecFrame = av_frame_alloc();
 	ASSERT(m_lpDecFrame != NULL);
-
-	// 分配单帧图像转换空间...
-	int nDstWidth = m_nDstWidth;
-	int nDstHeight = m_nDstHeight;
-	enum AVPixelFormat nDestFormat = AV_PIX_FMT_YUV420P;
-	m_img_buffer_size = avpicture_get_size(nDestFormat, nDstWidth, nDstHeight);
-	m_img_buffer_ptr = (uint8_t *)av_malloc(m_img_buffer_size);
-
 	// 启动线程开始运转...
 	this->Start();
 	return true;
@@ -289,7 +300,7 @@ void CVideoPlay::doDisplayVideo()
 		return;
 	}
 	// 计算当前时刻点与系统0点位置的时间差 => 转换成毫秒...
-	int64_t sys_cur_ms = (os_gettime_ns() - m_lpViewCamera->GetSysZeroNS()) / 1000000;
+	int64_t sys_cur_ms = (os_gettime_ns() - m_sys_zero_ns) / 1000000;
 	// 取出第一个已解码数据帧 => 时间最小的数据帧...
 	GM_AVFrame::iterator itorItem = m_MapFrame.begin();
 	AVFrame * lpSrcFrame = itorItem->second;
@@ -311,32 +322,43 @@ void CVideoPlay::doDisplayVideo()
 	// 解码后的高宽，可能与预设的高宽不一致...
 	int nSrcWidth = m_lpDecContext->width;
 	int nSrcHeight = m_lpDecContext->height;
-	int nDstWidth = m_nDstWidth;
-	int nDstHeight = m_nDstHeight;
+	int nDstWidth = m_lpDecContext->width;   // 没有使用预设值m_nDstWidth，海康的rtsp获取高宽有问题;
+	int nDstHeight = m_lpDecContext->height; // 没有使用预设值m_nDstHeight，海康的rtsp获取高宽有问题;
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 注意：解码后的高宽，可能与预设高宽不一致...
 	// 注意：不管什么格式，都需要进行像素格式的转换...
-	// 注意：必须按照预设图像的高宽进行转换，预先分配转换空间，避免来回创建释放临时空间...
+	// 注意：必须按照解码后的图像高宽进行转换，预先分配转换空间，避免来回创建释放临时空间...
+	// 注意：以前使用预设值是由于要先创建SDL纹理，现在改进为可以后创建SDL纹理，预设的高宽就没有用了，只需要解码后的实际高宽就可以了...
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// 计算格式转换需要的缓存空间，并对缓存空间进行重新分配...
+	int dst_buffer_size = avpicture_get_size(nDestFormat, nDstWidth, nDstHeight);
+	if (dst_buffer_size > m_img_buffer_size) {
+		// 删除之前分配的单帧最大空间...
+		if (m_img_buffer_ptr != NULL) {
+			av_free(m_img_buffer_ptr);
+			m_img_buffer_ptr = NULL;
+		}
+		// 重新分配最新的单帧最大空间...
+		m_img_buffer_size = dst_buffer_size;
+		m_img_buffer_ptr = (uint8_t *)av_malloc(m_img_buffer_size);
+	}
+	// 构造新的目标帧对象...
 	AVPicture pDestFrame = { 0 };
 	avpicture_fill(&pDestFrame, m_img_buffer_ptr, nDestFormat, nDstWidth, nDstHeight);
-	// 另一种方法：临时分配图像格式转换空间的方法...
-	//int nDestBufSize = avpicture_get_size(nDestFormat, nDstWidth, nDstHeight);
-	//uint8_t * pDestOutBuf = (uint8_t *)av_malloc(nDestBufSize);
-	//avpicture_fill(&pDestFrame, pDestOutBuf, nDestFormat, nDstWidth, nDstHeight);
-	// 调用ffmpeg的格式转换接口函数...
+	// 调用ffmpeg的格式转换接口函数，这里只进行图像格式的转换，不对图像的大小进行缩放...
 	struct SwsContext * img_convert_ctx = sws_getContext(nSrcWidth, nSrcHeight, nSrcFormat, nDstWidth, nDstHeight, nDestFormat, SWS_BICUBIC, NULL, NULL, NULL);
 	int nReturn = sws_scale(img_convert_ctx, (const uint8_t* const*)lpSrcFrame->data, lpSrcFrame->linesize, 0, nSrcHeight, pDestFrame.data, pDestFrame.linesize);
 	sws_freeContext(img_convert_ctx);
 	//////////////////////////////////////////////////////////////////////////////////
 	// 使用SDL 进行画面绘制工作 => 正在处理全屏时，不能绘制，会与D3D发生冲突崩溃...
 	//////////////////////////////////////////////////////////////////////////////////
-	if (m_lpViewCamera != NULL && !m_lpViewCamera->IsChangeScreen()) {
-		if (m_lpViewCamera->GetAndResetRenderFlag()) {
-			this->doReBuildSDL();
+	if (m_lpViewPlayer != NULL && !m_lpViewPlayer->IsChangeScreen()) {
+		// 用解码后图像高宽去判断是否需要重建SDL，播放窗口发生变化也要重建...
+		if (this->IsCanRebuildSDL(nSrcWidth, nSrcHeight)) {
+			this->doReBuildSDL(nSrcWidth, nSrcHeight);
 		}
 		// 获取渲染窗口的矩形区域...
-		QRect & rcRect = m_lpViewCamera->GetRenderRect();
+		QRect & rcRect = m_lpViewPlayer->GetRenderRect();
 		// 注意：这里的源是转换后的图像，目的是播放窗口..
 		SDL_Rect srcSdlRect = { 0 };
 		SDL_Rect dstSdlRect = { 0 };
@@ -346,25 +368,30 @@ void CVideoPlay::doDisplayVideo()
 		dstSdlRect.y = rcRect.top();
 		dstSdlRect.w = rcRect.width();
 		dstSdlRect.h = rcRect.height();
+		// 计算源头和目的宽高比例，做为变换基线参考...
+		float srcRatio = srcSdlRect.w * 1.0f / srcSdlRect.h;
+		float dstRatio = dstSdlRect.w * 1.0f / dstSdlRect.h;
 		// 先把画面绘制的Texture上，再把Texture缩放到播放窗口上面，Texture的大小在创建时使用的是预设高宽...
 		int nResult = SDL_UpdateTexture(m_sdlTexture, &srcSdlRect, pDestFrame.data[0], pDestFrame.linesize[0]);
 		if (nResult < 0) { blog(LOG_INFO, "%s [Video] Error => %s", TM_RECV_NAME, SDL_GetError()); }
 		nResult = SDL_RenderClear(m_sdlRenderer);
 		if (nResult < 0) { blog(LOG_INFO, "%s [Video] Error => %s", TM_RECV_NAME, SDL_GetError()); }
-		// 计算目的窗口矩形的高度值(宽不变) => 源(高)/源(宽) = 目(高)/目(宽)
-		//dstSdlRect.h = srcSdlRect.h * dstSdlRect.w / srcSdlRect.w;
-		//dstSdlRect.y = (rcRect.height() - dstSdlRect.h) / 2;
-		// 计算目的窗口矩形的宽度值(高不变) => 源(高)/源(宽) = 目(高)/目(宽)
-		dstSdlRect.w = srcSdlRect.w * dstSdlRect.h / srcSdlRect.h;
-		dstSdlRect.x = (rcRect.width() - dstSdlRect.w) / 2;
+		// 如果源头比例比目的比例大，用宽度做为基线，否则用高度做为基线...
+		if (srcRatio >= dstRatio) {
+			// 计算目的窗口矩形的高度值(宽不变) => 源(高)/源(宽) = 目(高)/目(宽)
+			dstSdlRect.h = srcSdlRect.h * dstSdlRect.w / srcSdlRect.w;
+			dstSdlRect.y = (rcRect.height() - dstSdlRect.h) / 2;
+		} else {
+			// 计算目的窗口矩形的宽度值(高不变) => 源(高)/源(宽) = 目(高)/目(宽)
+			dstSdlRect.w = srcSdlRect.w * dstSdlRect.h / srcSdlRect.h;
+			dstSdlRect.x = (rcRect.width() - dstSdlRect.w) / 2;
+		}
 		// 将计算后的矩形区域进行拷贝显示到渲染窗口当中...
 		nResult = SDL_RenderCopy(m_sdlRenderer, m_sdlTexture, &srcSdlRect, &dstSdlRect);
 		if (nResult < 0) { blog(LOG_INFO, "%s [Video] Error => %s", TM_RECV_NAME, SDL_GetError()); }
 		// 正式激发渲染窗口，绘制出图像来...
 		SDL_RenderPresent(m_sdlRenderer);
 	}
-	// 释放临时分配的数据空间...
-	//av_free(pDestOutBuf);
 	// 释放并删除已经使用完毕原始数据块...
 	av_frame_free(&lpSrcFrame);
 	m_MapFrame.erase(itorItem);
@@ -397,7 +424,7 @@ void CVideoPlay::Entry()
 		// 进行sleep等待...
 		this->doSleepTo();
 	}
-}*/
+}
 
 static inline enum audio_format convert_sample_format(int f)
 {
@@ -431,8 +458,9 @@ static inline enum speaker_layout convert_speaker_layout(uint8_t channels)
 	}
 }
 
-CAudioPlay::CAudioPlay(CViewCamera * lpViewCamera)
+CAudioPlay::CAudioPlay(CViewCamera * lpViewCamera, int64_t inSysZeroNS)
   : m_lpViewCamera(lpViewCamera)
+  , m_sys_zero_ns(inSysZeroNS)
   , m_horn_resampler(NULL)
   , m_lpDecContext(NULL)
   , m_lpDecFrame(NULL)
@@ -765,7 +793,7 @@ void CAudioPlay::doDisplayAudio()
 		return;
 	}
 	// 计算当前时间与0点位置的时间差 => 转换成毫秒...
-	int64_t sys_cur_ms = (os_gettime_ns() - m_lpViewCamera->GetSysZeroNS()) / 1000000;
+	int64_t sys_cur_ms = (os_gettime_ns() - m_sys_zero_ns) / 1000000;
 	// 获取第一个已解码数据帧 => 时间最小的数据帧...
 	int64_t frame_pts_ms = 0; int out_buffer_size = 0;
 	circlebuf_peek_front(&m_circle, &frame_pts_ms, sizeof(int64_t));

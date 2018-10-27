@@ -22,10 +22,11 @@ extern "C"
 typedef map<int64_t, AVPacket>		GM_AVPacket;	// DTS => AVPacket  => 解码前的数据帧 => 毫秒 => 1/1000
 typedef map<int64_t, AVFrame*>		GM_AVFrame;	    // PTS => AVFrame   => 解码后的视频帧 => 毫秒 => 1/1000
 
-/*class CVideoPlay : public OSThread
+class CViewPlayer;
+class CVideoPlay : public OSThread
 {
 public:
-	CVideoPlay(CViewCamera * lpViewCamera);
+	CVideoPlay(CViewPlayer * lpViewPlayer, int64_t inSysZeroNS);
 	virtual ~CVideoPlay();
 private:
 	virtual void	Entry();
@@ -37,14 +38,12 @@ private:
 	void    doDecoderFree();
 	void    doDecodeFrame();
 	void    doDisplayVideo();
-	void	doReBuildSDL();
 	void    doPushPacket(AVPacket & inPacket);
+	void	doReBuildSDL(int nPicWidth, int nPicHeight);
+	bool    IsCanRebuildSDL(int nPicWidth, int nPicHeight);
 private:
-	int				    m_nDstFPS;
-	int				    m_nDstWidth;
-	int				    m_nDstHeight;
-	string              m_strSPS;
-	string              m_strPPS;
+	string              m_strSPS;              // 保存SPS
+	string              m_strPPS;              // 保存PPS
 
 	AVCodec         *   m_lpDecCodec;		   // 解码器...
 	AVFrame         *   m_lpDecFrame;		   // 解码结构体...
@@ -54,20 +53,23 @@ private:
 	SDL_Window      *   m_sdlScreen;		   // SDL窗口
 	SDL_Renderer    *   m_sdlRenderer;		   // SDL渲染
 	SDL_Texture     *   m_sdlTexture;		   // SDL纹理
-	CViewCamera     *   m_lpViewCamera;        // 通道窗口对象...
+	CViewPlayer     *   m_lpViewPlayer;        // 播放窗口对象...
 	pthread_mutex_t     m_VideoMutex;          // 解码器互斥体对象...
 	uint8_t         *   m_img_buffer_ptr;      // 单帧图像输出空间
 	int                 m_img_buffer_size;     // 单帧图像输出大小
+	int                 m_nSDLTextureWidth;    // SDL纹理的宽度...
+	int                 m_nSDLTextureHeight;   // SDL纹理的高度...
 
+	int64_t             m_sys_zero_ns;         // 系统计时零点 => 启动时间戳 => 纳秒...
 	int64_t				m_play_next_ns;		   // 下一个要播放帧的系统纳秒值...
 	bool				m_bNeedSleep;		   // 休息标志 => 只要有解码或播放就不能休息...
-};*/
+};
 
 class CViewCamera;
 class CAudioPlay : public OSThread
 {
 public:
-	CAudioPlay(CViewCamera * lpViewCamera);
+	CAudioPlay(CViewCamera * lpViewCamera, int64_t inSysZeroNS);
 	virtual ~CAudioPlay();
 private:
 	virtual void	Entry();
@@ -106,6 +108,7 @@ private:
 	resample_info       m_horn_sample_info;    // 扬声器需要的音频样本格式
 	audio_resampler_t * m_horn_resampler;      // 解码后原始样本数据转换成扬声器样本格式 => dec 转 horn
 
+	int64_t             m_sys_zero_ns;         // 系统计时零点 => 启动时间戳 => 纳秒...
 	int64_t				m_play_next_ns;		   // 下一个要播放帧的系统纳秒值...
 	bool				m_bNeedSleep;		   // 休息标志 => 只要有解码或播放就不能休息...
 	int                 m_frame_num;           // PCM数据帧总数

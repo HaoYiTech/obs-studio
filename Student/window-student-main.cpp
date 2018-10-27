@@ -12,6 +12,7 @@
 #include "window-dlg-push.hpp"
 #include "window-student-main.h"
 #include "window-view-camera.hpp"
+#include "window-view-player.hpp"
 #include "window-view-teacher.hpp"
 
 #define STARTUP_SEPARATOR   "==== Startup complete ==============================================="
@@ -107,8 +108,14 @@ StudentWindow::StudentWindow(QWidget *parent)
 // 响应左侧窗口的右键菜单事件...
 void StudentWindow::on_LeftViewCustomContextMenuRequested(const QPoint &pos)
 {
-	// 获取右键位置的摄像头窗口对象...
+	// 获取右键位置的摄像头窗口对象或者视频回放窗口对象...
+	CViewPlayer * lpViewPlayer = qobject_cast<CViewPlayer*>(m_ui.LeftView->childAt(pos));
 	CViewCamera * lpViewCamera = qobject_cast<CViewCamera*>(m_ui.LeftView->childAt(pos));
+	// 如果视频回放窗口有效，读取父窗口的摄像头对象...
+	if (lpViewPlayer != NULL) {
+		lpViewCamera = qobject_cast<CViewCamera*>(lpViewPlayer->parent());
+	}
+	// 如果摄像头窗口对象无效，直接返回...
 	if (lpViewCamera == NULL)
 		return;
 	// 如果选中摄像头窗口不是焦点窗口，或焦点窗口的编号与摄像头里面的编号不一致，直接返回...

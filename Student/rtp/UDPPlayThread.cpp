@@ -74,18 +74,18 @@ void CDecoder::doSleepTo()
 	os_sleepto_ns(cur_time_ns + delta_ns);
 }
 
-CVideoThread::CVideoThread(CPlaySDL * lpPlaySDL)
-  : m_lpPlaySDL(lpPlaySDL)
+CVideoThread::CVideoThread(CPlaySDL * lpPlaySDL, CViewRender * lpViewRender)
+  : m_lpViewRender(lpViewRender)
+  , m_lpPlaySDL(lpPlaySDL)
+  , m_nSDLTextureHeight(0)
+  , m_nSDLTextureWidth(0)
   , m_img_buffer_ptr(NULL)
   , m_img_buffer_size(0)
-  , m_lpViewRender(NULL)
   , m_sdlRenderer(NULL)
   , m_sdlTexture(NULL)
   , m_sdlScreen(NULL)
-  , m_nDstHeight(0)
-  , m_nDstWidth(0)
-  , m_nDstFPS(0)
 {
+	ASSERT(m_lpViewRender != NULL);
 	ASSERT( m_lpPlaySDL != NULL );
 }
 
@@ -115,10 +115,29 @@ CVideoThread::~CVideoThread()
 	if( m_img_buffer_ptr != NULL ) {
 		av_free(m_img_buffer_ptr);
 		m_img_buffer_ptr = NULL;
+		m_img_buffer_size = 0;
 	}
 }
 
-void CVideoThread::doReBuildSDL()
+// 判断SDL是否需要重建...
+bool CVideoThread::IsCanRebuildSDL(int nPicWidth, int nPicHeight)
+{
+	// 纹理的宽高发生变化，需要重建，需要清理窗口变化，避免重复创建...
+	if (m_nSDLTextureWidth != nPicWidth || m_nSDLTextureHeight != nPicHeight) {
+		m_lpViewRender->GetAndResetRenderFlag();
+		return true;
+	}
+	ASSERT(m_nSDLTextureWidth == nPicWidth && m_nSDLTextureHeight == nPicHeight);
+	// SDL相关对象无效，需要重建，需要清理窗口变化，避免重复创建...
+	if (m_sdlScreen == NULL || m_sdlRenderer == NULL || m_sdlTexture == NULL) {
+		m_lpViewRender->GetAndResetRenderFlag();
+		return true;
+	}
+	ASSERT(m_sdlScreen != NULL && m_sdlRenderer != NULL && m_sdlTexture != NULL);
+	return m_lpViewRender->GetAndResetRenderFlag();
+}
+
+void CVideoThread::doReBuildSDL(int nPicWidth, int nPicHeight)
 {
 	// 销毁SDL窗口 => 会自动隐藏关联窗口...
 	if( m_sdlScreen != NULL ) {
@@ -143,27 +162,25 @@ void CVideoThread::doReBuildSDL()
 		// 创建SDL需要的对象 => 窗口、渲染、纹理...
 		m_sdlScreen = SDL_CreateWindowFrom((void*)hWnd);
 		m_sdlRenderer = SDL_CreateRenderer(m_sdlScreen, -1, 0);
-		m_sdlTexture = SDL_CreateTexture(m_sdlRenderer, SDL_PIXELFORMAT_IYUV, SDL_TEXTUREACCESS_STREAMING, m_nDstWidth, m_nDstHeight);
+		m_sdlTexture = SDL_CreateTexture(m_sdlRenderer, SDL_PIXELFORMAT_IYUV, SDL_TEXTUREACCESS_STREAMING, nPicWidth, nPicHeight);
+		// 保存Texture的高宽，当发生高宽改变时，做为重建Texture的凭证依据...
+		m_nSDLTextureHeight = nPicHeight;
+		m_nSDLTextureWidth = nPicWidth;
 	}
 }
 
-BOOL CVideoThread::InitVideo(CViewRender * lpViewRender, string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS)
+BOOL CVideoThread::InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS)
 {
+	///////////////////////////////////////////////////////////////////////
+	// 注意：这里丢弃了nWidth|nHeight|nFPS，使用解码之后的图片高宽更精确...
+	///////////////////////////////////////////////////////////////////////
 	// 如果已经初始化，直接返回...
 	if( m_lpCodec != NULL || m_lpDecoder != NULL )
 		return false;
 	ASSERT( m_lpCodec == NULL && m_lpDecoder == NULL );
 	// 保存传递过来的参数信息...
-	m_lpViewRender = lpViewRender;
-	m_nDstHeight = nHeight;
-	m_nDstWidth = nWidth;
-	m_nDstFPS = nFPS;
 	m_strSPS = inSPS;
 	m_strPPS = inPPS;
-	// 强制还原渲染矩形区状态 => 默认变化，重建SDL...
-	m_lpViewRender->GetAndResetRenderFlag();
-	// 重建SDL窗口对象...
-	this->doReBuildSDL();
 	// 初始化ffmpeg解码器...
 	av_register_all();
 	// 准备一些特定的参数...
@@ -188,14 +205,6 @@ BOOL CVideoThread::InitVideo(CViewRender * lpViewRender, string & inSPS, string 
 	// 准备一个全局的解码结构体 => 解码数据帧是相互关联的...
 	m_lpDFrame = av_frame_alloc();
 	ASSERT( m_lpDFrame != NULL );
-
-	// 分配单帧图像转换空间...
-	int nDstWidth = m_nDstWidth;
-	int nDstHeight = m_nDstHeight;
-	enum AVPixelFormat nDestFormat = AV_PIX_FMT_YUV420P;
-	m_img_buffer_size = avpicture_get_size(nDestFormat, nDstWidth, nDstHeight);
-	m_img_buffer_ptr = (uint8_t *)av_malloc(m_img_buffer_size);
-
 	// 启动线程开始运转...
 	this->Start();
 	return true;
@@ -294,13 +303,27 @@ void CVideoThread::doDisplaySDL()
 	// 解码后的高宽，可能与预设的高宽不一致...
 	int nSrcWidth = m_lpDecoder->width;
 	int nSrcHeight = m_lpDecoder->height;
-	int nDstWidth = m_nDstWidth;
-	int nDstHeight = m_nDstHeight;
+	int nDstWidth = m_lpDecoder->width;   // 没有使用预设值m_nDstWidth，海康的rtsp获取高宽有问题;
+	int nDstHeight = m_lpDecoder->height; // 没有使用预设值m_nDstHeight，海康的rtsp获取高宽有问题;
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 注意：解码后的高宽，可能与预设高宽不一致...
 	// 注意：不管什么格式，都需要进行像素格式的转换...
-	// 注意：必须按照预设图像的高宽进行转换，预先分配转换空间，避免来回创建释放临时空间...
+	// 注意：必须按照解码后的图像高宽进行转换，预先分配转换空间，避免来回创建释放临时空间...
+	// 注意：以前使用预设值是由于要先创建SDL纹理，现在改进为可以后创建SDL纹理，预设的高宽就没有用了，只需要解码后的实际高宽就可以了...
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// 计算格式转换需要的缓存空间，并对缓存空间进行重新分配...
+	int dst_buffer_size = avpicture_get_size(nDestFormat, nDstWidth, nDstHeight);
+	if (dst_buffer_size > m_img_buffer_size) {
+		// 删除之前分配的单帧最大空间...
+		if (m_img_buffer_ptr != NULL) {
+			av_free(m_img_buffer_ptr);
+			m_img_buffer_ptr = NULL;
+		}
+		// 重新分配最新的单帧最大空间...
+		m_img_buffer_size = dst_buffer_size;
+		m_img_buffer_ptr = (uint8_t *)av_malloc(m_img_buffer_size);
+	}
+	// 构造新的目标帧对象...
 	AVPicture pDestFrame = {0};
 	avpicture_fill(&pDestFrame, m_img_buffer_ptr, nDestFormat, nDstWidth, nDstHeight);
 	// 另一种方法：临时分配图像格式转换空间的方法...
@@ -315,8 +338,9 @@ void CVideoThread::doDisplaySDL()
 	// 使用SDL 进行画面绘制工作 => 正在处理全屏时，不能绘制，会与D3D发生冲突崩溃...
 	//////////////////////////////////////////////////////////////////////////////////
 	if (m_lpViewRender != NULL && !m_lpViewRender->IsChangeScreen()) {
-		if (m_lpViewRender->GetAndResetRenderFlag()) {
-			this->doReBuildSDL();
+		// 用解码后图像高宽去判断是否需要重建SDL，播放窗口发生变化也要重建...
+		if (this->IsCanRebuildSDL(nSrcWidth, nSrcHeight)) {
+			this->doReBuildSDL(nSrcWidth, nSrcHeight);
 		}
 		// 获取渲染窗口的矩形区域...
 		QRect & rcRect = m_lpViewRender->GetRenderRect();
@@ -329,14 +353,24 @@ void CVideoThread::doDisplaySDL()
 		dstSdlRect.y = rcRect.top();
 		dstSdlRect.w = rcRect.width();
 		dstSdlRect.h = rcRect.height();
+		// 计算源头和目的宽高比例，做为变换基线参考...
+		float srcRatio = srcSdlRect.w * 1.0f / srcSdlRect.h;
+		float dstRatio = dstSdlRect.w * 1.0f / dstSdlRect.h;
 		// 先把画面绘制的Texture上，再把Texture缩放到播放窗口上面，Texture的大小在创建时使用的是预设高宽...
 		int nResult = SDL_UpdateTexture( m_sdlTexture, &srcSdlRect, pDestFrame.data[0], pDestFrame.linesize[0] );
 		if( nResult < 0 ) { blog(LOG_INFO, "%s [Video] Error => %s", TM_RECV_NAME, SDL_GetError()); }
 		nResult = SDL_RenderClear( m_sdlRenderer );
 		if( nResult < 0 ) { blog(LOG_INFO, "%s [Video] Error => %s", TM_RECV_NAME, SDL_GetError()); }
-		// 计算目的窗口矩形的高度值 => 源(高)/源(宽) = 目(高)/目(宽)
-		dstSdlRect.h = srcSdlRect.h * dstSdlRect.w / srcSdlRect.w;
-		dstSdlRect.y = (rcRect.height() - dstSdlRect.h) / 2;
+		// 如果源头比例比目的比例大，用宽度做为基线，否则用高度做为基线...
+		if (srcRatio >= dstRatio) {
+			// 计算目的窗口矩形的高度值(宽不变) => 源(高)/源(宽) = 目(高)/目(宽)
+			dstSdlRect.h = srcSdlRect.h * dstSdlRect.w / srcSdlRect.w;
+			dstSdlRect.y = (rcRect.height() - dstSdlRect.h) / 2;
+		} else {
+			// 计算目的窗口矩形的宽度值(高不变) => 源(高)/源(宽) = 目(高)/目(宽)
+			dstSdlRect.w = srcSdlRect.w * dstSdlRect.h / srcSdlRect.h;
+			dstSdlRect.x = (rcRect.width() - dstSdlRect.w) / 2;
+		}
 		// 将计算后的矩形区域进行拷贝显示到渲染窗口当中...
 		nResult = SDL_RenderCopy( m_sdlRenderer, m_sdlTexture, &srcSdlRect, &dstSdlRect );
 		if( nResult < 0 ) { blog(LOG_INFO, "%s [Video] Error => %s", TM_RECV_NAME, SDL_GetError()); }
@@ -1022,9 +1056,9 @@ BOOL CPlaySDL::InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight
 		m_lpVideoThread = NULL;
 	}
 	// 创建视频线程对象...
-	m_lpVideoThread = new CVideoThread(this);
+	m_lpVideoThread = new CVideoThread(this, m_lpViewRender);
 	// 初始化视频对象失败，直接删除视频对象，返回失败...
-	if (!m_lpVideoThread->InitVideo(m_lpViewRender, inSPS, inPPS, nWidth, nHeight, nFPS)){
+	if (!m_lpVideoThread->InitVideo(inSPS, inPPS, nWidth, nHeight, nFPS)){
 		delete m_lpVideoThread;
 		m_lpVideoThread = NULL;
 		return false;
@@ -1072,25 +1106,6 @@ void CPlaySDL::PushPacket(int zero_delay_ms, string & inData, int inTypeTag, boo
 		m_start_pts_ms = inSendTime;
 		blog(LOG_INFO, "%s StartPTS: %lu, Type: %d", TM_RECV_NAME, inSendTime, inTypeTag);
 	}
-	// 注意：寻找第一个视频关键帧的时候，音频帧不要丢弃...
-	// 如果有视频，视频第一帧必须是视频关键帧，不丢弃的话解码会失败...
-	if((inTypeTag == PT_TAG_VIDEO) && (m_lpVideoThread != NULL) && (!m_bFindFirstVKey)) {
-		// 如果当前视频帧，不是关键帧，直接丢弃...
-		if( !bIsKeyFrame ) {
-			//blog(LOG_INFO, "%s Discard for First Video KeyFrame => PTS: %lu, Type: %d", TM_RECV_NAME, inSendTime, inTypeTag);
-			m_lpViewRender->doUpdateNotice(QString(QTStr("Render.Window.DropVideoFrame")).arg(inSendTime));
-			return;
-		}
-		// 设置已经找到第一个视频关键帧标志...
-		m_bFindFirstVKey = true;
-		m_lpViewRender->doUpdateNotice(QTStr("Render.Window.FindFirstVKey"), true);
-		blog(LOG_INFO, "%s Find First Video KeyFrame OK => PTS: %lu, Type: %d", TM_RECV_NAME, inSendTime, inTypeTag);
-	}
-	// 判断处理帧的对象是否存在，不存在，直接丢弃...
-	if( inTypeTag == FLV_TAG_TYPE_AUDIO && m_lpAudioThread == NULL )
-		return;
-	if( inTypeTag == FLV_TAG_TYPE_VIDEO && m_lpVideoThread == NULL )
-		return;
 	// 如果当前帧的时间戳比第一帧的时间戳还要小，不要扔掉，设置成启动时间戳就可以了...
 	if( inSendTime < m_start_pts_ms ) {
 		blog(LOG_INFO, "%s Error => SendTime: %lu, StartPTS: %I64d", TM_RECV_NAME, inSendTime, m_start_pts_ms);
@@ -1098,6 +1113,21 @@ void CPlaySDL::PushPacket(int zero_delay_ms, string & inData, int inTypeTag, boo
 	}
 	// 计算当前帧的时间戳 => 时间戳必须做修正，否则会混乱...
 	int nCalcPTS = inSendTime - (uint32_t)m_start_pts_ms;
+
+	// 注意：寻找第一个视频关键帧的时候，音频帧不要丢弃...
+	// 如果有视频，视频第一帧必须是视频关键帧，不丢弃的话解码会失败...
+	if((inTypeTag == PT_TAG_VIDEO) && (m_lpVideoThread != NULL) && (!m_bFindFirstVKey)) {
+		// 如果当前视频帧，不是关键帧，直接丢弃 => 显示计算后的延时毫秒数...
+		if( !bIsKeyFrame ) {
+			//blog(LOG_INFO, "%s Discard for First Video KeyFrame => PTS: %lu, Type: %d", TM_RECV_NAME, inSendTime, inTypeTag);
+			m_lpViewRender->doUpdateNotice(QString(QTStr("Render.Window.DropVideoFrame")).arg(nCalcPTS));
+			return;
+		}
+		// 设置已经找到第一个视频关键帧标志...
+		m_bFindFirstVKey = true;
+		m_lpViewRender->doUpdateNotice(QTStr("Render.Window.FindFirstVKey"), true);
+		blog(LOG_INFO, "%s Find First Video KeyFrame OK => PTS: %lu, Type: %d", TM_RECV_NAME, inSendTime, inTypeTag);
+	}
 
 	///////////////////////////////////////////////////////////////////////////
 	// 延时实验：在0~2000毫秒之间来回跳动，跳动间隔为1毫秒...
@@ -1124,10 +1154,12 @@ void CPlaySDL::PushPacket(int zero_delay_ms, string & inData, int inTypeTag, boo
 	//	return;
 	//}
 
-	// 根据音视频类型进行相关操作...
-	if( inTypeTag == FLV_TAG_TYPE_AUDIO ) {
+	// 如果是音频数据包，并且音频处理对象有效，进行数据投递...
+	if( m_lpAudioThread != NULL && inTypeTag == FLV_TAG_TYPE_AUDIO ) {
 		m_lpAudioThread->doFillPacket(inData, nCalcPTS, bIsKeyFrame, 0);
-	} else if( inTypeTag == FLV_TAG_TYPE_VIDEO ) {
+	}
+	// 如果是视频数据包，并且视频处理对象有效，进行数据投递...
+	if( m_lpVideoThread != NULL && inTypeTag == FLV_TAG_TYPE_VIDEO ) {
 		m_lpVideoThread->doFillPacket(inData, nCalcPTS, bIsKeyFrame, 0);
 	}
 	//blog(LOG_INFO, "[%s] RenderOffset: %lu", inFrame.typeFlvTag == FLV_TAG_TYPE_AUDIO ? "Audio" : "Video", inFrame.dwRenderOffset);
