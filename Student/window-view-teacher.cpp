@@ -5,6 +5,7 @@
 #include "window-view-render.hpp"
 #include "window-view-teacher.hpp"
 
+#define NOTICE_FONT_HEIGHT		30
 #define TITLE_WINDOW_HEIGHT		24
 #define TITLE_FONT_HEIGHT		10
 #define TITLE_TEXT_COLOR		QColor(255,255,255)
@@ -19,7 +20,8 @@ CViewTeacher::CViewTeacher(QWidget *parent, Qt::WindowFlags flags)
   , m_lpViewRender(NULL)
 {
 	// 创建渲染窗口对象...
-	m_lpViewRender = new CViewRender(this);
+	QString strNotice = QTStr("Render.Window.DefaultNotice");
+	m_lpViewRender = new CViewRender(strNotice, NOTICE_FONT_HEIGHT, this);
 	// 设置标题栏基础文字信息...
 	m_strTitleBase = QTStr("Teacher.Window.TitleBase");
 	m_strTitleText = m_strTitleBase;

@@ -4,12 +4,12 @@
 #include "window-view-render.hpp"
 #include "window-view-teacher.hpp"
 
-#define NOTICE_FONT_HEIGHT		30
 #define NOTICE_TEXT_COLOR		QColor(255,255,0)
 #define WINDOW_BK_COLOR			QColor(32, 32, 32)
 
-CViewRender::CViewRender(QWidget *parent, Qt::WindowFlags flags)
+CViewRender::CViewRender(QString & strNotice, int nFontSize, QWidget *parent, Qt::WindowFlags flags)
   : OBSQTDisplay(parent, flags)
+  , m_strNoticeText(strNotice)
   , m_bIsChangeScreen(false)
   , m_bRectChanged(false)
   , m_bIsDrawImage(false)
@@ -18,7 +18,7 @@ CViewRender::CViewRender(QWidget *parent, Qt::WindowFlags flags)
 	// 保存渲染窗口句柄对象...
 	m_hRenderWnd = (HWND)this->winId();
 	// 强制转换父窗口对象...
-	m_lpViewTeacher = qobject_cast<CViewTeacher*>(parent);
+	//qobject_cast<CViewTeacher*>(parent);
 	// 初始化背景颜色和原始区域...
 	m_bkColor = WINDOW_BK_COLOR;
 	m_rcNoramlRect.setRect(0, 0, 0, 0);
@@ -26,11 +26,9 @@ CViewRender::CViewRender(QWidget *parent, Qt::WindowFlags flags)
 	// 设置窗口字体大小...
 	QFont theFont = this->font();
 	theFont.setFamily(QTStr("Student.Font.Family"));
-	theFont.setPointSize(NOTICE_FONT_HEIGHT);
+	theFont.setPointSize(nFontSize);
 	theFont.setWeight(QFont::Light);
 	this->setFont(theFont);
-	// 设置默认的文字提示信息...
-	m_strNoticeText = QTStr("Render.Window.DefaultNotice");
 }
 
 CViewRender::~CViewRender()

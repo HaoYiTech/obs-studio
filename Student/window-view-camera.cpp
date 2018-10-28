@@ -8,12 +8,13 @@
 #include "FastSession.h"
 #include "UDPSendThread.h"
 #include "window-view-left.hpp"
-#include "window-view-player.hpp"
+#include "window-view-render.hpp"
 #include "window-view-camera.hpp"
 
 #define LINE_SPACE_PIXEL		6
 #define LEFT_SPACE_PIXEL		20
 #define RIGHT_SPACE_PIXEL		20
+#define NOTICE_FONT_HEIGHT		12
 #define TITLE_WINDOW_HEIGHT		24
 #define TITLE_FONT_HEIGHT		10
 #define TITLE_LIVE_COLOR        QColor(255,140,0)
@@ -655,7 +656,7 @@ void CViewCamera::doCreatePlayer()
 		}
 	}
 	// 创建视频渲染回放窗口对象 => 默认处于隐藏状态...
-	m_lpViewPlayer = new CViewPlayer(this);
+	m_lpViewPlayer = new CViewRender(QString(""), NOTICE_FONT_HEIGHT, this);
 	m_lpViewPlayer->raise();
 	m_lpViewPlayer->show();
 	// 获取视频播放参数，创建视频播放对象...

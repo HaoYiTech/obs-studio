@@ -22,11 +22,11 @@ extern "C"
 typedef map<int64_t, AVPacket>		GM_AVPacket;	// DTS => AVPacket  => 解码前的数据帧 => 毫秒 => 1/1000
 typedef map<int64_t, AVFrame*>		GM_AVFrame;	    // PTS => AVFrame   => 解码后的视频帧 => 毫秒 => 1/1000
 
-class CViewPlayer;
+class CViewRender;
 class CVideoPlay : public OSThread
 {
 public:
-	CVideoPlay(CViewPlayer * lpViewPlayer, int64_t inSysZeroNS);
+	CVideoPlay(CViewRender * lpViewPlayer, int64_t inSysZeroNS);
 	virtual ~CVideoPlay();
 private:
 	virtual void	Entry();
@@ -53,7 +53,7 @@ private:
 	SDL_Window      *   m_sdlScreen;		   // SDL窗口
 	SDL_Renderer    *   m_sdlRenderer;		   // SDL渲染
 	SDL_Texture     *   m_sdlTexture;		   // SDL纹理
-	CViewPlayer     *   m_lpViewPlayer;        // 播放窗口对象...
+	CViewRender     *   m_lpViewPlayer;        // 播放窗口对象...
 	pthread_mutex_t     m_VideoMutex;          // 解码器互斥体对象...
 	uint8_t         *   m_img_buffer_ptr;      // 单帧图像输出空间
 	int                 m_img_buffer_size;     // 单帧图像输出大小

@@ -1,10 +1,10 @@
 
 #include "play-thread.h"
 #include "BitWritter.h"
-#include "window-view-player.hpp"
+#include "window-view-render.hpp"
 #include "window-view-camera.hpp"
 
-CVideoPlay::CVideoPlay(CViewPlayer * lpViewPlayer, int64_t inSysZeroNS)
+CVideoPlay::CVideoPlay(CViewRender * lpViewPlayer, int64_t inSysZeroNS)
   : m_lpViewPlayer(lpViewPlayer)
   , m_sys_zero_ns(inSysZeroNS)
   , m_nSDLTextureHeight(0)
