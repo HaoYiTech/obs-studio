@@ -162,3 +162,22 @@ void CViewTeacher::onFullScreenAction()
 		return;
 	m_lpViewRender->onFullScreenAction();
 }
+
+bool CViewTeacher::doVolumeEvent(int inKeyItem)
+{
+	// 如果接收线程无效或渲染窗口无效或当前窗口不是焦点窗口，返回失败...
+	if ((m_lpUDPRecvThread == NULL) || (m_lpViewRender == NULL) || (!this->IsFoucs()))
+		return false;
+	// 根据按键解析出放大或缩小状态...
+	bool bIsVolPlus = false;
+	switch (inKeyItem)
+	{
+	case Qt::Key_Less:  bIsVolPlus = false; break;
+	case Qt::Key_Minus: bIsVolPlus = false; break;
+	case Qt::Key_Equal: bIsVolPlus = true;  break;
+	case Qt::Key_Plus:  bIsVolPlus = true;  break;
+	default:			return false;
+	}
+	// 调用接收线程进行，键盘事件的投递操作，放大或缩小音量...
+	return m_lpUDPRecvThread->doVolumeEvent(bIsVolPlus);
+}

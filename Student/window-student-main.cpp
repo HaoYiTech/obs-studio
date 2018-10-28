@@ -146,6 +146,23 @@ void StudentWindow::onCameraMenuToShow()
 	}
 }
 
+// 响应系统层的键盘事件 => 音量的放大或缩小事件...
+bool StudentWindow::VolumeEvent(QObject * inObject, int inKeyItem)
+{
+	// 过滤键盘按键，不是加号或减号(包括大小键盘)，返回失败...
+	if (inKeyItem != Qt::Key_Less && inKeyItem != Qt::Key_Equal && inKeyItem != Qt::Key_Minus && inKeyItem != Qt::Key_Plus)
+		return false;
+	// 先让左侧视图进行键盘事件处理...
+	if (m_ui.LeftView->doVolumeEvent(inKeyItem))
+		return true;
+	// 处理失败，再获取右侧讲师窗口，无效，直接返回失败...
+	CViewTeacher * lpViewTeacher = m_ui.RightView->GetViewTeacher();
+	if (lpViewTeacher == NULL)
+		return false;
+	// 再让讲师窗口进行键盘事件处理...
+	return lpViewTeacher->doVolumeEvent(inKeyItem);
+}
+
 // 响应左侧窗口的右键菜单事件...
 void StudentWindow::on_LeftViewCustomContextMenuRequested(const QPoint &pos)
 {

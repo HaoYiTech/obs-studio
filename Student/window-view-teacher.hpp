@@ -13,6 +13,7 @@ public:
 	virtual ~CViewTeacher();
 public:
 	void setTitleContent(QString & titleContent);
+	bool doVolumeEvent(int inKeyItem);
 	void onFullScreenAction();
 private:
 	void DrawTitleArea();

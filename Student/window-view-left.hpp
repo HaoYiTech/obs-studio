@@ -35,6 +35,7 @@ public slots:
 	void onTriggerLiveStop(int nDBCameraID);
 	void onTriggerLiveStart(int nDBCameraID);
 	void doEnableCamera(OBSQTDisplay * lpNewDisplay);
+	bool doVolumeEvent(int inKeyItem);
 public:
 	CViewCamera * FindDBCameraByID(int nDBCameraID);
 	CViewCamera * AddNewCamera(GM_MapData & inWebData);

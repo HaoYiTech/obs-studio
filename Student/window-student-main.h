@@ -12,6 +12,7 @@ public:
 public:
 	void InitWindow();
 	void UpdateTitleBar();
+	bool VolumeEvent(QObject * inObject, int inKeyItem);
 	CViewLeft  * GetViewLeft() { return m_ui.LeftView; }
 	CViewRight * GetViewRight() { return m_ui.RightView; }
 protected:

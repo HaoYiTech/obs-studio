@@ -15,6 +15,7 @@ public:
 	virtual void Entry();
 public:
 	BOOL			InitThread(string & strUdpAddr, int nUdpPort);
+	bool            doVolumeEvent(bool bIsVolPlus);
 private:
 	void			ClosePlayer();
 	void			CloseSocket();

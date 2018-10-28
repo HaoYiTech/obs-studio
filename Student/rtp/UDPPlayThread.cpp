@@ -713,17 +713,19 @@ void CAudioThread::doDisplaySDL()
 	// 从环形队列读取当前帧内容，因为是顺序执行，可以再次使用单帧最大输出空间...
 	circlebuf_peek_front(&m_circle, m_max_buffer_ptr, out_buffer_size);
 	
-	float vol = 1.5f;
+	// 计算当前数据块包含的有效采样个数...
 	int nPerFrameSize = (m_out_channel_num * sizeof(float));
 	uint32_t resample_frames = out_buffer_size / nPerFrameSize;
+	
 	// 设置音量数据的转换 => 这里进行音量的放大...
-	/*if (!close_float(vol, 1.0f, EPSILON)) {
+	float vol = m_lpPlaySDL->GetVolRate();
+	if (!close_float(vol, 1.0f, EPSILON)) {
 		register float *cur = (float*)m_max_buffer_ptr;
 		register float *end = cur + resample_frames * m_out_channel_num;
 		while (cur < end) {
 			*(cur++) *= vol;
 		}
-	}*/
+	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 注意：必须对音频播放内部的缓存做定期伐值清理 => CPU过高时，DirectSound会堆积缓存...
@@ -1026,6 +1028,7 @@ CPlaySDL::CPlaySDL(CViewRender * lpViewRender, int64_t inSysZeroNS)
   , m_lpAudioThread(NULL)
   , m_zero_delay_ms(-1)
   , m_start_pts_ms(-1)
+  , m_fVolRate(1.0f)
 {
 	ASSERT( m_lpViewRender != NULL );
 	ASSERT( m_sys_zero_ns > 0 );
@@ -1046,6 +1049,15 @@ CPlaySDL::~CPlaySDL()
 	}
 	// 释放SDL2.0资源...
 	SDL_Quit();
+}
+
+bool CPlaySDL::doVolumeEvent(bool bIsVolPlus)
+{
+	float fNewVolRate = m_fVolRate + (bIsVolPlus ? 0.5f : -0.5f);
+	fNewVolRate = ((fNewVolRate >= 6.0f) ? 6.0f : fNewVolRate);
+	fNewVolRate = ((fNewVolRate <= 1.0f) ? 1.0f : fNewVolRate);
+	m_fVolRate = fNewVolRate;
+	return true;
 }
 
 BOOL CPlaySDL::InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS)

@@ -33,6 +33,7 @@ public:
 	void        doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf);
 	void        doPushAudioAEC(FMS_FRAME & inFrame);
 	void		doPushFrame(FMS_FRAME & inFrame);
+	bool        doVolumeEvent(int inKeyItem);
 	void		doUdpSendThreadStart();
 	void		doUdpSendThreadStop();
 	void        onUdpRecvThreadStop();

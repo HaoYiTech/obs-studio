@@ -74,9 +74,11 @@ public:
 private:
 	virtual void	Entry();
 public:
+	bool    doVolumeEvent(bool bIsVolPlus);
 	bool    doInitAudio(int nInRateIndex, int nInChannelNum);
 	void    doPushFrame(FMS_FRAME & inFrame, int inCalcPTS);
-	void    setMute(bool bIsMute) { m_bIsMute = bIsMute; }
+	void    SetMute(bool bIsMute) { m_bIsMute = bIsMute; }
+	float   GetVolRate() { return m_fVolRate; }
 private:
 	void    doSleepTo();
 	void    doDecoderFree();
@@ -116,4 +118,5 @@ private:
 	circlebuf			m_circle;			   // PCM数据环形队列
 	string              m_strHorn;             // PCM单帧数据块
 	bool                m_bIsMute;             // 是否静音标志
+	float               m_fVolRate;            // 音量放大倍率
 };

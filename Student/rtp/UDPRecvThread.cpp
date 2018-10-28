@@ -1051,3 +1051,9 @@ void CUDPRecvThread::doSleepTo()
 	// 调用系统工具函数，进行sleep休息...
 	os_sleepto_ns(cur_time_ns + delta_ns);
 }
+
+bool CUDPRecvThread::doVolumeEvent(bool bIsVolPlus)
+{
+	if (m_lpPlaySDL == NULL) return false;
+	return m_lpPlaySDL->doVolumeEvent(bIsVolPlus);
+}

@@ -120,6 +120,7 @@ public:
 	void		PushPacket(int zero_delay_ms, string & inData, int inTypeTag, bool bIsKeyFrame, uint32_t inSendTime);
 	BOOL		InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS);
 	BOOL		InitAudio(int nInRateIndex, int nInChannelNum);
+	bool        doVolumeEvent(bool bIsVolPlus);
 	int			GetAPacketSize() { return ((m_lpAudioThread != NULL) ? m_lpAudioThread->GetMapPacketSize() : 0); }
 	int			GetVPacketSize() { return ((m_lpVideoThread != NULL) ? m_lpVideoThread->GetMapPacketSize() : 0); }
 	int			GetAFrameSize() { return ((m_lpAudioThread != NULL) ? m_lpAudioThread->GetCircleSize() : 0); }
@@ -127,7 +128,9 @@ public:
 	int64_t		GetZeroDelayMS() { return m_zero_delay_ms; }
 	int64_t		GetSysZeroNS() { return m_sys_zero_ns; }
 	int64_t		GetStartPtsMS() { return m_start_pts_ms; }
+	float       GetVolRate() { return m_fVolRate; }
 private:
+	float               m_fVolRate;         // 音量放大倍率
 	bool				m_bFindFirstVKey;	// 是否找到第一个视频关键帧标志...
 	int64_t				m_sys_zero_ns;		// 系统计时零点 => 启动时间戳 => 纳秒...
 	int64_t				m_start_pts_ms;		// 第一帧的PTS时间戳计时起点 => 毫秒...

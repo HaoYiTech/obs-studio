@@ -467,6 +467,7 @@ CAudioPlay::CAudioPlay(CViewCamera * lpViewCamera, int64_t inSysZeroNS)
   , m_lpDecCodec(NULL)
   , m_bNeedSleep(false)
   , m_play_next_ns(-1)
+  , m_fVolRate(1.0f)
   , m_bIsMute(false)
   , m_frame_num(0)
   , m_device(NULL)
@@ -832,14 +833,14 @@ void CAudioPlay::doDisplayAudio()
 	uint32_t resample_frames = out_buffer_size / nPerFrameSize;
 
 	// 设置音量数据的转换 => 这里进行音量的放大...
-	/*float vol = 1.5f;
+	float vol = m_fVolRate;
 	if (!close_float(vol, 1.0f, EPSILON)) {
 		register float *cur = (float*)out_buffer_ptr;
 		register float *end = cur + resample_frames * m_out_channel_num;
 		while (cur < end) {
 			*(cur++) *= vol;
 		}
-	}*/
+	}
 
 	HRESULT hr = S_OK;
 	BYTE * output = NULL;
@@ -871,6 +872,15 @@ void CAudioPlay::doDisplayAudio()
 	--m_frame_num;
 	// 已经有播放，不能休息...
 	m_bNeedSleep = false;
+}
+
+bool CAudioPlay::doVolumeEvent(bool bIsVolPlus)
+{
+	float fNewVolRate = m_fVolRate + (bIsVolPlus ? 0.5f : -0.5f);
+	fNewVolRate = ((fNewVolRate >= 6.0f) ? 6.0f : fNewVolRate);
+	fNewVolRate = ((fNewVolRate <= 1.0f) ? 1.0f : fNewVolRate);
+	m_fVolRate = fNewVolRate;
+	return true;
 }
 
 void CAudioPlay::doSleepTo()

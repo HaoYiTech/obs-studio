@@ -172,6 +172,7 @@ protected:
 	void	doCheckRemote();
 	void	doCheckOnLine();
 	void	timerEvent(QTimerEvent * inEvent) override;
+	bool    notify(QObject * inObject, QEvent * inEvent) override;
 private:
 	bool	InitLocale();
 	bool	InitGlobalConfig();

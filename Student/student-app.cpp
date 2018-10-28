@@ -847,7 +847,7 @@ void CStudentApp::doLoginSuccess(string & strRoomID)
 	theErr = m_lpWebThread->InitThread();
 	((theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL);
 }
-//
+
 // 登录成功获取终端配置之后，立即连接中转服务器...
 void CStudentApp::onWebLoadResource()
 {
@@ -858,13 +858,13 @@ void CStudentApp::onWebLoadResource()
 	// 每隔30秒检测一次，学生端在中转服务器上在线通道列表...
 	m_nOnLineTimer = this->startTimer(30 * 1000);
 }
-//
+
 // 处理学生端授权过期的情况...
 void CStudentApp::onWebAuthExpired()
 {
 	this->doLogoutEvent();
 }
-//
+
 // 时钟定时执行过程...
 void CStudentApp::timerEvent(QTimerEvent *inEvent)
 {
@@ -874,6 +874,21 @@ void CStudentApp::timerEvent(QTimerEvent *inEvent)
 	} else if (nTimerID == m_nOnLineTimer) {
 		this->doCheckOnLine();
 	}
+}
+
+// 响应全局的键盘事件，专门处理音量的放大缩小操作...
+bool CStudentApp::notify(QObject * inObject, QEvent * inEvent)
+{
+	// 对键盘按下事件进行预处理操作...
+	if (inEvent->type() == QEvent::KeyPress) {
+		QKeyEvent * keyEvent = static_cast<QKeyEvent*>(inEvent);
+		int nKeyItem = keyEvent->key();
+		// 主窗口有效是才处理，专门过滤音量的放大或缩小事件，正确响应，不再传递...
+		if ((m_studentWindow != NULL) && m_studentWindow->VolumeEvent(inObject, nKeyItem))
+			return true;
+		// 没有正确响应键盘事件，需要继续传递，处理键盘响应...
+	}
+	return QApplication::notify(inObject, inEvent);
 }
 
 void CStudentApp::doCheckFDFS()
@@ -919,7 +934,7 @@ void CStudentApp::doCheckOnLine()
 		return;
 	m_RemoteSession->doSendOnLineCmd();
 }
-//
+
 // 重建系统资源...
 void CStudentApp::doReBuildResource()
 {

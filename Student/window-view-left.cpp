@@ -584,3 +584,13 @@ void CViewLeft::onCameraDel(int nDBCameraID)
 	emit this->enablePageJump(m_nMaxPage > 1);
 	emit this->enablePageNext(m_nCurPage < m_nMaxPage);
 }
+
+bool CViewLeft::doVolumeEvent(int inKeyItem)
+{
+	// 没有找到焦点窗口，返回失败...
+	CViewCamera * lpViewCamera = NULL;
+ 	lpViewCamera = this->FindDBCameraByID(this->GetFocusID());
+	if (lpViewCamera == NULL) return false;
+	// 让焦点窗口执行音量放大或缩小事件...
+	return lpViewCamera->doVolumeEvent(inKeyItem);
+}

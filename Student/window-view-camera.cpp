@@ -651,7 +651,7 @@ void CViewCamera::doTogglePreviewMute()
 		// 如果音频播放对象有效，需要对静音标志取反...
 		m_bIsPreviewMute = !m_bIsPreviewMute;
 		// 将新的静音状态设置给播放对象...
-		m_lpAudioPlay->setMute(m_bIsPreviewMute);
+		m_lpAudioPlay->SetMute(m_bIsPreviewMute);
 	} while (false);
 	pthread_mutex_unlock(&m_MutexPlay);
 }
@@ -778,4 +778,30 @@ void CViewCamera::doPushPlayer(FMS_FRAME & inFrame)
 	}
 	// 释放互斥保护对象...
 	pthread_mutex_unlock(&m_MutexPlay);
+}
+
+// 响应系统层的键盘事件 => 音量的放大或缩小事件...
+bool CViewCamera::doVolumeEvent(int inKeyItem)
+{
+	// 如果当前窗口不是焦点窗口，返回失败...
+	if (!this->IsFoucs())
+		return false;
+	// 根据按键解析出放大或缩小状态...
+	bool bResult = false;
+	bool bIsVolPlus = false;
+	switch (inKeyItem)
+	{
+	case Qt::Key_Less:  bIsVolPlus = false; break;
+	case Qt::Key_Minus: bIsVolPlus = false; break;
+	case Qt::Key_Equal: bIsVolPlus = true;  break;
+	case Qt::Key_Plus:  bIsVolPlus = true;  break;
+	default:			return false;
+	}
+	// 根据音频对象进行事件投递...
+	pthread_mutex_lock(&m_MutexPlay);
+	if (m_lpAudioPlay != NULL) {
+		bResult = m_lpAudioPlay->doVolumeEvent(bIsVolPlus);
+	}
+	pthread_mutex_unlock(&m_MutexPlay);
+	return bResult;
 }

@@ -120,7 +120,8 @@ void CViewRender::onFullScreenAction()
 
 void CViewRender::keyPressEvent(QKeyEvent *event)
 {
-	if (event->key() == Qt::Key_Escape) {
+	int nKeyItem = event->key();
+	if (nKeyItem == Qt::Key_Escape) {
 		// 设置正在处理屏幕变化标志...
 		m_bIsChangeScreen = true;
 		// 还原渲染窗口的状态 => 恢复到普通窗口...
