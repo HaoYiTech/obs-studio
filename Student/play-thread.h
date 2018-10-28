@@ -76,6 +76,7 @@ private:
 public:
 	bool    doInitAudio(int nInRateIndex, int nInChannelNum);
 	void    doPushFrame(FMS_FRAME & inFrame, int inCalcPTS);
+	void    setMute(bool bIsMute) { m_bIsMute = bIsMute; }
 private:
 	void    doSleepTo();
 	void    doDecoderFree();
@@ -114,4 +115,5 @@ private:
 	int                 m_frame_num;           // PCM数据帧总数
 	circlebuf			m_circle;			   // PCM数据环形队列
 	string              m_strHorn;             // PCM单帧数据块
+	bool                m_bIsMute;             // 是否静音标志
 };

@@ -24,11 +24,14 @@ signals:
 	void enableCameraDel(bool bEnable);
 	void enableCameraStop(bool bEnable);
 	void enableCameraStart(bool bEnable);
+	void enableCameraPreview(bool bEnable);
+	void enablePreviewMute(bool bEnable);
+	void enableCameraPTZ(bool bEnable);
 	void enableSettingSystem(bool bEnable);
 	void enableSettingReconnect(bool bEnable);
 	void enableSystemFullscreen(bool bEnable);
 public slots:
-	void onTriggerConnected();
+ 	void onTriggerConnected();
 	void onTriggerLiveStop(int nDBCameraID);
 	void onTriggerLiveStart(int nDBCameraID);
 	void doEnableCamera(OBSQTDisplay * lpNewDisplay);

@@ -467,6 +467,7 @@ CAudioPlay::CAudioPlay(CViewCamera * lpViewCamera, int64_t inSysZeroNS)
   , m_lpDecCodec(NULL)
   , m_bNeedSleep(false)
   , m_play_next_ns(-1)
+  , m_bIsMute(false)
   , m_frame_num(0)
   , m_device(NULL)
   , m_client(NULL)
@@ -806,6 +807,16 @@ void CAudioPlay::doDisplayAudio()
 	circlebuf_pop_front(&m_circle, NULL, sizeof(int64_t));
 	// 从环形队列当中，取出音频数据帧内容，动态长度...
 	circlebuf_pop_front(&m_circle, &out_buffer_size, sizeof(int));
+	// 如果是静音状态，直接丢弃音频数据，直接返回...
+	if (m_bIsMute) {
+		// 删除已经使用的音频数据 => 从环形队列中移除...
+		circlebuf_pop_front(&m_circle, NULL, out_buffer_size);
+		// 减少环形队列中有效数据帧的个数...
+		--m_frame_num;
+		// 已经有播放，不能休息...
+		m_bNeedSleep = false;
+		return;
+	}
 	// 根据数据库的长度为PCM分配数据空间...
 	if (out_buffer_size > m_strHorn.size()) {
 		m_strHorn.resize(out_buffer_size);

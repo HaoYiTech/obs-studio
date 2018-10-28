@@ -153,6 +153,7 @@
     <addaction name="actionCameraStop"/>
     <addaction name="separator"/>
     <addaction name="actionCameraPreview"/>
+    <addaction name="actionPreviewMute"/>
     <addaction name="actionCameraPTZ"/>
    </widget>
    <widget class="QMenu" name="pageMenu">
@@ -350,6 +351,11 @@
   <action name="actionCameraPTZ">
    <property name="text">
     <string>Basic.Camera.PTZ</string>
+   </property>
+  </action>
+  <action name="actionPreviewMute">
+   <property name="text">
+    <string>Basic.Preview.Mute</string>
    </property>
   </action>
  </widget>

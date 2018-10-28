@@ -26,7 +26,8 @@ protected slots:
 public:
 	bool		IsCameraOffLine() { return ((m_nCameraState == kCameraOffLine) ? true : false); }
 	bool		IsCameraOnLine() { return ((m_nCameraState == kCameraOnLine) ? true : false); }
-	bool		IsCameraPreview() { return m_bIsPreview; }
+	bool		IsCameraPreviewShow() { return m_bIsPreviewShow; }
+	bool		IsCameraPreviewMute() { return m_bIsPreviewMute; }
 	int			GetDBCameraID() { return m_nDBCameraID; }
 public:
 	void        doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf);
@@ -36,7 +37,8 @@ public:
 	void		doUdpSendThreadStop();
 	void        onUdpRecvThreadStop();
 	void		doReadyToRecvFrame();
-	void		doTogglePreview();
+	void		doTogglePreviewShow();
+	void		doTogglePreviewMute();
 	bool		doCameraStart();
 	bool		doCameraStop();
 private:
@@ -66,7 +68,8 @@ private:
 	int					m_nRecvKbps;		// 拉流接收码率...
 	int                 m_nFlowTimer;       // 码率检测时钟...
 	int                 m_nDBCameraID;      // 通道在数据库中的编号...
-	bool                m_bIsPreview;       // 通道是否正在预览画面...
+	bool                m_bIsPreviewMute;   // 通道是否处于静音状态...
+	bool                m_bIsPreviewShow;   // 通道是否正在预览画面...
 	CViewLeft       *   m_lpViewLeft;       // 左侧父窗口对象...
 	CWebrtcAEC      *   m_lpWebrtcAEC;      // 回音处理对象...
 	CDataThread     *   m_lpDataThread;     // 数据基础类线程...

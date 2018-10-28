@@ -28,11 +28,12 @@ CViewCamera::CViewCamera(QWidget *parent, int nDBCameraID)
   : OBSQTDisplay(parent, 0)
   , m_nCameraState(kCameraOffLine)
   , m_nDBCameraID(nDBCameraID)
+  , m_bIsPreviewMute(false)
+  , m_bIsPreviewShow(false)
   , m_bFindFirstVKey(false)
   , m_lpUDPSendThread(NULL)
   , m_lpDataThread(NULL)
   , m_lpViewPlayer(NULL)
-  , m_bIsPreview(false)
   , m_lpViewLeft(NULL)
   , m_lpWebrtcAEC(NULL)
   , m_lpVideoPlay(NULL)
@@ -618,11 +619,11 @@ bool CViewCamera::doCameraStop()
 }
 
 // 处理菜单的预览事件 => 开启或关闭SDL播放窗口...
-void CViewCamera::doTogglePreview()
+void CViewCamera::doTogglePreviewShow()
 {
 	// 如果通道状态比在线状态小，需要删除本地回放，并重置预览状态...
 	if (m_nCameraState < kCameraOnLine) {
-		m_bIsPreview = false;
+		m_bIsPreviewShow = false;
 		this->doDeletePlayer();
 		this->update();
 		return;
@@ -630,11 +631,29 @@ void CViewCamera::doTogglePreview()
 	// 通道状态一定大于或等于在线状态...
 	ASSERT(m_nCameraState >= kCameraOnLine);
 	// 对当前的预览状态取反...
-	m_bIsPreview = !m_bIsPreview;
+	m_bIsPreviewShow = !m_bIsPreviewShow;
 	// 根据当前状态对播放对象进行删除或重建操作...
-	m_bIsPreview ? this->doCreatePlayer() : this->doDeletePlayer();
+	m_bIsPreviewShow ? this->doCreatePlayer() : this->doDeletePlayer();
 	// 强制更新窗口，重绘窗口画面...
 	this->update();
+}
+
+// 处理菜单的预览静音事件 => 开启或关闭音频内容...
+void CViewCamera::doTogglePreviewMute()
+{
+	pthread_mutex_lock(&m_MutexPlay);
+	do {
+		// 如果没有音频播放对象，设置静音状态...
+		if (m_lpAudioPlay == NULL) {
+			m_bIsPreviewMute = true;
+			break;
+		}
+		// 如果音频播放对象有效，需要对静音标志取反...
+		m_bIsPreviewMute = !m_bIsPreviewMute;
+		// 将新的静音状态设置给播放对象...
+		m_lpAudioPlay->setMute(m_bIsPreviewMute);
+	} while (false);
+	pthread_mutex_unlock(&m_MutexPlay);
 }
 
 // 重建音视频播放线程对象...
@@ -654,6 +673,8 @@ void CViewCamera::doCreatePlayer()
 		if (!m_lpAudioPlay->doInitAudio(nRateIndex, nChannelNum)) {
 			delete m_lpAudioPlay; m_lpAudioPlay = NULL;
 		}
+		// 根据音频播放对象是否有效进行预览静音标志的设定...
+		m_bIsPreviewMute = ((m_lpAudioPlay != NULL) ? false : true);
 	}
 	// 创建视频渲染回放窗口对象 => 默认处于隐藏状态...
 	m_lpViewPlayer = new CViewRender(QString(""), NOTICE_FONT_HEIGHT, this);
@@ -699,6 +720,7 @@ void CViewCamera::doDeletePlayer()
 	m_start_pts_ms = -1;
 	// 重置找到第一个关键帧标志...
 	m_bFindFirstVKey = false;
+	m_bIsPreviewMute = false;
 	// 退出互斥保护对象...
 	pthread_mutex_unlock(&m_MutexPlay);
 }

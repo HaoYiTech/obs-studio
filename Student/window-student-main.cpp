@@ -86,6 +86,11 @@ StudentWindow::StudentWindow(QWidget *parent)
 	this->connect(m_ui.LeftView, SIGNAL(enableSettingSystem(bool)), m_ui.actionSettingSystem, SLOT(setEnabled(bool)));
 	// 设置关于菜单按钮...
 	m_ui.mainToolBar->addAction(m_ui.actionHelpAbout);
+	// 设置菜单栏显示关联信号槽事件...
+	this->connect(m_ui.LeftView, SIGNAL(enableCameraPreview(bool)), m_ui.actionCameraPreview, SLOT(setEnabled(bool)));
+	this->connect(m_ui.LeftView, SIGNAL(enablePreviewMute(bool)), m_ui.actionPreviewMute, SLOT(setEnabled(bool)));
+	this->connect(m_ui.LeftView, SIGNAL(enableCameraPTZ(bool)), m_ui.actionCameraPTZ, SLOT(setEnabled(bool)));
+	this->connect(m_ui.cameraMenu, SIGNAL(aboutToShow()), this, SLOT(onCameraMenuToShow()));
 	// 设置左右窗口的大小比例 => 20:80...
 	m_ui.splitter->setContentsMargins(0, 0, 0, 0);
 	m_ui.splitter->setStretchFactor(0, 20);
@@ -102,6 +107,42 @@ StudentWindow::StudentWindow(QWidget *parent)
 			const QRect & rect = App()->desktop()->geometry();
 			setGeometry(QStyle::alignedRect(Qt::LeftToRight,Qt::AlignCenter,size(), rect));
 		}
+	}
+}
+
+// 响应摄像头通道菜单显示激活事件...
+void StudentWindow::onCameraMenuToShow()
+{
+	CViewCamera * lpViewCamera = NULL;
+	int nFocusID = m_ui.LeftView->GetFocusID();
+	lpViewCamera = m_ui.LeftView->FindDBCameraByID(nFocusID);
+	// 如果当前焦点窗口是左侧的摄像头通道...
+	if (lpViewCamera != NULL) {
+		bool bIsOffLine = lpViewCamera->IsCameraOffLine();
+		m_ui.actionCameraStart->setEnabled(bIsOffLine);
+		m_ui.actionCameraStop->setEnabled(!bIsOffLine);
+		m_ui.actionCameraMod->setEnabled(true);
+		m_ui.actionCameraDel->setEnabled(true);
+		// 针对摄像头通道的预览、PTZ、静音操作菜单...
+		bool bIsPreviewShow = lpViewCamera->IsCameraPreviewShow();
+		m_ui.actionCameraPreview->setEnabled(true);
+		m_ui.actionCameraPTZ->setEnabled(true);
+		m_ui.actionCameraPreview->setCheckable(true);
+		m_ui.actionCameraPreview->setChecked(bIsPreviewShow);
+		// 静音菜单是否有效要依赖预览菜单...
+		bool bIsPreviewMute = lpViewCamera->IsCameraPreviewMute();
+		m_ui.actionPreviewMute->setCheckable(true);
+		m_ui.actionPreviewMute->setChecked(bIsPreviewMute);
+		m_ui.actionPreviewMute->setEnabled(bIsPreviewShow);
+	} else {
+		m_ui.actionCameraStart->setEnabled(false);
+		m_ui.actionCameraStop->setEnabled(false);
+		m_ui.actionCameraMod->setEnabled(false);
+		m_ui.actionCameraDel->setEnabled(false);
+		// 针对摄像头通道的预览、PTZ、静音操作菜单...
+		m_ui.actionCameraPreview->setEnabled(false);
+		m_ui.actionPreviewMute->setEnabled(false);
+		m_ui.actionCameraPTZ->setEnabled(false);
 	}
 }
 
@@ -123,14 +164,21 @@ void StudentWindow::on_LeftViewCustomContextMenuRequested(const QPoint &pos)
 		return;
 	// 根据摄像头窗口的当前状态进行右键菜单项的配置...
 	QMenu popup(this);
-	bool bIsPrevew = lpViewCamera->IsCameraPreview();
+	bool bIsPreviewShow = lpViewCamera->IsCameraPreviewShow();
+	bool bIsPreviewMute = lpViewCamera->IsCameraPreviewMute();
 	m_ui.actionCameraPreview->setCheckable(true);
-	m_ui.actionCameraPreview->setChecked(bIsPrevew);
+	m_ui.actionCameraPreview->setChecked(bIsPreviewShow);
+	// 静音菜单是否有效要依赖预览菜单...
+	m_ui.actionPreviewMute->setCheckable(true);
+	m_ui.actionPreviewMute->setChecked(bIsPreviewMute);
+	m_ui.actionPreviewMute->setEnabled(bIsPreviewShow);
 	popup.addAction(m_ui.actionCameraPreview);
+	popup.addAction(m_ui.actionPreviewMute);
 	popup.addAction(m_ui.actionCameraPTZ);
 	popup.exec(QCursor::pos());
 }
 
+// 响应摄像头通道的画面预览菜单事件...
 void StudentWindow::on_actionCameraPreview_triggered()
 {
 	// 查找左侧窗口包含的当前焦点摄像头窗口对象...
@@ -139,9 +187,22 @@ void StudentWindow::on_actionCameraPreview_triggered()
 	if (lpViewCamera == NULL)
 		return;
 	// 执行摄像头窗口的预览事件...
-	lpViewCamera->doTogglePreview();
+	lpViewCamera->doTogglePreviewShow();
 }
 
+// 响应摄像头通道的预览静音菜单事件...
+void StudentWindow::on_actionPreviewMute_triggered()
+{
+	// 查找左侧窗口包含的当前焦点摄像头窗口对象...
+	int nFocusID = m_ui.LeftView->GetFocusID();
+	CViewCamera * lpViewCamera = m_ui.LeftView->FindDBCameraByID(nFocusID);
+	if (lpViewCamera == NULL)
+		return;
+	// 执行摄像头窗口的预览事件...
+	lpViewCamera->doTogglePreviewMute();
+}
+
+// 响应摄像头通道的PTZ云台菜单事件...
 void StudentWindow::on_actionCameraPTZ_triggered()
 {
 }

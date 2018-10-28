@@ -487,6 +487,9 @@ void CViewLeft::doEnableCamera(OBSQTDisplay * lpNewDisplay)
 		// 更新窗口的修改、删除菜单...
 		emit this->enableCameraMod(bIsViewCamera);
 		emit this->enableCameraDel(bIsViewCamera);
+		emit this->enableCameraPreview(bIsViewCamera);
+		emit this->enablePreviewMute(bIsViewCamera);
+		emit this->enableCameraPTZ(bIsViewCamera);
 		// 如果不是摄像头窗口对象，直接返回...
 		if (!bIsViewCamera)
 			break;

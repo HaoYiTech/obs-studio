@@ -17,6 +17,7 @@ public:
 protected:
 	void closeEvent(QCloseEvent *event) override;
 private slots:
+    void onCameraMenuToShow();
 	void doWebThreadMsg(int nMessageID, int nWParam, int nLParam);
 	void onTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID);
 	void on_LeftViewCustomContextMenuRequested(const QPoint &pos);
@@ -26,6 +27,7 @@ private slots:
 	void on_actionSystemToolbar_triggered();
 	void on_actionSystemExit_triggered();
 	void on_actionCameraPreview_triggered();
+	void on_actionPreviewMute_triggered();
 	void on_actionCameraPTZ_triggered();
 	void on_actionCameraAdd_triggered();
 	void on_actionCameraMod_triggered();
