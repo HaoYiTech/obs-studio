@@ -1,13 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
     <Filter Include="Header Files">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="AEC Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="NS Files">
+      <UniqueIdentifier>{3ca5601c-789a-422a-982a-123a839dc8df}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -233,139 +236,163 @@
     <ClInclude Include="..\..\libwebrtc-aec\inc\wav_header.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\libwebrtc-aec\ns\noise_suppression.h">
+      <Filter>NS Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\libwebrtc-aec\ns\ns_core.h">
+      <Filter>NS Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\libwebrtc-aec\ns\defines.h">
+      <Filter>NS Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\libwebrtc-aec\ns\fft4g.h">
+      <Filter>NS Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\libwebrtc-aec\ns\windows_private.h">
+      <Filter>NS Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\libwebrtc-aec\src\aec_core.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\aec_core_sse2.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\aec_resampler.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\aligned_malloc.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\apm_data_dumper.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\array_util.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\audio_buffer.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\audio_frame.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\audio_processing.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\audio_processing_statistics.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\audio_util.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\block_mean_calculator.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\channel_buffer.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\checks.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\config.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\cpu_features.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\criticalsection.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\delay_estimator.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\delay_estimator_wrapper.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\dot_product_with_scale.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\echo_cancellation.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\echo_canceller3_config.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\histogram_percentile_counter.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\logging.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\metrics_default.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\ooura_fft.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\ooura_fft_sse2.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\platform_file.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\platform_thread_types.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\push_sinc_resampler.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\randomization_functions.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\ring_buffer.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\sinc_resampler.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\sinc_resampler_sse.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\sparse_fir_filter.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\splitting_filter.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\splitting_filter_impl.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\string_builder.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\stringencode.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\stringutils.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\three_band_filter_bank.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\timeutils.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\wav_file.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libwebrtc-aec\src\wav_header.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>AEC Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libwebrtc-aec\ns\noise_suppression.c">
+      <Filter>NS Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libwebrtc-aec\ns\ns_core.c">
+      <Filter>NS Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libwebrtc-aec\ns\fft4g.c">
+      <Filter>NS Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

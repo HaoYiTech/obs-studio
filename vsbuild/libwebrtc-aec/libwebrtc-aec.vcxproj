@@ -93,8 +93,16 @@
     <ClInclude Include="..\..\libwebrtc-aec\inc\unused.h" />
     <ClInclude Include="..\..\libwebrtc-aec\inc\wav_file.h" />
     <ClInclude Include="..\..\libwebrtc-aec\inc\wav_header.h" />
+    <ClInclude Include="..\..\libwebrtc-aec\ns\defines.h" />
+    <ClInclude Include="..\..\libwebrtc-aec\ns\fft4g.h" />
+    <ClInclude Include="..\..\libwebrtc-aec\ns\noise_suppression.h" />
+    <ClInclude Include="..\..\libwebrtc-aec\ns\ns_core.h" />
+    <ClInclude Include="..\..\libwebrtc-aec\ns\windows_private.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\libwebrtc-aec\ns\fft4g.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\ns\noise_suppression.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\ns\ns_core.c" />
     <ClCompile Include="..\..\libwebrtc-aec\src\aec_core.cpp" />
     <ClCompile Include="..\..\libwebrtc-aec\src\aec_core_sse2.cpp" />
     <ClCompile Include="..\..\libwebrtc-aec\src\aec_resampler.cpp" />
@@ -249,7 +257,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WEBRTC_WIN;WEBRTC_APM_DEBUG_DUMP=0;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\libwebrtc-aec\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\libwebrtc-aec\inc;..\..\libwebrtc-aec\ns;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>None</DebugInformationFormat>
     </ClCompile>
     <Link>
