@@ -160,14 +160,8 @@ CDecoder::~CDecoder()
 void CDecoder::doPushPacket(AVPacket & inPacket)
 {
 	// 注意：这里必须以DTS排序，决定了解码的先后顺序...
-	// 如果有相同DTS的数据帧已经存在，直接释放AVPacket，返回...
-	if( m_MapPacket.find(inPacket.dts) != m_MapPacket.end() ) {
-		blog(LOG_INFO, "%s Error => SameDTS: %I64d, StreamID: %d", TM_RECV_NAME, inPacket.dts, inPacket.stream_index);
-		av_packet_unref(&inPacket);
-		return;
-	}
-	// 如果没有相同DTS的数据帧，保存起来...
-	m_MapPacket[inPacket.dts] = inPacket;
+	// 注意：由于使用multimap，可以专门处理相同时间戳...
+	m_MapPacket.insert(pair<int64_t, AVPacket>(inPacket.dts, inPacket));
 }
 
 void CDecoder::doSleepTo()
@@ -456,7 +450,8 @@ void CVideoThread::doDecodeFrame()
 	///////////////////////////////////////////////////////////////////////////////////////////////////////
 	int64_t frame_pts_ms = m_lpDFrame->best_effort_timestamp;
 	// 重新克隆AVFrame，自动分配空间，按时间排序...
-	m_MapFrame[frame_pts_ms] = av_frame_clone(m_lpDFrame);
+	AVFrame * lpNewFrame = av_frame_clone(m_lpDFrame);
+	m_MapFrame.insert(pair<int64_t, AVFrame*>(frame_pts_ms, lpNewFrame));
 	//DoProcSaveJpeg(m_lpDFrame, m_lpDecoder->pix_fmt, frame_pts, "F:/MP4/Src");
 	// 这里是引用，必须先free再erase...
 	av_packet_unref(&thePacket);
@@ -520,7 +515,8 @@ void CAudioThread::doDecodeFrame()
 	////////////////////////////////////////////////////////////////////////////////////////////
 	int64_t frame_pts_ms = m_lpDFrame->best_effort_timestamp;
 	// 重新克隆AVFrame，自动分配空间，按时间排序...
-	m_MapFrame[frame_pts_ms] = av_frame_clone(m_lpDFrame);
+	AVFrame * lpNewFrame = av_frame_clone(m_lpDFrame);
+	m_MapFrame.insert(pair<int64_t, AVFrame*>(frame_pts_ms, lpNewFrame));
 	// 这里是引用，必须先free再erase...
 	av_packet_unref(&thePacket);
 	m_MapPacket.erase(itorItem);
