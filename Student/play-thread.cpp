@@ -20,8 +20,11 @@ CVideoPlay::CVideoPlay(CViewRender * lpViewPlayer, int64_t inSysZeroNS)
   , m_sdlTexture(NULL)
   , m_sdlScreen(NULL)
 {
+	//m_bUdpRecvThreadStop = false;
 	// 初始化解码器互斥对象...
 	pthread_mutex_init_value(&m_VideoMutex);
+	// 初始化COM系统对象...
+	CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	// 初始化SDL2.0 => QT线程当中已经调用了 CoInitializeEx()...
 	int nRet = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
 }
@@ -63,6 +66,14 @@ CVideoPlay::~CVideoPlay()
 // 判断SDL是否需要重建...
 bool CVideoPlay::IsCanRebuildSDL(int nPicWidth, int nPicHeight)
 {
+	// 如果右侧播放线程停止引发的状态变化，SDL的退出会导致绘制重建...
+	/*if (m_bUdpRecvThreadStop) {
+		// 注意：右侧SDL的销毁，必须重新初始胡SDL才能成功创建，否则不能重建SDL...
+		int nRet = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
+		m_lpViewPlayer->GetAndResetRenderFlag();
+		m_bUdpRecvThreadStop = false;
+		return true;
+	}*/
 	// 纹理的宽高发生变化，需要重建，需要清理窗口变化，避免重复创建...
 	if (m_nSDLTextureWidth != nPicWidth || m_nSDLTextureHeight != nPicHeight) {
 		m_lpViewPlayer->GetAndResetRenderFlag();
@@ -281,7 +292,8 @@ void CVideoPlay::doDecodeFrame()
 	///////////////////////////////////////////////////////////////////////////////////////////////////////
 	int64_t frame_pts_ms = m_lpDecFrame->best_effort_timestamp;
 	// 重新克隆AVFrame，自动分配空间，按时间排序...
-	m_MapFrame[frame_pts_ms] = av_frame_clone(m_lpDecFrame);
+	AVFrame * lpNewFrame = av_frame_clone(m_lpDecFrame);
+	m_MapFrame.insert(pair<int64_t, AVFrame*>(frame_pts_ms, lpNewFrame));
 	//DoProcSaveJpeg(m_lpDFrame, m_lpDecoder->pix_fmt, frame_pts, "F:/MP4/Src");
 	// 这里需要释放AVPacket的缓存...
 	av_free_packet(&thePacket);
@@ -402,14 +414,8 @@ void CVideoPlay::doDisplayVideo()
 void CVideoPlay::doPushPacket(AVPacket & inPacket)
 {
 	// 注意：这里必须以DTS排序，决定了解码的先后顺序...
-	// 如果有相同DTS的数据帧已经存在，直接释放AVPacket，返回...
-	if (m_MapPacket.find(inPacket.dts) != m_MapPacket.end()) {
-		blog(LOG_INFO, "%s Error => SameDTS: %I64d, StreamID: %d", TM_RECV_NAME, inPacket.dts, inPacket.stream_index);
-		av_free_packet(&inPacket);
-		return;
-	}
-	// 如果没有相同DTS的数据帧，保存起来...
-	m_MapPacket[inPacket.dts] = inPacket;
+	// 注意：由于使用multimap，可以专门处理相同时间戳...
+	m_MapPacket.insert(pair<int64_t, AVPacket>(inPacket.dts, inPacket));
 }
 
 void CVideoPlay::Entry()
@@ -489,6 +495,8 @@ CAudioPlay::CAudioPlay(CViewCamera * lpViewCamera, int64_t inSysZeroNS)
 	circlebuf_init(&m_circle);
 	// 初始化解码器互斥对象...
 	pthread_mutex_init_value(&m_AudioMutex);
+	// 初始化COM系统对象...
+	CoInitializeEx(NULL, COINIT_MULTITHREADED);
 }
 
 CAudioPlay::~CAudioPlay()
@@ -733,14 +741,8 @@ void CAudioPlay::doPushFrame(FMS_FRAME & inFrame, int inCalcPTS)
 void CAudioPlay::doPushPacket(AVPacket & inPacket)
 {
 	// 注意：这里必须以DTS排序，决定了解码的先后顺序...
-	// 如果有相同DTS的数据帧已经存在，直接释放AVPacket，返回...
-	if (m_MapPacket.find(inPacket.dts) != m_MapPacket.end()) {
-		blog(LOG_INFO, "%s Error => SameDTS: %I64d, StreamID: %d", TM_RECV_NAME, inPacket.dts, inPacket.stream_index);
-		av_free_packet(&inPacket);
-		return;
-	}
-	// 如果没有相同DTS的数据帧，保存起来...
-	m_MapPacket[inPacket.dts] = inPacket;
+	// 注意：由于使用multimap，可以专门处理相同时间戳...
+	m_MapPacket.insert(pair<int64_t, AVPacket>(inPacket.dts, inPacket));
 }
 
 void CAudioPlay::doDecodeFrame()

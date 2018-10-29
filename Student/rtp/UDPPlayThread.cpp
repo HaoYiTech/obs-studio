@@ -46,14 +46,8 @@ CDecoder::~CDecoder()
 void CDecoder::doPushPacket(AVPacket & inPacket)
 {
 	// 注意：这里必须以DTS排序，决定了解码的先后顺序...
-	// 如果有相同DTS的数据帧已经存在，直接释放AVPacket，返回...
-	if( m_MapPacket.find(inPacket.dts) != m_MapPacket.end() ) {
-		blog(LOG_INFO, "%s Error => SameDTS: %I64d, StreamID: %d", TM_RECV_NAME, inPacket.dts, inPacket.stream_index);
-		av_free_packet(&inPacket);
-		return;
-	}
-	// 如果没有相同DTS的数据帧，保存起来...
-	m_MapPacket[inPacket.dts] = inPacket;
+	// 注意：由于使用multimap，可以专门处理相同时间戳...
+	m_MapPacket.insert(pair<int64_t, AVPacket>(inPacket.dts, inPacket));
 }
 
 void CDecoder::doSleepTo()
@@ -87,6 +81,10 @@ CVideoThread::CVideoThread(CPlaySDL * lpPlaySDL, CViewRender * lpViewRender)
 {
 	ASSERT(m_lpViewRender != NULL);
 	ASSERT( m_lpPlaySDL != NULL );
+	// 初始化COM系统对象...
+	CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	// 初始化SDL2.0 => QT线程当中已经调用了 CoInitializeEx()...
+	int nRet = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
 }
 
 CVideoThread::~CVideoThread()
@@ -482,7 +480,8 @@ void CVideoThread::doDecodeFrame()
 	///////////////////////////////////////////////////////////////////////////////////////////////////////
 	int64_t frame_pts_ms = m_lpDFrame->best_effort_timestamp;
 	// 重新克隆AVFrame，自动分配空间，按时间排序...
-	m_MapFrame[frame_pts_ms] = av_frame_clone(m_lpDFrame);
+	AVFrame * lpNewFrame = av_frame_clone(m_lpDFrame);
+	m_MapFrame.insert(pair<int64_t, AVFrame*>(frame_pts_ms, lpNewFrame));
 	//DoProcSaveJpeg(m_lpDFrame, m_lpDecoder->pix_fmt, frame_pts, "F:/MP4/Src");
 	// 这里需要释放AVPacket的缓存...
 	av_free_packet(&thePacket);
@@ -527,6 +526,8 @@ CAudioThread::CAudioThread(CPlaySDL * lpPlaySDL)
 	// 初始化PCM数据环形队列...
 	circlebuf_init(&m_circle);
 	circlebuf_reserve(&m_circle, DEF_CIRCLE_SIZE/4);
+	// 初始化COM系统对象...
+	CoInitializeEx(NULL, COINIT_MULTITHREADED);
 }
 
 CAudioThread::~CAudioThread()
@@ -1032,8 +1033,6 @@ CPlaySDL::CPlaySDL(CViewRender * lpViewRender, int64_t inSysZeroNS)
 {
 	ASSERT( m_lpViewRender != NULL );
 	ASSERT( m_sys_zero_ns > 0 );
-	// 初始化SDL2.0 => QT线程当中已经调用了 CoInitializeEx()...
-	int nRet = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
 }
 
 CPlaySDL::~CPlaySDL()

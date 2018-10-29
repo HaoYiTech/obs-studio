@@ -353,11 +353,18 @@ QString CViewCamera::GetSendPushRate()
 // 处理右侧播放线程已经停止通知...
 void CViewCamera::onUdpRecvThreadStop()
 {
+	// 通知回音消除对象进行重建操作...
 	pthread_mutex_lock(&m_MutexAEC);
 	if (m_lpWebrtcAEC != NULL) {
 		m_lpWebrtcAEC->onUdpRecvThreadStop();
 	}
 	pthread_mutex_unlock(&m_MutexAEC);
+	/*// 通知视频播放对象需要进行重建 => 右侧SDL的退出会对这里的SDL有影响...
+	pthread_mutex_lock(&m_MutexPlay);
+	if (m_lpVideoPlay != NULL) {
+		m_lpVideoPlay->onUdpRecvThreadStop();
+	}
+	pthread_mutex_unlock(&m_MutexPlay);*/
 }
 
 void CViewCamera::doUdpSendThreadStart()

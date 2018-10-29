@@ -180,9 +180,20 @@ void CViewLeft::doUdpPusherLogout(int nDBCameraID)
 	blog(LOG_INFO, "== doUdpPusherLogout => StopID: %d ==", nDBCameraID);
 }
 
-// 处理右侧播放线程已经停止通知 => 只通知正在推流通道...
+// 处理右侧播放线程已经停止通知...
 void CViewLeft::onUdpRecvThreadStop()
 {
+	/*GM_MapCamera::iterator itorItem;
+	CViewCamera * lpViewCamera = NULL;
+	// 遍历所有的通道，告知右侧播放线程已经停止，需要重建预览画面的SDL对象...
+	for (itorItem = m_MapCamera.begin(); itorItem != m_MapCamera.end(); ++itorItem) {
+		lpViewCamera = itorItem->second;
+		if (lpViewCamera == NULL) continue;
+		lpViewCamera->onUdpRecvThreadStop();
+	}*/
+	//////////////////////////////////////////////////////
+	// 注意：如果是非SDL播放，可能才有下面的方法...
+	//////////////////////////////////////////////////////
 	// 查找正在推流的通道对象，没找到直接返回...
 	GM_MapCamera::iterator itorItem = m_MapCamera.find(m_nLiveCameraID);
 	if (itorItem == m_MapCamera.end())

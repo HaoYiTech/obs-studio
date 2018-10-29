@@ -19,8 +19,8 @@ extern "C"
 #include "SDL2/SDL.h"
 };
 
-typedef map<int64_t, AVPacket>		GM_AVPacket;	// DTS => AVPacket  => 解码前的数据帧 => 毫秒 => 1/1000
-typedef map<int64_t, AVFrame*>		GM_AVFrame;	    // PTS => AVFrame   => 解码后的视频帧 => 毫秒 => 1/1000
+typedef multimap<int64_t, AVPacket>		GM_AVPacket;	// DTS => AVPacket  => 解码前的数据帧 => 毫秒 => 1/1000
+typedef multimap<int64_t, AVFrame*>		GM_AVFrame;	    // PTS => AVFrame   => 解码后的视频帧 => 毫秒 => 1/1000
 
 class CViewRender;
 class CVideoPlay : public OSThread
@@ -31,6 +31,7 @@ public:
 private:
 	virtual void	Entry();
 public:
+	//void  onUdpRecvThreadStop() { m_bUdpRecvThreadStop = true; }
 	bool    doInitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS);
 	void    doPushFrame(FMS_FRAME & inFrame, int inCalcPTS);
 private:
@@ -63,6 +64,8 @@ private:
 	int64_t             m_sys_zero_ns;         // 系统计时零点 => 启动时间戳 => 纳秒...
 	int64_t				m_play_next_ns;		   // 下一个要播放帧的系统纳秒值...
 	bool				m_bNeedSleep;		   // 休息标志 => 只要有解码或播放就不能休息...
+
+	//bool              m_bUdpRecvThreadStop;  // 右侧线程停止状态标志...
 };
 
 class CViewCamera;
