@@ -27108,6 +27108,42 @@ fail:
 }
 
 
+static int _wrap_obs_get_room_id(lua_State* L) {
+  int SWIG_arg = 0;
+  int result;
+  
+  SWIG_check_num_args("obs_get_room_id",0,0)
+  result = (int)obs_get_room_id();
+  lua_pushnumber(L, (lua_Number) result); SWIG_arg++;
+  return SWIG_arg;
+  
+  if(0) SWIG_fail;
+  
+fail:
+  lua_error(L);
+  return SWIG_arg;
+}
+
+
+static int _wrap_obs_set_room_id(lua_State* L) {
+  int SWIG_arg = 0;
+  int arg1 ;
+  
+  SWIG_check_num_args("obs_set_room_id",1,1)
+  if(!lua_isnumber(L,1)) SWIG_fail_arg("obs_set_room_id",1,"int");
+  arg1 = (int)lua_tonumber(L, 1);
+  obs_set_room_id(arg1);
+  
+  return SWIG_arg;
+  
+  if(0) SWIG_fail;
+  
+fail:
+  lua_error(L);
+  return SWIG_arg;
+}
+
+
 static int _wrap_obs_shutdown(lua_State* L) {
   int SWIG_arg = 0;
   
@@ -40588,6 +40624,8 @@ static swig_lua_method swig_SwigModule_methods[]= {
     { "obs_key_from_name", _wrap_obs_key_from_name},
     { "obs_key_combination_is_empty", _wrap_obs_key_combination_is_empty},
     { "obs_startup", _wrap_obs_startup},
+    { "obs_get_room_id", _wrap_obs_get_room_id},
+    { "obs_set_room_id", _wrap_obs_set_room_id},
     { "obs_shutdown", _wrap_obs_shutdown},
     { "obs_initialized", _wrap_obs_initialized},
     { "obs_get_version", _wrap_obs_get_version},

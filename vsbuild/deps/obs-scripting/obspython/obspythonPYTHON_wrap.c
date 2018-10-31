@@ -28752,6 +28752,40 @@ fail:
 }
 
 
+SWIGINTERN PyObject *_wrap_obs_get_room_id(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  int result;
+  
+  if (!PyArg_ParseTuple(args,(char *)":obs_get_room_id")) SWIG_fail;
+  result = (int)obs_get_room_id();
+  resultobj = SWIG_From_int((int)(result));
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_obs_set_room_id(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  int arg1 ;
+  int val1 ;
+  int ecode1 = 0 ;
+  PyObject * obj0 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"O:obs_set_room_id",&obj0)) SWIG_fail;
+  ecode1 = SWIG_AsVal_int(obj0, &val1);
+  if (!SWIG_IsOK(ecode1)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "obs_set_room_id" "', argument " "1"" of type '" "int""'");
+  } 
+  arg1 = (int)(val1);
+  obs_set_room_id(arg1);
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
 SWIGINTERN PyObject *_wrap_obs_shutdown(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   
@@ -42746,6 +42780,8 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"delete_obs_source_frame", _wrap_delete_obs_source_frame, METH_VARARGS, NULL},
 	 { (char *)"obs_source_frame_swigregister", obs_source_frame_swigregister, METH_VARARGS, NULL},
 	 { (char *)"obs_startup", _wrap_obs_startup, METH_VARARGS, NULL},
+	 { (char *)"obs_get_room_id", _wrap_obs_get_room_id, METH_VARARGS, NULL},
+	 { (char *)"obs_set_room_id", _wrap_obs_set_room_id, METH_VARARGS, NULL},
 	 { (char *)"obs_shutdown", _wrap_obs_shutdown, METH_VARARGS, NULL},
 	 { (char *)"obs_initialized", _wrap_obs_initialized, METH_VARARGS, NULL},
 	 { (char *)"obs_get_version", _wrap_obs_get_version, METH_VARARGS, NULL},

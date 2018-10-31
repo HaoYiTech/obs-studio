@@ -3452,6 +3452,14 @@ def obs_startup(locale: 'char const *', module_config_path: 'char const *', stor
     return _obspython.obs_startup(locale, module_config_path, store)
 obs_startup = _obspython.obs_startup
 
+def obs_get_room_id() -> "int":
+    return _obspython.obs_get_room_id()
+obs_get_room_id = _obspython.obs_get_room_id
+
+def obs_set_room_id(nRoomID: 'int') -> "void":
+    return _obspython.obs_set_room_id(nRoomID)
+obs_set_room_id = _obspython.obs_set_room_id
+
 def obs_shutdown() -> "void":
     return _obspython.obs_shutdown()
 obs_shutdown = _obspython.obs_shutdown
