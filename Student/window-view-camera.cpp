@@ -28,7 +28,7 @@ CViewCamera::CViewCamera(QWidget *parent, int nDBCameraID)
   : OBSQTDisplay(parent, 0)
   , m_nCameraState(kCameraOffLine)
   , m_nDBCameraID(nDBCameraID)
-  , m_bIsPreviewMute(false)
+  , m_bIsPreviewMute(true)
   , m_bIsPreviewShow(false)
   , m_bFindFirstVKey(false)
   , m_lpUDPSendThread(NULL)
@@ -680,8 +680,10 @@ void CViewCamera::doCreatePlayer()
 		if (!m_lpAudioPlay->doInitAudio(nRateIndex, nChannelNum)) {
 			delete m_lpAudioPlay; m_lpAudioPlay = NULL;
 		}
-		// 根据音频播放对象是否有效进行预览静音标志的设定...
-		m_bIsPreviewMute = ((m_lpAudioPlay != NULL) ? false : true);
+		// 如果是默认静音状态，并且音频对象有效，调用静音接口...
+		if (m_bIsPreviewMute && m_lpAudioPlay != NULL) {
+			m_lpAudioPlay->SetMute(true);
+		}
 	}
 	// 创建视频渲染回放窗口对象 => 默认处于隐藏状态...
 	m_lpViewPlayer = new CViewRender(QString(""), NOTICE_FONT_HEIGHT, this);
@@ -727,7 +729,7 @@ void CViewCamera::doDeletePlayer()
 	m_start_pts_ms = -1;
 	// 重置找到第一个关键帧标志...
 	m_bFindFirstVKey = false;
-	m_bIsPreviewMute = false;
+	m_bIsPreviewMute = true;
 	// 退出互斥保护对象...
 	pthread_mutex_unlock(&m_MutexPlay);
 }
