@@ -279,9 +279,9 @@ void LoginWindow::onTriggerRoomList(int nRoomPage)
 		json_t * theStartTime = json_object_get(value, "start_time");
 		json_t * theEndTime = json_object_get(value, "end_time");
 		// 计算截图连接地址和海报连接地址，海报地址无效时使用截图地址...
-		int nDBPosterID = (json_is_integer(thePosterID)) ? json_integer_value(thePosterID) : atoi(json_string_value(thePosterID));
-		int nDBImageID = (json_is_integer(theImageID)) ? json_integer_value(theImageID) : atoi(json_string_value(theImageID));
-		int nDBRoomID = (json_is_integer(theRoomID)) ? json_integer_value(theRoomID) : atoi(json_string_value(theRoomID));
+		int nDBPosterID = json_is_null(thePosterID) ? 0 : ((json_is_integer(thePosterID)) ? json_integer_value(thePosterID) : atoi(json_string_value(thePosterID)));
+		int nDBImageID = json_is_null(theImageID) ? 0 : ((json_is_integer(theImageID)) ? json_integer_value(theImageID) : atoi(json_string_value(theImageID)));
+		int nDBRoomID = json_is_null(theRoomID) ? 0 : ((json_is_integer(theRoomID)) ? json_integer_value(theRoomID) : atoi(json_string_value(theRoomID)));
 		QString strPosterTag = (nDBPosterID > 0) ? QString("%1/%2_200x300").arg(strAddr.c_str()).arg(json_string_value(thePosterTag)) : "";
 		QString strImageTag = (nDBImageID > 0) ? QString("%1/%2_200x300").arg(strAddr.c_str()).arg(json_string_value(theImageTag)) : "";
 		QString strRequestUrl = (strPosterTag.isEmpty() || strPosterTag.size() <= 0) ? strImageTag : strPosterTag;
