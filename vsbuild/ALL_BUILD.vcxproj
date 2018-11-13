@@ -171,10 +171,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Project>{429B001A-85D3-354E-90E6-3E04D0D6AF0C}</Project>
       <Name>blake2</Name>
     </ProjectReference>
-    <ProjectReference Include="E:\obs-studio\vsbuild\plugins\coreaudio-encoder\coreaudio-encoder.vcxproj">
-      <Project>{8368BA40-256E-335D-BCA7-B7410A131FBE}</Project>
-      <Name>coreaudio-encoder</Name>
-    </ProjectReference>
     <ProjectReference Include="E:\obs-studio\vsbuild\plugins\obs-ffmpeg\ffmpeg-mux\ffmpeg-mux.vcxproj">
       <Project>{552C7509-3CA2-3ECE-A47D-CA630C1746F4}</Project>
       <Name>ffmpeg-mux</Name>
