@@ -34,6 +34,9 @@
     <Filter Include="Json Files">
       <UniqueIdentifier>{73c50a8c-39d1-48c4-a5cf-13ba8d2cb88e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Curl Files">
+      <UniqueIdentifier>{8748ee35-7a3e-47d7-a5c0-00c12da1dfa7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="obs-app.cpp">
@@ -357,6 +360,30 @@
     </ClInclude>
     <ClInclude Include="json\writer.h">
       <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="curl\curl.h">
+      <Filter>Curl Files</Filter>
+    </ClInclude>
+    <ClInclude Include="curl\curlbuild.h">
+      <Filter>Curl Files</Filter>
+    </ClInclude>
+    <ClInclude Include="curl\curlrules.h">
+      <Filter>Curl Files</Filter>
+    </ClInclude>
+    <ClInclude Include="curl\curlver.h">
+      <Filter>Curl Files</Filter>
+    </ClInclude>
+    <ClInclude Include="curl\easy.h">
+      <Filter>Curl Files</Filter>
+    </ClInclude>
+    <ClInclude Include="curl\mprintf.h">
+      <Filter>Curl Files</Filter>
+    </ClInclude>
+    <ClInclude Include="curl\multi.h">
+      <Filter>Curl Files</Filter>
+    </ClInclude>
+    <ClInclude Include="curl\stdcheaders.h">
+      <Filter>Curl Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

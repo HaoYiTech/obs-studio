@@ -29,7 +29,7 @@
 #include "FastSession.h"
 
 #include <fstream>
-#include <curl/curl.h>
+#include <curl.h>
 #include <jansson.h>
 
 #include <QtCore/qfile.h>
@@ -637,19 +637,12 @@ bool OBSApp::InitGlobalConfig()
 		changed = true;
 	}
 	// 从配置文件当中读取节点网站的地址...
-	m_strWebAddr = config_get_string(globalConfig, "General", "WebClass");
-	// 查看节点端口地址是否有效...
-	if (!config_has_user_value(globalConfig, "General", "WebPort")) {
-		config_set_int(globalConfig, "General", "WebPort", DEF_WEB_PORT);
-		changed = true;
-	}
-	// 从配置文件当中读取节点网站的端口地址...
-	m_nWebPort = config_get_int(globalConfig, "General", "WebPort");
+	m_strWebClass = config_get_string(globalConfig, "General", "WebClass");
 	// 配置有变化，存盘到global.ini配置文件当中...
 	if (changed) {
 		config_save_safe(globalConfig, "tmp", nullptr);
 	}
-
+	// 返回默认的初始配置信息...
 	return InitGlobalConfigDefaults();
 }
 
@@ -786,8 +779,7 @@ OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
 	profilerNameStore(store)
 {
 	m_strWebCenter = DEF_WEB_CENTER;
-	m_strWebAddr = DEF_WEB_CLASS;
-	m_nWebPort = DEF_WEB_PORT;
+	m_strWebClass = DEF_WEB_CLASS;
 	m_nRtpTCPSockFD = 0;
 	m_nOnLineTimer = -1;
 	m_nFastTimer = -1;
@@ -1073,14 +1065,18 @@ void OBSApp::doLogoutEvent()
 	// 准备登出需要的云教室号码缓冲区...
 	char  szUrl[MAX_PATH] = { 0 };
 	char  szPost[MAX_PATH] = { 0 };
-	sprintf(szUrl, "%s/wxapi.php/Gather/logoutLiveRoom", m_strWebAddr.c_str());
+	sprintf(szUrl, "%s/wxapi.php/Gather/logoutLiveRoom", m_strWebClass.c_str());
 	sprintf(szPost, "room_id=%s&type_id=%d", lpLiveRoomID, this->GetClientType());
 	// 调用Curl接口，汇报采集端信息...
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();
 	do {
-		if (curl == NULL)
-			break;
+		if (curl == NULL) break;
+		// 如果是https://协议，需要新增参数...
+		if ( App()->IsClassHttps() ) {
+			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+		}
 		// 设定curl参数，采用post模式，设置5秒超时...
 		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
 		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, szPost);
@@ -1363,14 +1359,18 @@ void OBSApp::doWebSaveFDFS(char * lpFileName, char * lpPathFDFS, int64_t llFileS
 	// 准备汇报需要的缓冲区...
 	char  szUrl[MAX_PATH] = { 0 };
 	char  szPost[MAX_PATH] = { 0 };
-	sprintf(szUrl, "%s/wxapi.php/Gather/liveFDFS", m_strWebAddr.c_str());
+	sprintf(szUrl, "%s/wxapi.php/Gather/liveFDFS", m_strWebClass.c_str());
 	sprintf(szPost, "ext=%s&file_src=%s&file_fdfs=%s&file_size=%I64d", szExt, szSrcName, lpPathFDFS, llFileSize);
 	// 调用Curl接口，汇报采集端信息...
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();
 	do {
-		if (curl == NULL)
-			break;
+		if (curl == NULL) break;
+		// 如果是https://协议，需要新增参数...
+		if ( App()->IsClassHttps() ) {
+			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+		}
 		// 设定curl参数，采用post模式，设置5秒超时...
 		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
 		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, szPost);
