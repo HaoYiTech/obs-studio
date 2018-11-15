@@ -602,8 +602,7 @@ CStudentApp::CStudentApp(int &argc, char **argv)
   , m_nRtpTCPSockFD(0)
   , m_nMaxCamera(DEF_MAX_CAMERA)
   , m_strWebCenter(DEF_WEB_CENTER)
-  , m_strWebAddr(DEF_WEB_CLASS)
-  , m_nWebPort(DEF_WEB_PORT)
+  , m_strWebClass(DEF_WEB_CLASS)
   , m_nDBHaoYiGatherID(-1)
   , m_nDBHaoYiNodeID(-1)
   , m_strAuthExpired("")
@@ -781,22 +780,15 @@ bool CStudentApp::InitGlobalConfig()
 		config_set_string(m_globalConfig, "General", "WebCenter", DEF_WEB_CENTER);
 		changed = true;
 	}
-	// 从配置文件当中读取中心网站的地址...
+	// 从配置文件当中读取中心网站的地址 => https://
 	m_strWebCenter = config_get_string(m_globalConfig, "General", "WebCenter");
 	// 查看节点网站地址是否有效...
 	if (!config_has_user_value(m_globalConfig, "General", "WebClass")) {
 		config_set_string(m_globalConfig, "General", "WebClass", DEF_WEB_CLASS);
 		changed = true;
 	}
-	// 从配置文件当中读取节点网站的地址...
-	m_strWebAddr = config_get_string(m_globalConfig, "General", "WebClass");
-	// 查看节点端口地址是否有效...
-	if (!config_has_user_value(m_globalConfig, "General", "WebPort")) {
-		config_set_int(m_globalConfig, "General", "WebPort", DEF_WEB_PORT);
-		changed = true;
-	}
-	// 从配置文件当中读取节点网站的端口地址...
-	m_nWebPort = config_get_int(m_globalConfig, "General", "WebPort");
+	// 从配置文件当中读取云教室网站的地址 => https://
+	m_strWebClass = config_get_string(m_globalConfig, "General", "WebClass");
 	// 配置有变化，存盘到global.ini配置文件当中...
 	if (changed) {
 		config_save_safe(m_globalConfig, "tmp", nullptr);

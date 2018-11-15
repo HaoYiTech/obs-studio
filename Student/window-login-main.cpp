@@ -200,14 +200,19 @@ void LoginWindow::onTriggerRoomList(int nRoomPage)
 	// 判断完毕，组合命令字符串...
 	char  szUrl[MAX_PATH] = { 0 };
 	char  szPost[MAX_PATH] = { 0 };
-	sprintf(szUrl, "%s/wxapi.php/Gather/getRoomList", App()->GetWebAddr().c_str());
+	// 这里需要用到 https 模式，云教室节点网站，全站都用 https 模式...
+	sprintf(szUrl, "%s/wxapi.php/Gather/getRoomList", App()->GetWebClass().c_str());
 	sprintf(szPost, "p=%d&type_id=%d", nRoomPage, App()->GetClientType());
 	// 调用Curl接口，汇报命令信息...
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();
 	do {
-		if (curl == NULL)
-			break;
+		if (curl == NULL) break;
+		// 如果是https://协议，需要新增参数...
+		if ( App()->IsClassHttps() ) {
+			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+		}
 		// 设定curl参数，采用post模式，设置5秒超时...
 		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
 		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, szPost);
@@ -249,7 +254,7 @@ void LoginWindow::onTriggerRoomList(int nRoomPage)
 		return;
 	}
 	// 将获取到的分页信息存储起来...
-	string & strAddr = App()->GetWebAddr();
+	string & strClassAddr = App()->GetWebClass();
 	json_t * theTotalNum = json_object_get(theRoot, "total_num");
 	json_t * theMaxPage = json_object_get(theRoot, "max_page");
 	json_t * theCurPage = json_object_get(theRoot, "cur_page");
@@ -280,8 +285,8 @@ void LoginWindow::onTriggerRoomList(int nRoomPage)
 		int nDBPosterID = json_is_null(thePosterID) ? 0 : ((json_is_integer(thePosterID)) ? json_integer_value(thePosterID) : atoi(json_string_value(thePosterID)));
 		int nDBImageID = json_is_null(theImageID) ? 0 : ((json_is_integer(theImageID)) ? json_integer_value(theImageID) : atoi(json_string_value(theImageID)));
 		int nDBRoomID = json_is_null(theRoomID) ? 0 : ((json_is_integer(theRoomID)) ? json_integer_value(theRoomID) : atoi(json_string_value(theRoomID)));
-		QString strPosterTag = (nDBPosterID > 0) ? QString("%1/%2_200x300").arg(strAddr.c_str()).arg(json_string_value(thePosterTag)) : "";
-		QString strImageTag = (nDBImageID > 0) ? QString("%1/%2_200x300").arg(strAddr.c_str()).arg(json_string_value(theImageTag)) : "";
+		QString strPosterTag = (nDBPosterID > 0) ? QString("%1/%2_200x300").arg(strClassAddr.c_str()).arg(json_string_value(thePosterTag)) : "";
+		QString strImageTag = (nDBImageID > 0) ? QString("%1/%2_200x300").arg(strClassAddr.c_str()).arg(json_string_value(theImageTag)) : "";
 		QString strRequestUrl = (strPosterTag.isEmpty() || strPosterTag.size() <= 0) ? strImageTag : strPosterTag;
 		QString strTeacherName = json_string_value(theTeacherName);
 		QString strRoomName = json_string_value(theRoomName);
@@ -447,14 +452,18 @@ void LoginWindow::doLoginAction(int nLiveRoomID)
 	// 判断完毕，将获取到的云教室号码发送到服务器验证...
 	char  szUrl[MAX_PATH] = { 0 };
 	char  szPost[MAX_PATH] = { 0 };
-	sprintf(szUrl, "%s/wxapi.php/Gather/loginLiveRoom", App()->GetWebAddr().c_str());
+	sprintf(szUrl, "%s/wxapi.php/Gather/loginLiveRoom", App()->GetWebClass().c_str());
 	sprintf(szPost, "room_id=%s&type_id=%d", strLiveRoomID.c_str(), App()->GetClientType());
 	// 调用Curl接口，汇报采集端信息...
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();
 	do {
-		if (curl == NULL)
-			break;
+		if (curl == NULL) break;
+		// 如果是https://协议，需要新增参数...
+		if ( App()->IsClassHttps() ) {
+			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+		}
 		// 设定curl参数，采用post模式，设置5秒超时...
 		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
 		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, szPost);

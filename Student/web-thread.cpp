@@ -69,15 +69,10 @@ bool CWebThread::RegisterGather()
 	m_eRegState = kRegGather;
 	m_strUTF8Data.clear();
 	// 判断数据是否有效...
-	int nWebPort = App()->GetWebPort();
-	string & strWebAddr = App()->GetWebAddr();
+	string & strWebClass = App()->GetWebClass();
 	string & strMacAddr = App()->GetLocalMacAddr();
 	string & strIPAddr = App()->GetLocalIPAddr();
-	if (strWebAddr.size() <= 0 || nWebPort <= 0) {
-		MsgLogGM(GM_NotImplement);
-		return false;
-	}
-	if (strMacAddr.size() <= 0 || strIPAddr.size() <= 0) {
+	if (strWebClass.size() <= 0 || strMacAddr.size() <= 0 || strIPAddr.size() <= 0) {
 		MsgLogGM(GM_NotImplement);
 		return false;
 	}
@@ -89,7 +84,7 @@ bool CWebThread::RegisterGather()
 	string  strUTF8DNS = CStudentApp::GetServerDNSName();
 	StringParser::EncodeURI(strUTF8DNS.c_str(), strUTF8DNS.size(), szDNS, MAX_PATH);
 	sprintf(strPost, "mac_addr=%s&ip_addr=%s&name_pc=%s&os_name=%s", strMacAddr.c_str(), strIPAddr.c_str(), szDNS, CStudentApp::GetServerOS());
-	sprintf(strUrl, "%s:%d/wxapi.php/Gather/index", strWebAddr.c_str(), nWebPort);
+	sprintf(strUrl, "%s/wxapi.php/Gather/index", strWebClass.c_str());
 	// 调用Curl接口，汇报采集端信息...
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();
@@ -97,10 +92,10 @@ bool CWebThread::RegisterGather()
 		if (curl == NULL)
 			break;
 		// 如果是https://协议，需要新增参数...
-		/*if (theConfig.IsWebHttps()) {
+		if (App()->IsClassHttps()) {
 			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
 			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
-		}*/
+		}
 		// 设定curl参数，采用post模式，设置5秒超时...
 		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
 		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, strPost);
@@ -222,16 +217,16 @@ bool CWebThread::RegisterHaoYi()
 	m_strUTF8Data.clear();
 	// 判断数据是否有效...
 	int nWebType = App()->GetWebType();
-	int nWebPort = App()->GetWebPort();
-	string  & strMainName = App()->GetMainName();
+	int nWebPort = App()->IsClassHttps() ? DEF_SSL_PORT : DEF_WEB_PORT;
+	string    strWebProto = App()->IsClassHttps() ? DEF_SSL_PROTO : DEF_WEB_PROTO;
+	string  & strWebClass = App()->GetWebClass();
 	string  & strWebVer = App()->GetWebVer();
 	string  & strWebTag = App()->GetWebTag();
 	string  & strWebName = App()->GetWebName();
-	string  & strWebAddr = App()->GetWebAddr();
 	string  & strMacAddr = App()->GetLocalMacAddr();
 	string  & strIPAddr = App()->GetLocalIPAddr();
-	string    strWebProto = "http";
-	string    strOnlyAddr = strWebAddr.c_str() + strWebProto.size() + 3;
+	string  & strMainName = App()->GetMainName();
+	string    strOnlyAddr = strWebClass.c_str() + strWebProto.size() + 3;
 	if (strMacAddr.size() <= 0 || strIPAddr.size() <= 0) {
 		MsgLogGM(GM_NotImplement);
 		return false;
@@ -261,11 +256,11 @@ bool CWebThread::RegisterHaoYi()
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();
 	do {
-		if (curl == NULL)
-			break;
-		// 设定curl参数，采用post模式，设置5秒超时，忽略证书检查...
+		if (curl == NULL) break;
+		// 如果是https://协议，需要新增参数...
 		res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
 		res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+		// 设定curl参数，采用post模式，设置5秒超时...
 		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
 		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, strPost);
 		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(strPost));
@@ -358,8 +353,7 @@ bool CWebThread::LogoutHaoYi()
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();
 	do {
-		if (curl == NULL)
-			break;
+		if (curl == NULL) break;
 		// 如果是https://协议，需要新增参数...
 		res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
 		res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
@@ -390,10 +384,9 @@ bool CWebThread::LogoutHaoYi()
 bool CWebThread::LogoutGather()
 {
 	// 获取网站配置信息...
-	int nWebPort = App()->GetWebPort();
 	int nDBGatherID = App()->GetDBGatherID();
-	string & strWebAddr = App()->GetWebAddr();
-	if (nDBGatherID <= 0 || nWebPort <= 0 || strWebAddr.size() <= 0) {
+	string & strWebClass = App()->GetWebClass();
+	if (nDBGatherID <= 0 || strWebClass.size() <= 0) {
 		MsgLogGM(GM_NotImplement);
 		return false;
 	}
@@ -405,18 +398,17 @@ bool CWebThread::LogoutGather()
 	char strUrl[MAX_PATH] = { 0 };
 	sprintf(strPost, "gather_id=%d", nDBGatherID);
 	// 组合访问链接地址...
-	sprintf(strUrl, "%s:%d/wxapi.php/Gather/logout", strWebAddr.c_str(), nWebPort);
+	sprintf(strUrl, "%s/wxapi.php/Gather/logout", strWebClass.c_str());
 	// 调用Curl接口，汇报摄像头数据...
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();
 	do {
-		if (curl == NULL)
-			break;
+		if (curl == NULL) break;
 		// 如果是https://协议，需要新增参数...
-		/*if (theConfig.IsWebHttps()) {
+		if (App()->IsClassHttps()) {
 			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
 			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
-		}*/
+		}
 		// 设定curl参数，采用post模式...
 		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
 		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, strPost);
@@ -443,10 +435,9 @@ bool CWebThread::LogoutGather()
 bool CWebThread::doWebGetCamera(int nDBCameraID)
 {
 	// 获取网站配置信息...
-	int nWebPort = App()->GetWebPort();
 	int nDBGatherID = App()->GetDBGatherID();
-	string & strWebAddr = App()->GetWebAddr();
-	if (nWebPort <= 0 || strWebAddr.size() <= 0) {
+	string & strWebClass = App()->GetWebClass();
+	if ( strWebClass.size() <= 0 ) {
 		MsgLogGM(GM_NotImplement);
 		return false;
 	}
@@ -462,18 +453,17 @@ bool CWebThread::doWebGetCamera(int nDBCameraID)
 	char strPost[MAX_PATH] = { 0 };
 	char strUrl[MAX_PATH] = { 0 };
 	sprintf(strPost, "gather_id=%d&camera_id=%d", nDBGatherID, nDBCameraID);
-	sprintf(strUrl, "%s:%d/wxapi.php/Gather/getCamera", strWebAddr.c_str(), nWebPort);
+	sprintf(strUrl, "%s/wxapi.php/Gather/getCamera", strWebClass.c_str());
 	// 调用Curl接口，汇报摄像头数据...
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();
 	do {
-		if (curl == NULL)
-			break;
+		if (curl == NULL) break;
 		// 如果是https://协议，需要新增参数...
-		/*if (theConfig.IsWebHttps()) {
+		if ( App()->IsClassHttps() ) {
 			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
 			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
-		}*/
+		}
 		// 设定curl参数，采用post模式...
 		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
 		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, strPost);
@@ -550,9 +540,8 @@ bool CWebThread::doWebGetCamera(int nDBCameraID)
 bool CWebThread::doWebDelCamera(string & inDeviceSN)
 {
 	// 获取网站配置信息...
-	int nWebPort = App()->GetWebPort();
-	string & strWebAddr = App()->GetWebAddr();
-	if (nWebPort <= 0 || strWebAddr.size() <= 0) {
+	string & strWebClass = App()->GetWebClass();
+	if ( strWebClass.size() <= 0 ) {
 		MsgLogGM(GM_NotImplement);
 		return false;
 	}
@@ -565,18 +554,17 @@ bool CWebThread::doWebDelCamera(string & inDeviceSN)
 	char strUrl[MAX_PATH] = { 0 };
 	sprintf(strPost, "device_sn=%s", inDeviceSN.c_str());
 	// 组合访问链接地址...
-	sprintf(strUrl, "%s:%d/wxapi.php/Gather/delCamera", strWebAddr.c_str(), nWebPort);
+	sprintf(strUrl, "%s/wxapi.php/Gather/delCamera", strWebClass.c_str());
 	// 调用Curl接口，汇报摄像头数据...
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();
 	do {
-		if (curl == NULL)
-			break;
+		if (curl == NULL) break;
 		// 如果是https://协议，需要新增参数...
-		/*if (theConfig.IsWebHttps()) {
+		if ( App()->IsClassHttps() ) {
 			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
 			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
-		}*/
+		}
 		// 设定curl参数，采用post模式...
 		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
 		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, strPost);
@@ -625,10 +613,9 @@ bool CWebThread::doWebRegCamera(GM_MapData & inData)
 	}
 	// 获取网站配置信息...
 	int nStreamProp = atoi(itorProp->second.c_str());
-	int nWebPort = App()->GetWebPort();
 	int nDBGatherID = App()->GetDBGatherID();
-	string & strWebAddr = App()->GetWebAddr();
-	if (nWebPort <= 0 || strWebAddr.size() <= 0) {
+	string & strWebClass = App()->GetWebClass();
+	if ( strWebClass.size() <= 0 ) {
 		MsgLogGM(GM_NotImplement);
 		return false;
 	}
@@ -679,18 +666,17 @@ bool CWebThread::doWebRegCamera(GM_MapData & inData)
 			inData["device_twice"].c_str(), inData["device_boot"].c_str(), inData["use_tcp"].c_str());
 	}*/
 	// 组合访问链接地址...
-	sprintf(strUrl, "%s:%d/wxapi.php/Gather/regCamera", strWebAddr.c_str(), nWebPort);
+	sprintf(strUrl, "%s/wxapi.php/Gather/regCamera", strWebClass.c_str());
 	// 调用Curl接口，汇报摄像头数据...
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();
 	do {
-		if (curl == NULL)
-			break;
+		if (curl == NULL) break;
 		// 如果是https://协议，需要新增参数...
-		/*if (theConfig.IsWebHttps()) {
+		if ( App()->IsClassHttps() ) {
 			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
 			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
-		}*/
+		}
 		// 设定curl参数，采用post模式...
 		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
 		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, strPost);
@@ -732,9 +718,8 @@ bool CWebThread::doWebRegCamera(GM_MapData & inData)
 bool CWebThread::doWebStatCamera(int nDBCamera, int nStatus)
 {
 	// 获取网站配置信息...
-	int nWebPort = App()->GetWebPort();
-	string & strWebAddr = App()->GetWebAddr();
-	if (nWebPort <= 0 || strWebAddr.size() <= 0) {
+	string & strWebClass = App()->GetWebClass();
+	if ( strWebClass.size() <= 0 ) {
 		MsgLogGM(GM_NotImplement);
 		return false;
 	}
@@ -750,18 +735,17 @@ bool CWebThread::doWebStatCamera(int nDBCamera, int nStatus)
 	//strPost.Format("camera_id=%d&status=%d&err_code=%d&err_msg=%s", nDBCamera, nStatus, nErrCode, szErrMsg);
 	sprintf(strPost, "camera_id=%d&status=%d", nDBCamera, nStatus);
 	// 组合访问链接地址...
-	sprintf(strUrl, "%s:%d/wxapi.php/Gather/saveCamera", strWebAddr.c_str(), nWebPort);
+	sprintf(strUrl, "%s/wxapi.php/Gather/saveCamera", strWebClass.c_str());
 	// 调用Curl接口，汇报摄像头数据...
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();
 	do {
-		if (curl == NULL)
-			break;
+		if (curl == NULL) break;
 		// 如果是https://协议，需要新增参数...
-		/*if (theConfig.IsWebHttps()) {
+		if ( App()->IsClassHttps() ) {
 			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
 			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
-		}*/
+		}
 		// 设定curl参数，采用post模式...
 		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
 		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, strPost);

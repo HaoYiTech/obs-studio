@@ -39,8 +39,11 @@ using namespace std;
 #include <util/circlebuf.h>
 
 #define DEF_WEB_CENTER				"https://www.myhaoyi.com"	// 默认中心网站(443) => 必须是 https:// 兼容小程序接口...
-#define DEF_WEB_CLASS				"http://edu.ihaoyi.cn"		// 云教室地址
-#define DEF_WEB_PORT				80							// Web默认端口 
+#define DEF_WEB_CLASS				"https://edu.ihaoyi.cn"		// 默认云教室网站(443) => 必须是 https:// 兼容小程序接口...
+#define DEF_SSL_PROTO               "https"                     // 默认协议头
+#define DEF_WEB_PROTO               "http"                      // 默认协议头
+#define DEF_SSL_PORT                443                         // 默认https端口
+#define DEF_WEB_PORT                80                          // 默认http 端口
 
 #define DEF_AUDIO_OUT_CHANNEL_NUM   1                           // 默认音频播放、压缩声道数
 #define DEF_AUDIO_OUT_SAMPLE_RATE   16000                       // 默认音频播放、压缩采样率
