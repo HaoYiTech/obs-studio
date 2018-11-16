@@ -50,6 +50,10 @@ void CViewTeacher::onTriggerUdpRecvThread(bool bIsUDPTeacherOnLine)
 		m_lpUDPRecvThread->InitThread(strUdpAddr, nUdpPort);
 		// 更新渲染界面窗口显示信息 => 讲师推流端已经上线...
 		m_lpViewRender->doUpdateNotice(QTStr("Render.Window.TeacherOnLine"));
+		// 判断是否处于全屏，如果不是全屏，进入全屏状态...
+		if ( !m_lpViewRender->isFullScreen() ) {
+			m_lpViewRender->onFullScreenAction();
+		}
 	} else {
 		// 如果是老师推流端离线通知 => 删除拉流线程...
 		if (m_lpUDPRecvThread != NULL) {
