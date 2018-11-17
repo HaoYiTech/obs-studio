@@ -62,7 +62,7 @@
 #define VOLUME_METER_DECAY_SLOW        8.57
 
 #if defined(_WIN32) && defined(ENABLE_WIN_UPDATER)
-#include "win-update/win-update.hpp"
+#include "win-update.hpp"
 #endif
 
 #include "ui_OBSBasic.h"
@@ -2665,30 +2665,26 @@ void trigger_sparkle_update();
 
 void OBSBasic::TimedCheckForUpdates()
 {
-	if (!config_get_bool(App()->GlobalConfig(), "General",
-				"EnableAutoUpdates"))
+	if (!config_get_bool(App()->GlobalConfig(), "General", "EnableAutoUpdates"))
 		return;
 
 #ifdef UPDATE_SPARKLE
-	init_sparkle_updater(config_get_bool(App()->GlobalConfig(), "General",
-				"UpdateToUndeployed"));
+	init_sparkle_updater(config_get_bool(App()->GlobalConfig(), "General", "UpdateToUndeployed"));
 #elif ENABLE_WIN_UPDATER
-	long long lastUpdate = config_get_int(App()->GlobalConfig(), "General",
-			"LastUpdateCheck");
-	uint32_t lastVersion = config_get_int(App()->GlobalConfig(), "General",
-			"LastVersion");
+	long long lastUpdate = config_get_int(App()->GlobalConfig(), "General", "LastUpdateCheck");
+	uint32_t lastVersion = config_get_int(App()->GlobalConfig(), "General", "LastVersion");
 
 	if (lastVersion < LIBOBS_API_VER) {
 		lastUpdate = 0;
-		config_set_int(App()->GlobalConfig(), "General",
-				"LastUpdateCheck", 0);
+		config_set_int(App()->GlobalConfig(), "General", "LastUpdateCheck", 0);
 	}
 
 	long long t    = (long long)time(nullptr);
 	long long secs = t - lastUpdate;
 
-	if (secs > UPDATE_CHECK_INTERVAL)
-		CheckForUpdates(false);
+	if (secs > UPDATE_CHECK_INTERVAL) {
+		this->CheckForUpdates(false);
+	}
 #endif
 }
 
