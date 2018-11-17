@@ -1204,7 +1204,7 @@ static bool Update(wchar_t *cmdLine)
 	/* ------------------------------------- *
 	 * Load manifest file                    */
 
-	Json root;
+	OBSJson root;
 	{
 		string manifestFile = QuickReadFile(manifestPath);
 		if (manifestFile.empty()) {
@@ -1260,7 +1260,7 @@ static bool Update(wchar_t *cmdLine)
 	/* ------------------------------------- *
 	 * Generate file hash json               */
 
-	Json files(json_array());
+	OBSJson files(json_array());
 
 	for (update_t &update : updates) {
 		wchar_t whash_string[BLAKE2_HASH_STR_LENGTH];
