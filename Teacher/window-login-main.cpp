@@ -9,7 +9,7 @@
 #include <QPainter>
 #include <QMovie>
 
-#include <curl.h>
+#include <curl/curl.h>
 #include <jansson.h>
 
 CRoomItem::CRoomItem(int nRoomIndex, LoginWindow * lpWindow)

@@ -29,7 +29,7 @@
 #include "FastSession.h"
 
 #include <fstream>
-#include <curl.h>
+#include <curl/curl.h>
 #include <jansson.h>
 
 #include <QtCore/qfile.h>
