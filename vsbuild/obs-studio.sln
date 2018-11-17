@@ -273,6 +273,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "win-dshow", "plugins\win-ds
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "win-rtp", "plugins\win-rtp\win-rtp.vcxproj", "{A6CE7CA6-B97C-4BF6-A59A-BF1F8682F898}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "updater", "UI\win-update\updater\updater.vcxproj", "{2004E7F4-613C-3EBF-81DC-AF45F1C6777E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -761,6 +763,18 @@ Global
 		{A6CE7CA6-B97C-4BF6-A59A-BF1F8682F898}.RelWithDebInfo|Win32.Build.0 = Release|Win32
 		{A6CE7CA6-B97C-4BF6-A59A-BF1F8682F898}.RelWithDebInfo|x64.ActiveCfg = Release|Win32
 		{A6CE7CA6-B97C-4BF6-A59A-BF1F8682F898}.RelWithDebInfo|x64.Build.0 = Release|Win32
+		{2004E7F4-613C-3EBF-81DC-AF45F1C6777E}.Debug|Win32.ActiveCfg = Debug|Win32
+		{2004E7F4-613C-3EBF-81DC-AF45F1C6777E}.Debug|Win32.Build.0 = Debug|Win32
+		{2004E7F4-613C-3EBF-81DC-AF45F1C6777E}.Debug|x64.ActiveCfg = Debug|Win32
+		{2004E7F4-613C-3EBF-81DC-AF45F1C6777E}.MinSizeRel|Win32.ActiveCfg = MinSizeRel|Win32
+		{2004E7F4-613C-3EBF-81DC-AF45F1C6777E}.MinSizeRel|Win32.Build.0 = MinSizeRel|Win32
+		{2004E7F4-613C-3EBF-81DC-AF45F1C6777E}.MinSizeRel|x64.ActiveCfg = MinSizeRel|Win32
+		{2004E7F4-613C-3EBF-81DC-AF45F1C6777E}.Release|Win32.ActiveCfg = Release|Win32
+		{2004E7F4-613C-3EBF-81DC-AF45F1C6777E}.Release|Win32.Build.0 = Release|Win32
+		{2004E7F4-613C-3EBF-81DC-AF45F1C6777E}.Release|x64.ActiveCfg = Release|Win32
+		{2004E7F4-613C-3EBF-81DC-AF45F1C6777E}.RelWithDebInfo|Win32.ActiveCfg = RelWithDebInfo|Win32
+		{2004E7F4-613C-3EBF-81DC-AF45F1C6777E}.RelWithDebInfo|Win32.Build.0 = RelWithDebInfo|Win32
+		{2004E7F4-613C-3EBF-81DC-AF45F1C6777E}.RelWithDebInfo|x64.ActiveCfg = RelWithDebInfo|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
