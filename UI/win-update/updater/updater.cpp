@@ -30,11 +30,26 @@ using namespace std;
 #define UTF8ToWideBuf(wide, utf8) UTF8ToWide(wide, _countof(wide), utf8)
 #define WideToUTF8Buf(utf8, wide) WideToUTF8(utf8, _countof(utf8), wide)
 
-#define DEF_WEB_CLASS   L"edu.ihaoyi.cn"
-#define DEF_UPDATE_URL  L"https://" DEF_WEB_CLASS L"/update_studio"
+#define DEF_WEB_CLASS     L"edu.ihaoyi.cn"
+#define DEF_UPDATE_URL    L"https://" DEF_WEB_CLASS L"/update_studio"
+#define DEF_TEACHER_DATA  L"obs-teacher"
+#define DEF_STUDENT_DATA  L"obs-student"
+
+enum RUN_MODE {
+	kDefaultUnknown     = 0,
+	kTeacherUpdater		= 1,
+	kTeacherBuildJson   = 2,
+	kStudentUpdater     = 3,
+	kStudentBuildJson   = 4,
+};
+
+static LPWSTR g_cmd_type[] = {
+	L"teacher", L"json_teacher",
+	L"student", L"json_student",
+};
 
 /* ----------------------------------------------------------------------- */
-
+RUN_MODE   g_run_mode      = kDefaultUnknown;
 HANDLE     cancelRequested = nullptr;
 HANDLE     updateThread    = nullptr;
 HINSTANCE  hinstMain       = nullptr;
@@ -1003,6 +1018,11 @@ static bool UpdateVS2017Redists(json_t *root)
 	return success;
 }
 
+static bool doUpdateBuildJson()
+{
+	return true;
+}
+
 static bool Update(wchar_t *cmdLine)
 {
 	/* ------------------------------------- *
@@ -1043,25 +1063,47 @@ static bool Update(wchar_t *cmdLine)
 
 	SetDlgItemTextW(hwndMain, IDC_STATUS, L"正在查询需要升级的模块...");
 
-	/* ------------------------------------- *
-	 * Check if updating portable build      */
+	// 改进检查命令机制，产生四种命令如下：
+	// kTeacherUpdater   => 讲师端升级模式
+	// kTeacherBuildJson => 讲师端创建升级json
+	// kStudentUpdater   => 学生端升级模式
+	// kStudentBuildJson => 学生端创建升级json
 
+	g_run_mode = kDefaultUnknown;
 	bool bIsPortable = false;
 	LPWSTR *argv = NULL;
 	int argc = 0;
 
-	if (cmdLine[0] != NULL) {
+	do {
+		// 如果命令行内容为空，返回失败...
+		if (cmdLine[0] == NULL) break;
+		// 只能有一个外部指令，否则返回失败...
 		argv = CommandLineToArgvW(cmdLine, &argc);
-
-		if (argv != NULL) {
-			for (int i = 0; i < argc; i++) {
-				if (wcscmp(argv[i], L"Portable") == 0) {
-					bIsPortable = true;
-				}
+		if (argc != 1) break;
+		// 查找指令对应的编号，需要计算外部指令的个数...
+		int nMaxTypeNum = sizeof(g_cmd_type) / sizeof(g_cmd_type[0]);
+		for (int i = 0; i < nMaxTypeNum; ++i) {
+			if (wcsicmp(argv[0], g_cmd_type[i]) == 0) {
+				g_run_mode = (RUN_MODE)(i + 1); break;
 			}
-			LocalFree((HLOCAL)argv);
 		}
+	} while (false);
+	// 释放临时分配的空间...
+	if (argv != NULL) {
+		LocalFree((HLOCAL)argv);
+		argv = NULL; argc = 0;
 	}
+	// 如果解析外部命令失败，显示信息并返回...
+	if (g_run_mode <= kDefaultUnknown || g_run_mode > kStudentBuildJson) {
+		SetDlgItemTextW(hwndMain, IDC_STATUS, L"升级失败：解析外部指令错误 => {teacher,json_teacher,student,json_student}");
+		return false;
+	}
+	// 如果是创建json文件命令，进行跳转分发...
+	if (g_run_mode == kTeacherBuildJson || g_run_mode == kStudentBuildJson) {
+		return doUpdateBuildJson();
+	}
+	// 如果是升级命令操作，进行数据配置根目录路径名称的设定，分为讲师端和学生端，配置根目录会有所不同...
+	LPCWSTR lpwDataRoot = ((g_run_mode == kTeacherUpdater) ? DEF_TEACHER_DATA : DEF_STUDENT_DATA);
 
 	/* ------------------------------------- *
 	 * Get config path                       */
@@ -1081,7 +1123,7 @@ static bool Update(wchar_t *cmdLine)
 		StringCbCopy(lpAppDataPath, sizeof(lpAppDataPath), pOut);
 	}
 
-	StringCbCat(lpAppDataPath, sizeof(lpAppDataPath), L"\\obs-studio");
+	StringCbCat(lpAppDataPath, sizeof(lpAppDataPath), lpwDataRoot);
 
 	/* ------------------------------------- *
 	 * Get download path                     */
@@ -1094,7 +1136,7 @@ static bool Update(wchar_t *cmdLine)
 		Status(L"升级失败: 获取临时目录失败: %ld", GetLastError());
 		return false;
 	}
-	if (!GetTempFileNameW(tempDirName, L"obs-studio", 0, g_tempPath)) {
+	if (!GetTempFileNameW(tempDirName, lpwDataRoot, 0, g_tempPath)) {
 		Status(L"升级失败: 创建临时目录失败: %ld", GetLastError());
 		return false;
 	}
