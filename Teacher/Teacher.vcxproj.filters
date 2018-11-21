@@ -180,16 +180,16 @@
     <ClCompile Include="focus-list.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\UI\win-update\update-window.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\UI\win-update\win-update.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\UI\win-update\win-update-helpers.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="remote-text.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="win-update\update-window.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="win-update\win-update.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="win-update\win-update-helpers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -302,13 +302,13 @@
     <QtMoc Include="focus-list.hpp">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="..\UI\win-update\update-window.hpp">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="..\UI\win-update\win-update.hpp">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <QtMoc Include="remote-text.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="win-update\update-window.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="win-update\win-update.hpp">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
@@ -379,7 +379,7 @@
     <ClInclude Include="json\writer.h">
       <Filter>Json Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\UI\win-update\win-update-helpers.hpp">
+    <ClInclude Include="win-update\win-update-helpers.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
