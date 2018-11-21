@@ -49,8 +49,7 @@ bool CalculateFileHash(const wchar_t *path, BYTE *hash)
 	if (blake2b_init(&blake2, BLAKE2_HASH_LENGTH) != 0)
 		return false;
 
-	WinHandle handle = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ,
-			nullptr, OPEN_EXISTING, 0, nullptr);
+	WinHandle handle = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
 	if (handle == INVALID_HANDLE_VALUE)
 		return false;
 
@@ -59,8 +58,7 @@ bool CalculateFileHash(const wchar_t *path, BYTE *hash)
 
 	for (;;) {
 		DWORD read = 0;
-		if (!ReadFile(handle, buf.data(), (DWORD)buf.size(), &read,
-					nullptr))
+		if (!ReadFile(handle, buf.data(), (DWORD)buf.size(), &read, nullptr))
 			return false;
 
 		if (!read)

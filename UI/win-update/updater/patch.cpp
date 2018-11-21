@@ -176,8 +176,7 @@ struct patch_data {
 
 static int read_lzma(const struct bspatch_stream *stream, void *buffer, int len)
 {
-	if (!len)
-		return 0;
+	if (!len) return 0;
 
 	patch_data  *data    = (patch_data*)stream->opaque;
 	HANDLE      h        = data->h;
@@ -189,8 +188,7 @@ static int read_lzma(const struct bspatch_stream *stream, void *buffer, int len)
 	for (;;) {
 		if (strm->avail_in == 0) {
 			DWORD read_size;
-			if (!ReadFile(h, data->buf, READ_BUF_SIZE, &read_size,
-						nullptr))
+			if (!ReadFile(h, data->buf, READ_BUF_SIZE, &read_size, nullptr))
 				return -1;
 			if (read_size == 0)
 				return -1;
@@ -225,15 +223,11 @@ try {
 	/* --------------------------------- *
 	 * open patch and file to patch      */
 
-	hPatch = CreateFile(patchFile, GENERIC_READ, 0, nullptr,
-			OPEN_EXISTING, 0, nullptr);
-	if (!hPatch.Valid())
-		throw int(GetLastError());
+	hPatch = CreateFile(patchFile, GENERIC_READ, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+	if (!hPatch.Valid()) throw int(GetLastError());
 
-	hTarget = CreateFile(targetFile, GENERIC_READ, 0, nullptr,
-			OPEN_EXISTING, 0, nullptr);
-	if (!hTarget.Valid())
-		throw int(GetLastError());
+	hTarget = CreateFile(targetFile, GENERIC_READ, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+	if (!hTarget.Valid()) throw int(GetLastError());
 
 	/* --------------------------------- *
 	 * read patch header                 */
@@ -295,8 +289,7 @@ try {
 	stream.read   = read_lzma;
 	stream.opaque = &data;
 
-	int ret = bspatch(oldData.data(), oldData.size(), newData.data(),
-			newData.size(), &stream);
+	int ret = bspatch(oldData.data(), oldData.size(), newData.data(), newData.size(), &stream);
 	if (ret != 0)
 		throw int(-9);
 
@@ -304,15 +297,13 @@ try {
 	 * write new file                    */
 
 	hTarget = nullptr;
-	hTarget = CreateFile(targetFile, GENERIC_WRITE, 0, nullptr,
-			CREATE_ALWAYS, 0, nullptr);
+	hTarget = CreateFile(targetFile, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
 	if (!hTarget.Valid())
 		throw int(GetLastError());
 
 	DWORD written;
 
-	success = !!WriteFile(hTarget, newData.data(), (DWORD)newsize,
-			&written, nullptr);
+	success = !!WriteFile(hTarget, newData.data(), (DWORD)newsize, &written, nullptr);
 	if (!success || written != newsize)
 		throw int(GetLastError());
 

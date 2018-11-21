@@ -53,12 +53,12 @@ END
 IDD_UPDATEDIALOG DIALOGEX 0, 0, 316, 56
 STYLE DS_SETFONT | DS_MODALFRAME | DS_SETFOREGROUND | DS_FIXEDSYS | DS_CENTER | WS_MINIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_APPWINDOW
-CAPTION "OBS Studio Update"
+CAPTION "双师平台 - 升级"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    PUSHBUTTON      "Cancel",IDC_BUTTON,259,34,50,14
+    PUSHBUTTON      "取 消",IDC_BUTTON,259,34,50,14
     CONTROL         "",IDC_PROGRESS,"msctls_progress32",PBS_SMOOTH,7,17,302,14
-    LTEXT           "Waiting for OBS to exit...",IDC_STATUS,7,7,302,8,SS_WORDELLIPSIS
+    LTEXT           "等待主进程退出...",IDC_STATUS,7,6,302,8,SS_WORDELLIPSIS
 END
 
 
@@ -128,6 +128,17 @@ END
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDI_ICON1               ICON                    "updater.ico"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_UPDATEDIALOG AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
 
 #endif    // 中文(简体，中国) resources
 /////////////////////////////////////////////////////////////////////////////

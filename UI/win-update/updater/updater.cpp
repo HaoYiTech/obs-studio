@@ -27,6 +27,12 @@
 
 using namespace std;
 
+#define UTF8ToWideBuf(wide, utf8) UTF8ToWide(wide, _countof(wide), utf8)
+#define WideToUTF8Buf(utf8, wide) WideToUTF8(utf8, _countof(utf8), wide)
+
+#define DEF_WEB_CLASS   L"edu.ihaoyi.cn"
+#define DEF_UPDATE_URL  L"https://" DEF_WEB_CLASS L"/update_studio"
+
 /* ----------------------------------------------------------------------- */
 
 HANDLE     cancelRequested = nullptr;
@@ -134,15 +140,11 @@ try {
 	WinHandle hSrc;
 	WinHandle hDest;
 
-	hSrc = CreateFile(src, GENERIC_READ, 0, nullptr, OPEN_EXISTING,
-			FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
-	if (!hSrc.Valid())
-		throw LastError();
+	hSrc = CreateFile(src, GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
+	if (!hSrc.Valid()) throw LastError();
 
-	hDest = CreateFile(dest, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
-			0, nullptr);
-	if (!hDest.Valid())
-		throw LastError();
+	hDest = CreateFile(dest, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
+	if (!hDest.Valid()) throw LastError();
 
 	BYTE  buf[65536];
 	DWORD read, wrote;
@@ -198,8 +200,7 @@ static string QuickReadFile(const wchar_t *path)
 {
 	string data;
 
-	WinHandle handle = CreateFileW(path, GENERIC_READ, 0, nullptr,
-			OPEN_EXISTING, 0, nullptr);
+	WinHandle handle = CreateFileW(path, GENERIC_READ, 0, nullptr, OPEN_EXISTING, 0, nullptr);
 	if (!handle.Valid()) {
 		return string();
 	}
@@ -213,11 +214,7 @@ static string QuickReadFile(const wchar_t *path)
 	data.resize((size_t)size.QuadPart);
 
 	DWORD read;
-	if (!ReadFile(handle,
-	              &data[0],
-	              (DWORD)data.size(),
-	              &read,
-	              nullptr)) {
+	if (!ReadFile(handle, &data[0], (DWORD)data.size(), &read, nullptr)) {
 		return string();
 	}
 	if (read != size.QuadPart) {
@@ -310,20 +307,22 @@ struct update_t {
 
 	inline update_t &operator=(const update_t &from)
 	{
-	        sourceURL = from.sourceURL;
-	        outputPath = from.outputPath;
-	        tempPath = from.tempPath;
-	        previousFile = from.previousFile;
-	        basename = from.basename;
-	        packageName = from.packageName;
-	        fileSize = from.fileSize;
-	        state = from.state;
-	        has_hash = from.has_hash;
-	        patchable = from.patchable;
+	    sourceURL = from.sourceURL;
+	    outputPath = from.outputPath;
+	    tempPath = from.tempPath;
+	    previousFile = from.previousFile;
+	    basename = from.basename;
+	    packageName = from.packageName;
+	    fileSize = from.fileSize;
+	    state = from.state;
+	    has_hash = from.has_hash;
+	    patchable = from.patchable;
 
 		memcpy(hash, from.hash, sizeof(hash));
 		memcpy(downloadhash, from.downloadhash, sizeof(downloadhash));
 		memcpy(my_hash, from.my_hash, sizeof(my_hash));
+
+		return *this;
 	}
 };
 
@@ -349,18 +348,16 @@ bool DownloadWorkerThread()
 	                                  0);
 	if (!hSession) {
 		downloadThreadFailure = true;
-		Status(L"Update failed: Couldn't open obsproject.com");
+		Status(L"升级失败: 无法打开升级服务器。");
 		return false;
 	}
 
-	WinHttpSetOption(hSession, WINHTTP_OPTION_SECURE_PROTOCOLS,
-		(LPVOID)&tlsProtocols, sizeof(tlsProtocols));
+	WinHttpSetOption(hSession, WINHTTP_OPTION_SECURE_PROTOCOLS, (LPVOID)&tlsProtocols, sizeof(tlsProtocols));
 
-	HttpHandle hConnect = WinHttpConnect(hSession, L"obsproject.com",
-			INTERNET_DEFAULT_HTTPS_PORT, 0);
+	HttpHandle hConnect = WinHttpConnect(hSession, DEF_WEB_CLASS, INTERNET_DEFAULT_HTTPS_PORT, 0);
 	if (!hConnect) {
 		downloadThreadFailure = true;
-		Status(L"Update failed: Couldn't connect to obsproject.com");
+		Status(L"升级失败: 无法连接到升级服务器。");
 		return false;
 	}
 
@@ -372,8 +369,7 @@ bool DownloadWorkerThread()
 		for (update_t &update : updates) {
 			int responseCode;
 
-			DWORD waitResult =
-				WaitForSingleObject(cancelRequested, 0);
+			DWORD waitResult = WaitForSingleObject(cancelRequested, 0);
 			if (waitResult == WAIT_OBJECT_0) {
 				return false;
 			}
@@ -391,50 +387,34 @@ bool DownloadWorkerThread()
 				return false;
 			}
 
-			Status(L"Downloading %s", update.outputPath.c_str());
+			Status(L"正在下载 %s", update.outputPath.c_str());
 
-			if (!HTTPGetFile(hConnect,
-			                 update.sourceURL.c_str(),
-			                 update.tempPath.c_str(),
-			                 L"Accept-Encoding: gzip",
-			                 &responseCode)) {
-
+			if (!HTTPGetFile(hConnect, update.sourceURL.c_str(), update.tempPath.c_str(), L"Accept-Encoding: gzip", &responseCode)) {
 				downloadThreadFailure = true;
 				DeleteFile(update.tempPath.c_str());
-				Status(L"Update failed: Could not download "
-				       L"%s (error code %d)",
-				       update.outputPath.c_str(),
-				       responseCode);
+				Status(L"升级失败: 无法下载 %s (错误号 %d)", update.outputPath.c_str(), responseCode);
 				return 1;
 			}
 
 			if (responseCode != 200) {
 				downloadThreadFailure = true;
 				DeleteFile(update.tempPath.c_str());
-				Status(L"Update failed: Could not download "
-				       L"%s (error code %d)",
-				       update.outputPath.c_str(),
-				       responseCode);
+				Status(L"升级失败: 无法下载 %s (错误号 %d)", update.outputPath.c_str(), responseCode);
 				return 1;
 			}
 
 			BYTE downloadHash[BLAKE2_HASH_LENGTH];
-			if (!CalculateFileHash(update.tempPath.c_str(),
-						downloadHash)) {
+			if (!CalculateFileHash(update.tempPath.c_str(), downloadHash)) {
 				downloadThreadFailure = true;
 				DeleteFile(update.tempPath.c_str());
-				Status(L"Update failed: Couldn't verify "
-						L"integrity of %s",
-						update.outputPath.c_str());
+				Status(L"升级失败: 无法验证完整性 %s", update.outputPath.c_str());
 				return 1;
 			}
 
 			if (memcmp(update.downloadhash, downloadHash, 20)) {
 				downloadThreadFailure = true;
 				DeleteFile(update.tempPath.c_str());
-				Status(L"Update failed: Integrity check "
-						L"failed on %s",
-						update.outputPath.c_str());
+				Status(L"升级失败: 验证补丁的完整性失败 %s", update.outputPath.c_str());
 				return 1;
 			}
 
@@ -487,22 +467,15 @@ static inline DWORD WaitIfOBS(DWORD id, const wchar_t *expected)
 	wchar_t *name;
 	*path = 0;
 
-	WinHandle proc = OpenProcess(
-			PROCESS_QUERY_INFORMATION |
-			PROCESS_VM_READ |
-			SYNCHRONIZE,
-			false, id);
-	if (!proc.Valid())
-		return WAITIFOBS_WRONG_PROCESS;
+	WinHandle proc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | SYNCHRONIZE, false, id);
+	if (!proc.Valid()) return WAITIFOBS_WRONG_PROCESS;
 
 	if (!GetProcessImageFileName(proc, path, _countof(path)))
 		return WAITIFOBS_WRONG_PROCESS;
 
 	name = wcsrchr(path, L'\\');
-	if (name)
-		name += 1;
-	else
-		name = path;
+	if (name) name += 1;
+	else name = path;
 
 	if (_wcsnicmp(name, expected, 5) == 0) {
 		HANDLE hWait[2];
@@ -510,9 +483,9 @@ static inline DWORD WaitIfOBS(DWORD id, const wchar_t *expected)
 		hWait[1] = cancelRequested;
 
 		int i = WaitForMultipleObjects(2, hWait, false, INFINITE);
-		if (i == WAIT_OBJECT_0 + 1)
+		if (i == WAIT_OBJECT_0 + 1) {
 			return WAITIFOBS_CANCELLED;
-
+		}
 		return WAITIFOBS_SUCCESS;
 	}
 
@@ -556,8 +529,7 @@ static inline bool UTF8ToWide(wchar_t *wide, int wideSize, const char *utf8)
 
 static inline bool WideToUTF8(char *utf8, int utf8Size, const wchar_t *wide)
 {
-	return !!WideCharToMultiByte(CP_UTF8, 0, wide, -1, utf8, utf8Size,
-			nullptr, nullptr);
+	return !!WideCharToMultiByte(CP_UTF8, 0, wide, -1, utf8, utf8Size, nullptr, nullptr);
 }
 
 static inline bool FileExists(const wchar_t *path)
@@ -574,10 +546,18 @@ static inline bool FileExists(const wchar_t *path)
 
 static bool NonCorePackageInstalled(const char *name)
 {
-	if (strcmp(name, "obs-browser") == 0) {
-		return FileExists(L"obs-plugins\\32bit\\obs-browser.dll");
-	} else if (strcmp(name, "realsense") == 0) {
-		return FileExists(L"obs-plugins\\32bit\\win-ivcam.dll");
+	if (is32bit) {
+		if (strcmp(name, "obs-browser") == 0) {
+			return FileExists(L"obs-plugins\\32bit\\obs-browser.dll");
+		} else if (strcmp(name, "realsense") == 0) {
+			return FileExists(L"obs-plugins\\32bit\\win-ivcam.dll");
+		}
+	} else {
+		if (strcmp(name, "obs-browser") == 0) {
+			return FileExists(L"obs-plugins\\64bit\\obs-browser.dll");
+		} else if (strcmp(name, "realsense") == 0) {
+			return FileExists(L"obs-plugins\\64bit\\win-ivcam.dll");
+		}
 	}
 
 	return false;
@@ -596,8 +576,7 @@ static inline bool is_64bit_windows(void)
 
 static inline bool is_64bit_file(const char *file)
 {
-	if (!file)
-		return false;
+	if (!file) return false;
 
 	return strstr(file, "64bit") != nullptr ||
 	       strstr(file, "64.dll") != nullptr ||
@@ -609,13 +588,7 @@ static inline bool has_str(const char *file, const char *str)
 	return (file && str) ? (strstr(file, str) != nullptr) : false;
 }
 
-#define UTF8ToWideBuf(wide, utf8) UTF8ToWide(wide, _countof(wide), utf8)
-#define WideToUTF8Buf(utf8, wide) WideToUTF8(utf8, _countof(utf8), wide)
-
-#define UPDATE_URL L"https://obsproject.com/update_studio"
-
-static bool AddPackageUpdateFiles(json_t *root, size_t idx,
-		const wchar_t *tempPath)
+static bool AddPackageUpdateFiles(json_t *root, size_t idx, const wchar_t *tempPath)
 {
 	json_t *package = json_array_get(root, idx);
 	json_t *name    = json_object_get(package, "name");
@@ -635,8 +608,7 @@ static bool AddPackageUpdateFiles(json_t *root, size_t idx,
 	if (!UTF8ToWideBuf(wPackageName, packageName))
 		return false;
 
-	if (strcmp(packageName, "core") != 0 &&
-	    !NonCorePackageInstalled(packageName))
+	if (strcmp(packageName, "core") != 0 && !NonCorePackageInstalled(packageName))
 		return true;
 
 	for (size_t j = 0; j < fileCount; j++) {
@@ -683,30 +655,25 @@ static bool AddPackageUpdateFiles(json_t *root, size_t idx,
 		/* make sure paths are safe */
 
 		if (!IsSafeFilename(updateFileName)) {
-			Status(L"Update failed: Unsafe path '%s' found in "
-					L"manifest", updateFileName);
+			Status(L"升级失败: 不安全路径 '%s'", updateFileName);
 			return false;
 		}
 
-		StringCbPrintf(sourceURL, sizeof(sourceURL), L"%s/%s/%s",
-				UPDATE_URL, wPackageName, updateFileName);
-		StringCbPrintf(tempFilePath, sizeof(tempFilePath),
-				L"%s\\%s", tempPath, updateHashStr);
+		StringCbPrintf(sourceURL, sizeof(sourceURL), L"%s/%s/%s", DEF_UPDATE_URL, wPackageName, updateFileName);
+		StringCbPrintf(tempFilePath, sizeof(tempFilePath), L"%s\\%s", tempPath, updateHashStr);
 
 		/* Check file hash */
 
 		BYTE    existingHash[BLAKE2_HASH_LENGTH];
 		wchar_t fileHashStr[BLAKE2_HASH_STR_LENGTH];
-		bool    has_hash;
+		bool    has_hash = false;
 
 		/* We don't really care if this fails, it's just to avoid
 		 * wasting bandwidth by downloading unmodified files */
 		if (CalculateFileHash(updateFileName, existingHash)) {
-
 			HashToString(existingHash, fileHashStr);
 			if (wcscmp(fileHashStr, updateHashStr) == 0)
 				continue;
-
 			has_hash = true;
 		} else {
 			has_hash = false;
@@ -728,9 +695,9 @@ static bool AddPackageUpdateFiles(json_t *root, size_t idx,
 		memcpy(update.hash, update.downloadhash, sizeof(update.hash));
 
 		update.has_hash = has_hash;
-		if (has_hash)
+		if (has_hash) {
 			StringToHash(fileHashStr, update.my_hash);
-
+		}
 		updates.push_back(move(update));
 
 		totalFileSize += fileSize;
@@ -739,16 +706,14 @@ static bool AddPackageUpdateFiles(json_t *root, size_t idx,
 	return true;
 }
 
-static void UpdateWithPatchIfAvailable(const char *name, const char *hash,
-		const char *source,
-		int size)
+/*static void UpdateWithPatchIfAvailable(const char *name, const char *hash, const char *source, int size)
 {
 	wchar_t widePatchableFilename[MAX_PATH];
 	wchar_t widePatchHash[MAX_PATH];
 	wchar_t sourceURL[1024];
 	wchar_t patchHashStr[BLAKE2_HASH_STR_LENGTH];
 
-	if (strncmp(source, "https://obsproject.com/", 23) != 0)
+	if (strncmp(source, "https://cdn-fastly.obsproject.com/", 34) != 0)
 		return;
 
 	string patchPackageName = name;
@@ -777,42 +742,42 @@ static void UpdateWithPatchIfAvailable(const char *name, const char *hash,
 
 		StringToHash(patchHashStr, update.downloadhash);
 
-		/* Replace the source URL with the patch file, mark it as
-		 * patchable, and re-calculate download size */
+		// Replace the source URL with the patch file, mark it as
+		// patchable, and re-calculate download size
 		totalFileSize -= (update.fileSize - size);
 		update.sourceURL = sourceURL;
 		update.fileSize  = size;
 		update.patchable = true;
 		break;
 	}
-}
+}*/
 
 static bool UpdateFile(update_t &file)
 {
 	wchar_t oldFileRenamedPath[MAX_PATH];
 
-	if (file.patchable)
-		Status(L"Updating %s...", file.outputPath.c_str());
-	else
-		Status(L"Installing %s...", file.outputPath.c_str());
+	if (file.patchable) {
+		Status(L"正在升级 %s...", file.outputPath.c_str());
+	} else {
+		Status(L"正在安装 %s...", file.outputPath.c_str());
+	}
 
-	/* Check if we're replacing an existing file or just installing a new
-	 * one */
+	/* Check if we're replacing an existing file or just installing a new one */
 	DWORD attribs = GetFileAttributes(file.outputPath.c_str());
 
 	if (attribs != INVALID_FILE_ATTRIBUTES) {
 		wchar_t *curFileName = nullptr;
 		wchar_t  baseName[MAX_PATH];
 
-		StringCbCopy(baseName, sizeof(baseName),
-				file.outputPath.c_str());
+		StringCbCopy(baseName, sizeof(baseName), file.outputPath.c_str());
 
 		curFileName = wcsrchr(baseName, '/');
 		if (curFileName) {
 			curFileName[0] = '\0';
 			curFileName++;
-		} else
+		} else {
 			curFileName = baseName;
+		}
 
 		/* Backup the existing file in case a rollback is needed */
 		StringCbCopy(oldFileRenamedPath,
@@ -823,17 +788,13 @@ static bool UpdateFile(update_t &file)
 				L".old");
 
 		if (!MyCopyFile(file.outputPath.c_str(), oldFileRenamedPath)) {
-			int is_sharing_violation =
-				(GetLastError() == ERROR_SHARING_VIOLATION);
+			int is_sharing_violation = (GetLastError() == ERROR_SHARING_VIOLATION);
 
-			if (is_sharing_violation)
-				Status(L"Update failed: %s is still in use.  "
-				       L"Close all programs and try again.",
-				       curFileName);
-			else
-				Status(L"Update failed: Couldn't backup %s "
-				       L"(error %d)",
-				       curFileName, GetLastError());
+			if (is_sharing_violation) {
+				Status(L"升级失败: %s 正在使用中，请关闭所有的程序再试一次！", curFileName);
+			} else {
+				Status(L"升级失败: 无法更新补丁 %s (错误号 %d)", curFileName, GetLastError());
+			}
 			return false;
 		}
 
@@ -843,56 +804,36 @@ static bool UpdateFile(update_t &file)
 		bool installed_ok;
 
 		if (file.patchable) {
-			error_code = ApplyPatch(
-					file.tempPath.c_str(),
-					file.outputPath.c_str());
+			error_code = ApplyPatch(file.tempPath.c_str(), file.outputPath.c_str());
 			installed_ok = (error_code == 0);
 
 			if (installed_ok) {
 				BYTE patchedFileHash[BLAKE2_HASH_LENGTH];
-				if (!CalculateFileHash(file.outputPath.c_str(),
-						patchedFileHash)) {
-					Status(L"Update failed: Couldn't "
-					       L"verify integrity of patched %s",
-					       curFileName);
-
+				if (!CalculateFileHash(file.outputPath.c_str(), patchedFileHash)) {
+					Status(L"升级失败: 无法完整验证补丁 %s", curFileName);
 					file.state = STATE_INSTALL_FAILED;
 					return false;
 				}
 
-				if (memcmp(file.hash, patchedFileHash,
-						BLAKE2_HASH_LENGTH) != 0) {
-					Status(L"Update failed: Integrity "
-					       L"check of patched "
-					       L"%s failed",
-					       curFileName);
-
+				if (memcmp(file.hash, patchedFileHash, BLAKE2_HASH_LENGTH) != 0) {
+					Status(L"升级失败: 验证补丁的完整性失败 %s", curFileName);
 					file.state = STATE_INSTALL_FAILED;
 					return false;
 				}
 			}
 		} else {
-			installed_ok = MyCopyFile(
-					file.tempPath.c_str(),
-					file.outputPath.c_str());
+			installed_ok = MyCopyFile(file.tempPath.c_str(), file.outputPath.c_str());
 			error_code = GetLastError();
 		}
 
 		if (!installed_ok) {
-			int is_sharing_violation =
-				(error_code == ERROR_SHARING_VIOLATION);
+			int is_sharing_violation = (error_code == ERROR_SHARING_VIOLATION);
 
-			if (is_sharing_violation)
-				Status(L"Update failed: %s is still in use.  "
-				       L"Close all "
-				       L"programs and try again.",
-				       curFileName);
-			else
-				Status(L"Update failed: Couldn't update %s "
-				       L"(error %d)",
-				       curFileName,
-				       GetLastError());
-
+			if (is_sharing_violation) {
+				Status(L"升级失败: %s 正在使用中，请关闭所有的程序再试一次！", curFileName);
+			} else {
+				Status(L"升级失败: 无法更新补丁 %s (错误号 %d)", curFileName, GetLastError());
+			}
 			file.state = STATE_INSTALL_FAILED;
 			return false;
 		}
@@ -900,10 +841,8 @@ static bool UpdateFile(update_t &file)
 		file.state = STATE_INSTALLED;
 	} else {
 		if (file.patchable) {
-			/* Uh oh, we thought we could patch something but it's
-			 * no longer there! */
-			Status(L"Update failed: Source file %s not found",
-					file.outputPath.c_str());
+			/* Uh oh, we thought we could patch something but it's no longer there! */
+			Status(L"升级失败: 源文件 %s 没有找到", file.outputPath.c_str());
 			return false;
 		}
 
@@ -913,13 +852,9 @@ static bool UpdateFile(update_t &file)
 
 		file.previousFile = L"";
 
-		bool success = !!MyCopyFile(
-				file.tempPath.c_str(),
-				file.outputPath.c_str());
+		bool success = !!MyCopyFile(file.tempPath.c_str(), file.outputPath.c_str());
 		if (!success) {
-			Status(L"Update failed: Couldn't install %s (error %d)",
-					file.outputPath.c_str(),
-					GetLastError());
+			Status(L"升级失败: 无法安装 %s (错误号 %d)", file.outputPath.c_str(), GetLastError());
 			file.state = STATE_INSTALL_FAILED;
 			return false;
 		}
@@ -930,12 +865,7 @@ static bool UpdateFile(update_t &file)
 	return true;
 }
 
-static wchar_t tempPath[MAX_PATH] = {};
-
-#define PATCH_MANIFEST_URL \
-	L"https://obsproject.com/update_studio/getpatchmanifest"
-#define HASH_NULL \
-	L"0000000000000000000000000000000000000000"
+static wchar_t g_tempPath[MAX_PATH] = {};
 
 static bool UpdateVS2017Redists(json_t *root)
 {
@@ -954,13 +884,11 @@ static bool UpdateVS2017Redists(json_t *root)
 		return false;
 	}
 
-	WinHttpSetOption(hSession, WINHTTP_OPTION_SECURE_PROTOCOLS,
-		(LPVOID)&tlsProtocols, sizeof(tlsProtocols));
+	WinHttpSetOption(hSession, WINHTTP_OPTION_SECURE_PROTOCOLS, (LPVOID)&tlsProtocols, sizeof(tlsProtocols));
 
-	HttpHandle hConnect = WinHttpConnect(hSession, L"obsproject.com",
-			INTERNET_DEFAULT_HTTPS_PORT, 0);
+	HttpHandle hConnect = WinHttpConnect(hSession, L"cdn-fastly.obsproject.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
 	if (!hConnect) {
-		Status(L"Update failed: Couldn't connect to obsproject.com");
+		Status(L"Update failed: Couldn't connect to cdn-fastly.obsproject.com");
 		return false;
 	}
 
@@ -976,25 +904,18 @@ static bool UpdateVS2017Redists(json_t *root)
 
 	Status(L"Downloading %s", L"Visual C++ 2017 Redistributable");
 
-	const wchar_t *file = (is32bit)
-		? L"vc2017redist_x86.exe"
-		: L"vc2017redist_x64.exe";
+	const wchar_t *file = (is32bit) ? L"vc2017redist_x86.exe" : L"vc2017redist_x64.exe";
 
 	wstring sourceURL;
-	sourceURL += L"https://obsproject.com/downloads/";
+	sourceURL += L"https://cdn-fastly.obsproject.com/downloads/";
 	sourceURL += file;
 
 	wstring destPath;
-	destPath += tempPath;
+	destPath += g_tempPath;
 	destPath += L"\\";
 	destPath += file;
 
-	if (!HTTPGetFile(hConnect,
-			 sourceURL.c_str(),
-			 destPath.c_str(),
-			 L"Accept-Encoding: gzip",
-			 &responseCode)) {
-
+	if (!HTTPGetFile(hConnect, sourceURL.c_str(), destPath.c_str(), L"Accept-Encoding: gzip", &responseCode)) {
 		DeleteFile(destPath.c_str());
 		Status(L"Update failed: Could not download "
 		       L"%s (error code %d)",
@@ -1006,9 +927,7 @@ static bool UpdateVS2017Redists(json_t *root)
 	/* ------------------------------------------ *
 	 * Get expected hash                          */
 
-	json_t *redistJson = json_object_get(root, is32bit
-			? "vc2017_redist_x86"
-			: "vc2017_redist_x64");
+	json_t *redistJson = json_object_get(root, is32bit ? "vc2017_redist_x86" : "vc2017_redist_x64");
 	if (!redistJson) {
 		Status(L"Update failed: Could not parse VC2017 redist json");
 		return false;
@@ -1034,8 +953,7 @@ static bool UpdateVS2017Redists(json_t *root)
 
 	if (!CalculateFileHash(destPath.c_str(), downloadHash)) {
 		DeleteFile(destPath.c_str());
-		Status(L"Update failed: Couldn't verify integrity of %s",
-				L"Visual C++ 2017 Redistributable");
+		Status(L"Update failed: Couldn't verify integrity of %s", L"Visual C++ 2017 Redistributable");
 		return false;
 	}
 
@@ -1045,8 +963,7 @@ static bool UpdateVS2017Redists(json_t *root)
 	HashToString(downloadHash, downloadHashWide);
 	if (wcscmp(expectedHashWide, downloadHashWide) != 0) {
 		DeleteFile(destPath.c_str());
-		Status(L"Update failed: Couldn't verify integrity of %s",
-				L"Visual C++ 2017 Redistributable");
+		Status(L"Update failed: Couldn't verify integrity of %s", L"Visual C++ 2017 Redistributable");
 		return false;
 	}
 
@@ -1054,8 +971,7 @@ static bool UpdateVS2017Redists(json_t *root)
 	 * If hashes match, install redist            */
 
 	wchar_t commandline[MAX_PATH + MAX_PATH];
-	StringCbPrintf(commandline, sizeof(commandline),
-			L"%s /install /quiet /norestart", destPath.c_str());
+	StringCbPrintf(commandline, sizeof(commandline), L"%s /install /quiet /norestart", destPath.c_str());
 
 	PROCESS_INFORMATION pi = {};
 	STARTUPINFO si = {};
@@ -1091,25 +1007,24 @@ static bool Update(wchar_t *cmdLine)
 {
 	/* ------------------------------------- *
 	 * Check to make sure OBS isn't running  */
-
-	HANDLE hObsUpdateMutex = OpenMutexW(SYNCHRONIZE, false,
-			L"OBSStudioUpdateMutex");
-	if (hObsUpdateMutex) {
-		HANDLE hWait[2];
+	HANDLE hObsUpdateMutex = OpenMutexW(SYNCHRONIZE, false, L"OBSStudioUpdateMutex");
+	// 如果已经有升级进程在运行，需要等待之前的升级进程退出...
+	if (hObsUpdateMutex != NULL) {
+		HANDLE hWait[2] = { 0 };
 		hWait[0] = hObsUpdateMutex;
 		hWait[1] = cancelRequested;
 
 		int i = WaitForMultipleObjects(2, hWait, false, INFINITE);
 
-		if (i == WAIT_OBJECT_0)
+		if (i == WAIT_OBJECT_0) {
 			ReleaseMutex(hObsUpdateMutex);
-
+		}
 		CloseHandle(hObsUpdateMutex);
-
 		if (i == WAIT_OBJECT_0 + 1)
 			return false;
 	}
 
+	// 等待主进程退出...
 	if (!WaitForOBS())
 		return false;
 
@@ -1117,10 +1032,8 @@ static bool Update(wchar_t *cmdLine)
 	 * Init crypt stuff                      */
 
 	CryptProvider hProvider;
-	if (!CryptAcquireContext(&hProvider, nullptr, MS_ENH_RSA_AES_PROV,
-				PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
-		SetDlgItemTextW(hwndMain, IDC_STATUS,
-				L"Update failed: CryptAcquireContext failure");
+	if (!CryptAcquireContext(&hProvider, nullptr, MS_ENH_RSA_AES_PROV, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
+		SetDlgItemTextW(hwndMain, IDC_STATUS, L"升级失败: CryptAcquireContext 失败");
 		return false;
 	}
 
@@ -1128,25 +1041,24 @@ static bool Update(wchar_t *cmdLine)
 
 	/* ------------------------------------- */
 
-	SetDlgItemTextW(hwndMain, IDC_STATUS,
-			L"Searching for available updates...");
+	SetDlgItemTextW(hwndMain, IDC_STATUS, L"正在查询需要升级的模块...");
 
 	/* ------------------------------------- *
 	 * Check if updating portable build      */
 
 	bool bIsPortable = false;
+	LPWSTR *argv = NULL;
+	int argc = 0;
 
-	if (cmdLine[0]) {
-		int argc;
-		LPWSTR *argv = CommandLineToArgvW(cmdLine, &argc);
+	if (cmdLine[0] != NULL) {
+		argv = CommandLineToArgvW(cmdLine, &argc);
 
-		if (argv) {
+		if (argv != NULL) {
 			for (int i = 0; i < argc; i++) {
 				if (wcscmp(argv[i], L"Portable") == 0) {
 					bIsPortable = true;
 				}
 			}
-
 			LocalFree((HLOCAL)argv);
 		}
 	}
@@ -1154,52 +1066,41 @@ static bool Update(wchar_t *cmdLine)
 	/* ------------------------------------- *
 	 * Get config path                       */
 
-	wchar_t lpAppDataPath[MAX_PATH];
-	lpAppDataPath[0] = 0;
+	wchar_t lpAppDataPath[MAX_PATH] = { 0 };
 
 	if (bIsPortable) {
 		GetCurrentDirectory(_countof(lpAppDataPath), lpAppDataPath);
 		StringCbCat(lpAppDataPath, sizeof(lpAppDataPath), L"\\config");
 	} else {
 		CoTaskMemPtr<wchar_t> pOut;
-		HRESULT hr = SHGetKnownFolderPath(FOLDERID_RoamingAppData,
-				KF_FLAG_DEFAULT, nullptr, &pOut);
+		HRESULT hr = SHGetKnownFolderPath(FOLDERID_RoamingAppData, KF_FLAG_DEFAULT, nullptr, &pOut);
 		if (hr != S_OK) {
-			Status(L"Update failed: Could not determine AppData "
-					L"location");
+			Status(L"升级失败: 无法定位 AppData 工作目录");
 			return false;
 		}
-
 		StringCbCopy(lpAppDataPath, sizeof(lpAppDataPath), pOut);
 	}
 
-	StringCbCat(lpAppDataPath, sizeof(lpAppDataPath),
-			L"\\obs-studio");
+	StringCbCat(lpAppDataPath, sizeof(lpAppDataPath), L"\\obs-studio");
 
 	/* ------------------------------------- *
 	 * Get download path                     */
 
-	wchar_t manifestPath[MAX_PATH];
-	wchar_t tempDirName[MAX_PATH];
+	wchar_t manifestPath[MAX_PATH] = { 0 };
+	wchar_t tempDirName[MAX_PATH] = { 0 };
 
-	manifestPath[0] = 0;
-	tempDirName[0]  = 0;
-
-	StringCbPrintf(manifestPath, sizeof(manifestPath),
-			L"%s\\updates\\manifest.json", lpAppDataPath);
+	StringCbPrintf(manifestPath, sizeof(manifestPath), L"%s\\updates\\manifest.json", lpAppDataPath);
 	if (!GetTempPathW(_countof(tempDirName), tempDirName)) {
-		Status(L"Update failed: Failed to get temp path: %ld",
-				GetLastError());
+		Status(L"升级失败: 获取临时目录失败: %ld", GetLastError());
 		return false;
 	}
-	if (!GetTempFileNameW(tempDirName, L"obs-studio", 0, tempPath)) {
-		Status(L"Update failed: Failed to create temp dir name: %ld",
-				GetLastError());
+	if (!GetTempFileNameW(tempDirName, L"obs-studio", 0, g_tempPath)) {
+		Status(L"升级失败: 创建临时目录失败: %ld", GetLastError());
 		return false;
 	}
 
-	DeleteFile(tempPath);
-	CreateDirectory(tempPath, nullptr);
+	DeleteFile(g_tempPath);
+	CreateDirectory(g_tempPath, nullptr);
 
 	/* ------------------------------------- *
 	 * Load manifest file                    */
@@ -1208,7 +1109,7 @@ static bool Update(wchar_t *cmdLine)
 	{
 		string manifestFile = QuickReadFile(manifestPath);
 		if (manifestFile.empty()) {
-			Status(L"Update failed: Couldn't load manifest file");
+			Status(L"升级失败: 无法加载 mainfest.json 文件");
 			return false;
 		}
 
@@ -1216,14 +1117,13 @@ static bool Update(wchar_t *cmdLine)
 		root = json_loads(manifestFile.c_str(), 0, &error);
 
 		if (!root) {
-			Status(L"Update failed: Couldn't parse update "
-					L"manifest: %S", error.text);
+			Status(L"升级失败: 无法解析 manifest.json 文件: %S", error.text);
 			return false;
 		}
 	}
 
 	if (!json_is_object(root.get())) {
-		Status(L"Update failed: Invalid update manifest");
+		Status(L"升级失败: 无效的 manifest.json 文件");
 		return false;
 	}
 
@@ -1234,8 +1134,8 @@ static bool Update(wchar_t *cmdLine)
 	size_t packageCount = json_array_size(packages);
 
 	for (size_t i = 0; i < packageCount; i++) {
-		if (!AddPackageUpdateFiles(packages, i, tempPath)) {
-			Status(L"Failed to process update packages");
+		if (!AddPackageUpdateFiles(packages, i, g_tempPath)) {
+			Status(L"处理升级包的过程中发生错误");
 			return false;
 		}
 	}
@@ -1244,24 +1144,29 @@ static bool Update(wchar_t *cmdLine)
 	 * Exit if updates already installed     */
 
 	if (!updates.size()) {
-		Status(L"All available updates are already installed.");
+		Status(L"所有的更新已经全部安装完毕。");
 		return true;
 	}
 
 	/* ------------------------------------- *
 	 * Check for VS2017 redistributables     */
-
-	if (!HasVS2017Redist()) {
+	// 不进行vs2017的检测，只进行vs2015的加载...
+	/*if (!HasVS2017Redist()) {
 		if (!UpdateVS2017Redists(root)) {
 			return false;
 		}
-	}
+	}*/
 
 	/* ------------------------------------- *
 	 * Generate file hash json               */
+	
+	// 这里是将json文件发送给服务器，再次进行其它校验
+	// 我们可以不用做的那么复杂，只需要针对hash校验就可以了...
 
-	OBSJson files(json_array());
+	//#define PATCH_MANIFEST_URL  L"https://obsproject.com/update_studio/getpatchmanifest"
+	//#define HASH_NULL           L"0000000000000000000000000000000000000000"
 
+	/*OBSJson files(json_array());
 	for (update_t &update : updates) {
 		wchar_t whash_string[BLAKE2_HASH_STR_LENGTH];
 		char    hash_string[BLAKE2_HASH_STR_LENGTH];
@@ -1270,7 +1175,6 @@ static bool Update(wchar_t *cmdLine)
 		if (!update.has_hash)
 			continue;
 
-		/* check hash */
 		HashToString(update.my_hash, whash_string);
 		if (wcscmp(whash_string, HASH_NULL) == 0)
 			continue;
@@ -1289,13 +1193,12 @@ static bool Update(wchar_t *cmdLine)
 		json_object_set(obj, "name", json_string(package_path.c_str()));
 		json_object_set(obj, "hash", json_string(hash_string));
 		json_array_append_new(files, obj);
-	}
+	}*/
 
 	/* ------------------------------------- *
 	 * Send file hashes                      */
 
-	string newManifest;
-
+	/*string newManifest;
 	if (json_array_size(files) > 0) {
 		char *post_body = json_dumps(files, JSON_COMPACT);
 
@@ -1322,28 +1225,25 @@ static bool Update(wchar_t *cmdLine)
 			return false;
 
 		if (responseCode != 200) {
-			Status(L"Update failed: HTTP/%d while trying to "
-					L"download patch manifest",
-					responseCode);
+			Status(L"升级失败: HTTP/%d 尝试下载升级补丁失败",	responseCode);
 			return false;
 		}
 	} else {
 		newManifest = "[]";
-	}
+	}*/
 
 	/* ------------------------------------- *
 	 * Parse new manifest                    */
 
-	json_error_t error;
+	/*json_error_t error;
 	root = json_loads(newManifest.c_str(), 0, &error);
 	if (!root) {
-		Status(L"Update failed: Couldn't parse patch manifest: %S",
-				error.text);
+		Status(L"升级失败: 无法解析补丁包内容: %S", error.text);
 		return false;
 	}
 
 	if (!json_is_array(root.get())) {
-		Status(L"Update failed: Invalid patch manifest");
+		Status(L"升级失败: 无效的补丁包");
 		return false;
 	}
 
@@ -1353,7 +1253,7 @@ static bool Update(wchar_t *cmdLine)
 		json_t *patch = json_array_get(root, i);
 
 		if (!json_is_object(patch)) {
-			Status(L"Update failed: Invalid patch manifest");
+			Status(L"升级失败: 无效的补丁包");
 			return false;
 		}
 
@@ -1377,7 +1277,7 @@ static bool Update(wchar_t *cmdLine)
 		int         size   = (int)json_integer_value(size_json);
 
 		UpdateWithPatchIfAvailable(name, hash, source, size);
-	}
+	}*/
 
 	/* ------------------------------------- *
 	 * Download Updates                      */
@@ -1386,7 +1286,7 @@ static bool Update(wchar_t *cmdLine)
 		return false;
 
 	if ((size_t)completedUpdates != updates.size()) {
-		Status(L"Update failed to download all files.");
+		Status(L"升级失败：下载文件发生错误！");
 		return false;
 	}
 
@@ -1396,20 +1296,17 @@ static bool Update(wchar_t *cmdLine)
 	int updatesInstalled = 0;
 	int lastPosition = 0;
 
-	SendDlgItemMessage(hwndMain, IDC_PROGRESS,
-		PBM_SETPOS, 0, 0);
+	SendDlgItemMessage(hwndMain, IDC_PROGRESS, PBM_SETPOS, 0, 0);
 
 	for (update_t &update : updates) {
 		if (!UpdateFile(update)) {
 			return false;
 		} else {
 			updatesInstalled++;
-			int position = (int)(((float)updatesInstalled /
-				(float)completedUpdates) * 100.0f);
+			int position = (int)(((float)updatesInstalled / (float)completedUpdates) * 100.0f);
 			if (position > lastPosition) {
 				lastPosition = position;
-				SendDlgItemMessage(hwndMain, IDC_PROGRESS,
-					PBM_SETPOS, position, 0);
+				SendDlgItemMessage(hwndMain, IDC_PROGRESS, PBM_SETPOS, position, 0);
 			}
 		}
 	}
@@ -1417,26 +1314,26 @@ static bool Update(wchar_t *cmdLine)
 	/* If we get here, all updates installed successfully so we can purge
 	 * the old versions */
 	for (update_t &update : updates) {
-		if (!update.previousFile.empty())
+		if (!update.previousFile.empty()) {
 			DeleteFile(update.previousFile.c_str());
-
+		}
 		/* We delete here not above in case of duplicate hashes */
-		if (!update.tempPath.empty())
+		if (!update.tempPath.empty()) {
 			DeleteFile(update.tempPath.c_str());
+		}
 	}
 
-	SendDlgItemMessage(hwndMain, IDC_PROGRESS,
-		PBM_SETPOS, 100, 0);
+	SendDlgItemMessage(hwndMain, IDC_PROGRESS, PBM_SETPOS, 100, 0);
 
-	Status(L"Update complete.");
-	SetDlgItemText(hwndMain, IDC_BUTTON, L"Launch OBS");
+	Status(L"升级完成！");
+	SetDlgItemText(hwndMain, IDC_BUTTON, L"加载进程");
 	return true;
 }
 
 static DWORD WINAPI UpdateThread(void *arg)
 {
+	// 使用传递的命令参数，调用更新接口...
 	wchar_t *cmdLine = (wchar_t *)arg;
-
 	bool success = Update(cmdLine);
 
 	if (!success) {
@@ -1444,26 +1341,23 @@ static DWORD WINAPI UpdateThread(void *arg)
 		 * partially installed updates */
 		CleanupPartialUpdates();
 
-		if (tempPath[0])
-			RemoveDirectory(tempPath);
+		if (g_tempPath[0]) RemoveDirectory(g_tempPath);
 
-		if (WaitForSingleObject(cancelRequested, 0) == WAIT_OBJECT_0)
-			Status(L"Update aborted.");
+		if (WaitForSingleObject(cancelRequested, 0) == WAIT_OBJECT_0) {
+			Status(L"升级被取消！");
+		}
 
-		SendDlgItemMessage(hwndMain, IDC_PROGRESS, PBM_SETSTATE,
-				PBST_ERROR, 0);
+		SendDlgItemMessage(hwndMain, IDC_PROGRESS, PBM_SETSTATE, PBST_ERROR, 0);
 
-		SetDlgItemText(hwndMain, IDC_BUTTON, L"Exit");
+		SetDlgItemText(hwndMain, IDC_BUTTON, L"退 出");
 		EnableWindow(GetDlgItem(hwndMain, IDC_BUTTON), true);
 
 		updateFailed = true;
 	} else {
-		if (tempPath[0])
-			RemoveDirectory(tempPath);
+		if (g_tempPath[0]) RemoveDirectory(g_tempPath);
 	}
 
-	if (bExiting)
-		ExitProcess(success);
+	if (bExiting) ExitProcess(success);
 	return 0;
 }
 
@@ -1486,15 +1380,11 @@ static void LaunchOBS()
 	GetCurrentDirectory(_countof(cwd) - 1, cwd);
 
 	StringCbCopy(obsPath, sizeof(obsPath), cwd);
-	StringCbCat(obsPath, sizeof(obsPath), is32bit
-			? L"\\bin\\32bit"
-			: L"\\bin\\64bit");
+	StringCbCat(obsPath, sizeof(obsPath), is32bit ? L"\\bin\\32bit" : L"\\bin\\64bit");
 	SetCurrentDirectory(obsPath);
 	StringCbCopy(newCwd, sizeof(newCwd), obsPath);
 
-	StringCbCat(obsPath, sizeof(obsPath), is32bit
-			? L"\\obs32.exe"
-			: L"\\obs64.exe");
+	StringCbCat(obsPath, sizeof(obsPath), is32bit ? L"\\obs32.exe" : L"\\obs64.exe");
 
 	if (!FileExists(obsPath)) {
 		StringCbCopy(obsPath, sizeof(obsPath), cwd);
@@ -1522,47 +1412,37 @@ static void LaunchOBS()
 	ShellExecuteEx(&execInfo);
 }
 
-static INT_PTR CALLBACK UpdateDialogProc(HWND hwnd, UINT message,
-		WPARAM wParam, LPARAM lParam)
+static INT_PTR CALLBACK UpdateDialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message) {
 	case WM_INITDIALOG: {
-		static HICON hMainIcon = LoadIcon(hinstMain,
-				MAKEINTRESOURCE(IDI_ICON1));
+		static HICON hMainIcon = LoadIcon(hinstMain, MAKEINTRESOURCE(IDI_ICON1));
 		SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hMainIcon);
 		SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hMainIcon);
 		return true;
 	}
-
 	case WM_COMMAND:
-		if (LOWORD(wParam) == IDC_BUTTON) {
-			if (HIWORD(wParam) == BN_CLICKED) {
-				DWORD result = WaitForSingleObject(
-						updateThread, 0);
-				if (result == WAIT_OBJECT_0) {
-					if (updateFailed)
-						PostQuitMessage(0);
-					else
-						PostQuitMessage(1);
-				} else {
-					EnableWindow((HWND)lParam, false);
-					CancelUpdate(false);
-				}
+		// 发生指定按钮的点击事件 => 查看线程状态 => 处理不同过程...
+		if ((LOWORD(wParam) == IDC_BUTTON) && (HIWORD(wParam) == BN_CLICKED)) {
+			DWORD result = WaitForSingleObject(updateThread, 0);
+			if (result == WAIT_OBJECT_0) {
+				PostQuitMessage(updateFailed ? 0 : 1);
+			} else {
+				EnableWindow((HWND)lParam, false);
+				CancelUpdate(false);
 			}
 		}
 		return true;
-
 	case WM_CLOSE:
 		CancelUpdate(true);
 		return true;
 	}
-
 	return false;
 }
 
 static void RestartAsAdmin(LPWSTR lpCmdLine)
 {
-	wchar_t myPath[MAX_PATH];
+	wchar_t myPath[MAX_PATH] = { 0 };
 	if (!GetModuleFileNameW(nullptr, myPath, _countof(myPath) - 1)) {
 		return;
 	}
@@ -1581,12 +1461,11 @@ static void RestartAsAdmin(LPWSTR lpCmdLine)
 	shExInfo.nShow            = SW_NORMAL;
 	shExInfo.hInstApp         = 0;
 
-	/* annoyingly the actual elevated updater will disappear behind other
-	 * windows :( */
+	/* annoyingly the actual elevated updater will disappear behind other windows :( */
 	AllowSetForegroundWindow(ASFW_ANY);
 
 	if (ShellExecuteEx(&shExInfo)) {
-		DWORD exitCode;
+		DWORD exitCode = 0;
 
 		if (GetExitCodeProcess(shExInfo.hProcess, &exitCode)) {
 			if (exitCode == 1) {
@@ -1602,15 +1481,15 @@ static bool HasElevation()
 	SID_IDENTIFIER_AUTHORITY sia = SECURITY_NT_AUTHORITY;
 	PSID sid = nullptr;
 	BOOL elevated = false;
-	BOOL success;
+	BOOL success = false;
 
-	success = AllocateAndInitializeSid(&sia, 2, SECURITY_BUILTIN_DOMAIN_RID,
-			DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, &sid);
+	// 检查当前系统用户是否是管理员身份...
+	success = AllocateAndInitializeSid(&sia, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, &sid);
 	if (success && sid) {
 		CheckTokenMembership(nullptr, sid, &elevated);
 		FreeSid(sid);
 	}
-
+	// 返回检查结果...
 	return elevated;
 }
 
@@ -1618,42 +1497,40 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
 {
 	INITCOMMONCONTROLSEX icce;
 
+	// 检查升级进程是否是以管理员身份登录...
 	if (!HasElevation()) {
-		HANDLE hLowMutex = CreateMutexW(nullptr, true,
-				L"OBSUpdaterRunningAsNonAdminUser");
-
+		HANDLE hLowMutex = CreateMutexW(nullptr, true, L"OBSUpdaterRunningAsNonAdminUser");
+		// 重启进程，用管理员身份登录...
 		RestartAsAdmin(lpCmdLine);
-
+		// 重启结束，关闭互斥对象...
 		if (hLowMutex) {
 			ReleaseMutex(hLowMutex);
 			CloseHandle(hLowMutex);
 		}
-
+		// 结束进程...
 		return 0;
 	} else {
 		{
 			wchar_t cwd[MAX_PATH];
 			wchar_t newPath[MAX_PATH];
+			// 得到当前进程的运行目录...
 			GetCurrentDirectoryW(_countof(cwd) - 1, cwd);
-
+			// 当前进程是否为32位系统，并更改当前工作目录...
 			is32bit = wcsstr(cwd, L"bin\\32bit") != nullptr;
 			StringCbCat(cwd, sizeof(cwd), L"\\..\\..");
-
-			GetFullPathName(cwd, _countof(newPath), newPath,
-					nullptr);
+			// 计算工作目录，并设定为升级进程的当前工作目录...
+			GetFullPathName(cwd, _countof(newPath), newPath, nullptr);
 			SetCurrentDirectory(newPath);
 		}
 
 		hinstMain = hInstance;
-
 		icce.dwSize = sizeof(icce);
 		icce.dwICC  = ICC_PROGRESS_CLASS;
-
 		InitCommonControlsEx(&icce);
-
+		// 创建升级对话框，并设定对话框的窗口工程...
 		hwndMain = CreateDialog(hInstance,
-				MAKEINTRESOURCE(IDD_UPDATEDIALOG), nullptr,
-				UpdateDialogProc);
+			MAKEINTRESOURCE(IDD_UPDATEDIALOG),
+			nullptr, UpdateDialogProc);
 		if (!hwndMain) {
 			return -1;
 		}
@@ -1661,11 +1538,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
 		ShowWindow(hwndMain, SW_SHOWNORMAL);
 		SetForegroundWindow(hwndMain);
 
+		// 创建取消事件和升级更新处理线程...
 		cancelRequested = CreateEvent(nullptr, true, false, nullptr);
-		updateThread = CreateThread(nullptr, 0, UpdateThread,
-				lpCmdLine, 0, nullptr);
+		updateThread = CreateThread(nullptr, 0, UpdateThread, lpCmdLine, 0, nullptr);
 
-		MSG msg;
+		MSG msg = { 0 };
 		while (GetMessage(&msg, nullptr, 0, 0)) {
 			if (!IsDialogMessage(hwndMain, &msg)) {
 				TranslateMessage(&msg);
@@ -1673,10 +1550,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
 			}
 		}
 
-		/* there is no non-elevated process waiting for us if UAC is
-		 * disabled */
-		WinHandle hMutex = OpenMutex(SYNCHRONIZE, false,
-				L"OBSUpdaterRunningAsNonAdminUser");
+		/* there is no non-elevated process waiting for us if UAC is disabled */
+		WinHandle hMutex = OpenMutex(SYNCHRONIZE, false, L"OBSUpdaterRunningAsNonAdminUser");
+
+		// 升级完毕，重启主进程，自动运行...
 		if (msg.wParam == 1 && !hMutex) {
 			LaunchOBS();
 		}
