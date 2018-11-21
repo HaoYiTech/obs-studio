@@ -82,7 +82,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\UI\win-update\updater;E:\obs-studio\UI\win-update\updater;E:\obs-studio\vsbuild\UI\win-update\updater\updater_autogen\include_Debug;E:\obs-deps\win32\include;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\libobs;E:\obs-studio\deps\libff;E:\obs-studio\deps\json11;E:\obs-studio\deps\blake2\src;E:\obs-studio\deps\lzma;E:\obs-studio\deps\lzma\liblzma\api;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\UI\win-update\updater;E:\obs-studio\vsbuild\UI\win-update\updater\updater_autogen\include_Debug;E:\obs-deps\win32\include;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\libobs;E:\obs-studio\deps\libff;E:\obs-studio\deps\json11;E:\obs-studio\deps\blake2\src;E:\obs-studio\deps\lzma;E:\obs-studio\deps\lzma\liblzma\api;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Debug/</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -156,7 +156,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\UI\win-update\updater;E:\obs-studio\UI\win-update\updater;E:\obs-studio\vsbuild\UI\win-update\updater\updater_autogen\include_Release;E:\obs-deps\win32\include;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\libobs;E:\obs-studio\deps\libff;E:\obs-studio\deps\json11;E:\obs-studio\deps\blake2\src;E:\obs-studio\deps\lzma;E:\obs-studio\deps\lzma\liblzma\api;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\UI\win-update\updater;E:\obs-studio\vsbuild\UI\win-update\updater\updater_autogen\include_Release;E:\obs-deps\win32\include;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\libobs;E:\obs-studio\deps\libff;E:\obs-studio\deps\json11;E:\obs-studio\deps\blake2\src;E:\obs-studio\deps\lzma;E:\obs-studio\deps\lzma\liblzma\api;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Release/</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4127;4201;4456;4457;4458;4459;4595</DisableSpecificWarnings>
