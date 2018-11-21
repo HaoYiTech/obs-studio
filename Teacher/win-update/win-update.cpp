@@ -207,21 +207,17 @@ try {
 	if (os_utf8_to_wcs_ptr(path, 0, &w_path) == 0)
 		return false;
 
-	WinHandle handle = CreateFileW(w_path, GENERIC_READ, FILE_SHARE_READ,
-			nullptr, OPEN_EXISTING, 0, nullptr);
+	WinHandle handle = CreateFileW(w_path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
 	if (handle == INVALID_HANDLE_VALUE)
-		throw strprintf("Failed to open file '%s': %lu",
-				path, GetLastError());
+		throw strprintf("Failed to open file '%s': %lu", path, GetLastError());
 
 	vector<BYTE> buf;
 	buf.resize(65536);
 
 	for (;;) {
 		DWORD read = 0;
-		if (!ReadFile(handle, buf.data(), (DWORD)buf.size(), &read,
-					nullptr))
-			throw strprintf("Failed to read file '%s': %lu",
-					path, GetLastError());
+		if (!ReadFile(handle, buf.data(), (DWORD)buf.size(), &read, nullptr))
+			throw strprintf("Failed to read file '%s': %lu", path, GetLastError());
 
 		if (!read)
 			break;
@@ -242,8 +238,7 @@ try {
 
 /* ------------------------------------------------------------------------ */
 
-static bool VerifyDigitalSignature(uint8_t *buf, size_t len, uint8_t *sig,
-		size_t sigLen)
+static bool VerifyDigitalSignature(uint8_t *buf, size_t len, uint8_t *sig, size_t sigLen)
 {
 	/* ASN of PEM public key */
 	BYTE  binaryKey[1024];
@@ -326,8 +321,7 @@ static bool VerifyDigitalSignature(uint8_t *buf, size_t len, uint8_t *sig,
 	return true;
 }
 
-static inline void HexToByteArray(const char *hexStr, size_t hexLen,
-		vector<uint8_t> &out)
+static inline void HexToByteArray(const char *hexStr, size_t hexLen, vector<uint8_t> &out)
 {
 	char ptr[3];
 
@@ -340,8 +334,7 @@ static inline void HexToByteArray(const char *hexStr, size_t hexLen,
 	}
 }
 
-static bool CheckDataSignature(const string &data, const char *name,
-		const char *hexSig, size_t sigLen)
+static bool CheckDataSignature(const string &data, const char *name, const char *hexSig, size_t sigLen)
 try {
 	if (sigLen == 0 || sigLen > 0xFFFF || (sigLen & 1) != 0)
 		throw strprintf("Missing or invalid signature for %s", name);
@@ -424,8 +417,7 @@ try {
 	json_error_t error;
 	OBSJson root(json_loads(manifest, 0, &error));
 	if (!root)
-		throw strprintf("Failed reading json string (%d): %s",
-				error.line, error.text);
+		throw strprintf("Failed reading json string (%d): %s", error.line, error.text);
 
 	if (!json_is_object(root.get()))
 		throw string("Root of manifest is not an object");
@@ -435,10 +427,7 @@ try {
 	int patch = root.GetInt("version_patch");
 
 	if (major == 0)
-		throw strprintf("Invalid version number: %d.%d.%d",
-				major,
-				minor,
-				patch);
+		throw strprintf("Invalid version number: %d.%d.%d", major, minor, patch);
 
 	json_t *notes = json_object_get(root, "notes");
 	if (!json_is_string(notes))
@@ -609,9 +598,7 @@ try {
 		GenerateGUID(guid);
 
 		if (!guid.empty())
-			config_set_string(GetGlobalConfig(),
-					"General", "InstallGUID",
-					guid.c_str());
+			config_set_string(GetGlobalConfig(), "General", "InstallGUID", guid.c_str());
 	}
 
 	if (!guid.empty()) {
