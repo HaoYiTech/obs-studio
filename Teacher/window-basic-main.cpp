@@ -1681,7 +1681,7 @@ void OBSBasic::DeferredLoad(const QString &file, int requeueCount)
 	// 立即启动远程连接...
 	App()->doCheckRemote();
 	// 对场景资源进行位置重排...
-	this->doSceneItemLayout();
+	this->ShutFloatSource();
 }
 
 void OBSBasic::UpdateMultiviewProjectorMenu()
@@ -2665,6 +2665,7 @@ void trigger_sparkle_update();
 
 void OBSBasic::TimedCheckForUpdates()
 {
+	// 检测是否开启自动更新开关，默认是处于关闭状态...
 	if (!config_get_bool(App()->GlobalConfig(), "General", "EnableAutoUpdates"))
 		return;
 
@@ -3897,13 +3898,80 @@ QMenu *OBSBasic::AddScaleFilteringMenu(obs_sceneitem_t *item)
 	return menu;
 }
 
+void OBSBasic::OpenFloatSource()
+{
+	OBSScene scene = this->GetCurrentScene();
+	OBSSceneItem curItem = this->GetCurrentSceneItem();
+	if (scene == NULL || curItem == NULL)
+		return;
+	// 遍历所有数据源，只选中并浮动当前的数据源，其它数据源置反...
+	auto func = [](obs_scene_t *, obs_sceneitem_t *item, void *param)
+	{
+		obs_sceneitem_t *selectedItem = reinterpret_cast<obs_sceneitem_t*>(param);
+		obs_sceneitem_select(item, (selectedItem == item));
+		obs_sceneitem_set_floated(item, (selectedItem == item));
+		return true;
+	};
+	// 先置顶再枚举所有的数据源，这样就会只选中一个数据源...
+	obs_sceneitem_set_order(curItem, OBS_ORDER_MOVE_TOP);
+	obs_scene_enum_items(scene, func, (obs_sceneitem_t*)curItem);
+	// 获取显示系统的宽和高...
+	obs_video_info ovi = { 0 };
+	obs_get_video_info(&ovi);
+	// 将当前数据源移动到右上角...
+	vec2 vBounds, vPos;
+	obs_sceneitem_get_bounds(curItem, &vBounds);
+	vec2_set(&vPos, ovi.base_width - vBounds.x, 0.0f);
+	obs_sceneitem_set_pos(curItem, &vPos);
+}
+
+void OBSBasic::ShutFloatSource()
+{
+	// 遍历所有数据源，都设置成不能浮动状态...
+	auto func = [](obs_scene_t *, obs_sceneitem_t *item, void *)
+	{
+		obs_sceneitem_set_floated(item, false);
+		return true;
+	};
+	// 执行遍历接口，然后重排所有数据源的显示位置...
+	obs_scene_enum_items(this->GetCurrentScene(), func, nullptr);
+	this->doSceneItemLayout();
+}
+
 void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 {
 	QMenu popup(this);
 	QPointer<QMenu> previewProjector;
 	QPointer<QMenu> sourceProjector;
 
-	if (preview) {
+	// 如果数据源有效，创建一个可浮动数据源的菜单项...
+	if (item != NULL) {
+		QAction * actionFloated = NULL;
+		bool bHasFloatedSource = false;
+		auto func = [](obs_scene_t *, obs_sceneitem_t *itemEnum, void *param) {
+			bool & isFloated = *reinterpret_cast<bool*>(param);
+			if (obs_sceneitem_floated(itemEnum)) {
+				isFloated = true;
+				return false;
+			}
+			return true;
+		};
+		// 首先要枚举查找浮动数据源是否已经存在，根据查询结果创建不同名称的菜单项...
+		obs_scene_enum_items(this->GetCurrentScene(), func, &bHasFloatedSource);
+		actionFloated = popup.addAction(QTStr(bHasFloatedSource ? "Basic.Main.ShutFloatSource" : "Basic.Main.OpenFloatSource"),
+										this, bHasFloatedSource ? SLOT(ShutFloatSource()) : SLOT(OpenFloatSource()));
+		// 获取坐标位置...
+		vec2 posDisp = {1.0f, 1.0f};
+		obs_sceneitem_get_pos(this->GetSceneItem(item), &posDisp);
+		// 如果是第一个数据源并且是未浮动状态，需要对菜单进行灰色处理...
+		if (posDisp.x <= 0.0f && posDisp.y <= 0.0f && !bHasFloatedSource) {
+			actionFloated->setEnabled(false);
+		}
+		// 增加一个分隔符...
+		popup.addSeparator();
+	}
+	// 针对预览窗口的右键菜单...
+	if (preview != NULL) {
 		// 屏蔽 开启预览 菜单开关 => 永远开启预览...
 		/*QAction *action = popup.addAction(
 				QTStr("Basic.Main.PreviewConextMenu.Enable"),
@@ -3919,21 +3987,17 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 		previewProjector = new QMenu(QTStr("PreviewProjector"));
 		AddProjectorMenuMonitors(previewProjector, this,
 				SLOT(OpenPreviewProjector()));
-
 		popup.addMenu(previewProjector);
 
 		QAction *previewWindow = popup.addAction(
 				QTStr("PreviewWindow"),
 				this, SLOT(OpenPreviewWindow()));
-
 		popup.addAction(previewWindow);
-
 		popup.addSeparator();
 	}
 
 	QPointer<QMenu> addSourceMenu = CreateAddSourcePopupMenu();
-	if (addSourceMenu)
-		popup.addMenu(addSourceMenu);
+	if (addSourceMenu) popup.addMenu(addSourceMenu);
 
 	//ui->actionCopyFilters->setEnabled(false);
 	//ui->actionCopySource->setEnabled(false);
@@ -3949,17 +4013,13 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 	//popup.addAction(ui->actionPasteFilters);
 	//popup.addSeparator();
 
-	if (item) {
-		if (addSourceMenu)
-			popup.addSeparator();
-
-		OBSSceneItem sceneItem = GetSceneItem(item);
+	if (item != NULL) {
+		if (addSourceMenu) popup.addSeparator();
+		OBSSceneItem sceneItem = this->GetSceneItem(item);
 		obs_source_t *source = obs_sceneitem_get_source(sceneItem);
 		uint32_t flags = obs_source_get_output_flags(source);
-		bool isAsyncVideo = (flags & OBS_SOURCE_ASYNC_VIDEO) ==
-			OBS_SOURCE_ASYNC_VIDEO;
-		bool hasAudio = (flags & OBS_SOURCE_AUDIO) ==
-			OBS_SOURCE_AUDIO;
+		bool isAsyncVideo = (flags & OBS_SOURCE_ASYNC_VIDEO) == OBS_SOURCE_ASYNC_VIDEO;
+		bool hasAudio = (flags & OBS_SOURCE_AUDIO) == OBS_SOURCE_AUDIO;
 		QAction *action;
 
 		popup.addAction(QTStr("RenameSource"), this,
@@ -3979,9 +4039,7 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 		QAction *sourceWindow = popup.addAction(
 				QTStr("SourceWindow"),
 				this, SLOT(OpenSourceWindow()));
-
 		popup.addAction(sourceWindow);
-
 		popup.addSeparator();
 
 		if (hasAudio) {
@@ -5888,16 +5946,17 @@ void OBSBasic::doSceneItemExchangePos(obs_sceneitem_t * select_item)
 	auto func = [](obs_scene_t *, obs_sceneitem_t *item, void *param)
 	{
 		// 有视频的资源才进行显示位置重排处理...
+		BaseSceneItem * out_item = reinterpret_cast<BaseSceneItem*>(param);
 		obs_source_t *source = obs_sceneitem_get_source(item);
 		uint32_t flags = obs_source_get_output_flags(source);
 		if ((flags & OBS_SOURCE_VIDEO) == 0)
 			return true;
 		// 对传入的参数结构进行转换处理...
-		BaseSceneItem * out_item = reinterpret_cast<BaseSceneItem*>(param);
-		// 根据资源的显示位置，判断是否是第一个显示资源...
 		vec2 posDisp = { 0 };
 		obs_sceneitem_get_pos(item, &posDisp);
-		if (posDisp.x <= 0.0f && posDisp.y <= 0.0f) {
+		bool bIsFloated = obs_sceneitem_floated(item);
+		// 根据资源的显示位置，不能是浮动资源，判断是否是第一个显示资源...
+		if (posDisp.x <= 0.0f && posDisp.y <= 0.0f && !bIsFloated) {
 			out_item->scene_item = item;
 			return false;
 		}

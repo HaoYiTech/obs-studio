@@ -716,6 +716,9 @@ private slots:
 	void EnablePreviewDisplay(bool enable);
 	void TogglePreview();
 
+	void OpenFloatSource();
+	void ShutFloatSource();
+
 	void NudgeUp();
 	void NudgeDown();
 	void NudgeLeft();

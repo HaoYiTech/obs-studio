@@ -67,8 +67,7 @@ static bool CloseFloat(float a, float b, float epsilon=0.01)
 	return abs(a-b) <= epsilon;
 }
 
-static bool FindItemAtPos(obs_scene_t *scene, obs_sceneitem_t *item,
-		void *param)
+static bool FindItemAtPos(obs_scene_t *scene, obs_sceneitem_t *item, void *param)
 {
 	SceneFindData *data = reinterpret_cast<SceneFindData*>(param);
 	matrix4       transform;
@@ -200,16 +199,14 @@ OBSSceneItem OBSBasicPreview::GetItemAtPos(const vec2 &pos, bool selectBelow)
 	OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
 
 	OBSScene scene = main->GetCurrentScene();
-	if (!scene)
-		return OBSSceneItem();
+	if (!scene) return OBSSceneItem();
 
 	SceneFindData data(pos, selectBelow);
 	obs_scene_enum_items(scene, FindItemAtPos, &data);
 	return data.item;
 }
 
-static bool CheckItemSelected(obs_scene_t *scene, obs_sceneitem_t *item,
-		void *param)
+static bool CheckItemSelected(obs_scene_t *scene, obs_sceneitem_t *item, void *param)
 {
 	SceneFindData *data = reinterpret_cast<SceneFindData*>(param);
 	matrix4       transform;
@@ -269,8 +266,7 @@ struct HandleFindData {
 	{}
 };
 
-static bool FindHandleAtPos(obs_scene_t *scene, obs_sceneitem_t *item,
-		void *param)
+static bool FindHandleAtPos(obs_scene_t *scene, obs_sceneitem_t *item, void *param)
 {
 	if (!obs_sceneitem_selected(item))
 		return true;
@@ -527,8 +523,7 @@ void OBSBasicPreview::mousePressEvent(QMouseEvent *event)
 
 static bool select_one(obs_scene_t *scene, obs_sceneitem_t *item, void *param)
 {
-	obs_sceneitem_t *selectedItem =
-		reinterpret_cast<obs_sceneitem_t*>(param);
+	obs_sceneitem_t *selectedItem = reinterpret_cast<obs_sceneitem_t*>(param);
 	obs_sceneitem_select(item, (selectedItem == item));
 
 	UNUSED_PARAMETER(scene);
@@ -579,9 +574,9 @@ void OBSBasicPreview::mouseReleaseEvent(QMouseEvent *event)
 	if (mouseDown) {
 		vec2 pos = GetMouseEventPos(event);
 
-		if (!mouseMoved)
+		if (!mouseMoved) {
 			ProcessClick(pos);
-
+		}
 		stretchItem = nullptr;
 		mouseDown   = false;
 		mouseMoved  = false;
@@ -737,7 +732,11 @@ void OBSBasicPreview::SnapItemMovement(vec2 &offset)
 
 static bool move_items(obs_scene_t *scene, obs_sceneitem_t *item, void *param)
 {
+	// 如果数据源被锁定，直接返回...
 	if (obs_sceneitem_locked(item))
+		return true;
+	// 如果数据源不能浮动，直接返回...
+	if (!obs_sceneitem_floated(item))
 		return true;
 
 	vec2 *offset = reinterpret_cast<vec2*>(param);
@@ -1095,37 +1094,45 @@ void OBSBasicPreview::mouseMoveEvent(QMouseEvent *event)
 		return;
 	}
 
-	if (locked)
+	// 屏蔽后，锁定状态下也能拖动指定数据源窗口...
+	//if (locked)
+	//	return;
+
+	/////////////////////////////////////////////////////
+	// 注意：限制MoveItem还需要move_items中进一步处理...
+	/////////////////////////////////////////////////////
+	// 如果鼠标不是处于按下状态，直接返回...
+	if (!mouseDown)
 		return;
-
-	if (mouseDown) {
-		vec2 pos = GetMouseEventPos(event);
-
-		if (!mouseMoved && !mouseOverItems &&
-		    stretchHandle == ItemHandle::None) {
-			ProcessClick(startPos);
-			mouseOverItems = SelectedAtPos(startPos);
-		}
-
-		pos.x = std::round(pos.x);
-		pos.y = std::round(pos.y);
-
-		if (stretchHandle != ItemHandle::None) {
-			if (cropping)
-				CropItem(pos);
-			else
-				StretchItem(pos);
-
-		} else if (mouseOverItems) {
-			MoveItems(pos);
-		}
-
-		mouseMoved = true;
+	// 通过主窗口得到当前选中的数据源，不要使用光标的坐标来查询数据源...
+	OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	OBSSceneItem itemSelect = main->GetCurrentSceneItem();
+	// 如果没有找到场景数据源，直接返回...
+	if (itemSelect == NULL)
+		return;
+	// 如果选中场景数据源，不能浮动，直接返回...
+	if (!obs_sceneitem_floated(itemSelect))
+		return;
+	// 选中矢量坐标所在的场景数据源对象...
+	if (!mouseMoved && !mouseOverItems && stretchHandle == ItemHandle::None) {
+		this->ProcessClick(startPos);
+		mouseOverItems = this->SelectedAtPos(startPos);
 	}
+	// 得到当前鼠标所在的坐标位置...
+	vec2 pos = this->GetMouseEventPos(event);
+	pos.x = std::round(pos.x);
+	pos.y = std::round(pos.y);
+	// 根据当前状态和坐标进行相关的数据源操作...
+	if (stretchHandle != ItemHandle::None) {
+		if (cropping) this->CropItem(pos);
+		else this->StretchItem(pos);
+	} else if (mouseOverItems) {
+		this->MoveItems(pos);
+	}
+	mouseMoved = true;
 }
 
-static void DrawCircleAtPos(float x, float y, matrix4 &matrix,
-		float previewScale)
+static void DrawCircleAtPos(float x, float y, matrix4 &matrix, float previewScale)
 {
 	struct vec3 pos;
 	vec3_set(&pos, x, y, 0.0f);
@@ -1294,6 +1301,9 @@ void OBSBasicPreview::mouseDoubleClickEvent(QMouseEvent *event)
 	OBSSceneItem itemSelect = this->GetItemAtPos(posMouse, false);
 	// 如果没有找到对应的场景资源，直接返回...
 	if (itemSelect == NULL)
+		return;
+	// 如果当前场景是浮动数据源，不能进行位置切换...
+	if (obs_sceneitem_floated(itemSelect))
 		return;
 	// 获取当前选中资源的左上角坐标位置...
 	obs_sceneitem_get_pos(itemSelect, &posItem);

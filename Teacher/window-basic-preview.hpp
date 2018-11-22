@@ -57,8 +57,7 @@ private:
 	float        scalingAmount  = 1.0f;
 
 	static vec2 GetMouseEventPos(QMouseEvent *event);
-	static bool DrawSelectedItem(obs_scene_t *scene, obs_sceneitem_t *item,
-		void *param);
+	static bool DrawSelectedItem(obs_scene_t *scene, obs_sceneitem_t *item, void *param);
 
 	static OBSSceneItem GetItemAtPos(const vec2 &pos, bool selectBelow);
 	static bool SelectedAtPos(const vec2 &pos);
