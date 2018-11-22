@@ -167,8 +167,20 @@ static inline bool doEnumZeroSource(obs_scene_t *scence, obs_sceneitem_t *item, 
 {
 	struct vec2 posDisp = { 0 };
 	obs_sceneitem_get_pos(item, &posDisp);
+	bool bIsFloated = obs_sceneitem_floated(item);
 	obs_sceneitem_t ** out_item = (obs_sceneitem_t**)(param);
-	if (posDisp.x <= 0.0f && posDisp.y <= 0.0f) {
+	if (posDisp.x <= 0.0f && posDisp.y <= 0.0f && !bIsFloated) {
+		*out_item = item;
+		return false;
+	}
+	return true;
+}
+
+// 遍历场景数据源列表，找到第一个浮动数据源对象...
+static inline bool doEnumFloatSource(obs_scene_t *scence, obs_sceneitem_t *item, void *param)
+{
+	obs_sceneitem_t ** out_item = (obs_sceneitem_t**)(param);
+	if (obs_sceneitem_floated(item)) {
 		*out_item = item;
 		return false;
 	}
@@ -267,34 +279,36 @@ static inline void doCalcDrawTransform(obs_sceneitem_t * item, struct vec2 * bou
 	matrix4_translate3f(out_transform, out_transform, item->pos.x, item->pos.y, 0.0f);
 }
 
+static inline void render_export_source(struct vec2 *bounds, obs_sceneitem_t *sceneitem)
+{
+	// 如果输入对象无效，或者，没有找到对应的数据源对象，直接返回...
+	obs_source_t * source = obs_sceneitem_get_source(sceneitem);
+	if (bounds == NULL || source == NULL)
+		return;
+	// 计算数据源在绘制画布上的缩放矩阵...
+	struct matrix4 draw_transform = { 0 };
+	doCalcDrawTransform(sceneitem, bounds, &draw_transform);
+	// 保存并更新变换矩阵...
+	gs_matrix_push();
+	gs_matrix_mul(&draw_transform);
+	// 将数据源渲染到设定的渲染画布上面...
+	obs_source_video_render(source);
+	// 恢复变换矩阵...
+	gs_matrix_pop();
+}
+
 // 将第一个0点位置的数据源渲染到特定的输出纹理对象当中...
 static const char *render_export_texture_name = "render_export_texture";
 static inline void render_export_texture(struct obs_core_video *video, int cur_texture)
 {
 	// 开始记录执行函数的名称...
 	profile_start(render_export_texture_name);
-	// 找到第一个场景会话对象 => 只有一个场景会话对象...
+	// 找到第一个0点数据源和第一个浮动数据源...
+	obs_sceneitem_t * lpZeroSceneItem = NULL;
+	obs_sceneitem_t * lpFloatSceneItem = NULL;
 	obs_scene_t * lpCurScene = doFindSceneSource();
-	// 没有找到，结束记录执行函数，并返回...
-	if (lpCurScene == NULL) {
-		profile_end(render_export_texture_name);
-		return;
-	}
-	// 在当前场景会话当中寻找0点显示位置的数据源...
-	obs_source_t * lpOutSourceItem = NULL;
-	obs_sceneitem_t * lpOutSceneItem = NULL;
-	obs_scene_enum_items(lpCurScene, doEnumZeroSource, &lpOutSceneItem);
-	lpOutSourceItem = obs_sceneitem_get_source(lpOutSceneItem);
-	// 没有找到，结束记录执行函数，并返回...
-	if (lpOutSceneItem == NULL || lpOutSourceItem == NULL) {
-		profile_end(render_export_texture_name);
-		return;
-	}
-	// 计算数据源在绘制画布上的缩放矩阵...
-	struct vec2 dstBounds = { 0 };
-	struct matrix4 draw_transform = { 0 };
-	vec2_set(&dstBounds, (float)video->base_width, (float)video->base_height);
-	doCalcDrawTransform(lpOutSceneItem, &dstBounds, &draw_transform);
+	obs_scene_enum_items(lpCurScene, doEnumZeroSource, &lpZeroSceneItem);
+	obs_scene_enum_items(lpCurScene, doEnumFloatSource, &lpFloatSceneItem);
 	// 设置背景色...
 	struct vec4 clear_color;
 	vec4_set(&clear_color, 0.0f, 0.0f, 0.0f, 1.0f);
@@ -306,13 +320,14 @@ static inline void render_export_texture(struct obs_core_video *video, int cur_t
 	// 保存并初始化当前变换状态...
 	gs_blend_state_push();
 	gs_reset_blend_state();
-	// 保存并更新变换矩阵...
-	gs_matrix_push();
-	gs_matrix_mul(&draw_transform);
-	// 将数据源渲染到设定的渲染画布上面...
-	obs_source_video_render(lpOutSourceItem);
-	// 恢复变换矩阵和变换状态...
-	gs_matrix_pop();
+	// 绘制0点数据源对象，界限是整个画布...
+	struct vec2 dstBounds = { 0 };
+	vec2_set(&dstBounds, (float)video->base_width, (float)video->base_height);
+	render_export_source(&dstBounds, lpZeroSceneItem);
+	// 绘制浮动数据源对象，界限是场景自身...
+	obs_sceneitem_get_bounds(lpFloatSceneItem, &dstBounds);
+	render_export_source(&dstBounds, lpFloatSceneItem);
+	// 恢复变换状态...
 	gs_blend_state_pop();
 	// 设定当前渲染纹理状态...
 	video->textures_exported[cur_texture] = true;
