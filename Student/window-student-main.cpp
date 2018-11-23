@@ -352,7 +352,7 @@ void StudentWindow::on_actionSettingSystem_triggered()
 void StudentWindow::on_actionCameraAdd_triggered()
 {
 	// 打开摄像头窗口配置 => 添加...
-	CDlgPush dlg(this, -1, false);
+	CDlgPush dlg(this, -1);
 	if (dlg.exec() == QDialog::Rejected)
 		return;
 	// 点击确定之后的处理过程...
@@ -379,10 +379,14 @@ void StudentWindow::on_actionCameraMod_triggered()
 	// 屏蔽自动重连 => 修改时，不能自动重连...
 	m_ui.LeftView->SetCanAutoLink(false);
 	// 弹出通道配置修改框 => 注意恢复自动重连标志...
-	CDlgPush dlg(this, nDBCameraID, lpViewCamera->IsCameraOffLine());
+	CDlgPush dlg(this, nDBCameraID);
 	if (dlg.exec() == QDialog::Rejected) {
 		m_ui.LeftView->SetCanAutoLink(true);
 		return;
+	}
+	// 如果通道处于已连接状态，先进行停止操作...
+	if (lpViewCamera->IsCameraOnLine()) {
+		m_ui.LeftView->onCameraStop();
 	}
 	// 点击确定之后的处理过程...
 	CWebThread * lpWebThread = App()->GetWebThread();
