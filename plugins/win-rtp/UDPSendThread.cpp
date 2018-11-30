@@ -208,9 +208,6 @@ BOOL CUDPSendThread::InitThread(obs_output_t * lpObsOutput, const char * lpUdpAd
 	// 再新建socket...
 	ASSERT( m_lpUDPSocket == NULL );
 	m_lpUDPSocket = new UDPSocket();
-	///////////////////////////////////////////////////////
-	// 注意：Open默认已经设定为异步模式...
-	///////////////////////////////////////////////////////
 	// 建立UDP,发送音视频数据,接收指令...
 	GM_Error theErr = GM_NoErr;
 	theErr = m_lpUDPSocket->Open();
@@ -218,13 +215,15 @@ BOOL CUDPSendThread::InitThread(obs_output_t * lpObsOutput, const char * lpUdpAd
 		MsgLogGM(theErr);
 		return false;
 	}
+	// 设置异步模式...
+	m_lpUDPSocket->NonBlocking();
 	// 设置重复使用端口...
 	m_lpUDPSocket->ReuseAddr();
 	// 设置发送和接收缓冲区...
 	m_lpUDPSocket->SetSocketSendBufSize(128 * 1024);
 	m_lpUDPSocket->SetSocketRecvBufSize(128 * 1024);
 	// 设置TTL网络穿越数值...
-	m_lpUDPSocket->SetTtl(32);
+	m_lpUDPSocket->SetTTL(64);
 	// 获取服务器地址信息 => 假设输入信息就是一个IPV4域名...
 	const char * lpszAddr = lpUdpAddr;
 	hostent * lpHost = gethostbyname(lpszAddr);
