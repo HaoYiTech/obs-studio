@@ -70,7 +70,6 @@ GM_Error Socket::Open(int theType)
 		MsgLogGM(theErr);
 		return theErr;
 	}
-	this->NonBlocking();	
 	return GM_NoErr;
 }
 
@@ -162,6 +161,13 @@ void Socket::Linger(int nTime)
 	/*int one = 1;
 	int err = ::setsockopt(m_hSocket,SOL_SOCKET,SO_DONTLINGER,(const char*)&one,sizeof(one));*/
 	ASSERT(err == 0);	
+}
+
+void Socket::SetTTL(int timeToLive)
+{
+	u_char	nOptVal = (u_char)timeToLive;
+	int err = setsockopt(m_hSocket, IPPROTO_IP, IP_TTL, (char*)&nOptVal, sizeof(nOptVal));
+	ASSERT(err == 0);
 }
 
 GM_Error Socket::Send(const char* inData, const UInt32 inLength, UInt32* outLengthSent)

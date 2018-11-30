@@ -129,6 +129,7 @@ bool CWebThread::RegisterGather()
 	bool bAutoLinkFDFS = atoi(CStudentApp::getJsonString(value["auto_fdfs"]).c_str());
 	bool bAutoDetectIPC = atoi(CStudentApp::getJsonString(value["auto_ipc"]).c_str());
 	int nPageSize = atoi(CStudentApp::getJsonString(value["page_size"]).c_str());
+	ROLE_TYPE nRoleType = (ROLE_TYPE)atoi(CStudentApp::getJsonString(value["role_type"]).c_str());
 	// 对每页窗口数进行重新适配判断计算...
 	//nPageSize = ((nPageSize <= 1 || nPageSize > 36) ? DEF_PER_PAGE_SIZE : nPageSize);
 	//int nColNum = ceil(sqrt(nPageSize * 1.0f));
@@ -195,6 +196,7 @@ bool CWebThread::RegisterGather()
 	nSnapVal = ((nSnapVal >= 10) ? 10 : nSnapVal);
 	// 存放到配置文件，但并不存盘 => 字符串都是UTF8格式...
 	App()->SetDBGatherID(nDBGatherID);
+	App()->SetRoleType(nRoleType);
 	App()->SetWebVer(strWebVer);
 	App()->SetWebTag(strWebTag);
 	App()->SetWebType(nWebType);

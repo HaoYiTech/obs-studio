@@ -4,10 +4,12 @@
 #include "SocketUtils.h"
 #include "UDPPlayThread.h"
 #include "UDPRecvThread.h"
+#include "UDPMultiSendThread.h"
 #include "../window-view-render.hpp"
 
 CUDPRecvThread::CUDPRecvThread(CViewRender * lpViewRender, int nDBRoomID, int nDBCameraID)
   : m_lpViewRender(lpViewRender)
+  , m_lpMultiSendThread(NULL)
   , m_lpUDPSocket(NULL)
   , m_lpPlaySDL(NULL)
   , m_bNeedSleep(false)
@@ -57,6 +59,8 @@ CUDPRecvThread::CUDPRecvThread(CViewRender * lpViewRender, int nDBRoomID, int nD
 	m_rtp_delete.liveID = nDBCameraID;
 	// 填充与远程关联的TCP套接字 => 从全局管理器中获取...
 	m_rtp_create.tcpSock = App()->GetRtpTCPSockFD();
+	// 初始化丢包集合互斥保护对象...
+	pthread_mutex_init_value(&m_MutexLose);
 }
 
 CUDPRecvThread::~CUDPRecvThread()
@@ -69,13 +73,25 @@ CUDPRecvThread::~CUDPRecvThread()
 	this->CloseSocket();
 	// 删除音视频播放线程...
 	this->ClosePlayer();
+	// 关闭组播发送者线程...
+	this->CloseMultiSend();
 	// 释放音视频环形队列空间...
 	circlebuf_free(&m_audio_circle);
 	circlebuf_free(&m_video_circle);
 	// 通知左侧窗口，拉流线程已经停止...
 	App()->onUdpRecvThreadStop();
+	// 释放丢包集合互斥保护对象...
+	pthread_mutex_destroy(&m_MutexLose);
 
 	blog(LOG_INFO, "%s == [~CUDPRecvThread Thread] - Exit End ==", TM_RECV_NAME);
+}
+
+void CUDPRecvThread::CloseMultiSend()
+{
+	if (m_lpMultiSendThread != NULL) {
+		delete m_lpMultiSendThread;
+		m_lpMultiSendThread = NULL;
+	}
 }
 
 void CUDPRecvThread::ClosePlayer()
@@ -107,9 +123,6 @@ BOOL CUDPRecvThread::InitThread(string & strUdpAddr, int nUdpPort)
 	// 再新建socket...
 	ASSERT( m_lpUDPSocket == NULL );
 	m_lpUDPSocket = new UDPSocket();
-	///////////////////////////////////////////////////////
-	// 注意：Open默认已经设定为异步模式...
-	///////////////////////////////////////////////////////
 	// 建立UDP,发送音视频数据,接收指令...
 	GM_Error theErr = GM_NoErr;
 	theErr = m_lpUDPSocket->Open();
@@ -117,13 +130,15 @@ BOOL CUDPRecvThread::InitThread(string & strUdpAddr, int nUdpPort)
 		MsgLogGM(theErr);
 		return false;
 	}
+	// 设置异步模式...
+	m_lpUDPSocket->NonBlocking();
 	// 设置重复使用端口...
 	m_lpUDPSocket->ReuseAddr();
 	// 设置发送和接收缓冲区...
 	m_lpUDPSocket->SetSocketSendBufSize(128 * 1024);
 	m_lpUDPSocket->SetSocketRecvBufSize(128 * 1024);
 	// 设置TTL网络穿越数值...
-	m_lpUDPSocket->SetTtl(32);
+	m_lpUDPSocket->SetTTL(64);
 	// 获取服务器地址信息 => 假设输入信息就是一个IPV4域名...
 	const char * lpszAddr = strUdpAddr.c_str();
 	hostent * lpHost = gethostbyname(lpszAddr);
@@ -136,7 +151,7 @@ BOOL CUDPRecvThread::InitThread(string & strUdpAddr, int nUdpPort)
 	m_HostServerStr = lpszAddr;
 	m_HostServerPort = nUdpPort;
 	m_HostServerAddr = ntohl(inet_addr(lpszAddr));
-	// 启动组播接收线程...
+	// 启动数据接收线程...
 	this->Start();
 	// 返回执行结果...
 	return true;
@@ -251,14 +266,19 @@ void CUDPRecvThread::doSendDetectCmd()
 
 uint32_t CUDPRecvThread::doCalcMaxConSeq(bool bIsAudio)
 {
-	// 根据数据包类型，找到丢包集合、环形队列、最大播放包...
+	// 进入丢包集合互斥保护对象...
+	pthread_mutex_lock(&m_MutexLose);
+	// 发生丢包的计算 => 等于最小丢包号 - 1
 	GM_MapLose & theMapLose = bIsAudio ? m_AudioMapLose : m_VideoMapLose;
+	uint32_t nLoseMinSeq = (theMapLose.size() > 0) ? (theMapLose.begin()->first - 1) : 0;
+	// 退出丢包集合互斥保护对象...
+	pthread_mutex_unlock(&m_MutexLose);
+	// 如果发生丢包，返回最小丢包号 - 1
+	if (  nLoseMinSeq > 0  )
+		return nLoseMinSeq;
+	// 根据数据包类型，找到丢包集合、环形队列、最大播放包...
 	circlebuf  & cur_circle = bIsAudio ? m_audio_circle : m_video_circle;
 	uint32_t  & nMaxPlaySeq = bIsAudio ? m_nAudioMaxPlaySeq : m_nVideoMaxPlaySeq;
-	// 发生丢包的计算 => 等于最小丢包号 - 1
-	if( theMapLose.size() > 0 ) {
-		return (theMapLose.begin()->first - 1);
-	}
 	// 没有丢包 => 环形队列为空 => 返回最大播放序列号...
 	if(  cur_circle.size <= 0  )
 		return nMaxPlaySeq;
@@ -274,11 +294,16 @@ void CUDPRecvThread::doSendSupplyCmd(bool bIsAudio)
 {
 	if (m_lpUDPSocket == NULL)
 		return;
+	// 进入丢包集合互斥保护对象...
+	pthread_mutex_lock(&m_MutexLose);
 	// 根据数据包类型，找到丢包集合...
 	GM_MapLose & theMapLose = bIsAudio ? m_AudioMapLose : m_VideoMapLose;
-	// 如果丢包集合队列为空，直接返回...
-	if( theMapLose.size() <= 0 )
+	// 如果丢包集合队列为空，退出互斥保护...
+	if (theMapLose.size() <= 0) {
+		pthread_mutex_unlock(&m_MutexLose);
 		return;
+	}
+	// 注意：这里还没有退出互斥保护状态...
 	ASSERT( theMapLose.size() > 0 );
 	// 定义最大的补包缓冲区...
 	const int nHeadSize = sizeof(m_rtp_supply);
@@ -320,6 +345,8 @@ void CUDPRecvThread::doSendSupplyCmd(bool bIsAudio)
 		// 累加丢包算子对象...
 		++itorItem;
 	}
+	// 退出丢包集合互斥保护对象...
+	pthread_mutex_unlock(&m_MutexLose);
 	// 如果补充包缓冲为空，直接返回...
 	if( m_rtp_supply.suSize <= 0 )
 		return;
@@ -341,7 +368,7 @@ void CUDPRecvThread::doSendSupplyCmd(bool bIsAudio)
 	// 修改休息状态 => 已经有发包，不能休息...
 	m_bNeedSleep = false;
 	// 打印已发送补包命令...
-	//blog(LOG_INFO, "%s Supply Send => Dir: %d, Count: %d", TM_RECV_NAME, m_dt_to_dir, m_rtp_supply.suSize/sizeof(uint32_t));
+	//blog(LOG_INFO, "%s Supply Send => Dir: %d, Count: %d, MaxResend: %d", TM_RECV_NAME, m_dt_to_dir, m_rtp_supply.suSize/sizeof(uint32_t), nCalcMaxResend);
 }
 
 void CUDPRecvThread::doRecvPacket()
@@ -404,6 +431,8 @@ void CUDPRecvThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
 		memset(&m_rtp_header, 0, sizeof(m_rtp_header));
 		return;
 	}
+	// 直接将收到的序列头保存起来，方便组播转发使用...
+	m_strSeqHeader.assign(lpBuffer, inRecvLen);
 	// 读取SPS和PPS格式头信息...
 	char * lpData = lpBuffer + sizeof(m_rtp_header);
 	if( m_rtp_header.spsSize > 0 ) {
@@ -454,6 +483,20 @@ void CUDPRecvThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
 		int nInRateIndex = m_rtp_header.rateIndex;
 		int nInChannelNum = m_rtp_header.channelNum;
 		m_lpPlaySDL->InitAudio(nInRateIndex, nInChannelNum);
+	}
+	// 重建组播转发线程对象...
+	this->CloseMultiSend();
+	// 检查终端是否允许进行组播转发模式...
+	ROLE_TYPE theRole = App()->GetRoleType();
+	if (theRole < kRoleMultiSend)
+		return;
+	// 创建组播转发线程对象...
+	ASSERT(theRole >= kRoleMultiSend);
+	m_lpMultiSendThread = new CUDPMultiSendThread(this);
+	// 初始化组播转发线程对象失败，打印错误信息...
+	if (!m_lpMultiSendThread->InitThread(m_strSeqHeader)) {
+		blog(LOG_INFO, "== CUDPMultiSendThread::InitThread() Error ==");
+		this->CloseMultiSend();
 	}
 }
 
@@ -542,10 +585,14 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 		// 当前时间转换成毫秒，计算网络延时 => 当前时间 - 探测时间...
 		uint32_t cur_time_ms = (uint32_t)(os_gettime_ns() / 1000000);
 		int keep_rtt = cur_time_ms - rtpDetect.tsSrc;
+		// 进入丢包集合互斥保护状态...
+		pthread_mutex_lock(&m_MutexLose);
 		// 如果音频和视频都没有丢包，直接设定最大重发次数为0...
 		if( m_AudioMapLose.size() <= 0 && m_VideoMapLose.size() <= 0 ) {
 			m_nMaxResendCount = 0;
 		}
+		// 退出丢包集合互斥保护状态...
+		pthread_mutex_unlock(&m_MutexLose);
 		// 防止网络突发延迟增大, 借鉴 TCP 的 RTT 遗忘衰减的算法...
 		if( m_server_rtt_ms < 0 ) { m_server_rtt_ms = keep_rtt; }
 		else { m_server_rtt_ms = (7 * m_server_rtt_ms + keep_rtt) / 8; }
@@ -566,18 +613,26 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 			blog(LOG_INFO, "%s Recv Detect => APacket: %d, VPacket: %d, AFrame: %d, VFrame: %d", TM_RECV_NAME,
 				m_lpPlaySDL->GetAPacketSize(), m_lpPlaySDL->GetVPacketSize(), m_lpPlaySDL->GetAFrameSize(), m_lpPlaySDL->GetVFrameSize());
 		}*/
+		// 注意：这里直接传递网络延时计算结果...
+		// 将探测命令结果转发到组播网络当中...
+		if (m_lpMultiSendThread != NULL) {
+			rtpDetect.tsSrc = keep_rtt;
+			m_lpMultiSendThread->Transfer((char*)&rtpDetect, sizeof(rtpDetect));
+		}
 	}
 }
 
 void CUDPRecvThread::doServerMinSeq(bool bIsAudio, uint32_t inMinSeq)
 {
+	// 如果输入的最小包号无效，直接返回...
+	if( inMinSeq <= 0 )
+		return;
+	// 进入丢包集合互斥保护对象...
+	pthread_mutex_lock(&m_MutexLose);
 	// 根据数据包类型，找到丢包集合、环形队列、最大播放包...
 	GM_MapLose & theMapLose = bIsAudio ? m_AudioMapLose : m_VideoMapLose;
 	circlebuf  & cur_circle = bIsAudio ? m_audio_circle : m_video_circle;
 	uint32_t  & nMaxPlaySeq = bIsAudio ? m_nAudioMaxPlaySeq : m_nVideoMaxPlaySeq;
-	// 如果输入的最小包号无效，直接返回...
-	if( inMinSeq <= 0 )
-		return;
 	// 丢包队列有效，才进行丢包查询工作...
 	if( theMapLose.size() > 0 ) {
 		// 遍历丢包队列，凡是小于服务器端最小序号的丢包，都要扔掉...
@@ -593,6 +648,8 @@ void CUDPRecvThread::doServerMinSeq(bool bIsAudio, uint32_t inMinSeq)
 			theMapLose.erase(itorItem++);
 		}
 	}
+	// 退出丢包集合互斥保护对象...
+	pthread_mutex_unlock(&m_MutexLose);
 	// 如果环形队列为空，无需清理，直接返回...
 	if( cur_circle.size <= 0 )
 		return;
@@ -754,7 +811,7 @@ void CUDPRecvThread::doParseFrame(bool bIsAudio)
 	uint32_t    cur_seq = lpFrontHeader->seq;
 	rtp_hdr_t * lpCurHeader = lpFrontHeader;
 	uint32_t    nConsumeSize = nPerPackSize;
-	string      strFrame;
+	string      strFrame, strPacket;
 	// 完整数据帧 => 序号连续，以pst开始，以ped结束...
 	while( true ) {
 		// 将数据包的有效载荷保存起来...
@@ -826,9 +883,13 @@ void CUDPRecvThread::doParseFrame(bool bIsAudio)
 	// 进行数据的存盘验证测试...
 	DoSaveRecvFile(ts_ms, pt_type, is_key, strFrame);
 #endif // DEBUG_FRAME
-
+	/////////////////////////////////////////////////////////////////////////
+	// 注意：不能采用缓存直接累加的方式，会造成数据混乱，只能从环形队列直接读取...
+	// 注意：必须用一次性分配空间的方案，从环形队列直接读取，才能避免空间混乱...
+	/////////////////////////////////////////////////////////////////////////
+	strPacket.assign(nConsumeSize, 0);
 	// 删除已解析完毕的环形队列数据包 => 回收缓冲区...
-	circlebuf_pop_front(&cur_circle, NULL, nConsumeSize);
+	circlebuf_pop_front(&cur_circle, (void*)strPacket.c_str(), nConsumeSize);
 	// 需要对网络缓冲评估延时时间进行线路选择 => 目前只有一条服务器路线...
 	int cur_cache_ms = m_server_cache_time_ms;
 	// 将解析到的有效数据帧推入播放对象当中...
@@ -840,27 +901,49 @@ void CUDPRecvThread::doParseFrame(bool bIsAudio)
 	//     pt_type, is_key, ts_ms, strFrame.size(), m_nMaxPlaySeq, m_circle.size/nPerPackSize );
 	// 修改休息状态 => 已经抽取完整音视频数据帧，不能休息...
 	m_bNeedSleep = false;
+	// 如果组播转发对象有效，将解析到的有效数据块存放起来，以便组播补包使用...
+	if (m_lpMultiSendThread != NULL && strPacket.size() > 0) {
+		m_lpMultiSendThread->PushPacket(strPacket, bIsAudio);
+	}
+}
+
+BOOL CUDPRecvThread::doIsServerLose(bool bIsAudio, uint32_t inLoseSeq)
+{
+	BOOL bResult = false;
+	// 进入丢包集合互斥保护对象...
+	pthread_mutex_lock(&m_MutexLose);
+	GM_MapLose & theMapLose = bIsAudio ? m_AudioMapLose : m_VideoMapLose;
+	bResult = ((theMapLose.find(inLoseSeq) != theMapLose.end()) ? true : false);
+	// 退出丢包集合互斥保护对象...
+	pthread_mutex_unlock(&m_MutexLose);
+	return bResult;
 }
 
 void CUDPRecvThread::doEraseLoseSeq(uint8_t inPType, uint32_t inSeqID)
 {
+	// 进入丢包集合互斥保护对象...
+	pthread_mutex_lock(&m_MutexLose);
 	// 根据数据包类型，找到丢包集合...
 	GM_MapLose & theMapLose = (inPType == PT_TAG_AUDIO) ? m_AudioMapLose : m_VideoMapLose;
 	// 如果没有找到指定的序列号，直接返回...
 	GM_MapLose::iterator itorItem = theMapLose.find(inSeqID);
-	if( itorItem == theMapLose.end() )
-		return;
-	// 删除检测到的丢包节点...
-	rtp_lose_t & rtpLose = itorItem->second;
-	uint32_t nResendCount = rtpLose.resend_count;
-	theMapLose.erase(itorItem);
-	// 打印已收到的补包信息，还剩下的未补包个数...
-	//blog(LOG_INFO, "%s Supply Erase => LoseSeq: %lu, ResendCount: %lu, LoseSize: %lu, Type: %d", TM_RECV_NAME, inSeqID, nResendCount, theMapLose.size(), inPType);
+	if (itorItem != theMapLose.end()) {
+		// 删除检测到的丢包节点...
+		rtp_lose_t & rtpLose = itorItem->second;
+		uint32_t nResendCount = rtpLose.resend_count;
+		theMapLose.erase(itorItem);
+		// 打印已收到的补包信息，还剩下的未补包个数...
+		//blog(LOG_INFO, "%s Supply Erase => LoseSeq: %lu, ResendCount: %lu, LoseSize: %lu, Type: %d", TM_RECV_NAME, inSeqID, nResendCount, theMapLose.size(), inPType);
+	}
+	// 退出丢包集合互斥保护对象...
+	pthread_mutex_unlock(&m_MutexLose);
 }
 //
 // 给丢失数据包预留环形队列缓存空间...
 void CUDPRecvThread::doFillLosePack(uint8_t inPType, uint32_t nStartLoseID, uint32_t nEndLoseID)
 {
+	// 进入丢包集合互斥保护对象...
+	pthread_mutex_lock(&m_MutexLose);
 	// 根据数据包类型，找到丢包集合...
 	circlebuf & cur_circle = (inPType == PT_TAG_AUDIO) ? m_audio_circle : m_video_circle;
 	GM_MapLose & theMapLose = (inPType == PT_TAG_AUDIO) ? m_AudioMapLose : m_VideoMapLose;
@@ -892,6 +975,8 @@ void CUDPRecvThread::doFillLosePack(uint8_t inPType, uint32_t nStartLoseID, uint
 		// 累加当前丢包序列号...
 		++sup_id;
 	}
+	// 退出丢包集合互斥保护对象...
+	pthread_mutex_unlock(&m_MutexLose);
 }
 //
 // 将获取的音视频数据包存入环形队列当中...
@@ -963,6 +1048,10 @@ void CUDPRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 	if( new_id <= nMaxPlaySeq ) {
 		//blog(LOG_INFO, "%s Supply Discard => Seq: %lu, MaxPlaySeq: %lu, Type: %d", TM_RECV_NAME, new_id, nMaxPlaySeq, pt_tag);
 		return;
+	}
+	// 如果组播转发对象有效 => 将有效数据包进行组播转发...
+	if (m_lpMultiSendThread != NULL) {
+		m_lpMultiSendThread->Transfer(lpBuffer, inRecvLen);
 	}
 	// 打印收到的音频数据包信息 => 包括缓冲区填充量 => 每个数据包都是统一大小 => rtp_hdr_t + slice + Zero => 812
 	//blog(LOG_INFO, "%s Size: %d, Seq: %lu, TS: %lu, Type: %d, pst: %d, ped: %d, Slice: %d, ZeroSize: %d", TM_RECV_NAME, inRecvLen, lpNewHeader->seq, lpNewHeader->ts, lpNewHeader->pt, lpNewHeader->pst, lpNewHeader->ped, lpNewHeader->psize, nZeroSize);

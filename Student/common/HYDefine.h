@@ -38,6 +38,9 @@ using namespace std;
 #include <util/platform.h>
 #include <util/circlebuf.h>
 
+#define DEF_MULTI_DATA_ADDR         "234.5.6.7"                 // 组播音视频数据转发地址...
+#define DEF_MULTI_LOSE_ADDR         "235.6.7.8"                 // 组播丢包重传转发地址...
+
 #define DEF_WEB_CENTER				"https://www.myhaoyi.com"	// 默认中心网站(443) => 必须是 https:// 兼容小程序接口...
 #define DEF_WEB_CLASS				"https://edu.ihaoyi.cn"		// 默认云教室网站(443) => 必须是 https:// 兼容小程序接口...
 #define DEF_SSL_PROTO               "https"                     // 默认协议头
@@ -68,15 +71,22 @@ typedef struct
 	uint32_t	dwRenderOffset;		// 时间戳偏移值
 }FMS_FRAME;
 
+enum ROLE_TYPE
+{
+	kRoleWanRecv   = 0,      // 外网接收者角色
+	kRoleMultiRecv = 1,      // 组播接收者角色
+	kRoleMultiSend = 2,      // 组播发送者角色
+};
+
 enum AUTH_STATE
 {
-	kAuthRegister = 1,		// 网站注册授权
-	kAuthExpired = 2,		// 授权过期验证
+	kAuthRegister  = 1,		// 网站注册授权
+	kAuthExpired   = 2,		// 授权过期验证
 };
 
 enum STREAM_PROP
 {
-	kStreamDevice = 0,		// 摄像头设备流类型 => camera
+	kStreamDevice  = 0,		// 摄像头设备流类型 => camera
 	kStreamMP4File = 1,		// MP4文件流类型    => .mp4
 	kStreamUrlLink = 2,		// URL链接流类型    => rtsp/rtmp
 };

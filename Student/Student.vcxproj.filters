@@ -147,6 +147,12 @@
     <ClCompile Include="play-thread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="rtp\UDPMultiSendThread.cpp">
+      <Filter>rtp Files</Filter>
+    </ClCompile>
+    <ClCompile Include="rtp\UDPMultiRecvThread.cpp">
+      <Filter>rtp Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="window-login-base.h">
@@ -338,6 +344,12 @@
     </ClInclude>
     <ClInclude Include="play-thread.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rtp\UDPMultiSendThread.h">
+      <Filter>rtp Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rtp\UDPMultiRecvThread.h">
+      <Filter>rtp Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

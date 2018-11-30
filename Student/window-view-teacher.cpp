@@ -2,6 +2,7 @@
 #include <QPainter>
 #include "student-app.h"
 #include "UDPRecvThread.h"
+#include "UDPMultiRecvThread.h"
 #include "window-view-render.hpp"
 #include "window-view-teacher.hpp"
 
@@ -16,6 +17,7 @@
 
 CViewTeacher::CViewTeacher(QWidget *parent, Qt::WindowFlags flags)
   : OBSQTDisplay(parent, flags)
+  , m_lpUDPMultiRecvThread(NULL)
   , m_lpUDPRecvThread(NULL)
   , m_lpViewRender(NULL)
 {
@@ -33,21 +35,51 @@ CViewTeacher::CViewTeacher(QWidget *parent, Qt::WindowFlags flags)
 	this->setFont(theFont);
 }
 
+bool CViewTeacher::doRoleMultiRecv()
+{
+	// 如果不是组播转发角色，返回失败...
+	if (App()->GetRoleType() != kRoleMultiRecv)
+		return false;
+	// 如果组播接收对象已经创建，直接返回...
+	if (m_lpUDPMultiRecvThread != NULL)
+		return false;
+	// 得到终端所在房间编号，重建组播接收对象...
+	int nRoomID = atoi(App()->GetRoomIDStr().c_str());
+	m_lpUDPMultiRecvThread = new CUDPMultiRecvThread(m_lpViewRender);
+	return m_lpUDPMultiRecvThread->InitThread();
+}
+
+bool CViewTeacher::doRoleMultiSend()
+{
+	// 如果是组播转发角色，返回失败...
+	if (App()->GetRoleType() == kRoleMultiRecv)
+		return false;
+	// 如果UDP接收线程已经创建过了，直接返回...
+	if (m_lpUDPRecvThread != NULL)
+		return false;
+	// 创建UDP接收线程，使用服务器传递过来的参数...
+	int nUdpPort = App()->GetUdpPort();
+	string & strUdpAddr = App()->GetUdpAddr();
+	int nRoomID = atoi(App()->GetRoomIDStr().c_str());
+	m_lpUDPRecvThread = new CUDPRecvThread(m_lpViewRender, nRoomID, 0);
+	return m_lpUDPRecvThread->InitThread(strUdpAddr, nUdpPort);
+}
+
 // 响应从CRemoteSession发出的事件通知信号...
 void CViewTeacher::onTriggerUdpRecvThread(bool bIsUDPTeacherOnLine)
 {
 	// 如果是老师推流端在线通知 => 创建拉流线程...
 	if (bIsUDPTeacherOnLine) {
-		// 如果UDP接收线程已经创建过了，直接返回...
-		if (m_lpUDPRecvThread != NULL)
-			return;
-		ASSERT(m_lpUDPRecvThread == NULL);
-		// 创建UDP接收线程，使用服务器传递过来的参数...
-		int nRoomID = atoi(App()->GetRoomIDStr().c_str());
-		string & strUdpAddr = App()->GetUdpAddr();
-		int nUdpPort = App()->GetUdpPort();
-		m_lpUDPRecvThread = new CUDPRecvThread(m_lpViewRender, nRoomID, 0);
-		m_lpUDPRecvThread->InitThread(strUdpAddr, nUdpPort);
+		// 根据终端模式，创建不同对象...
+		bool bResult = false;
+		switch (App()->GetRoleType())
+		{
+		case kRoleMultiRecv: bResult = this->doRoleMultiRecv(); break;
+		case kRoleMultiSend: bResult = this->doRoleMultiSend(); break;
+		case kRoleWanRecv:   bResult = this->doRoleMultiSend(); break;
+		}
+		// 如果重建失败，返回...
+		if (!bResult) return;
 		// 更新渲染界面窗口显示信息 => 讲师推流端已经上线...
 		m_lpViewRender->doUpdateNotice(QTStr("Render.Window.TeacherOnLine"));
 		// 判断是否处于全屏，如果不是全屏，进入全屏状态...
@@ -55,7 +87,12 @@ void CViewTeacher::onTriggerUdpRecvThread(bool bIsUDPTeacherOnLine)
 			m_lpViewRender->onFullScreenAction();
 		}
 	} else {
-		// 如果是老师推流端离线通知 => 删除拉流线程...
+		// 如果是老师推流端离线通知，删除组播线程...
+		if (m_lpUDPMultiRecvThread != NULL) {
+			delete m_lpUDPMultiRecvThread;
+			m_lpUDPMultiRecvThread = NULL;
+		}
+		// 如果是老师推流端离线通知，删除拉流线程...
 		if (m_lpUDPRecvThread != NULL) {
 			delete m_lpUDPRecvThread;
 			m_lpUDPRecvThread = NULL;
@@ -67,6 +104,11 @@ void CViewTeacher::onTriggerUdpRecvThread(bool bIsUDPTeacherOnLine)
 
 CViewTeacher::~CViewTeacher()
 {
+	// 删除UDP组播接收线程对象...
+	if (m_lpUDPMultiRecvThread != NULL) {
+		delete m_lpUDPMultiRecvThread;
+		m_lpUDPMultiRecvThread = NULL;
+	}
 	// 删除UDP接收线程对象...
 	if (m_lpUDPRecvThread != NULL) {
 		delete m_lpUDPRecvThread;

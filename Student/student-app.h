@@ -97,12 +97,14 @@ public:
 	int      GetDBHaoYiNodeID() { return m_nDBHaoYiNodeID; }
 	int      GetDBHaoYiGatherID() { return m_nDBHaoYiGatherID; }
 	int      GetRtpTCPSockFD() { return m_nRtpTCPSockFD; }
+	ROLE_TYPE GetRoleType() { return m_nRoleType; }
 
 	int      GetAudioRateIndex();
 	int      GetAudioChannelNum() { return m_nAudioOutChannelNum; }
 	int      GetAudioSampleRate() { return m_nAudioOutSampleRate; }
 	int      GetAudioBitrateAAC() { return m_nAudioOutBitrateAAC; }
 
+	void     SetRoleType(ROLE_TYPE inType) { m_nRoleType = inType; }
 	void     SetRtpTCPSockFD(int nTCPSockFD) { m_nRtpTCPSockFD = nTCPSockFD; }
 	void	 SetUdpAddr(const string & strAddr) { m_strUdpAddr = strAddr; }
 	void     SetUdpPort(int nPort) { m_nUdpPort = nPort; }
@@ -187,6 +189,7 @@ private:
 	TextLookup                 m_textLookup;
 	OBSQTDisplay      *        m_lpFocusDisplay;
 	CWebThread        *        m_lpWebThread;				// 网站相关线程...
+	ROLE_TYPE                  m_nRoleType;                 // 终端角色类型...
 	string                     m_strRoomID;					// 登录的房间号...
 	string                     m_strMacAddr;				// 本机MAC地址...
 	string                     m_strIPAddr;					// 本机IP地址...

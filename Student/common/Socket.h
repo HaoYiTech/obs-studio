@@ -28,6 +28,7 @@ public:
 	void			NoDelay();
 	void			KeepAlive();
 	void			Linger(int nTime);
+	void            SetTTL(int timeToLive);
 	void			SetSocketSendBufSize(UInt32 inNewSize);
 	void			SetSocketRecvBufSize(UInt32 inNewSize);
 	
