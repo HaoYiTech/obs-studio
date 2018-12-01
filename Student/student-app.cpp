@@ -649,6 +649,18 @@ CStudentApp::~CStudentApp()
 	CoUninitialize();
 }
 
+QString CStudentApp::GetRoleString()
+{
+	QString strRole = QTStr("Student.RoleWanRecv");
+	switch (m_nRoleType)
+	{
+	case kRoleWanRecv:   strRole = QTStr("Student.RoleWanRecv");   break;
+	case kRoleMultiRecv: strRole = QTStr("Student.RoleMultiRecv"); break;
+	case kRoleMultiSend: strRole = QTStr("Student.RoleMultiSend"); break;
+	}
+	return strRole;
+}
+
 int CStudentApp::GetAudioRateIndex()
 {
 	int inAudioRate = m_nAudioOutSampleRate;

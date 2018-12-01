@@ -25,8 +25,9 @@ CViewTeacher::CViewTeacher(QWidget *parent, Qt::WindowFlags flags)
 	QString strNotice = QTStr("Render.Window.DefaultNotice");
 	m_lpViewRender = new CViewRender(strNotice, NOTICE_FONT_HEIGHT, this);
 	// 设置标题栏基础文字信息...
+	QString strRole = App()->GetRoleString();
 	m_strTitleBase = QTStr("Teacher.Window.TitleBase");
-	m_strTitleText = m_strTitleBase;
+	m_strTitleText = QString("%1 - %2").arg(m_strTitleBase).arg(strRole);
 	// 初始化背景颜色和原始区域...
 	m_bkColor = WINDOW_BK_COLOR;
 	// 设置窗口字体大小...

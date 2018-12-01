@@ -21,7 +21,9 @@ private:
 	void            ClearAllSocket();
 	BOOL            BuildDataSocket();
 	BOOL            BuildLoseSocket();
+
 	void			doSendSupplyCmd(bool bIsAudio);
+	void            doCheckRecvTimeout();
 	void			doRecvPacket();
 	void			doSleepTo();
 
@@ -44,6 +46,7 @@ private:
 	string			m_strPPS;				// 视频pps
 
 	bool			m_bNeedSleep;			// 休息标志 => 只要有发包或收包就不能休息...
+	int64_t			m_time_zero_ns;			// 超时0点时刻 => 纳秒...
 	int64_t			m_sys_zero_ns;			// 系统计时零点 => 第一个数据包到达的系统时刻点 => 纳秒...
 	int				m_server_rtt_ms;		// Server => 网络往返延迟值 => 毫秒
 	int				m_server_rtt_var_ms;	// Server => 网络抖动时间差 => 毫秒

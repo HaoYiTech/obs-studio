@@ -251,6 +251,8 @@ void StudentWindow::doWebThreadMsg(int nMessageID, int nWParam, int nLParam)
 			m_ui.LeftView->onWebAuthExpired();
 			App()->onWebAuthExpired();
 		}
+		// 更新标题栏名称内容...
+		this->UpdateTitleBar();
 	}
 	if (nMessageID == WM_WEB_LOAD_RESOURCE) {
 		m_ui.RightView->onWebLoadResource();
@@ -269,7 +271,8 @@ void StudentWindow::UpdateTitleBar()
 {
 	// 对窗口标题进行修改 => 使用字典模式...
 	string & strRoomID = App()->GetRoomIDStr();
-	QString strTitle = QString("%1%2").arg(QTStr("Main.Window.TitleContent")).arg(QString::fromUtf8(strRoomID.c_str()));
+	QString strRole = App()->GetRoleString();
+	QString strTitle = QString("%1%2 - %3").arg(QTStr("Main.Window.TitleContent")).arg(QString::fromUtf8(strRoomID.c_str())).arg(strRole);
 	this->setWindowTitle(strTitle);
 }
 

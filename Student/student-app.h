@@ -98,6 +98,7 @@ public:
 	int      GetDBHaoYiGatherID() { return m_nDBHaoYiGatherID; }
 	int      GetRtpTCPSockFD() { return m_nRtpTCPSockFD; }
 	ROLE_TYPE GetRoleType() { return m_nRoleType; }
+	QString  GetRoleString();
 
 	int      GetAudioRateIndex();
 	int      GetAudioChannelNum() { return m_nAudioOutChannelNum; }

@@ -34,6 +34,8 @@ CUDPMultiRecvThread::CUDPMultiRecvThread(CViewRender * lpViewRender)
 	// 初始化音视频环形队列，预分配空间...
 	circlebuf_init(&m_audio_circle);
 	circlebuf_init(&m_video_circle);
+	// 初始化超时0点时刻点...
+	m_time_zero_ns = os_gettime_ns();
 }
 
 CUDPMultiRecvThread::~CUDPMultiRecvThread()
@@ -173,9 +175,14 @@ BOOL CUDPMultiRecvThread::BuildLoseSocket()
 void CUDPMultiRecvThread::Entry()
 {
 	blog(LOG_INFO, "== CUDPMultiRecvThread::Entry() ==");
+	// 更新显示窗口的文字信息内容 => 等待组播数据到达...
+	m_lpViewRender->doUpdateNotice(QTStr("Render.Window.WatiMulticast"));
+	// 执行线程函数，直到线程退出...
 	while (!this->IsStopRequested()) {
 		// 设置休息标志 => 只要有发包或收包就不能休息...
 		m_bNeedSleep = true;
+		// 检测组播接收是否发生超时...
+		this->doCheckRecvTimeout();
 		// 接收一个到达的服务器反馈包...
 		this->doRecvPacket();
 		// 先发送音频补包命令...
@@ -189,6 +196,48 @@ void CUDPMultiRecvThread::Entry()
 		// 等待发送或接收下一个数据包...
 		this->doSleepTo();
 	}
+}
+
+void CUDPMultiRecvThread::doCheckRecvTimeout()
+{
+	// 如果组播接收没有发生超时，直接返回，继续等待下次超时检测...
+	uint32_t nDeltaTime = (uint32_t)((os_gettime_ns() - m_time_zero_ns)/1000000);
+	if (nDeltaTime < MAX_MULTI_JAM_MS)
+		return;
+	// 重置超时时间0点检测时间戳...
+	m_time_zero_ns = os_gettime_ns();
+	ASSERT(nDeltaTime >= MAX_MULTI_JAM_MS);
+	// 发生组播接收超时，需要重置相关变量...
+	m_nCmdState = kCmdSendCreate;
+	m_nMaxResendCount = 0;
+	m_nAudioMaxPlaySeq = 0;
+	m_nVideoMaxPlaySeq = 0;
+	m_bFirstAudioSeq = false;
+	m_bFirstVideoSeq = false;
+	m_server_cache_time_ms = -1;
+	m_server_rtt_var_ms = -1;
+	m_server_rtt_ms = -1;
+	m_sys_zero_ns = -1;
+	// 重置序列头格式信息...
+	m_strSeqHeader.clear();
+	m_strSPS.clear();
+	m_strPPS.clear();
+	// 初始化rtp序列头结构体...
+	memset(&m_rtp_header, 0, sizeof(m_rtp_header));
+	// 初始化音视频环形队列，预分配空间...
+	circlebuf_init(&m_audio_circle);
+	circlebuf_init(&m_video_circle);
+	// 清空补包序号队列...
+	m_AudioMapLose.clear();
+	m_VideoMapLose.clear();
+	// 删除音视频播放线程...
+	this->ClosePlayer();
+	// 通知左侧窗口，拉流线程已经停止...
+	App()->onUdpRecvThreadStop();
+	// 更新显示窗口的文字信息内容 => 等待组播数据到达...
+	m_lpViewRender->doUpdateNotice(QTStr("Render.Window.WatiMulticast"));
+	// 打印超时信息...
+	//blog(LOG_INFO, "%s Multicast recv wait time out...", TM_RECV_NAME);
 }
 
 void CUDPMultiRecvThread::doRecvPacket()
@@ -214,6 +263,8 @@ void CUDPMultiRecvThread::doRecvPacket()
 		blog(LOG_INFO, "[Recv-Error] Max => %lu, Addr => %lu:%d, Size => %lu", nMaxSize, outRemoteAddr, outRemotePort, outRecvLen);
 		return;
 	}
+	// 重置超时0点时刻点...
+	m_time_zero_ns = os_gettime_ns();
 	// 获取第一个字节的高4位，得到数据包类型...
 	uint8_t ptTag = (ioBuffer[0] >> 4) & 0x0F;
 	// 对收到命令包进行类型分发...

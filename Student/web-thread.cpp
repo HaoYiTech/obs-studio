@@ -160,37 +160,6 @@ bool CWebThread::RegisterGather()
 			theNode[nDBCameraID] = theMapData;
 		}
 	}
-	// 通知主窗口授权网站注册结果 => 通过信号槽代替消息异步发送...
-	emit App()->msgFromWebThread(WM_WEB_AUTH_RESULT, kAuthRegister, ((nDBGatherID > 0) ? true : false));
-	// 判断采集端是否注册成功...
-	/*if (nDBGatherID <= 0 || strWebTag.size() <= 0) {
-		MsgLogGM(GM_NotImplement);
-		return false;
-	}
-	ASSERT(nDBGatherID > 0 && strWebTag.size() > 0);
-	if (nWebType < 0 || strWebName.size() <= 0) {
-		MsgLogGM(GM_NotImplement);
-		return false;
-	}
-	// 判断Tracker地址是否已经正确获取得到...
-	if (strTrackerAddr.size() <= 0 || nTrackerPort <= 0) {
-		MsgLogGM(GM_NotImplement);
-		return false;
-	}
-	if (strRemoteAddr.size() <= 0 || nRemotePort <= 0) {
-		MsgLogGM(GM_NotImplement);
-		return false;
-	}
-	// 录像切片、切片交错，可以为0，0表示不切片，不交错...
-	if (nInterVal < 0 || nSliceVal < 0) {
-		MsgLogGM(GM_NotImplement);
-		return false;
-	}
-	// 主码流和子码流必须有效...
-	if (nMainKbps <= 0 || nSubKbps <= 0) {
-		MsgLogGM(GM_NotImplement);
-		return false;
-	}*/
 	// 设置默认的截图时间间隔 => 不要超过10分钟...
 	nSnapVal = ((nSnapVal <= 0) ? 2 : nSnapVal);
 	nSnapVal = ((nSnapVal >= 10) ? 10 : nSnapVal);
@@ -209,6 +178,8 @@ bool CWebThread::RegisterGather()
 	App()->SetAutoLinkFDFS(bAutoLinkFDFS);
 	App()->SetAutoLinkDVR(bAutoLinkDVR);
 	// 注意：已经获取了通道编号列表...
+	// 通知主窗口授权网站注册结果 => 通过信号槽代替消息异步发送...
+	emit App()->msgFromWebThread(WM_WEB_AUTH_RESULT, kAuthRegister, ((nDBGatherID > 0) ? true : false));
 	return true;
 }
 
