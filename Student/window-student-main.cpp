@@ -10,6 +10,8 @@
 #include "student-app.h"
 #include "qt-wrappers.hpp"
 #include "window-dlg-push.hpp"
+#include "window-dlg-about.hpp"
+#include "window-dlg-setsys.hpp"
 #include "window-student-main.h"
 #include "window-view-camera.hpp"
 #include "window-view-render.hpp"
@@ -350,6 +352,24 @@ void StudentWindow::on_actionSettingReconnect_triggered()
 
 void StudentWindow::on_actionSettingSystem_triggered()
 {
+	CDlgSetSys dlg(this);
+	ROLE_TYPE  nOldRole = App()->GetRoleType();
+	if (dlg.exec() == QDialog::Rejected)
+		return;
+	// 如果学生端的身份角色发生变化，需要断开重连...
+	ROLE_TYPE  nNewRole = App()->GetRoleType();
+	if (nOldRole != nNewRole) {
+		// 删除左侧资源，删除右侧资源...
+		m_ui.LeftView->doDestoryResource();
+		m_ui.RightView->doDestroyResource();
+		// 退出并重建系统资源，构建新的网站线程...
+		App()->doReBuildResource();
+		return;
+	}
+	// 保存成功，修改组播对象的网络发送接口...
+	CViewRight * lpViewRight = this->GetViewRight();
+	CViewTeacher * lpViewTeacher = lpViewRight->GetViewTeacher();
+	(lpViewTeacher != NULL) ? lpViewTeacher->doResetMulticastIPSend() : NULL;
 }
 
 void StudentWindow::on_actionCameraAdd_triggered()
@@ -459,4 +479,6 @@ void StudentWindow::on_actionPageNext_triggered()
 
 void StudentWindow::on_actionHelpAbout_triggered()
 {
+	CDlgAbout dlg(this);
+	dlg.exec();
 }

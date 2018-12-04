@@ -56,9 +56,10 @@ BOOL CUDPMultiSendThread::InitThread(string & strHeader)
 	m_strSeqHeader = strHeader;
 	// 先删除已经存在的组播套接字对象...
 	this->ClearAllSocket();
-	// 重建组播发送对象和组播接收对象...
+	// 重建组播数据发送对象...
 	if (!this->BuildDataSocket())
 		return false;
+	// 重建组播丢包接收对象...
 	if (!this->BuildLoseSocket())
 		return false;
 	// 启动组播处理线程...
@@ -100,7 +101,27 @@ BOOL CUDPMultiSendThread::BuildDataSocket()
 	}
 	// 设置组播发送的远程地址，在 SendTo() 当中可以简化接口...
 	m_lpUdpData->SetRemoteAddr(DEF_MULTI_DATA_ADDR, nMultiPort);
+	// 设置数据发送接口 => 多网卡时需要指定组播发送网络...
+	string & strIPSend = App()->GetMultiIPSendAddr();
+	UINT nInterAddr = inet_addr(strIPSend.c_str());
+	// 如果组播发送接口不是INADDR_ANY，才进行配置修改...
+	if (nInterAddr != INADDR_ANY) {
+		theErr = m_lpUdpData->ModMulticastInterface(nInterAddr);
+		(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
+	}
 	return true;
+}
+
+// 重置组播数据套接字的发送接口...
+void CUDPMultiSendThread::doResetMulticastIPSend()
+{
+	if (m_lpUdpData == NULL)
+		return;
+	GM_Error theErr = GM_NoErr;
+	string & strIPSend = App()->GetMultiIPSendAddr();
+	UINT nMultiInterAddr = inet_addr(strIPSend.c_str());
+	theErr = m_lpUdpData->ModMulticastInterface(nMultiInterAddr);
+	(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
 }
 
 BOOL CUDPMultiSendThread::BuildLoseSocket()

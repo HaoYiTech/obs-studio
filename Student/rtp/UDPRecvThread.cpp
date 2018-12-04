@@ -500,6 +500,13 @@ void CUDPRecvThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
 	}
 }
 
+void CUDPRecvThread::doResetMulticastIPSend()
+{
+	if (m_lpMultiSendThread != NULL) {
+		m_lpMultiSendThread->doResetMulticastIPSend();
+	}
+}
+
 /*void CUDPRecvThread::doProcJamSeq(bool bIsAudio, uint32_t inJamSeq)
 {
 	///////////////////////////////////////////////////////////////////////////////////////////////////

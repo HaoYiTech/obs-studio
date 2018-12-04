@@ -153,6 +153,12 @@
     <ClCompile Include="rtp\UDPMultiRecvThread.cpp">
       <Filter>rtp Files</Filter>
     </ClCompile>
+    <ClCompile Include="window-dlg-about.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="window-dlg-setsys.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="window-login-base.h">
@@ -194,6 +200,12 @@
     <QtMoc Include="window-view-render.hpp">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="window-dlg-about.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="window-dlg-setsys.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="forms\LoginWindow.ui">
@@ -203,6 +215,12 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="forms\DlgPush.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="forms\DlgAbout.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="forms\DlgSetSys.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>
@@ -350,6 +368,12 @@
     </ClInclude>
     <ClInclude Include="rtp\UDPMultiRecvThread.h">
       <Filter>rtp Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneratedFiles\ui_DlgAbout.h">
+      <Filter>Generated Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneratedFiles\ui_DlgSetSys.h">
+      <Filter>Generated Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

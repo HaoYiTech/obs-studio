@@ -63,6 +63,56 @@ bool CWebThread::parseJson(Json::Value & outValue)
 	return true;
 }
 
+bool CWebThread::doWebSaveSys(ROLE_TYPE nRoleType, string & strMainName, string & strIPSend)
+{
+	// 先设置当前状态信息...
+	m_eRegState = kSaveSys;
+	m_strUTF8Data.clear();
+	// 判断数据是否有效...
+	int nDBGatherID = App()->GetDBGatherID();
+	string & strWebClass = App()->GetWebClass();
+	if (strMainName.size() <= 0 || strIPSend.size() <= 0) {
+		MsgLogGM(GM_NotImplement);
+		return false;
+	}
+	// 准备需要的汇报数据 => POST数据包...
+	char    strPost[MAX_PATH] = { 0 };
+	char    strUrl[MAX_PATH] = { 0 };
+	char    szMainName[MAX_PATH] = { 0 };
+	StringParser::EncodeURI(strMainName.c_str(), strMainName.size(), szMainName, MAX_PATH);
+	sprintf(strPost, "gather_id=%d&role_type=%d&name_set=%s&ip_send=%s",
+			nDBGatherID, nRoleType, szMainName, strIPSend.c_str());
+	sprintf(strUrl, "%s/wxapi.php/Gather/saveSetSys", strWebClass.c_str());
+	// 调用Curl接口，汇报摄像头数据...
+	CURLcode res = CURLE_OK;
+	CURL  *  curl = curl_easy_init();
+	do {
+		if (curl == NULL) break;
+		// 如果是https://协议，需要新增参数...
+		if (App()->IsClassHttps()) {
+			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+			res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+		}
+		// 设定curl参数，采用post模式...
+		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
+		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, strPost);
+		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(strPost));
+		res = curl_easy_setopt(curl, CURLOPT_HEADER, false);
+		res = curl_easy_setopt(curl, CURLOPT_POST, true);
+		res = curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
+		res = curl_easy_setopt(curl, CURLOPT_URL, strUrl);
+		// 这里不需要处理网站返回的数据...
+		//res = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, procPostCurl);
+		//res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)this);
+		res = curl_easy_perform(curl);
+	} while (false);
+	// 释放资源...
+	if (curl != NULL) {
+		curl_easy_cleanup(curl);
+	}
+	return true;
+}
+
 bool CWebThread::RegisterGather()
 {
 	// 先设置当前状态信息...
@@ -147,6 +197,7 @@ bool CWebThread::RegisterGather()
 	string strWebName = CStudentApp::getJsonString(value["web_name"]);
 	string strWebTag = CStudentApp::getJsonString(value["web_tag"]);
 	string strWebVer = CStudentApp::getJsonString(value["web_ver"]);
+	string strIPSend = CStudentApp::getJsonString(value["ip_send"]);
 	// 获取通道记录列表，先清除旧的列表...
 	GM_MapNodeCamera & theNode = App()->GetNodeCamera();
 	Json::Value & theCamera = value["camera"];
@@ -170,6 +221,7 @@ bool CWebThread::RegisterGather()
 	App()->SetWebTag(strWebTag);
 	App()->SetWebType(nWebType);
 	App()->SetWebName(strWebName);
+	App()->SetMultiIPSendAddr(strIPSend);
 	// 存放新增的采集端配置信息 => 字符串都是UTF8格式...
 	App()->SetMainName(strMainName);
 	App()->SetInterVal(nInterVal);
@@ -256,9 +308,11 @@ bool CWebThread::RegisterHaoYi()
 		int nMaxCameraNum = atoi(CStudentApp::getJsonString(value["max_camera"]).c_str());
 		int nAuthDays = atoi(CStudentApp::getJsonString(value["auth_days"]).c_str());
 		string strExpired = CStudentApp::getJsonString(value["auth_expired"]);
+		string strMacMD5 = CStudentApp::getJsonString(value["mac_md5"]);
 		// 存放到配置对象，以便关于对话框查看授权状态...
 		App()->SetMaxCamera(nMaxCameraNum);
 		App()->SetAuthExpired(strExpired);
+		App()->SetAuthMacMD5(strMacMD5);
 		App()->SetAuthDays(nAuthDays);
 		// 授权失败，通知界面层 => 通过信号槽代替消息异步发送...
 		emit App()->msgFromWebThread(WM_WEB_AUTH_RESULT, kAuthExpired, false);
@@ -272,10 +326,12 @@ bool CWebThread::RegisterHaoYi()
 	int nHaoYiUserID = atoi(CStudentApp::getJsonString(value["user_id"]).c_str());
 	int nAuthDays = atoi(CStudentApp::getJsonString(value["auth_days"]).c_str());
 	string strExpired = CStudentApp::getJsonString(value["auth_expired"]);
+	string strMacMD5 = CStudentApp::getJsonString(value["mac_md5"]);
 	// 通知主窗口授权过期验证结果 => 通过信号槽代替消息异步发送...
 	emit App()->msgFromWebThread(WM_WEB_AUTH_RESULT, kAuthExpired, ((nHaoYiGatherID > 0) ? true : false));
 	// 存放到配置对象，返回授权验证结果...
 	App()->SetAuthDays(nAuthDays);
+	App()->SetAuthMacMD5(strMacMD5);
 	App()->SetAuthExpired(strExpired);
 	App()->SetAuthLicense(bAuthLicense);
 	App()->SetMaxCamera(nMaxCameraNum);

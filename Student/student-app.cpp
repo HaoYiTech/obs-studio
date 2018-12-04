@@ -494,6 +494,11 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
+	// 初始化网络套接字...
+	WSADATA	wsData = { 0 };
+	WORD	wsVersion = MAKEWORD(2, 2);
+	(void)::WSAStartup(wsVersion, &wsData);
+
 	// 初始化线程和套接字通用库...
 	OSThread::Initialize();
 	SocketUtils::Initialize();

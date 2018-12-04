@@ -16,6 +16,7 @@ public:
 	void  setTitleContent(QString & titleContent);
 	bool  doVolumeEvent(int inKeyItem);
 	void  onFullScreenAction();
+	void  doResetMulticastIPSend();
 private:
 	void  DrawTitleArea();
 	void  DrawRenderArea();

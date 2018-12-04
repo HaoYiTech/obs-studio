@@ -103,6 +103,18 @@ void CViewTeacher::onTriggerUdpRecvThread(bool bIsUDPTeacherOnLine)
 	}
 }
 
+void CViewTeacher::doResetMulticastIPSend()
+{
+	// 如果组播接收对象有效，进行发送接口重置...
+	if (m_lpUDPMultiRecvThread != NULL) {
+		m_lpUDPMultiRecvThread->doResetMulticastIPSend();
+	}
+	// 如果接收线程有效，进行发送接口重置...
+	if (m_lpUDPRecvThread != NULL) {
+		m_lpUDPRecvThread->doResetMulticastIPSend();
+	}
+}
+
 CViewTeacher::~CViewTeacher()
 {
 	// 删除UDP组播接收线程对象...

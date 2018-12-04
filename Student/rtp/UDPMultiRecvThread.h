@@ -16,6 +16,7 @@ public:
 public:
 	BOOL            InitThread();
 	bool            doVolumeEvent(bool bIsVolPlus);
+	void            doResetMulticastIPSend();
 private:
 	void            ClosePlayer();
 	void            ClearAllSocket();

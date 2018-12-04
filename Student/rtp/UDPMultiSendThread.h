@@ -14,6 +14,7 @@ public:
 	virtual ~CUDPMultiSendThread();
 	virtual void Entry();
 public:
+	void            doResetMulticastIPSend();
 	BOOL            InitThread(string & strHeader);
 	BOOL            Transfer(char * lpBuffer, int inRecvLen);
 	void            PushPacket(string & strPacket, bool bIsAudio);

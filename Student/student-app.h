@@ -74,7 +74,9 @@ public:
 
 	bool     GetAuthLicense() { return m_bAuthLicense; }
 	int      GetAuthDays() { return m_nAuthDays; }
+	string & GetMultiIPSendAddr() { return m_strMultiIPSendAddr; }
 	string & GetAuthExpired() { return m_strAuthExpired; }
+	string & GetAuthMacMD5() { return m_strAuthMacMD5; }
 	string & GetMainName() { return m_strMainName; }
 	int		 GetSliceVal() { return m_nSliceVal; }
 	int		 GetInterVal() { return m_nInterVal; }
@@ -105,6 +107,7 @@ public:
 	int      GetAudioSampleRate() { return m_nAudioOutSampleRate; }
 	int      GetAudioBitrateAAC() { return m_nAudioOutBitrateAAC; }
 
+	void     SetMultiIPSendAddr(const string & strIPSend) { m_strMultiIPSendAddr = strIPSend; }
 	void     SetRoleType(ROLE_TYPE inType) { m_nRoleType = inType; }
 	void     SetRtpTCPSockFD(int nTCPSockFD) { m_nRtpTCPSockFD = nTCPSockFD; }
 	void	 SetUdpAddr(const string & strAddr) { m_strUdpAddr = strAddr; }
@@ -123,6 +126,7 @@ public:
 	void     SetDBHaoYiGatherID(int nDBGatherID) { m_nDBHaoYiGatherID = nDBGatherID; }
 
 	void	 SetAuthDays(const int nAuthDays) { m_nAuthDays = nAuthDays; }
+	void     SetAuthMacMD5(const string & strMacMD5) { m_strAuthMacMD5 = strMacMD5; }
 	void	 SetAuthExpired(const string & strExpired) { m_strAuthExpired = strExpired; }
 	void	 SetAuthLicense(bool bLicense) { m_bAuthLicense = bLicense; }
 	void	 SetMainName(const string & strName) { m_strMainName = strName; }
@@ -214,7 +218,9 @@ private:
 	int					m_nDBHaoYiUserID;				// 在中心服务器上的绑定用户编号...
 	int					m_nDBHaoYiNodeID;				// 在中心服务器上的节点编号...
 	int                 m_nDBHaoYiGatherID;				// 在中心服务器上的采集端编号...
+	string              m_strMultiIPSendAddr;           // 中心服务器反馈的组播发送接口...
 	string				m_strAuthExpired;				// 中心服务器反馈的授权过期时间...
+	string              m_strAuthMacMD5;                // 中心服务器反馈的网卡MD5校验...
 	bool				m_bAuthLicense;					// 中心服务器反馈的永久授权标志...
 	int					m_nAuthDays;					// 中心服务器反馈的剩余授权天数...
 	string				m_strMainName;					// 主窗口标题名称...

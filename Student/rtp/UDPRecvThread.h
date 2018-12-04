@@ -19,6 +19,7 @@ public:
 	BOOL            doIsServerLose(bool bIsAudio, uint32_t inLoseSeq);
 	BOOL			InitThread(string & strUdpAddr, int nUdpPort);
 	bool            doVolumeEvent(bool bIsVolPlus);
+	void            doResetMulticastIPSend();
 private:
 	void            CloseMultiSend();
 	void			ClosePlayer();

@@ -79,9 +79,10 @@ BOOL CUDPMultiRecvThread::InitThread()
 {
 	// 先删除已经存在的组播套接字对象...
 	this->ClearAllSocket();
-	// 重建组播发送对象和组播接收对象...
+	// 重建组播数据接收对象...
 	if (!this->BuildDataSocket())
 		return false;
+	// 重建组播丢包发送对象...
 	if (!this->BuildLoseSocket())
 		return false;
 	// 启动组播处理线程...
@@ -169,7 +170,27 @@ BOOL CUDPMultiRecvThread::BuildLoseSocket()
 	}
 	// 设置组播发送的远程地址，在 SendTo() 当中可以简化接口...
 	m_lpUdpLose->SetRemoteAddr(DEF_MULTI_LOSE_ADDR, nMultiPort);
+	// 设置丢包发送接口 => 多网卡时需要指定组播发送网络...
+	string & strIPSend = App()->GetMultiIPSendAddr();
+	UINT nInterAddr = inet_addr(strIPSend.c_str());
+	// 如果组播发送接口不是INADDR_ANY，才进行配置修改...
+	if (nInterAddr != INADDR_ANY) {
+		theErr = m_lpUdpLose->ModMulticastInterface(nInterAddr);
+		(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
+	}
 	return true;
+}
+
+// 重置组播丢包套接字的发送接口...
+void CUDPMultiRecvThread::doResetMulticastIPSend()
+{
+	if (m_lpUdpLose == NULL)
+		return;
+	GM_Error theErr = GM_NoErr;
+	string & strIPSend = App()->GetMultiIPSendAddr();
+	UINT nMultiInterAddr = inet_addr(strIPSend.c_str());
+	theErr = m_lpUdpLose->ModMulticastInterface(nMultiInterAddr);
+	(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
 }
 
 void CUDPMultiRecvThread::Entry()
@@ -628,7 +649,7 @@ void CUDPMultiRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 		return;
 	}
 	// 如果是其它未知包，打印信息...
-	blog(LOG_INFO, "%s Supply Unknown => Seq: %lu, Slice: %d, Min-Max: [%lu, %lu], Type: %d", TM_RECV_NAME, new_id, lpNewHeader->psize, min_id, max_id, pt_tag);
+	//blog(LOG_INFO, "%s Multicast Unknown => Seq: %lu, Slice: %d, Min-Max: [%lu, %lu], Type: %d", TM_RECV_NAME, new_id, lpNewHeader->psize, min_id, max_id, pt_tag);
 }
 
 void CUDPMultiRecvThread::doSendSupplyCmd(bool bIsAudio)
