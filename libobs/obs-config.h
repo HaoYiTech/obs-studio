@@ -50,8 +50,8 @@
 
 #define LIBOBS_API_VER \
 	MAKE_SEMANTIC_VERSION(LIBOBS_API_MAJOR_VER, \
-                              LIBOBS_API_MINOR_VER, \
-                              LIBOBS_API_PATCH_VER)
+                          LIBOBS_API_MINOR_VER, \
+                          LIBOBS_API_PATCH_VER)
 
 #ifdef HAVE_OBSCONFIG_H
 # include "obsconfig.h"
