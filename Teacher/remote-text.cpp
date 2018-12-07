@@ -175,9 +175,9 @@ bool GetRemoteFile(
 			error = error_in;
 		} else if (signature) {
 			for (string &h : header_in_list) {
-				string name = h.substr(0, 13);
-				if (name == "X-Signature: ") {
-					*signature = h.substr(13);
+				string name = h.substr(0, 6);
+				if (name == "ETag: ") {
+					*signature = h.substr(6);
 					break;
 				}
 			}

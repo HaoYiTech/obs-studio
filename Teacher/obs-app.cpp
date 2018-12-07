@@ -1001,8 +1001,7 @@ bool OBSApp::OBSInit()
 {
 	ProfileScope("OBSApp::OBSInit");
 
-	bool licenseAccepted = config_get_bool(globalConfig, "General",
-		"LicenseAccepted");
+	bool licenseAccepted = config_get_bool(globalConfig, "General", "LicenseAccepted");
 	//OBSLicenseAgreement agreement(nullptr);
 
 	//if (licenseAccepted || agreement.exec() == QDialog::Accepted) {

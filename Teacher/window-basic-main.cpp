@@ -1585,10 +1585,8 @@ void OBSBasic::OBSInit()
 	if (windowState().testFlag(Qt::WindowFullScreen))
 		fullscreenInterface = true;
 
-	bool has_last_version = config_has_user_value(App()->GlobalConfig(),
-			"General", "LastVersion");
-	bool first_run = config_get_bool(App()->GlobalConfig(), "General",
-			"FirstRun");
+	bool has_last_version = config_has_user_value(App()->GlobalConfig(), "General", "LastVersion");
+	bool first_run = config_get_bool(App()->GlobalConfig(), "General", "FirstRun");
 
 	if (!first_run) {
 		config_set_bool(App()->GlobalConfig(), "General", "FirstRun", true);
@@ -1972,32 +1970,23 @@ OBSBasic::~OBSBasic()
 	 * expect or want it to. */
 	QApplication::sendPostedEvents(this);
 
-	config_set_int(App()->GlobalConfig(), "General", "LastVersion",
-			LIBOBS_API_VER);
+	config_set_int(App()->GlobalConfig(), "General", "LastVersion", LIBOBS_API_VER);
 
 	bool alwaysOnTop = IsAlwaysOnTop(this);
 
-	config_set_bool(App()->GlobalConfig(), "BasicWindow", "PreviewEnabled",
-			previewEnabled);
-	config_set_bool(App()->GlobalConfig(), "BasicWindow", "AlwaysOnTop",
-			alwaysOnTop);
-	config_set_bool(App()->GlobalConfig(), "BasicWindow",
-			"SceneDuplicationMode", sceneDuplicationMode);
-	config_set_bool(App()->GlobalConfig(), "BasicWindow",
-			"SwapScenesMode", swapScenesMode);
-	config_set_bool(App()->GlobalConfig(), "BasicWindow",
-			"EditPropertiesMode", editPropertiesMode);
-	config_set_bool(App()->GlobalConfig(), "BasicWindow",
-			"PreviewProgramMode", IsPreviewProgramMode());
-	config_set_bool(App()->GlobalConfig(), "BasicWindow",
-			"DocksLocked", ui->lockUI->isChecked());
+	config_set_bool(App()->GlobalConfig(), "BasicWindow", "PreviewEnabled", previewEnabled);
+	config_set_bool(App()->GlobalConfig(), "BasicWindow", "AlwaysOnTop", alwaysOnTop);
+	config_set_bool(App()->GlobalConfig(), "BasicWindow", "SceneDuplicationMode", sceneDuplicationMode);
+	config_set_bool(App()->GlobalConfig(), "BasicWindow", "SwapScenesMode", swapScenesMode);
+	config_set_bool(App()->GlobalConfig(), "BasicWindow", "EditPropertiesMode", editPropertiesMode);
+	config_set_bool(App()->GlobalConfig(), "BasicWindow", "PreviewProgramMode", IsPreviewProgramMode());
+	config_set_bool(App()->GlobalConfig(), "BasicWindow", "DocksLocked", ui->lockUI->isChecked());
 	config_save_safe(App()->GlobalConfig(), "tmp", nullptr);
 
 #ifdef _WIN32
 	uint32_t winVer = GetWindowsVersion();
 	if (winVer > 0 && winVer < 0x602) {
-		bool disableAero = config_get_bool(basicConfig, "Video",
-				"DisableAero");
+		bool disableAero = config_get_bool(basicConfig, "Video", "DisableAero");
 		if (disableAero) {
 			SetAeroEnabled(true);
 		}
@@ -2020,8 +2009,7 @@ void OBSBasic::SaveProject()
 		return;
 
 	projectChanged = true;
-	QMetaObject::invokeMethod(this, "SaveProjectDeferred",
-			Qt::QueuedConnection);
+	QMetaObject::invokeMethod(this, "SaveProjectDeferred", Qt::QueuedConnection);
 }
 
 void OBSBasic::SaveProjectDeferred()
@@ -2034,8 +2022,7 @@ void OBSBasic::SaveProjectDeferred()
 
 	projectChanged = false;
 
-	const char *sceneCollection = config_get_string(App()->GlobalConfig(),
-			"Basic", "SceneCollectionFile");
+	const char *sceneCollection = config_get_string(App()->GlobalConfig(), "Basic", "SceneCollectionFile");
 	char savePath[512];
 	char fileName[512];
 	int ret;
@@ -2043,8 +2030,7 @@ void OBSBasic::SaveProjectDeferred()
 	if (!sceneCollection)
 		return;
 
-	ret = snprintf(fileName, 512, "obs-teacher/basic/scenes/%s.json",
-			sceneCollection);
+	ret = snprintf(fileName, 512, "obs-teacher/basic/scenes/%s.json", sceneCollection);
 	if (ret <= 0)
 		return;
 

@@ -362,19 +362,28 @@ try {
 static bool FetchUpdaterModule(const char *url)
 try {
 	long     responseCode;
-	uint8_t  updateFileHash[BLAKE2_HASH_LENGTH];
 	vector<string> extraHeaders;
 
 	BPtr<char> updateFilePath = GetConfigPathPtr(APP_UPDATER_PATH);
 
-	if (CalculateFileHash(updateFilePath, updateFileHash)) {
+	// 通过 Nginx 服务器生成的 ETag 来判断文件是否发生变化...
+	const char *pETagUpdater = config_get_string(GetGlobalConfig(), "General", "ETagUpdater");
+	if (pETagUpdater != NULL) {
+		string header = "If-None-Match: ";
+		header += pETagUpdater;
+		extraHeaders.push_back(move(header));
+	}
+	// 这里是通过计算MD5的方式判断文件是否发生变化...
+	// 由于Nginx的ETag不是通过MD5计算的，放弃这种方式...
+	//uint8_t updateFileHash[BLAKE2_HASH_LENGTH];
+	/*if (CalculateFileHash(updateFilePath, updateFileHash)) {
 		char hashString[BLAKE2_HASH_STR_LENGTH];
 		HashToString(updateFileHash, hashString);
 
 		string header = "If-None-Match: ";
 		header += hashString;
 		extraHeaders.push_back(move(header));
-	}
+	}*/
 
 	string signature;
 	string error;
@@ -392,11 +401,13 @@ try {
 
 	/* A new file must be digitally signed */
 	if (responseCode == 200) {
-		bool valid = CheckDataSignature(data, url, signature.data(),
-				signature.size());
-		if (!valid)
-			throw string("Invalid updater module signature");
-
+		//2018.12.04 - by jackey => disabled for simple...
+		//bool valid = CheckDataSignature(data, url, signature.data(), signature.size());
+		//if (!valid) throw string("Invalid updater module signature");
+		// 保存Updater的ETag内容...
+		if (signature.size() > 0) {
+			config_set_string(GetGlobalConfig(), "General", "ETagUpdater", signature.c_str());
+		}
 		if (!QuickWriteFile(updateFilePath, data.data(), data.size()))
 			return false;
 	}
@@ -523,7 +534,6 @@ try {
 	string         error;
 	string         signature;
 	CryptProvider  localProvider;
-	BYTE           manifestHash[BLAKE2_HASH_LENGTH];
 	bool           updatesAvailable = false;
 	bool           success;
 
@@ -574,15 +584,24 @@ try {
 
 	/* ----------------------------------- *
 	 * avoid downloading manifest again    */
-
-	if (CalculateFileHash(manifestPath, manifestHash)) {
+	// 通过 Nginx 服务器生成的 ETag 来判断文件是否发生变化...
+	const char *pETagManifest = config_get_string(GetGlobalConfig(), "General", "ETagManifest");
+	if (pETagManifest != NULL) {
+		string header = "If-None-Match: ";
+		header += pETagManifest;
+		extraHeaders.push_back(move(header));
+	}
+	// 这里是通过计算MD5的方式判断文件是否发生变化...
+	// 由于Nginx的ETag不是通过MD5计算的，放弃这种方式...
+	//BYTE manifestHash[BLAKE2_HASH_LENGTH];
+	/*if (CalculateFileHash(manifestPath, manifestHash)) {
 		char hashString[BLAKE2_HASH_STR_LENGTH];
 		HashToString(manifestHash, hashString);
 
 		string header = "If-None-Match: ";
 		header += hashString;
 		extraHeaders.push_back(move(header));
-	}
+	}*/
 
 	/* ----------------------------------- *
 	 * get current install GUID            */
@@ -590,22 +609,20 @@ try {
 	/* NOTE: this is an arbitrary random number that we use to count the
 	 * number of unique OBS installations and is not associated with any
 	 * kind of identifiable information */
-	const char *pguid = config_get_string(GetGlobalConfig(), "General", "InstallGUID");
+	/*const char *pguid = config_get_string(GetGlobalConfig(), "General", "InstallGUID");
 	string guid;
 	if (pguid) guid = pguid;
-
 	if (guid.empty()) {
 		GenerateGUID(guid);
-
-		if (!guid.empty())
+		if (!guid.empty()) {
 			config_set_string(GetGlobalConfig(), "General", "InstallGUID", guid.c_str());
+		}
 	}
-
 	if (!guid.empty()) {
 		string header = "X-OBS2-GUID: ";
 		header += guid;
 		extraHeaders.push_back(move(header));
-	}
+	}*/
 
 	/* ----------------------------------- *
 	 * get manifest from server            */
@@ -616,18 +633,21 @@ try {
 	if (!success || (responseCode != 200 && responseCode != 304)) {
 		if (responseCode == 404)
 			return;
-
 		throw strprintf("Failed to fetch manifest file: %s", error.c_str());
 	}
 
 	/* ----------------------------------- *
 	 * verify file signature               */
-
+	// 如果是完整请求，并且包含ETag字段，存放到全局配置当中...
+	if (responseCode == 200 && signature.size() > 0) {
+		config_set_string(GetGlobalConfig(), "General", "ETagManifest", signature.c_str());
+	}
+	//2018.12.04 - by jackey => disabled for simple...
 	/* a new file must be digitally signed */
-	if (responseCode == 200) {
+	/*if (responseCode == 200) {
 		success = CheckDataSignature(text, "manifest", signature.data(), signature.size());
 		if (!success) throw string("Invalid manifest signature");
-	}
+	}*/
 
 	/* ----------------------------------- *
 	 * write or load manifest              */
@@ -647,8 +667,7 @@ try {
 	int updateVer = 0;
 
 	success = ParseUpdateManifest(text.c_str(), &updatesAvailable, notes, updateVer);
-	if (!success)
-		throw string("Failed to parse manifest");
+	if (!success) throw string("Failed to parse manifest");
 
 	if (!updatesAvailable) {
 		if (manualUpdate)
@@ -687,7 +706,6 @@ try {
 			config_set_int(GetGlobalConfig(), "General", "LastUpdateCheck", t);
 		}
 		return;
-
 	} else if (queryResult == OBSUpdate::Skip) {
 		config_set_int(GetGlobalConfig(), "General", "SkipUpdateVersion", updateVer);
 		return;
@@ -742,7 +760,7 @@ try {
 	 * in case of issues with the new version */
 	config_set_int(GetGlobalConfig(), "General", "LastUpdateCheck", 0);
 	config_set_int(GetGlobalConfig(), "General", "SkipUpdateVersion", 0);
-	config_set_string(GetGlobalConfig(), "General", "InstallGUID", guid.c_str());
+	//config_set_string(GetGlobalConfig(), "General", "InstallGUID", guid.c_str());
 
 	QMetaObject::invokeMethod(App()->GetMainWindow(), "close");
 
