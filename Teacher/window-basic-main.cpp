@@ -578,6 +578,7 @@ void OBSBasic::CreateFirstRunSources()
 	bool hasDesktopAudio = HasAudioDevices(App()->OutputAudioSource());
 	bool hasInputAudio   = HasAudioDevices(App()->InputAudioSource());
 	// Ö±½ÓÆÁ±ÎµçÄÔÊä³öÉùÒô£¬³¹µ×±ÜÃâ»¥¶¯Ê±µÄÉùÒôÐ¥½Ð...
+	// 2018.12.08 - by jackey => ´ò¿ªµçÄÔÊä³öÉùÒô...
 	//if (hasDesktopAudio) {
 	//	ResetAudioDevice(App()->OutputAudioSource(), "default",	Str("Basic.DesktopDevice1"), 1);
 	//}
