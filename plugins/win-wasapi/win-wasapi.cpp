@@ -146,8 +146,10 @@ WASAPISource::WASAPISource(obs_data_t *settings, obs_source_t *source_,	bool inp
 
 inline void WASAPISource::Start()
 {
-	this->InitWebrtcAEC();
-
+	// 输入设备才初始化AEC...
+	if (isInputDevice) {
+		this->InitWebrtcAEC();
+	}
 	if (!TryInitialize()) {
 		blog(LOG_INFO, "[WASAPISource::WASAPISource] "
 		               "Device '%s' not found.  Waiting for device",
@@ -298,7 +300,10 @@ inline void WASAPISource::Stop()
 
 	ResetEvent(stopSignal);
 
-	UnInitWebrtcAEC();
+	// 输入设备才处理AEC...
+	if (isInputDevice) {
+		UnInitWebrtcAEC();
+	}
 }
 
 inline WASAPISource::~WASAPISource()
