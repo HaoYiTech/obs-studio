@@ -453,7 +453,7 @@ void LoginWindow::doLoginAction(int nLiveRoomID)
 	char  szUrl[MAX_PATH] = { 0 };
 	char  szPost[MAX_PATH] = { 0 };
 	sprintf(szUrl, "%s/wxapi.php/Gather/loginLiveRoom", App()->GetWebClass().c_str());
-	sprintf(szPost, "room_id=%s&type_id=%d", strLiveRoomID.c_str(), App()->GetClientType());
+	sprintf(szPost, "room_id=%s&type_id=%d&debug_mode=%d", strLiveRoomID.c_str(), App()->GetClientType(), App()->IsDebugMode());
 	// 调用Curl接口，汇报采集端信息...
 	CURLcode res = CURLE_OK;
 	CURL  *  curl = curl_easy_init();

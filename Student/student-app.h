@@ -58,6 +58,7 @@ public:
 	void onUdpRecvThreadStop();
 	void doSaveFocus(OBSQTDisplay * lpNewDisplay);
 	void doResetFocus(OBSQTDisplay * lpCurDisplay);
+	void doProcessCmdLine(int argc, char * argv[]);
 	void doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf);
 public:
 	static char * GetServerOS();
@@ -150,6 +151,7 @@ public:
 	CRemoteSession * GetRemoteSession() const { return m_RemoteSession.data(); }
 
 	bool     IsClassHttps() { return ((strnicmp(m_strWebClass.c_str(), "https://", strlen("https://")) == 0) ? true : false); }
+	bool     IsDebugMode() { return m_bIsDebugMode; }
 	int      GetClientType() { return kClientStudent; }
 	string & GetWebClass() { return m_strWebClass; }
 	string & GetWebCenter() { return m_strWebCenter; }
@@ -234,6 +236,7 @@ private:
 	int                 m_nAudioOutChannelNum;          // 音频播放、压缩输出声道数
 	int                 m_nAudioOutBitrateAAC;          // 回音消除后AAC压缩输出码流
 	bool                m_bHasAudioHorn;                // 扬声器是否已经开启标志
+	bool                m_bIsDebugMode;                 // 是否是调试模式 => 挂载到调试服务器...
 };
 
 inline CStudentApp *App() { return static_cast<CStudentApp*>(qApp); }

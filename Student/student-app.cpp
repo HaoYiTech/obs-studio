@@ -17,6 +17,7 @@
 #include "student-app.h"
 #include "platform.hpp"
 #include "windows.h"
+#include "getopt.h"
 
 #include "web-thread.h"
 #include "SocketUtils.h"
@@ -481,6 +482,16 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		}
 		// 每次启动创建新的日志文件...
 		create_log_file(logFile);
+		// 显示所有的命令行参数...
+		if (argc > 1) {
+			stringstream stor; stor << argv[1];
+			for (int i = 2; i < argc; ++i) {
+				stor << " " << argv[i];
+			}
+			blog(LOG_INFO, "Command Line Arguments: %s", stor.str().c_str());
+		}
+		// 读取命令行各字段内容信息...
+		program.doProcessCmdLine(argc, argv);
 		// 初始化登录窗口...
 		program.doLoginInit();
 		// 执行主循环操作...
@@ -596,6 +607,25 @@ string CStudentApp::GetSystemVer()
 	return strVersion;
 }
 
+// 调用位置，详见 run_program() 函数，只调用一次...
+void CStudentApp::doProcessCmdLine(int argc, char * argv[])
+{
+	int	ch = 0;
+	while ((ch = getopt(argc, argv, "?hvdr")) != EOF)
+	{
+		switch (ch) {
+		case 'd': m_bIsDebugMode = true;  break;
+		case 'r': m_bIsDebugMode = false; break;
+		case '?':
+		case 'h':
+		case 'v':
+			blog(LOG_INFO, "-d: Run as Debug Mode => mount on Debug udpserver.");
+			blog(LOG_INFO, "-r: Run as Release Mode => mount on Release udpserver.");
+			break;
+		}
+	}
+}
+
 CStudentApp::CStudentApp(int &argc, char **argv)
   : QApplication(argc, argv)
   , m_lpFocusDisplay(NULL)
@@ -604,6 +634,7 @@ CStudentApp::CStudentApp(int &argc, char **argv)
   , m_bAutoLinkFDFS(false)
   , m_bAutoLinkDVR(false)
   , m_bAuthLicense(false)
+  , m_bIsDebugMode(false)
   , m_nRtpTCPSockFD(0)
   , m_nRoleType(kRoleWanRecv)
   , m_nMaxCamera(DEF_MAX_CAMERA)

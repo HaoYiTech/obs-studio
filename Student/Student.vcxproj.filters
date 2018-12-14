@@ -159,6 +159,9 @@
     <ClCompile Include="window-dlg-setsys.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="common\getopt.cpp">
+      <Filter>Common Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="window-login-base.h">
@@ -374,6 +377,9 @@
     </ClInclude>
     <ClInclude Include="GeneratedFiles\ui_DlgSetSys.h">
       <Filter>Generated Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common\getopt.h">
+      <Filter>Common Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

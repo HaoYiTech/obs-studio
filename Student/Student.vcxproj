@@ -147,6 +147,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="common\getopt.cpp" />
     <ClCompile Include="common\md5.cpp" />
     <ClCompile Include="common\OSThread.cpp" />
     <ClCompile Include="common\Socket.cpp" />
@@ -229,6 +230,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   <ItemGroup>
     <ClInclude Include="common\AmfByteStream.h" />
     <ClInclude Include="common\BitWritter.h" />
+    <ClInclude Include="common\getopt.h" />
     <ClInclude Include="common\GMError.h" />
     <ClInclude Include="common\HYDefine.h" />
     <ClInclude Include="common\HYVersion.h" />
