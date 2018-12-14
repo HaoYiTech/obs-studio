@@ -67,6 +67,7 @@ private:
 	int                            m_nFastTimer;               // 分布式存储、中转链接检测时钟...
 	int                            m_nOnLineTimer;             // 中转服务器在线检测时钟...
 	int                            m_nRtpTCPSockFD;            // CRemoteSession在服务器端的套接字号码...
+	bool                           m_bIsDebugMode;             // 是否是调试模式 => 挂载到调试服务器...
 	std::string                    locale;
 	std::string	                   theme;
 	ConfigFile                     globalConfig;
@@ -95,6 +96,7 @@ public:
 	static char * GetServerDNSName();
 public:
 	bool     IsClassHttps() { return ((strnicmp(m_strWebClass.c_str(), "https://", strlen("https://")) == 0) ? true : false); }
+	bool     IsDebugMode() { return m_bIsDebugMode; }
 	int      GetClientType() { return kClientTeacher; }
 	string & GetWebClass() { return m_strWebClass; }
 	string & GetWebCenter() { return m_strWebCenter; }
@@ -130,6 +132,7 @@ public:
 	
 	void doLoginInit();
 	void doLogoutEvent();
+	void doProcessCmdLine(int argc, char * argv[]);
 
 	bool doSendCameraOnLineListCmd();
 	bool doSendCameraLiveStopCmd(int nDBCameraID, int nSceneItemID);

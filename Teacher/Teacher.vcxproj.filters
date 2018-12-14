@@ -192,6 +192,9 @@
     <ClCompile Include="win-update\win-update-helpers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="getopt.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="crash-report.hpp">
@@ -380,6 +383,9 @@
       <Filter>Json Files</Filter>
     </ClInclude>
     <ClInclude Include="win-update\win-update-helpers.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="getopt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -27,6 +27,7 @@
 #include "crash-report.hpp"
 #include "platform.hpp"
 #include "FastSession.h"
+#include "getopt.h"
 
 #include <fstream>
 #include <curl/curl.h>
@@ -774,9 +775,29 @@ string OBSApp::getJsonString(Json::Value & inValue)
 	return strReturn;
 }
 
+// 调用位置，详见 run_program() 函数，只调用一次...
+void OBSApp::doProcessCmdLine(int argc, char * argv[])
+{
+	int	ch = 0;
+	while ((ch = getopt(argc, argv, "?hvdr")) != EOF)
+	{
+		switch (ch) {
+		case 'd': m_bIsDebugMode = true;  break;
+		case 'r': m_bIsDebugMode = false; break;
+		case '?':
+		case 'h':
+		case 'v':
+			blog(LOG_INFO, "-d: Run as Debug Mode => mount on Debug udpserver.");
+			blog(LOG_INFO, "-r: Run as Release Mode => mount on Release udpserver.");
+			break;
+		}
+	}
+}
+
 OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
-	: QApplication(argc, argv),
-	profilerNameStore(store)
+  : QApplication(argc, argv),
+	profilerNameStore(store),
+	m_bIsDebugMode(false)
 {
 	m_strWebCenter = DEF_WEB_CENTER;
 	m_strWebClass = DEF_WEB_CLASS;
@@ -1838,20 +1859,21 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 
 	run:
 #endif
-
+		// 创建日志文件...
 		if (!created_log) {
 			create_log_file(logFile);
 			created_log = true;
 		}
-
+		// 显示所有的命令行参数...
 		if (argc > 1) {
-			stringstream stor;
-			stor << argv[1];
+			stringstream stor; stor << argv[1];
 			for (int i = 2; i < argc; ++i) {
 				stor << " " << argv[i];
 			}
 			blog(LOG_INFO, "Command Line Arguments: %s", stor.str().c_str());
 		}
+		// 读取命令行各字段内容信息...
+		program.doProcessCmdLine(argc, argv);
 
 		// 等登录成功之后再调用...
 		//if (!program.OBSInit())

@@ -179,6 +179,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="double-slider.cpp" />
     <ClCompile Include="fastdfs\FastSession.cpp" />
     <ClCompile Include="focus-list.cpp" />
+    <ClCompile Include="getopt.cpp" />
     <ClCompile Include="hotkey-edit.cpp" />
     <ClCompile Include="item-widget-helpers.cpp" />
     <ClCompile Include="json\json_reader.cpp" />
@@ -285,6 +286,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <IncludePath Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName)\.;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets</IncludePath>
       <Define Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_NO_DEBUG;NDEBUG;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB</Define>
     </QtMoc>
+    <ClInclude Include="getopt.h" />
     <ClInclude Include="HYDefine.h" />
     <ClInclude Include="item-widget-helpers.hpp" />
     <QtMoc Include="window-basic-settings.hpp">
