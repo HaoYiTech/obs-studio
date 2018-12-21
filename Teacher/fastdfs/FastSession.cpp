@@ -600,6 +600,8 @@ bool CRemoteSession::doSendCameraLiveStopCmd(int nDBCameraID, int nSceneItemID)
 	sprintf(szDataBuf, "%d", nSceneItemID);
 	root["sitem_id"] = szDataBuf;
 	strJson = root.toStyledString();
+	// 打印json数据包，测试使用...
+	//blog(LOG_INFO, "Json => %d, %s", strJson.size(), strJson.c_str());
 	// 调用统一的接口进行命令数据的发送操作...
 	return this->doSendCommonCmd(kCmd_Camera_LiveStop, strJson.c_str(), strJson.size());
 }
