@@ -17,7 +17,8 @@
 #include "updater.hpp"
 
 #include <psapi.h>
-
+#include <shlwapi.h>
+#include <obs-config.h>
 #include <util/windows/CoTaskMemPtr.hpp>
 
 #include <future>
@@ -26,6 +27,8 @@
 #include <mutex>
 
 using namespace std;
+
+#pragma comment(lib, "shlwapi.lib")
 
 #define UTF8ToWideBuf(wide, utf8) UTF8ToWide(wide, _countof(wide), utf8)
 #define WideToUTF8Buf(utf8, wide) WideToUTF8(utf8, _countof(utf8), wide)
@@ -77,6 +80,29 @@ void FreeWinHttpHandle(HINTERNET handle)
 }
 
 /* ----------------------------------------------------------------------- */
+
+static inline bool UTF8ToWide(wchar_t *wide, int wideSize, const char *utf8)
+{
+	return !!MultiByteToWideChar(CP_UTF8, 0, utf8, -1, wide, wideSize);
+}
+
+static inline bool WideToUTF8(char *utf8, int utf8Size, const wchar_t *wide)
+{
+	return !!WideCharToMultiByte(CP_UTF8, 0, wide, -1, utf8, utf8Size, nullptr, nullptr);
+}
+
+static inline DWORD GetTotalFileSize(const wchar_t *path)
+{
+	DWORD outFileSize = 0;
+	WinHandle handle = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
+	if (handle != INVALID_HANDLE_VALUE) {
+		outFileSize = GetFileSize(handle, nullptr);
+		if (outFileSize == INVALID_FILE_SIZE) {
+			outFileSize = 0;
+		}
+	}
+	return outFileSize;
+}
 
 static inline bool is_64bit_windows(void);
 
@@ -211,6 +237,22 @@ static bool IsSafeFilename(const wchar_t *path)
 	return true;
 }
 
+static bool QuickWriteFile(const wchar_t *path, const void *data, size_t size)
+{
+	try {
+		WinHandle hDest;
+		DWORD     written = 0;
+		hDest = CreateFile(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
+		if (!hDest.Valid())
+			throw LastError();
+		if (!WriteFile(hDest, data, size, &written, nullptr))
+			throw LastError();
+	} catch (LastError error) {
+		SetLastError(error.code);
+		return false;
+	}
+}
+
 static string QuickReadFile(const wchar_t *path)
 {
 	string data;
@@ -237,6 +279,93 @@ static string QuickReadFile(const wchar_t *path)
 	}
 
 	return data;
+}
+
+static void QuickCalcFileHash(const wchar_t * lpRootPath, const wchar_t * lpFilePath, json_t * lpJson)
+{
+	// 如果传递的参数无效，直接返回...
+	if (lpRootPath == NULL || lpFilePath == NULL || lpJson == NULL)
+		return;
+	// 需要先对文件全路径进行重新组合利用...
+	wchar_t wFullPath[MAX_PATH] = { 0 };
+	wsprintf(wFullPath, L"%s\\%s", lpRootPath, lpFilePath);
+	// 如果文件大小为0，无效文件，直接返回...
+	DWORD dwFileSize = GetTotalFileSize(wFullPath);
+	if (dwFileSize <= 0) return;
+	// 显示正在处理的文件全路径地址信息...
+	Status(L"正在计算哈希: %s...", wFullPath);
+	// 计算整个文件的哈希值，并转换成UTF8格式...
+	BYTE    existingHash[BLAKE2_HASH_LENGTH] = { 0 };
+	char    path_string[MAX_PATH] = { 0 };
+	char    hash_string[BLAKE2_HASH_STR_LENGTH] = { 0 };
+	wchar_t fileHashStr[BLAKE2_HASH_STR_LENGTH] = { 0 };
+	if (!CalculateFileHash(wFullPath, existingHash))
+		return;
+	// 需要对路径进行重新处理...
+	HashToString(existingHash, fileHashStr);
+	WideToUTF8Buf(hash_string, fileHashStr);
+	WideToUTF8Buf(path_string, lpFilePath);
+	// json_object_set_new => 不会增加引用计数...
+	json_t * lpObjFile = json_object();
+	json_object_set_new(lpObjFile, "hash", json_string(hash_string));
+	json_object_set_new(lpObjFile, "name", json_string(path_string));
+	json_object_set_new(lpObjFile, "size", json_integer(dwFileSize));
+	json_array_append_new(lpJson, lpObjFile);
+}
+
+static void QuickAllFiles(const wchar_t * lpRootPath, const wchar_t * lpSubPath, json_t * lpJson)
+{
+	bool     bIsOK = true;
+	HANDLE   hFindHandle = NULL;
+	wchar_t  wCurPath[MAX_PATH] = { 0 };
+	wchar_t  wFindPath[MAX_PATH] = { 0 };
+	WIN32_FIND_DATA  wfd = { 0 };
+	// 先拷贝查询最初的根目录位置...
+	StringCbCopy(wFindPath, sizeof(wFindPath), lpRootPath);
+	// 如果子目录不为空，需要追加子目录，注意连接符...
+	if (lpSubPath != NULL) {
+		StringCbCat(wFindPath, sizeof(wFindPath), L"\\");
+		StringCbCat(wFindPath, sizeof(wFindPath), lpSubPath);
+	}
+	// 追加文件查找需要的连接通配符...
+	StringCbCat(wFindPath, sizeof(wFindPath), L"\\*.*");
+	hFindHandle = FindFirstFile(wFindPath, &wfd);
+	// 指定查找目录下的内容为空或无效，直接返回...
+	if (hFindHandle == INVALID_HANDLE_VALUE)
+		return;
+	// 目录有效，开始遍历目录下所有的文件和目录...
+	while (bIsOK) {
+		// 如果是当前目录或上一级目录或忽略文件，继续查找下一个...
+		if ((wcscmp(wfd.cFileName, L".") == 0) || (wcscmp(wfd.cFileName, L"..") == 0) || (wcscmp(wfd.cFileName, L".gitignore") == 0)) {
+			bIsOK = FindNextFile(hFindHandle, &wfd);
+			continue;
+		}
+		// 如果子目录有效，需要叠加子目录...
+		if (lpSubPath != NULL) {
+			StringCbCopy(wCurPath, sizeof(wCurPath), lpSubPath);
+			StringCbCat(wCurPath, sizeof(wCurPath), L"/");
+			StringCbCat(wCurPath, sizeof(wCurPath), wfd.cFileName);
+		} else {
+			StringCbCopy(wCurPath, sizeof(wCurPath), wfd.cFileName);
+		}
+		// 如果是有效的目录，需要进行递归操作...
+		if (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+			QuickAllFiles(lpRootPath, wCurPath, lpJson);
+		} else if (wfd.dwFileAttributes & FILE_ATTRIBUTE_ARCHIVE) {
+			// 如果是有效的文件，计算哈希值，并存入json节点当中...
+			QuickCalcFileHash(lpRootPath, wCurPath, lpJson);
+#ifdef _DEBUG
+			OutputDebugString(lpRootPath);
+			OutputDebugString(L"\\");
+			OutputDebugString(wCurPath);
+			OutputDebugString(L"\r\n");
+#endif // _DEBUG
+		}
+		// 继续查找下一个文件或目录...
+		bIsOK = FindNextFile(hFindHandle, &wfd);
+	}
+	// 释放查找句柄对象...
+	FindClose(hFindHandle);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -536,16 +665,6 @@ static bool WaitForOBS()
 }
 
 /* ----------------------------------------------------------------------- */
-
-static inline bool UTF8ToWide(wchar_t *wide, int wideSize, const char *utf8)
-{
-	return !!MultiByteToWideChar(CP_UTF8, 0, utf8, -1, wide, wideSize);
-}
-
-static inline bool WideToUTF8(char *utf8, int utf8Size, const wchar_t *wide)
-{
-	return !!WideCharToMultiByte(CP_UTF8, 0, wide, -1, utf8, utf8Size, nullptr, nullptr);
-}
 
 static inline bool FileExists(const wchar_t *path)
 {
@@ -1020,6 +1139,83 @@ static bool UpdateVS2017Redists(json_t *root)
 
 static bool doUpdateBuildJson()
 {
+	Status(L"正在创建升级脚本 manifest.json 文件...");
+	////////////////////////////////////////////////////////////////
+	// 注意：json和txt存盘内容必须是UTF8格式，适应通用性...
+	// 注意：访问路径名称必须是宽字符，与系统保持一致...
+	////////////////////////////////////////////////////////////////
+	// 获取manifest.json和changelog.txt的存取路径...
+	wchar_t lpLogPath[MAX_PATH] = { 0 };
+	wchar_t lpJsonPath[MAX_PATH] = { 0 };
+	wchar_t lpRootPath[MAX_PATH] = { 0 };
+	wchar_t lpBasePath[MAX_PATH] = { 0 };
+	// 计算工作目录，并设定为升级进程的当前工作目录...
+	GetCurrentDirectory(_countof(lpJsonPath), lpJsonPath);
+	StringCbCopy(lpBasePath, sizeof(lpBasePath), lpJsonPath);
+	StringCbCat(lpBasePath, sizeof(lpBasePath), (g_run_mode == kTeacherBuildJson) ? L"\\..\\rundir\\Release" : L"\\..\\student\\Release");
+	StringCbCat(lpJsonPath, sizeof(lpJsonPath), (g_run_mode == kTeacherBuildJson) ? L"\\teacher" : L"\\student");
+	StringCbCopy(lpLogPath, sizeof(lpLogPath), lpJsonPath);
+	StringCbCat(lpLogPath, sizeof(lpLogPath), L"\\changelog.txt");
+	StringCbCat(lpJsonPath, sizeof(lpJsonPath), L"\\manifest.json");
+	// 计算并判断文件列表根目录的有效性...
+	GetFullPathName(lpBasePath, _countof(lpRootPath), lpRootPath, nullptr);
+	if ((wcslen(lpRootPath) <= 0) || !PathIsDirectory(lpRootPath)) {
+		Status(L"定位根目录失败：%s", lpRootPath);
+		return false;
+	}
+	// 读取更新日志失败，返回失败结果...
+	string strLogData = QuickReadFile(lpLogPath);
+	if (strLogData.size() <= 0) {
+		Status(L"读取更新日志 changelog.txt 失败...");
+		return false;
+	}
+	// 判断读取的日志文件是否是UTF8格式...
+	json_t * lpLogUTF8 = json_string(strLogData.c_str());
+	if (lpLogUTF8 == NULL) {
+		Status(L"更新日志 changelog.txt 不是 UTF8 格式...");
+		return false;
+	}
+	// json_decref => 靠引用计数删除，非常重要...
+	// 遍历对应的发行目录所有文件列表 => 需要递归读取...
+	json_t * lpJsonPack = json_array();
+	json_t * lpJsonFile = json_array();
+	QuickAllFiles(lpRootPath, NULL, lpJsonFile);
+
+	// 注意：json_decref => 靠引用计数删除，非常重要...
+	// json_object_set_new不会增加引用计数...
+	json_t * lpObjPack = json_object();
+	json_object_set_new(lpObjPack, "name", json_string("core"));
+	json_object_set_new(lpObjPack, "files", lpJsonFile);
+	json_array_append_new(lpJsonPack, lpObjPack);
+
+	// 注意：json_decref => 靠引用计数删除，非常重要...
+	// 注意：OBSJson会自动析构，保证所有关联都会自动被删除...
+	// 构造json存储对象 => 字符串必须是UTF8格式...
+	OBSJson maniFest(json_object());
+	// 首先加入更新日志信息 => 字符串必须是UTF8格式...
+	json_object_set_new(maniFest, "notes", lpLogUTF8);
+	// 追加需要升级的文件列表 => 字符串必须是UTF8格式...
+	json_object_set_new(maniFest, "packages", lpJsonPack);
+	// 追加版本号码，总共三个版本信息...
+	json_object_set_new(maniFest, "version_major", json_integer(LIBOBS_API_MAJOR_VER));
+	json_object_set_new(maniFest, "version_minor", json_integer(LIBOBS_API_MINOR_VER));
+	json_object_set_new(maniFest, "version_patch", json_integer(LIBOBS_API_PATCH_VER));
+	// 特别注意：这里dump的指针，一定要强制删除，否则会有内存泄漏...
+	// 获取manifest.json整个字符串信息 => 字符串必须是UTF8格式...
+	char * post_body = json_dumps(maniFest, JSON_COMPACT);
+	// 进行快速存盘操作 => 数据内容必须是UTF8格式...
+	if (!QuickWriteFile(lpJsonPath, post_body, strlen(post_body))) {
+		Status(L"保存升级脚本 manifest.json 失败...");
+		free(post_body); post_body = NULL;
+		return false;
+	}
+	// 特别注意：这里dump的指针，一定要强制删除，否则会有内存泄漏...
+	free(post_body); post_body = NULL;
+	// 显示创建manifest.json升级脚本文件成功...
+	Status(L"已完成创建 manifest.json 升级脚本文件...");
+	// 修改退出按钮的文本信息，并使按钮可以点击操作...
+	SetDlgItemText(hwndMain, IDC_BUTTON, L"退 出");
+	EnableWindow(GetDlgItem(hwndMain, IDC_BUTTON), true);
 	return true;
 }
 
@@ -1053,7 +1249,7 @@ static bool Update(wchar_t *cmdLine)
 
 	CryptProvider hProvider;
 	if (!CryptAcquireContext(&hProvider, nullptr, MS_ENH_RSA_AES_PROV, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
-		SetDlgItemTextW(hwndMain, IDC_STATUS, L"升级失败: CryptAcquireContext 失败");
+		Status(L"升级失败: CryptAcquireContext 失败");
 		return false;
 	}
 
@@ -1061,7 +1257,7 @@ static bool Update(wchar_t *cmdLine)
 
 	/* ------------------------------------- */
 
-	SetDlgItemTextW(hwndMain, IDC_STATUS, L"正在查询需要升级的模块...");
+	Status(L"正在解析外部升级指令...");
 
 	// 改进检查命令机制，产生四种命令如下：
 	// kTeacherUpdater   => 讲师端升级模式
@@ -1095,7 +1291,7 @@ static bool Update(wchar_t *cmdLine)
 	}
 	// 如果解析外部命令失败，显示信息并返回...
 	if (g_run_mode <= kDefaultUnknown || g_run_mode > kStudentBuildJson) {
-		SetDlgItemTextW(hwndMain, IDC_STATUS, L"升级失败：解析外部指令错误 => {teacher,json_teacher,student,json_student}");
+		Status(L"升级失败：解析外部指令错误 => {teacher,json_teacher,student,json_student}");
 		return false;
 	}
 	// 如果是创建json文件命令，进行跳转分发...
@@ -1232,8 +1428,8 @@ static bool Update(wchar_t *cmdLine)
 		package_path += outputPath;
 
 		json_t *obj = json_object();
-		json_object_set(obj, "name", json_string(package_path.c_str()));
-		json_object_set(obj, "hash", json_string(hash_string));
+		json_object_set_new(obj, "name", json_string(package_path.c_str()));
+		json_object_set_new(obj, "hash", json_string(hash_string));
 		json_array_append_new(files, obj);
 	}*/
 
@@ -1538,7 +1734,6 @@ static bool HasElevation()
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
 {
 	INITCOMMONCONTROLSEX icce;
-
 	// 检查升级进程是否是以管理员身份登录...
 	if (!HasElevation()) {
 		HANDLE hLowMutex = CreateMutexW(nullptr, true, L"OBSUpdaterRunningAsNonAdminUser");
@@ -1590,6 +1785,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
 			}
+		}
+
+		// 如果是创建json文件命令，执行完毕，直接返回...
+		if (g_run_mode == kTeacherBuildJson || g_run_mode == kStudentBuildJson) {
+			return (int)msg.wParam;
 		}
 
 		/* there is no non-elevated process waiting for us if UAC is disabled */
