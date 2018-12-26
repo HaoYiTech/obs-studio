@@ -53,10 +53,18 @@
                           LIBOBS_API_MINOR_VER, \
                           LIBOBS_API_PATCH_VER)
 
+#ifndef _T
+#define _T(x)	x
+#endif
+
+#define _chSTR(x)		_T(#x)
+#define chSTR(x)		_chSTR(x)
+
+#define OBS_VERSION		chSTR(LIBOBS_API_MAJOR_VER) _T(".") chSTR(LIBOBS_API_MINOR_VER) _T(".") chSTR(LIBOBS_API_PATCH_VER)
+
 #ifdef HAVE_OBSCONFIG_H
 # include "obsconfig.h"
 #else
-# define OBS_VERSION "unknown"
 # define OBS_DATA_PATH "../../data"
 # define OBS_INSTALL_PREFIX ""
 # define OBS_PLUGIN_DESTINATION "obs-plugins"
