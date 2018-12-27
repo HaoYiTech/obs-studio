@@ -1288,6 +1288,19 @@ static bool Update(wchar_t *cmdLine)
 		LocalFree((HLOCAL)argv);
 		argv = NULL; argc = 0;
 	}
+	// 不同的外部命令，设定不同的标题栏名称...
+	wchar_t wWndTitle[MAX_PATH] = { 0 };
+	GetWindowText(hwndMain, wWndTitle, MAX_PATH);
+	switch (g_run_mode)
+	{
+	case kTeacherBuildJson: StringCbCat(wWndTitle, MAX_PATH, L" - 讲师端 - 重建脚本..."); break;
+	case kStudentBuildJson: StringCbCat(wWndTitle, MAX_PATH, L" - 学生端 - 重建脚本..."); break;
+	case kTeacherUpdater:   StringCbCat(wWndTitle, MAX_PATH, L" - 讲师端 - 正在升级..."); break;
+	case kStudentUpdater:   StringCbCat(wWndTitle, MAX_PATH, L" - 学生端 - 正在升级..."); break;
+	default:                StringCbCat(wWndTitle, MAX_PATH, L" - 错误命令"); break;
+	}
+	// 设定更新后的窗口标题名称内容...
+	SetWindowText(hwndMain, wWndTitle);
 	// 如果解析外部命令失败，显示信息并返回...
 	if (g_run_mode <= kDefaultUnknown || g_run_mode > kStudentBuildJson) {
 		Status(L"升级失败：解析外部指令错误 => {teacher,json_teacher,student,json_student}");
