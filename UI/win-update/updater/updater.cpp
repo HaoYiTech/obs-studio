@@ -15,7 +15,6 @@
  */
 
 #include "updater.hpp"
-
 #include <psapi.h>
 #include <shlwapi.h>
 #include <obs-config.h>
@@ -1731,9 +1730,23 @@ static bool HasElevation()
 	return elevated;
 }
 
+/*void * my_malloc(size_t inSize)
+{
+	return bmalloc(inSize);
+}
+
+void my_free(void * inPtr)
+{
+	bfree(inPtr);
+}*/
+
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
 {
 	INITCOMMONCONTROLSEX icce;
+	
+	// 注意：只在内存跟踪时才需要用到...
+	//json_set_alloc_funcs(my_malloc, my_free);
+
 	// 检查升级进程是否是以管理员身份登录...
 	if (!HasElevation()) {
 		HANDLE hLowMutex = CreateMutexW(nullptr, true, L"OBSUpdaterRunningAsNonAdminUser");
@@ -1786,6 +1799,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
 				DispatchMessage(&msg);
 			}
 		}
+
+/*#ifdef _DEBUG
+		wchar_t wLeaks[MAX_PATH] = { 0 };
+		wsprintf(wLeaks, L"Number of memory leaks: %ld\r\n", bnum_allocs());
+		OutputDebugString(wLeaks);
+#endif // _DEBUG*/
 
 		// 如果是创建json文件命令，执行完毕，直接返回...
 		if (g_run_mode == kTeacherBuildJson || g_run_mode == kStudentBuildJson) {
