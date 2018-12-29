@@ -68,6 +68,10 @@ int totalFileSize     = 0;
 int completedFileSize = 0;
 static int completedUpdates  = 0;
 
+// 假定最大文件数和当前文件数...
+int g_nJsonMaxFiles = 500;
+int g_nJsonCurFiles = 0;
+
 struct LastError {
 	DWORD code;
 	inline LastError() { code = GetLastError(); }
@@ -353,6 +357,9 @@ static void QuickAllFiles(const wchar_t * lpRootPath, const wchar_t * lpSubPath,
 		} else if (wfd.dwFileAttributes & FILE_ATTRIBUTE_ARCHIVE) {
 			// 如果是有效的文件，计算哈希值，并存入json节点当中...
 			QuickCalcFileHash(lpRootPath, wCurPath, lpJson);
+			// 计算已处理的文件百分比 => 大概的数字...
+			int position = (int)(((float)(++g_nJsonCurFiles) / (float)g_nJsonMaxFiles) * 100.0f);
+			SendDlgItemMessage(hwndMain, IDC_PROGRESS, PBM_SETPOS, position, 0);
 #ifdef _DEBUG
 			OutputDebugString(lpRootPath);
 			OutputDebugString(L"\\");
@@ -484,7 +491,7 @@ bool DownloadWorkerThread()
 {
 	const DWORD tlsProtocols = WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2;
 
-	HttpHandle hSession = WinHttpOpen(L"OBS Studio Updater/2.1",
+	HttpHandle hSession = WinHttpOpen(L"HaoYi Updater/2.1",
 	                                  WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
 	                                  WINHTTP_NO_PROXY_NAME,
 	                                  WINHTTP_NO_PROXY_BYPASS,
@@ -635,10 +642,15 @@ static inline DWORD WaitIfOBS(DWORD id, const wchar_t *expected)
 	return WAITIFOBS_WRONG_PROCESS;
 }
 
-static bool WaitForOBS()
+static bool WaitForParent()
 {
+	Status(L"正在等待父进程退出...");
+	// 只处理讲师端或学生端的外部升级指令...
+	if (g_run_mode != kTeacherUpdater && g_run_mode != kStudentUpdater)
+		return true;
+	// 获取需要查找的进程名称标识符号...
 	DWORD proc_ids[1024], needed, count;
-	const wchar_t *name = is32bit ? L"obs32" : L"obs64";
+	const wchar_t *name = g_cmd_type[g_run_mode - 1];
 
 	if (!EnumProcesses(proc_ids, sizeof(proc_ids), &needed)) {
 		return true;
@@ -734,29 +746,36 @@ static bool AddPackageUpdateFiles(json_t *root, size_t idx, const wchar_t *tempP
 	if (!json_is_string(name))
 		return true;
 
-	wchar_t wPackageName[512];
-	const char *packageName = json_string_value(name);
+	const wchar_t * wPackageName = g_cmd_type[g_run_mode - 1];
+	const char * packageName = json_string_value(name);
 	size_t fileCount = json_array_size(files);
 
-	if (!UTF8ToWideBuf(wPackageName, packageName))
-		return false;
+	//wchar_t wPackageName[512] = {0};
+	//if (!UTF8ToWideBuf(wPackageName, packageName))
+	//	return false;
 
-	if (strcmp(packageName, "core") != 0 && !NonCorePackageInstalled(packageName))
+	// 注意：只处理core模块，其它模块不处理...
+	if (strcmp(packageName, "core") != 0) //&& !NonCorePackageInstalled(packageName))
 		return true;
-
+	// 重置进度条的初始位置 => 默认区间是(0, 100)
+	SendDlgItemMessage(hwndMain, IDC_PROGRESS, PBM_SETPOS, 0, 0);
+	// 开始遍历所有的文件列表...
 	for (size_t j = 0; j < fileCount; j++) {
 		json_t *file     = json_array_get(files, j);
 		json_t *fileName = json_object_get(file, "name");
 		json_t *hash     = json_object_get(file, "hash");
 		json_t *size     = json_object_get(file, "size");
-
+		// 计算已处理文件的百分比，并显示在进度条上...
+		int position = (int)(((float)(j+1) / (float)fileCount) * 100.0f);
+		SendDlgItemMessage(hwndMain, IDC_PROGRESS, PBM_SETPOS, position, 0);
+		// 如果文件名|哈希值|长度，无效，继续下一个文件...
 		if (!json_is_string(fileName))
 			continue;
 		if (!json_is_string(hash))
 			continue;
 		if (!json_is_integer(size))
 			continue;
-
+		// 获取有效的文件名、哈希值、长度...
 		const char *fileUTF8 = json_string_value(fileName);
 		const char *hashUTF8 = json_string_value(hash);
 		int fileSize         = (int)json_integer_value(size);
@@ -764,11 +783,12 @@ static bool AddPackageUpdateFiles(json_t *root, size_t idx, const wchar_t *tempP
 		if (strlen(hashUTF8) != BLAKE2_HASH_LENGTH * 2)
 			continue;
 
-		if (!isWin64 && is_64bit_file(fileUTF8))
-			continue;
+		// 屏蔽64位文件格式的检测，会有误操作 => obs-x264.dll...
+		//if (!isWin64 && is_64bit_file(fileUTF8))
+		//	continue;
 
 		/* ignore update files of opposite arch to reduce download */
-
+		// 注意：这里是让32bit的进程只下载32bit的文件，跟系统版本无关...
 		if (( is32bit && has_str(fileUTF8, "/64bit/")) ||
 		    (!is32bit && has_str(fileUTF8, "/32bit/")))
 			continue;
@@ -792,19 +812,23 @@ static bool AddPackageUpdateFiles(json_t *root, size_t idx, const wchar_t *tempP
 			return false;
 		}
 
+		// 修改包名称地址，不能用原来的core，而需要与网站升级目录对应...
 		StringCbPrintf(sourceURL, sizeof(sourceURL), L"%s/%s/%s", DEF_UPDATE_URL, wPackageName, updateFileName);
 		StringCbPrintf(tempFilePath, sizeof(tempFilePath), L"%s\\%s", tempPath, updateHashStr);
 
 		/* Check file hash */
 
-		BYTE    existingHash[BLAKE2_HASH_LENGTH];
 		wchar_t fileHashStr[BLAKE2_HASH_STR_LENGTH];
+		BYTE    existingHash[BLAKE2_HASH_LENGTH];
 		bool    has_hash = false;
 
 		/* We don't really care if this fails, it's just to avoid
 		 * wasting bandwidth by downloading unmodified files */
+		// 注意：以工作目录为基点，计算本地文件的哈希值，相同就不下载...
+		Status(L"正在计算哈希: %s...", updateFileName);
 		if (CalculateFileHash(updateFileName, existingHash)) {
 			HashToString(existingHash, fileHashStr);
+			// 如果本地文件的哈希值与脚本里的哈希值一致，不下载...
 			if (wcscmp(fileHashStr, updateHashStr) == 0)
 				continue;
 			has_hash = true;
@@ -1174,11 +1198,15 @@ static bool doUpdateBuildJson()
 		Status(L"更新日志 changelog.txt 不是 UTF8 格式...");
 		return false;
 	}
+	// 设置初始的进度条，并重置文件数量...
+	g_nJsonCurFiles = 0;
+	SendDlgItemMessage(hwndMain, IDC_PROGRESS, PBM_SETPOS, 0, 0);
 	// json_decref => 靠引用计数删除，非常重要...
 	// 遍历对应的发行目录所有文件列表 => 需要递归读取...
 	json_t * lpJsonPack = json_array();
 	json_t * lpJsonFile = json_array();
 	QuickAllFiles(lpRootPath, NULL, lpJsonFile);
+	SendDlgItemMessage(hwndMain, IDC_PROGRESS, PBM_SETPOS, 100, 0);
 
 	// 注意：json_decref => 靠引用计数删除，非常重要...
 	// json_object_set_new不会增加引用计数...
@@ -1211,51 +1239,15 @@ static bool doUpdateBuildJson()
 	// 特别注意：这里dump的指针，一定要强制删除，否则会有内存泄漏...
 	free(post_body); post_body = NULL;
 	// 显示创建manifest.json升级脚本文件成功...
-	Status(L"已完成创建 manifest.json 升级脚本文件...");
+	Status(L"已成功创建升级脚本文件manifest.json...");
 	// 修改退出按钮的文本信息，并使按钮可以点击操作...
 	SetDlgItemText(hwndMain, IDC_BUTTON, L"退 出");
 	EnableWindow(GetDlgItem(hwndMain, IDC_BUTTON), true);
 	return true;
 }
 
-static bool Update(wchar_t *cmdLine)
+static void ParseCmdLine(wchar_t *cmdLine)
 {
-	/* ------------------------------------- *
-	 * Check to make sure OBS isn't running  */
-	HANDLE hObsUpdateMutex = OpenMutexW(SYNCHRONIZE, false, L"OBSStudioUpdateMutex");
-	// 如果已经有升级进程在运行，需要等待之前的升级进程退出...
-	if (hObsUpdateMutex != NULL) {
-		HANDLE hWait[2] = { 0 };
-		hWait[0] = hObsUpdateMutex;
-		hWait[1] = cancelRequested;
-
-		int i = WaitForMultipleObjects(2, hWait, false, INFINITE);
-
-		if (i == WAIT_OBJECT_0) {
-			ReleaseMutex(hObsUpdateMutex);
-		}
-		CloseHandle(hObsUpdateMutex);
-		if (i == WAIT_OBJECT_0 + 1)
-			return false;
-	}
-
-	// 等待主进程退出...
-	if (!WaitForOBS())
-		return false;
-
-	/* ------------------------------------- *
-	 * Init crypt stuff                      */
-
-	CryptProvider hProvider;
-	if (!CryptAcquireContext(&hProvider, nullptr, MS_ENH_RSA_AES_PROV, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
-		Status(L"升级失败: CryptAcquireContext 失败");
-		return false;
-	}
-
-	::hProvider = hProvider;
-
-	/* ------------------------------------- */
-
 	Status(L"正在解析外部升级指令...");
 
 	// 改进检查命令机制，产生四种命令如下：
@@ -1265,7 +1257,6 @@ static bool Update(wchar_t *cmdLine)
 	// kStudentBuildJson => 学生端创建升级json
 
 	g_run_mode = kDefaultUnknown;
-	bool bIsPortable = false;
 	LPWSTR *argv = NULL;
 	int argc = 0;
 
@@ -1301,6 +1292,47 @@ static bool Update(wchar_t *cmdLine)
 	}
 	// 设定更新后的窗口标题名称内容...
 	SetWindowText(hwndMain, wWndTitle);
+}
+
+static bool Update(wchar_t *cmdLine)
+{
+	/* ------------------------------------- *
+	 * Check to make sure OBS isn't running  */
+	HANDLE hObsUpdateMutex = OpenMutexW(SYNCHRONIZE, false, L"OBSStudioUpdateMutex");
+	// 如果已经有升级进程在运行，需要等待之前的升级进程退出...
+	if (hObsUpdateMutex != NULL) {
+		HANDLE hWait[2] = { 0 };
+		hWait[0] = hObsUpdateMutex;
+		hWait[1] = cancelRequested;
+
+		int i = WaitForMultipleObjects(2, hWait, false, INFINITE);
+
+		if (i == WAIT_OBJECT_0) {
+			ReleaseMutex(hObsUpdateMutex);
+		}
+		CloseHandle(hObsUpdateMutex);
+		if (i == WAIT_OBJECT_0 + 1)
+			return false;
+	}
+	// 解析命令行，得到命令状态...
+	ParseCmdLine(cmdLine);
+	// 等待父进程退出，老师端或学生端...
+	if (!WaitForParent())
+		return false;
+
+	/* ------------------------------------- *
+	 * Init crypt stuff                      */
+
+	CryptProvider hProvider;
+	if (!CryptAcquireContext(&hProvider, nullptr, MS_ENH_RSA_AES_PROV, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
+		Status(L"升级失败: CryptAcquireContext 失败");
+		return false;
+	}
+
+	::hProvider = hProvider;
+
+	/* ------------------------------------- */
+
 	// 如果解析外部命令失败，显示信息并返回...
 	if (g_run_mode <= kDefaultUnknown || g_run_mode > kStudentBuildJson) {
 		Status(L"升级失败：解析外部指令错误 => {teacher,json_teacher,student,json_student}");
@@ -1313,11 +1345,13 @@ static bool Update(wchar_t *cmdLine)
 	// 如果是升级命令操作，进行数据配置根目录路径名称的设定，分为讲师端和学生端，配置根目录会有所不同...
 	LPCWSTR lpwDataRoot = ((g_run_mode == kTeacherUpdater) ? DEF_TEACHER_DATA : DEF_STUDENT_DATA);
 
+	Status(L"正在加载并解析 manifest.json 升级脚本...");
+
 	/* ------------------------------------- *
 	 * Get config path                       */
-
+	
 	wchar_t lpAppDataPath[MAX_PATH] = { 0 };
-
+	bool bIsPortable = false;
 	if (bIsPortable) {
 		GetCurrentDirectory(_countof(lpAppDataPath), lpAppDataPath);
 		StringCbCat(lpAppDataPath, sizeof(lpAppDataPath), L"\\config");
@@ -1330,7 +1364,8 @@ static bool Update(wchar_t *cmdLine)
 		}
 		StringCbCopy(lpAppDataPath, sizeof(lpAppDataPath), pOut);
 	}
-
+	// 注意：这里需要追加连接符号 => "\\"
+	StringCbCat(lpAppDataPath, sizeof(lpAppDataPath), L"\\");
 	StringCbCat(lpAppDataPath, sizeof(lpAppDataPath), lpwDataRoot);
 
 	/* ------------------------------------- *
@@ -1340,11 +1375,11 @@ static bool Update(wchar_t *cmdLine)
 	wchar_t tempDirName[MAX_PATH] = { 0 };
 
 	StringCbPrintf(manifestPath, sizeof(manifestPath), L"%s\\updates\\manifest.json", lpAppDataPath);
-	if (!GetTempPathW(_countof(tempDirName), tempDirName)) {
+	if (!GetTempPath(_countof(tempDirName), tempDirName)) {
 		Status(L"升级失败: 获取临时目录失败: %ld", GetLastError());
 		return false;
 	}
-	if (!GetTempFileNameW(tempDirName, lpwDataRoot, 0, g_tempPath)) {
+	if (!GetTempFileName(tempDirName, lpwDataRoot, 0, g_tempPath)) {
 		Status(L"升级失败: 创建临时目录失败: %ld", GetLastError());
 		return false;
 	}
@@ -1394,7 +1429,9 @@ static bool Update(wchar_t *cmdLine)
 	 * Exit if updates already installed     */
 
 	if (!updates.size()) {
-		Status(L"所有的更新已经全部安装完毕。");
+		Status(L"所有文件都是最新版本，无需升级。");
+		SetDlgItemText(hwndMain, IDC_BUTTON, L"加载父进程");
+		SendDlgItemMessage(hwndMain, IDC_PROGRESS, PBM_SETPOS, 100, 0);
 		return true;
 	}
 
@@ -1532,11 +1569,13 @@ static bool Update(wchar_t *cmdLine)
 	/* ------------------------------------- *
 	 * Download Updates                      */
 
+	// 注意：下载的链接地址都是 https:// 安全链接地址...
+	// 注意：这里可以设定开启下载线程的数量，默认为2个线程...
 	if (!RunDownloadWorkers(2))
 		return false;
 
 	if ((size_t)completedUpdates != updates.size()) {
-		Status(L"升级失败：下载文件发生错误！");
+		//Status(L"升级失败：下载文件发生错误！");
 		return false;
 	}
 
@@ -1576,7 +1615,7 @@ static bool Update(wchar_t *cmdLine)
 	SendDlgItemMessage(hwndMain, IDC_PROGRESS, PBM_SETPOS, 100, 0);
 
 	Status(L"升级完成！");
-	SetDlgItemText(hwndMain, IDC_BUTTON, L"加载进程");
+	SetDlgItemText(hwndMain, IDC_BUTTON, L"加载父进程");
 	return true;
 }
 
@@ -1621,29 +1660,34 @@ static void CancelUpdate(bool quit)
 	}
 }
 
-static void LaunchOBS()
+static void LaunchParent()
 {
 	wchar_t cwd[MAX_PATH];
 	wchar_t newCwd[MAX_PATH];
 	wchar_t obsPath[MAX_PATH];
 
+	// 首先获取当前的工作目录...
 	GetCurrentDirectory(_countof(cwd) - 1, cwd);
-
+	// 设定新的工作目录...
 	StringCbCopy(obsPath, sizeof(obsPath), cwd);
 	StringCbCat(obsPath, sizeof(obsPath), is32bit ? L"\\bin\\32bit" : L"\\bin\\64bit");
 	SetCurrentDirectory(obsPath);
+	// 保存新的工作目录...
 	StringCbCopy(newCwd, sizeof(newCwd), obsPath);
-
-	StringCbCat(obsPath, sizeof(obsPath), is32bit ? L"\\obs32.exe" : L"\\obs64.exe");
-
+	// 计算新的父进程完整名称和路径...
+	const wchar_t * wParentName = g_cmd_type[g_run_mode - 1];
+	StringCbPrintf(obsPath, sizeof(obsPath), L"%s\\%s.exe", newCwd, wParentName);
+	// 判断父进程文件是否有效...
 	if (!FileExists(obsPath)) {
+		// 如果文件路径不存在，使用32位再次尝试...
 		StringCbCopy(obsPath, sizeof(obsPath), cwd);
 		StringCbCat(obsPath, sizeof(obsPath), L"\\bin\\32bit");
+		// 直接使用32位再次尝试...
 		SetCurrentDirectory(obsPath);
 		StringCbCopy(newCwd, sizeof(newCwd), obsPath);
-
-		StringCbCat(obsPath, sizeof(obsPath), L"\\obs32.exe");
-
+		// 获取32位目录下的父进程文件全路径...
+		StringCbPrintf(obsPath, sizeof(obsPath), L"%s\\%s.exe", newCwd, wParentName);
+		// 如果文件还是不存在，直接返回...
 		if (!FileExists(obsPath)) {
 			/* TODO: give user a message maybe? */
 			return;
@@ -1651,14 +1695,13 @@ static void LaunchOBS()
 	}
 
 	SHELLEXECUTEINFO execInfo;
-
 	ZeroMemory(&execInfo, sizeof(execInfo));
-
+	// 使用外挂命令启动父进程，指定新的工作目录...
 	execInfo.cbSize      = sizeof(execInfo);
 	execInfo.lpFile      = obsPath;
 	execInfo.lpDirectory = newCwd;
 	execInfo.nShow       = SW_SHOWNORMAL;
-
+	// 调用外挂函数启动父进程...
 	ShellExecuteEx(&execInfo);
 }
 
@@ -1719,7 +1762,7 @@ static void RestartAsAdmin(LPWSTR lpCmdLine)
 
 		if (GetExitCodeProcess(shExInfo.hProcess, &exitCode)) {
 			if (exitCode == 1) {
-				LaunchOBS();
+				LaunchParent();
 			}
 		}
 		CloseHandle(shExInfo.hProcess);
@@ -1777,12 +1820,15 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
 			wchar_t cwd[MAX_PATH];
 			wchar_t newPath[MAX_PATH];
 			// 得到当前进程的运行目录...
-			GetCurrentDirectoryW(_countof(cwd) - 1, cwd);
-			// 当前进程是否为32位系统，并更改当前工作目录...
+			GetCurrentDirectory(_countof(cwd) - 1, cwd);
+			// 当前进程是否为32位模式（与系统无关，只跟安装有关）...
 			is32bit = wcsstr(cwd, L"bin\\32bit") != nullptr;
 			StringCbCat(cwd, sizeof(cwd), L"\\..\\..");
-			// 计算工作目录，并设定为升级进程的当前工作目录...
+			// 正常运行 => 计算工作目录，并设定为升级进程的当前工作目录...
 			GetFullPathName(cwd, _countof(newPath), newPath, nullptr);
+			// 调试运行 => 手动设定父进程的安装目录，调试测试...
+			//StringCbCopy(newPath, _countof(newPath), L"C:\\Program Files\\讲师端");
+			// 设定升级程序需要的新的工作目录...
 			SetCurrentDirectory(newPath);
 		}
 
@@ -1829,7 +1875,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
 
 		// 升级完毕，重启主进程，自动运行...
 		if (msg.wParam == 1 && !hMutex) {
-			LaunchOBS();
+			LaunchParent();
 		}
 
 		return (int)msg.wParam;
