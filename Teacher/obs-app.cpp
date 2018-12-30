@@ -365,7 +365,7 @@ bool OBSApp::InitGlobalConfigDefaults()
 	config_set_default_string(globalConfig, "General", "Language", DEFAULT_LANG);
 	config_set_default_uint(globalConfig, "General", "MaxLogs", 10);
 	config_set_default_string(globalConfig, "General", "ProcessPriority", "Normal");
-	config_set_default_bool(globalConfig, "General", "EnableAutoUpdates", false);
+	config_set_default_bool(globalConfig, "General", "EnableAutoUpdates", true);
 
 #if _WIN32
 	config_set_default_string(globalConfig, "Video", "Renderer", "Direct3D 11");
@@ -610,18 +610,18 @@ bool OBSApp::InitGlobalConfig()
 	}
 
 	if (!config_has_user_value(globalConfig, "General", "Pre19Defaults")) {
-		uint32_t lastVersion = config_get_int(globalConfig, "General", "LastVersion");
-		bool useOldDefaults = lastVersion && lastVersion < MAKE_SEMANTIC_VERSION(19, 0, 0);
-
-		config_set_bool(globalConfig, "General", "Pre19Defaults", useOldDefaults);
+		//uint32_t lastVersion = config_get_int(globalConfig, "General", "LastVersion");
+		//bool useOldDefaults = lastVersion && lastVersion < MAKE_SEMANTIC_VERSION(19, 0, 0);
+		// 不要使用老版本的默认设置，直接设定为false状态...
+		config_set_bool(globalConfig, "General", "Pre19Defaults", false);
 		changed = true;
 	}
 
 	if (!config_has_user_value(globalConfig, "General", "Pre21Defaults")) {
-		uint32_t lastVersion = config_get_int(globalConfig, "General", "LastVersion");
-		bool useOldDefaults = lastVersion && lastVersion < MAKE_SEMANTIC_VERSION(21, 0, 0);
-
-		config_set_bool(globalConfig, "General", "Pre21Defaults", useOldDefaults);
+		//uint32_t lastVersion = config_get_int(globalConfig, "General", "LastVersion");
+		//bool useOldDefaults = lastVersion && lastVersion < MAKE_SEMANTIC_VERSION(21, 0, 0);
+		// 不要使用老版本的默认设置，直接设定为false状态...
+		config_set_bool(globalConfig, "General", "Pre21Defaults", false);
 		changed = true;
 	}
 

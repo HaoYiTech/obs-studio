@@ -1478,7 +1478,9 @@ void OBSBasic::OBSInit()
 	SET_VISIBILITY("ShowStatusBar", toggleStatusBar);
 #undef SET_VISIBILITY
 
-	TimedCheckForUpdates();
+	// 注意：这里弹出的确认框容易被Load()过程关闭...
+	// 注意：放到完全加载之后调用 => DeferredLoad()...
+	//TimedCheckForUpdates();
 
 	previewEnabled = config_get_bool(App()->GlobalConfig(),
 			"BasicWindow", "PreviewEnabled");
@@ -1681,6 +1683,8 @@ void OBSBasic::DeferredLoad(const QString &file, int requeueCount)
 	App()->doCheckRemote();
 	// 对场景资源进行位置重排...
 	this->ShutFloatSource();
+	// 为了避免弹框被强制关闭，放在这里弹出更新确认框...
+	this->TimedCheckForUpdates();
 }
 
 void OBSBasic::UpdateMultiviewProjectorMenu()
@@ -2652,24 +2656,26 @@ void trigger_sparkle_update();
 
 void OBSBasic::TimedCheckForUpdates()
 {
-	// 检测是否开启自动更新开关，默认是处于关闭状态...
+	// 检测是否开启自动更新开关，默认是处于开启状态 => OBSApp::InitGlobalConfigDefaults()...
 	if (!config_get_bool(App()->GlobalConfig(), "General", "EnableAutoUpdates"))
 		return;
 
 #ifdef UPDATE_SPARKLE
 	init_sparkle_updater(config_get_bool(App()->GlobalConfig(), "General", "UpdateToUndeployed"));
 #elif ENABLE_WIN_UPDATER
+
+	// 从global.ini中读取上次检查时间和上次升级版本号...
 	long long lastUpdate = config_get_int(App()->GlobalConfig(), "General", "LastUpdateCheck");
 	uint32_t lastVersion = config_get_int(App()->GlobalConfig(), "General", "LastVersion");
-
+	// 如果上次升级版本比当前exe存放版本还要小，立即升级...
 	if (lastVersion < LIBOBS_API_VER) {
 		lastUpdate = 0;
 		config_set_int(App()->GlobalConfig(), "General", "LastUpdateCheck", 0);
 	}
-
+	// 计算当前时间与上次升级之间的时间差...
 	long long t    = (long long)time(nullptr);
 	long long secs = t - lastUpdate;
-
+	// 时间差超过4天，开始检查并执行升级...
 	if (secs > UPDATE_CHECK_INTERVAL) {
 		this->CheckForUpdates(false);
 	}
@@ -2681,11 +2687,11 @@ void OBSBasic::CheckForUpdates(bool manualUpdate)
 #ifdef UPDATE_SPARKLE
 	trigger_sparkle_update();
 #elif ENABLE_WIN_UPDATER
+	// 屏蔽升级操作菜单，避免在升级过程中重复升级...
 	ui->actionCheckForUpdates->setEnabled(false);
-
 	if (updateCheckThread && updateCheckThread->isRunning())
 		return;
-
+	// 创建升级线程，并启动之 => 可以手动直接升级...
 	updateCheckThread = new AutoUpdateThread(manualUpdate);
 	updateCheckThread->start();
 #endif
@@ -3393,16 +3399,19 @@ void OBSBasic::ClearSceneData()
 
 void OBSBasic::closeEvent(QCloseEvent *event)
 {
-	// 弹出退出询问框...
-	QMessageBox::StandardButton button = OBSMessageBox::question(
-		this, QTStr("ConfirmExit.Title"),
-		QTStr("ConfirmExit.Quit"));
-	if (button == QMessageBox::No) {
-		event->ignore();
-		return;
+	QMessageBox::StandardButton button;
+	// 如果不是沉默退出，需要弹出退出询问框...
+	if (!this->m_bIsSlientClose) {
+		button = OBSMessageBox::question(
+			this, QTStr("ConfirmExit.Title"),
+			QTStr("ConfirmExit.Quit"));
+		if (button == QMessageBox::No) {
+			event->ignore();
+			return;
+		}
 	}
-
-	if (isVisible()) {
+	// 如果窗口可见，需要保持坐标...
+	if (this->isVisible()) {
 		config_set_string(App()->GlobalConfig(),
 			"BasicWindow", "geometry",
 			saveGeometry().toBase64().constData());
@@ -3410,14 +3419,12 @@ void OBSBasic::closeEvent(QCloseEvent *event)
 	config_set_string(App()->GlobalConfig(),
 			"BasicWindow", "DockState",
 			saveState().toBase64().constData());
-
-	if (outputHandler && outputHandler->Active()) {
-		SetShowing(true);
-
+	// 如果不是沉默退出，并且正在推流，需要弹出停止推流询问框...
+	if (!this->m_bIsSlientClose && outputHandler && outputHandler->Active()) {
+		this->SetShowing(true);
 		button = OBSMessageBox::question(
 				this, QTStr("ConfirmExit.Title"),
 				QTStr("ConfirmExit.Text"));
-
 		if (button == QMessageBox::No) {
 			event->ignore();
 			return;
@@ -3439,9 +3446,9 @@ void OBSBasic::closeEvent(QCloseEvent *event)
 
 	SaveProjectNow();
 
-	if (api)
+	if (api) {
 		api->on_event(OBS_FRONTEND_EVENT_EXIT);
-
+	}
 	disableSaving++;
 
 	/* Clear all scene data (dialogs, widgets, widget sub-items, scenes,
@@ -5335,8 +5342,7 @@ void OBSBasic::on_actionAlwaysOnTop_triggered()
 	CloseDialogs();
 #endif
 
-	QMetaObject::invokeMethod(this, "ToggleAlwaysOnTop",
-			Qt::QueuedConnection);
+	QMetaObject::invokeMethod(this, "ToggleAlwaysOnTop", Qt::QueuedConnection);
 }
 
 void OBSBasic::ToggleAlwaysOnTop()

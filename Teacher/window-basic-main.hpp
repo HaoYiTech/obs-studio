@@ -140,6 +140,7 @@ private:
 
 	std::vector<OBSSignal> signalHandlers;
 
+	bool m_bIsSlientClose = false;
 	bool m_bIsLoaded = false;
 	long disableSaving = 1;
 	bool projectChanged = false;
@@ -502,6 +503,7 @@ private:
 	static void HotkeyTriggered(void *data, obs_hotkey_id id, bool pressed);
 
 public:
+	inline void SetSlientClose(bool bIsSlient) { m_bIsSlientClose = bIsSlient; }
 	inline bool IsLoaded() { return m_bIsLoaded; }
 
 	OBSSource GetProgramSource();
