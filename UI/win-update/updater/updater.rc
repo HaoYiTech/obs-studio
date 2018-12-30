@@ -1,5 +1,6 @@
 // Microsoft Visual C++ generated resource script.
 //
+#include "..\..\libobs\obs-config.h"
 #include "resource.h"
 
 #define APSTUDIO_READONLY_SYMBOLS
@@ -87,8 +88,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,1,1,4
- PRODUCTVERSION 1,1,1,4
+ FILEVERSION LIBOBS_API_MAJOR_VER,LIBOBS_API_MINOR_VER,LIBOBS_API_PATCH_VER,0
+ PRODUCTVERSION LIBOBS_API_MAJOR_VER,LIBOBS_API_MINOR_VER,LIBOBS_API_PATCH_VER,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -104,13 +105,13 @@ BEGIN
         BLOCK "080404b0"
         BEGIN
             VALUE "CompanyName", "ºÆÒ»¿Æ¼¼"
-            VALUE "FileDescription", "Teacher Updater"
-            VALUE "FileVersion", "1.1.1.4"
+            VALUE "FileDescription", "Updater"
+            VALUE "FileVersion", OBS_VERSION
             VALUE "InternalName", "updater.exe"
             VALUE "LegalCopyright", "Copyright (C) 2018"
             VALUE "OriginalFilename", "updater.exe"
-            VALUE "ProductName", "Teacher Updater"
-            VALUE "ProductVersion", "1.1.1.4"
+            VALUE "ProductName", "Updater"
+            VALUE "ProductVersion", OBS_VERSION
         END
     END
     BLOCK "VarFileInfo"
