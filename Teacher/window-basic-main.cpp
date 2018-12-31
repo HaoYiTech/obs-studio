@@ -3938,6 +3938,12 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 	QPointer<QMenu> previewProjector;
 	QPointer<QMenu> sourceProjector;
 
+	// 始终自动追加一个“检查升级”的菜单...
+	if (ui->actionCheckForUpdates != NULL) {
+		popup.addAction(ui->actionCheckForUpdates);
+		popup.addSeparator();
+	}
+
 	// 如果数据源有效，创建一个可浮动数据源的菜单项...
 	if (item != NULL) {
 		QAction * actionFloated = NULL;
