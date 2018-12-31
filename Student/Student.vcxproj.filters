@@ -162,6 +162,18 @@
     <ClCompile Include="common\getopt.cpp">
       <Filter>Common Files</Filter>
     </ClCompile>
+    <ClCompile Include="win-update\update-window.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="win-update\win-update.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="win-update\win-update-helpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="remote-text.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="window-login-base.h">
@@ -209,6 +221,15 @@
     <QtMoc Include="window-dlg-setsys.hpp">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="win-update\update-window.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="win-update\win-update.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="remote-text.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="forms\LoginWindow.ui">
@@ -224,6 +245,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="forms\DlgSetSys.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="forms\OBSUpdate.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>
@@ -380,6 +404,9 @@
     </ClInclude>
     <ClInclude Include="common\getopt.h">
       <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="win-update\win-update-helpers.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -179,6 +179,8 @@
     <addaction name="actionSettingSystem"/>
     <addaction name="separator"/>
     <addaction name="actionSettingReconnect"/>
+    <addaction name="separator"/>
+    <addaction name="actionSettingUpdater"/>
    </widget>
    <addaction name="systemMenu"/>
    <addaction name="cameraMenu"/>
@@ -356,6 +358,11 @@
   <action name="actionPreviewMute">
    <property name="text">
     <string>Basic.Preview.Mute</string>
+   </property>
+  </action>
+  <action name="actionSettingUpdater">
+   <property name="text">
+    <string>Basic.Setting.Updater</string>
    </property>
   </action>
  </widget>

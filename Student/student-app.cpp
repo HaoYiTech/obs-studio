@@ -112,10 +112,24 @@ static bool do_mkdir(const char *path)
 static bool MakeUserDirs()
 {
 	char path[512] = { 0 };
+
 	if (GetConfigPath(path, sizeof(path), "obs-student/logs") <= 0)
 		return false;
 	if (!do_mkdir(path))
 		return false;
+
+#ifdef _WIN32
+	if (GetConfigPath(path, sizeof(path), "obs-student/crashes") <= 0)
+		return false;
+	if (!do_mkdir(path))
+		return false;
+
+	if (GetConfigPath(path, sizeof(path), "obs-student/updates") <= 0)
+		return false;
+	if (!do_mkdir(path))
+		return false;
+#endif
+
 	return true;
 }
 
@@ -532,6 +546,28 @@ int main(int argc, char *argv[])
 	return nRet;
 }
 
+string CStudentApp::GetVersionString() const
+{
+	stringstream ver;
+
+	ver << OBS_VERSION;
+	ver << " (";
+
+#ifdef _WIN32
+	if (sizeof(void*) == 8)
+		ver << "64bit, ";
+	ver << "windows)";
+#elif __APPLE__
+	ver << "mac)";
+#elif __FreeBSD__
+	ver << "freebsd)";
+#else /* assume linux for the time being */
+	ver << "linux)";
+#endif
+
+	return ver.str();
+}
+
 QString OBSTranslator::translate(const char *context, const char *sourceText, const char *disambiguation, int n) const
 {
 	const char *out = nullptr;
@@ -848,8 +884,9 @@ bool CStudentApp::InitGlobalConfig()
 
 bool CStudentApp::InitGlobalConfigDefaults()
 {
-	// 设置默认配置信息...
+	// 设置默认配置信息，包括自动检查升级配置信息...
 	config_set_default_string(m_globalConfig, "General", "Language", DEFAULT_LANG);
+	config_set_default_uint(m_globalConfig, "General", "EnableAutoUpdates", true);
 	config_set_default_uint(m_globalConfig, "General", "MaxLogs", 10);
 	return true;
 }

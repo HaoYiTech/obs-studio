@@ -11,8 +11,8 @@
 #include <obs-frontend-api.h>
 #include <deque>
 
-#include "window-student-main.h"
 #include "FastSession.h"
+#include "window-student-main.h"
 
 using namespace std;
 
@@ -159,7 +159,9 @@ public:
 	string & GetLocalMacAddr() { return m_strMacAddr; }
 	string & GetRoomIDStr() { return m_strRoomID; }
 
+	std::string GetVersionString() const;
 	bool TranslateString(const char *lookupVal, const char **out) const;
+	inline StudentWindow *GetMainWindow() const { return m_studentWindow.data(); }
 	inline config_t *GlobalConfig() const { return m_globalConfig; }
 	inline lookup_t *GetTextLookup() const { return m_textLookup; }
 	inline const char *GetString(const char *lookupVal) const
@@ -244,4 +246,6 @@ inline config_t *GetGlobalConfig() { return App()->GlobalConfig(); }
 inline const char *Str(const char *lookup) { return App()->GetString(lookup); }
 #define QTStr(lookupVal) QString::fromUtf8(Str(lookupVal))
 
+int GetConfigPath(char *path, size_t size, const char *name);
+char *GetConfigPathPtr(const char *name);
 bool WindowPositionValid(QRect rect);

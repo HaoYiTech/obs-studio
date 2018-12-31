@@ -8,6 +8,7 @@
 #include "HYDefine.h"
 #include "web-thread.h"
 #include "student-app.h"
+#include "win-update.hpp"
 #include "qt-wrappers.hpp"
 #include "window-dlg-push.hpp"
 #include "window-dlg-about.hpp"
@@ -19,6 +20,8 @@
 
 #define STARTUP_SEPARATOR   "==== Startup complete ==============================================="
 #define SHUTDOWN_SEPARATOR 	"==== Shutting down =================================================="
+
+#define UPDATE_CHECK_INTERVAL (60*60*24*4) /* 4 days */
 
 StudentWindow::StudentWindow(QWidget *parent)
  : QMainWindow(parent)
@@ -265,6 +268,11 @@ void StudentWindow::doWebThreadMsg(int nMessageID, int nWParam, int nLParam)
 
 StudentWindow::~StudentWindow()
 {
+	// 等待并删除自动升级线程的退出...
+	if (updateCheckThread && updateCheckThread->isRunning()) {
+		updateCheckThread->wait();
+		delete updateCheckThread;
+	}
 	// 窗口关闭前，保存所有的配置信息...
 	config_save_safe(App()->GlobalConfig(), "tmp", nullptr);
 }
@@ -278,6 +286,46 @@ void StudentWindow::UpdateTitleBar()
 	this->setWindowTitle(strTitle);
 }
 
+void StudentWindow::TimedCheckForUpdates()
+{
+	// 检测是否开启自动更新开关，默认是处于开启状态 => CStudentApp::InitGlobalConfigDefaults()...
+	if (!config_get_bool(App()->GlobalConfig(), "General", "EnableAutoUpdates"))
+		return;
+	// 注意：LastUpdateCheck只在用户点击“稍后提醒”才会起作用(4天后)；如果是相同版本，也会每次启动都会检测；
+	long long lastUpdate = config_get_int(App()->GlobalConfig(), "General", "LastUpdateCheck");
+	uint32_t lastVersion = config_get_int(App()->GlobalConfig(), "General", "LastVersion");
+	// 如果上次升级版本比当前exe存放版本还要小，立即升级...
+	if (lastVersion < LIBOBS_API_VER) {
+		lastUpdate = 0;
+		config_set_int(App()->GlobalConfig(), "General", "LastUpdateCheck", 0);
+	}
+	// 计算当前时间与上次升级之间的时间差...
+	long long t = (long long)time(nullptr);
+	long long secs = t - lastUpdate;
+	// 时间差超过4天，开始检查并执行升级...
+	if (secs > UPDATE_CHECK_INTERVAL) {
+		this->CheckForUpdates(false);
+	}
+}
+
+void StudentWindow::CheckForUpdates(bool manualUpdate)
+{
+	// 屏蔽升级操作菜单，避免在升级过程中重复升级...
+	m_ui.actionSettingUpdater->setEnabled(false);
+	if (updateCheckThread && updateCheckThread->isRunning())
+		return;
+	// 创建升级线程，并启动之 => 可以手动直接升级...
+	updateCheckThread = new AutoUpdateThread(manualUpdate);
+	updateCheckThread->start();
+
+	UNUSED_PARAMETER(manualUpdate);
+}
+
+void StudentWindow::updateCheckFinished()
+{
+	m_ui.actionSettingUpdater->setEnabled(true);
+}
+
 void StudentWindow::InitWindow()
 {
 	blog(LOG_INFO, STARTUP_SEPARATOR);
@@ -287,17 +335,23 @@ void StudentWindow::InitWindow()
 	if (windowState().testFlag(Qt::WindowFullScreen)) {
 		this->showNormal();
 	}
+
+	// 窗口初始化完毕，进行升级检测...
+	this->TimedCheckForUpdates();
 }
 
 void StudentWindow::closeEvent(QCloseEvent *event)
 {
-	// 弹出退出询问框...
-	QMessageBox::StandardButton button = OBSMessageBox::question(
-		this, QTStr("ConfirmExit.Title"),
-		QTStr("ConfirmExit.Quit"));
-	if (button == QMessageBox::No) {
-		event->ignore();
-		return;
+	QMessageBox::StandardButton button;
+	// 如果不是沉默退出，需要弹出退出询问框...
+	if (!this->m_bIsSlientClose) {
+		button = OBSMessageBox::question(
+			this, QTStr("ConfirmExit.Title"),
+			QTStr("ConfirmExit.Quit"));
+		if (button == QMessageBox::No) {
+			event->ignore();
+			return;
+		}
 	}
 	// 将窗口的坐标保存起来...
 	if (this->isVisible()) {
@@ -309,6 +363,10 @@ void StudentWindow::closeEvent(QCloseEvent *event)
 		return;
 	// 打印关闭日志...
 	blog(LOG_INFO, SHUTDOWN_SEPARATOR);
+	// 等待自动检查升级线程的退出...
+	if (updateCheckThread != NULL) {
+		updateCheckThread->wait();
+	}
 	// 调用退出事件通知...
 	App()->doLogoutEvent();
 	// 调用关闭退出接口...
@@ -348,6 +406,11 @@ void StudentWindow::on_actionSettingReconnect_triggered()
 	m_ui.RightView->doDestroyResource();
 	// 退出并重建系统资源，构建新的网站线程...
 	App()->doReBuildResource();
+}
+
+void StudentWindow::on_actionSettingUpdater_triggered()
+{
+	this->CheckForUpdates(true);
 }
 
 void StudentWindow::on_actionSettingSystem_triggered()
