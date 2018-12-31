@@ -1,4 +1,6 @@
+
 #include "win-update-helpers.hpp"
+#include "window-basic-main.hpp"
 #include "update-window.hpp"
 #include "remote-text.hpp"
 #include "qt-wrappers.hpp"
@@ -393,9 +395,9 @@ try {
 			nullptr, nullptr, extraHeaders, &signature);
 
 	if (!success || (responseCode != 200 && responseCode != 304)) {
-		if (responseCode == 404)
-			return false;
-
+		if (responseCode == 404) {
+			error = "404 not find.";
+		}
 		throw strprintf("Could not fetch '%s': %s", url, error.c_str());
 	}
 
@@ -427,29 +429,29 @@ try {
 
 	json_error_t error;
 	OBSJson root(json_loads(manifest, 0, &error));
-	if (!root)
+	if (!root) {
 		throw strprintf("Failed reading json string (%d): %s", error.line, error.text);
-
-	if (!json_is_object(root.get()))
+	}
+	if (!json_is_object(root.get())) {
 		throw string("Root of manifest is not an object");
-
+	}
 	int major = root.GetInt("version_major");
 	int minor = root.GetInt("version_minor");
 	int patch = root.GetInt("version_patch");
 
-	if (major == 0)
+	if (major == 0) {
 		throw strprintf("Invalid version number: %d.%d.%d", major, minor, patch);
-
+	}
 	json_t *notes = json_object_get(root, "notes");
-	if (!json_is_string(notes))
+	if (!json_is_string(notes)) {
 		throw string("'notes' value invalid");
-
+	}
 	notes_str = json_string_value(notes);
 
 	json_t *packages = json_object_get(root, "packages");
-	if (!json_is_array(packages))
+	if (!json_is_array(packages)) {
 		throw string("'packages' value invalid");
-
+	}
 	int cur_ver = LIBOBS_API_VER;
 	int new_ver = MAKE_SEMANTIC_VERSION(major, minor, patch);
 
@@ -534,17 +536,14 @@ try {
 	string         error;
 	string         signature;
 	CryptProvider  localProvider;
+	bool           success = false;
 	bool           updatesAvailable = false;
-	bool           success;
 
 	struct FinishedTrigger {
-		inline ~FinishedTrigger()
-		{
+		inline ~FinishedTrigger() {
 			QMetaObject::invokeMethod(App()->GetMainWindow(), "updateCheckFinished");	
 		}
 	} finishedTrigger;
-
-	BPtr<char> manifestPath = GetConfigPathPtr(APP_MANIFEST_PATH);
 
 	auto ActiveOrGameCaptureLocked = [this] ()
 	{
@@ -573,26 +572,25 @@ try {
 	/* ----------------------------------- *
 	 * create signature provider           */
 
-	if (!CryptAcquireContext(&localProvider,
-	                         nullptr,
-	                         MS_ENH_RSA_AES_PROV,
-	                         PROV_RSA_AES,
-	                         CRYPT_VERIFYCONTEXT))
+	if (!CryptAcquireContext(&localProvider, nullptr, MS_ENH_RSA_AES_PROV, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
 		throw strprintf("CryptAcquireContext failed: %lu", GetLastError());
-
+	}
 	provider = localProvider;
+
+	// 获取讲师端本地升级脚本存放的完整路径地址...
+	BPtr<char> manifestPath = GetConfigPathPtr(APP_MANIFEST_PATH);
 
 	/* ----------------------------------- *
 	 * avoid downloading manifest again    */
-	// 通过 Nginx 服务器生成的 ETag 来判断文件是否发生变化...
+	// 通过 Nginx 服务器生成的 ETag 来判断文件是否发生变化 => 更新时间发生变化也会重新下载...
 	const char *pETagManifest = config_get_string(GetGlobalConfig(), "General", "ETagManifest");
 	if (pETagManifest != NULL) {
 		string header = "If-None-Match: ";
 		header += pETagManifest;
 		extraHeaders.push_back(move(header));
 	}
-	// 这里是通过计算MD5的方式判断文件是否发生变化...
-	// 由于Nginx的ETag不是通过MD5计算的，放弃这种方式...
+	// 注意：这里是通过计算MD5的方式判断文件是否发生变化...
+	// 注意：由于Nginx的ETag不是通过MD5计算的，放弃这种方式...
 	//BYTE manifestHash[BLAKE2_HASH_LENGTH];
 	/*if (CalculateFileHash(manifestPath, manifestHash)) {
 		char hashString[BLAKE2_HASH_STR_LENGTH];
@@ -627,12 +625,15 @@ try {
 	/* ----------------------------------- *
 	 * get manifest from server            */
 
+	// 注意：text返回的是升级脚本的具体内容...
+	// 从服务器获取升级脚本文件，Nginx服务器返回ETag标记...
 	success = GetRemoteFile(WIN_MANIFEST_URL, text, error, &responseCode,
-			nullptr, nullptr, extraHeaders, &signature);
-
+							nullptr, nullptr, extraHeaders, &signature);
+	// 从服务器获取升级脚本失败，抛出异常，打印信息...
 	if (!success || (responseCode != 200 && responseCode != 304)) {
-		if (responseCode == 404)
-			return;
+		if (responseCode == 404) {
+			error = "404 not find.";
+		}
 		throw strprintf("Failed to fetch manifest file: %s", error.c_str());
 	}
 
@@ -653,11 +654,15 @@ try {
 	 * write or load manifest              */
 
 	if (responseCode == 200) {
-		if (!QuickWriteFile(manifestPath, text.data(), text.size()))
+		// 如果从服务器读取成功，写入文件...
+		if (!QuickWriteFile(manifestPath, text.data(), text.size())) {
 			throw strprintf("Could not write file '%s'", manifestPath.Get());
+		}
 	} else {
-		if (!QuickReadFile(manifestPath, text))
+		// 如果没有从服务器获取，从本地读取脚本...
+		if (!QuickReadFile(manifestPath, text)) {
 			throw strprintf("Could not read file '%s'", manifestPath.Get());
+		}
 	}
 
 	/* ----------------------------------- *
@@ -666,19 +671,25 @@ try {
 	string notes;
 	int updateVer = 0;
 
+	// 解析获取到的manifest.json，脚本版本 > 当前版本才能升级...
 	success = ParseUpdateManifest(text.c_str(), &updatesAvailable, notes, updateVer);
-	if (!success) throw string("Failed to parse manifest");
+	if (!success) throw string("Failed to parse manifest.json");
 
+	// 如果不能升级，并且是手动模式，弹出提示框...
 	if (!updatesAvailable) {
-		if (manualUpdate)
+		if (manualUpdate) {
 			info(QTStr("Updater.NoUpdatesAvailable.Title"),
-			     QTStr("Updater.NoUpdatesAvailable.Text"));
+				 QTStr("Updater.NoUpdatesAvailable.Text"));
+		}
+		// 记录不能升级的版本信息，方便可能的问题跟踪...
+		blog(LOG_INFO, "[Check] Manual(%d),Update(0x%X),Local(0x%X)", manualUpdate, updateVer, LIBOBS_API_VER);
 		return;
 	}
 
 	/* ----------------------------------- *
 	 * skip this version if set to skip    */
 
+	// 获取系统配置当中已经忽略过的版本，如果与脚本里的版本一致，跳过这个版本...
 	int skipUpdateVer = config_get_int(GetGlobalConfig(), "General", "SkipUpdateVersion");
 	if (!manualUpdate && updateVer == skipUpdateVer)
 		return;
@@ -699,7 +710,9 @@ try {
 	 * query user for update               */
 
 	int queryResult = queryUpdate(manualUpdate, notes.c_str());
-
+	// No   => 稍后提醒 => 4天之后再次提醒...
+	// Yes  => 立即更新 => 需要更新这个版本...
+	// Skip => 跳过版本 => 忽略这个版本等待下次更新...
 	if (queryResult == OBSUpdate::No) {
 		if (!manualUpdate) {
 			long long t = (long long)time(nullptr);
@@ -714,8 +727,8 @@ try {
 	/* ----------------------------------- *
 	 * get working dir                     */
 
-	wchar_t cwd[MAX_PATH];
-	GetModuleFileNameW(nullptr, cwd, _countof(cwd) - 1);
+	wchar_t cwd[MAX_PATH] = { 0 };
+	GetModuleFileName(nullptr, cwd, _countof(cwd) - 1);
 	wchar_t *p = wcsrchr(cwd, '\\');
 	if (p) *p = 0;
 
@@ -762,6 +775,15 @@ try {
 	config_set_int(GetGlobalConfig(), "General", "SkipUpdateVersion", 0);
 	//config_set_string(GetGlobalConfig(), "General", "InstallGUID", guid.c_str());
 
+	// 升级后的新版本，可能会修改服务器地址，会造成版本升级后服务器无法访问的问题...
+	config_remove_value(GetGlobalConfig(), "General", "WebCenter");
+	config_remove_value(GetGlobalConfig(), "General", "WebClass");
+
+	// 这里需要告诉主窗口不要弹出询问框，直接退出主进程就可以了...
+	OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	// 设置主窗口沉默退出...
+	main->SetSlientClose(true);
+	// 向主窗口发送退出信号...
 	QMetaObject::invokeMethod(App()->GetMainWindow(), "close");
 
 } catch (string text) {
