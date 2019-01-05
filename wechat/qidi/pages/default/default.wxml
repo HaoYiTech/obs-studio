@@ -1,0 +1,66 @@
+<!--pages/default/default.wxml-->
+
+<wux-grids col="4" bordered="{{ false }}">
+  <wux-grid label="课程管理"
+    data-item="navSubject"
+    bind:click="toggleGridNav"
+    wux-nav-back="fa-stack fa-lg"
+    wux-nav-circle="fa fa-circle fa-stack-2x"
+    wux-nav-inner="fa fa-wpforms fa-stack-1x fa-inverse" />
+  <wux-grid label="会员管理"
+    data-item="navMember"
+    bind:click="toggleGridNav"
+    wux-nav-back="fa-stack fa-lg"
+    wux-nav-circle="fa fa-circle fa-stack-2x"
+    wux-nav-inner="fa fa-id-card-o fa-stack-1x fa-inverse" />
+  <wux-grid label="订单管理"
+    data-item="navOrder"
+    bind:click="toggleGridNav"
+    wux-nav-back="fa-stack fa-lg"
+    wux-nav-circle="fa fa-circle fa-stack-2x"
+    wux-nav-inner="fa fa-money fa-stack-1x fa-inverse" />
+  <wux-grid label="门店管理"
+    data-item="navShop"
+    bind:click="toggleGridNav"
+    wux-nav-back="fa-stack fa-lg"
+    wux-nav-circle="fa fa-circle fa-stack-2x"
+    wux-nav-inner="fa fa-home fa-stack-1x fa-inverse" />
+  <wux-grid label="课程预约"
+    data-item="navPlan"
+    bind:click="toggleGridNav"
+    wux-nav-back="fa-stack fa-lg"
+    wux-nav-circle="fa fa-circle fa-stack-2x"
+    wux-nav-inner="fa fa-calendar-check-o fa-stack-1x fa-inverse" />
+  <wux-grid label="课时查询"
+    data-item="navQuery"
+    bind:click="toggleGridNav"
+    wux-nav-back="fa-stack fa-lg"
+    wux-nav-circle="fa fa-circle fa-stack-2x"
+    wux-nav-inner="fa fa-search fa-stack-1x fa-inverse" />
+  <wux-grid label="考级报名"
+    info="23"
+    data-item="navSign"
+    bind:click="toggleGridNav"
+    wux-nav-back="fa-stack fa-lg"
+    wux-nav-circle="fa fa-circle fa-stack-2x"
+    wux-nav-inner="fa fa-file-text-o fa-stack-1x fa-inverse" />
+  <wux-grid label="宝宝风采"
+    info="33"
+    data-item="navBaby"
+    bind:click="toggleGridNav"
+    wux-nav-back="fa-stack fa-lg"
+    wux-nav-circle="fa fa-circle fa-stack-2x"
+    wux-nav-inner="fa fa-user-o fa-stack-1x fa-inverse" />
+</wux-grids>
+
+<!--<i-notice-bar icon="volume-o" closable loop>
+  2018年世界杯,将于6月14日至7月15日举行
+</i-notice-bar>
+
+<van-icon
+  data-item="navSign"
+  bind:click="toggleGridNav"
+  info="hello"
+  name="like"
+  size="32px"
+/>-->

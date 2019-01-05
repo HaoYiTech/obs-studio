@@ -1,0 +1,8 @@
+{
+  "usingComponents": {
+    "i-notice-bar": "../../view-weapp/notice-bar/index",
+    "van-icon": "../../vant-weapp/icon/index",
+    "wux-grids": "../../wux-weapp/grids/index",
+    "wux-grid": "../../wux-weapp/grid/index"
+  }
+}

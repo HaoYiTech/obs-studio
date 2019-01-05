@@ -1,0 +1,14 @@
+/**app.wxss**/
+
+@import 'style/font-awesome.wxss';
+
+page {
+  color: #333;
+  font-size: 16px;
+  background: #f8f8f8;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 0 0 100rpx;
+  -webkit-font-smoothing: antialiased;
+  font-family: 'PingFang SC', Helvetica, 'STHeiti STXihei', 'Microsoft YaHei', Tohoma, Arial, sans-serif;
+}
