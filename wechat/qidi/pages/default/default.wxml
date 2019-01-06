@@ -55,12 +55,30 @@
 
 <!--<i-notice-bar icon="volume-o" closable loop>
   2018年世界杯,将于6月14日至7月15日举行
-</i-notice-bar>
+</i-notice-bar>-->
 
-<van-icon
+<!--<view class="fa-stack fa-lg">
+  <view class="fa fa-circle-thin fa-stack-2x" />
+  <view class="fa fa-shopping-cart fa-stack-1x" />
+</view>-->
+
+<!--<van-icon
   data-item="navSign"
   bind:click="toggleGridNav"
-  info="hello"
-  name="like"
+  name="shopping-cart-o"
+  color="#f00000"
   size="32px"
+  customStyle="margin: 10px 10px;"
 />-->
+
+<!--购物车带圆圈模式-->
+<!--<view style="position:relative;margin:30px 30px;">
+  <van-icon 
+    name="circle" color="#f44" size="32px"
+    customStyle="position: absolute;"
+  />
+  <van-icon
+    name="shopping-cart-o" color="#f44" size="24px"
+    customStyle="position: absolute;left: 4px;top: 4px;"
+  />
+</view>-->
