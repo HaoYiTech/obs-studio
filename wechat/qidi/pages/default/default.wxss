@@ -1,1 +1,20 @@
 /* pages/default/default.wxss */
+
+.top-area {
+  margin-top: 15rpx;
+}
+.van-left-icon {
+  color: #f44 !important;
+  font-size: 20px !important;
+}
+.van-big-title {
+  font-size: 36rpx;
+  font-weight: 900;
+}
+.van-card {
+  margin-top:2rpx !important;
+  background:#fff !important;
+}
+.van-goods-action {
+  z-index: 100;
+}
