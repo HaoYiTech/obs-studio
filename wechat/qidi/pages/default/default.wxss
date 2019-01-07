@@ -1,5 +1,7 @@
 /* pages/default/default.wxss */
 
+@import '../../style/font-awesome.wxss';
+
 .top-area {
   margin-top: 15rpx;
 }

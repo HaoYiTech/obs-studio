@@ -8,8 +8,27 @@ Page({
     show: {
       middle: false
     },
+    hotTabs: [
+      {
+        text: '热门活动',
+        icon: 'fire',
+        iconSize: '36rpx',
+        iconColor: '#ef473a',
+      },
+      {
+        text: '热门课程',
+        icon: 'fire',
+        iconSize: '36rpx',
+        iconColor: '#ef473a',
+      }
+    ]
   },
-
+  handleChange(event) {
+    wx.showToast({
+      title: `切换到标签 ${event.detail.value + 1}`,
+      icon: 'none'
+    });
+  },
   toggleGridNav(e) {
     console.log(e.currentTarget.dataset['item']);
   },

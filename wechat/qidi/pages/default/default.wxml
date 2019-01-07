@@ -69,6 +69,32 @@
 </wux-grids>
 
 <view class="top-area">
+  <w-tabs bind:onChange="handleChange"
+    textStyles="font-size: 14px;"
+    options="{{ hotTabs }}"
+    activeColor="#ef473a"
+  />
+  <van-card
+    title="少儿才艺启蒙班，启发引导兴趣！"
+    desc="学期：4~5个月 课时：30节"
+    lazy-load="{{ true }}"
+    price="200"
+    origin-price="400"
+    custom-class="van-card"
+    thumb="//img.yzcdn.cn/upload_files/2017/07/02/af5b9f44deaeb68000d7e4a711160c53.jpg"
+  />
+  <van-card
+    title="幼儿科学实验课，体验科学奇幻！"
+    desc="学期：1~2个月 课时：20节"
+    lazy-load="{{ true }}"
+    price="100"
+    origin-price="300"
+    custom-class="van-card"
+    thumb="//img.yzcdn.cn/upload_files/2017/07/02/af5b9f44deaeb68000d7e4a711160c53.jpg"
+  />
+</view>
+
+<!--<view class="top-area">
   <van-cell
     icon="fire"
     icon-class="van-left-icon"
@@ -94,9 +120,9 @@
     custom-class="van-card"
     thumb="//img.yzcdn.cn/upload_files/2017/07/02/af5b9f44deaeb68000d7e4a711160c53.jpg"
   />
-</view>
+</view>-->
 
-<view class="top-area">
+<!--<view class="top-area">
   <van-cell
     icon="fire"
     icon-class="van-left-icon"
@@ -122,7 +148,7 @@
     custom-class="van-card"
     thumb="//img.yzcdn.cn/upload_files/2017/07/02/af5b9f44deaeb68000d7e4a711160c53.jpg"
   />
-</view>
+</view>-->
 
 <!--<i-notice-bar icon="volume-o" closable loop>
   2018年世界杯,将于6月14日至7月15日举行
