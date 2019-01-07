@@ -22,10 +22,20 @@
     <view wx:if="{{ title }}" class="van-card__title van-multi-ellipsis--l2 title-class">{{ title }}</view>
     <slot wx:else name="title" />
 
-    <view wx:if="{{ desc }}" class="van-card__desc van-ellipsis desc-class">{{ desc }}</view>
+    <view wx:if="{{ desc }}" class="van-card__desc van-multi-ellipsis--l1 desc-class">{{ desc }}</view>
     <slot wx:else name="desc" />
 
+    <view wx:if="{{ cardTime }}" class="van-ellipsis van-card__desc van-card__top">{{ cardTime }}</view>
+    <view wx:if="{{ cardAge }}" class="van-ellipsis van-card__desc">{{ cardAge }}</view>
+
     <slot name="tags" />
+
+    <block wx:if="{{ shopCart }}">
+      <view class="van-cart__item">
+        <van-icon name="circle" color="#f44" size="24px" custom-class="van-cart__circle" />
+        <van-icon name="shopping-cart-o" color="#f44" size="18px" custom-class="van-cart__shop" />
+      </view>
+    </block>
 
     <view class="van-card__bottom">
       <view wx:if="{{ price || price === 0 }}" class="van-card__price price-class">{{ currency }} {{ price }}</view>

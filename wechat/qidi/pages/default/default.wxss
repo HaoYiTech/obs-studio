@@ -14,6 +14,7 @@
   font-weight: 900;
 }
 .van-card {
+  padding: 10px 15px !important;
   margin-top:2rpx !important;
   background:#fff !important;
 }

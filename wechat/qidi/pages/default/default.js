@@ -10,13 +10,13 @@ Page({
     },
     hotTabs: [
       {
-        text: '热门活动',
+        text: '热门课程',
         icon: 'fire',
         iconSize: '36rpx',
         iconColor: '#ef473a',
       },
       {
-        text: '热门课程',
+        text: '热门活动',
         icon: 'fire',
         iconSize: '36rpx',
         iconColor: '#ef473a',
