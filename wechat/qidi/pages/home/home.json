@@ -1,0 +1,9 @@
+{
+  "enablePullDownRefresh": false,
+  "usingComponents": {
+    "i-load-more": "../../view-weapp/load-more/index",
+    "wux-grids": "../../wux-weapp/grids/index",
+    "wux-grid": "../../wux-weapp/grid/index",
+    "w-tabs": "../../wuss-weapp/w-tabs/index"
+  }
+}

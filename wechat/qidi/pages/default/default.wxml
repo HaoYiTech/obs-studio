@@ -77,7 +77,7 @@
     card-time="课时数：30"
     card-age="年龄段：3~6岁"
     lazy-load="{{ true }}"
-    shop-cart="{{ true}}"
+    shop-cart="{{ true }}"
     price="200"
     origin-price="400"
     custom-class="van-card"

@@ -1,11 +1,11 @@
 {
   "pages":[
-    "pages/default/default",
+    "pages/home/home",
     "pages/person/person"
   ],
   "window":{
     "navigationBarBackgroundColor": "#fff",
-    "navigationBarTitleText": "启迪未来双师",
+    "navigationBarTitleText": "启迪云",
     "navigationBarTextStyle":"black",
     "backgroundColor": "#eee",
     "backgroundTextStyle":"dark",
@@ -17,7 +17,7 @@
     "selectedColor": "#0099e9",
     "list": [
       {
-        "pagePath": "pages/default/default",
+        "pagePath": "pages/home/home",
         "iconPath": "images/home.png",
         "selectedIconPath": "images/home_focus.png",
         "text": "首页"

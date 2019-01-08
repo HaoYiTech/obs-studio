@@ -1,0 +1,42 @@
+<!--pages/home/home.wxml-->
+
+<block wx:if="{{ showLoading }}">
+  <view class="home-load">
+    <view class="fa fa-cog fa-spin fa-2x"></view>
+  </view>
+</block>
+
+<wux-grids col="4" bordered="{{ false }}" wux-class="home-top-area">
+  <wux-grid label="课程预约"
+    data-item="navPlan"
+    bind:click="toggleGridNav"
+    wux-nav-back="fa-stack fa-lg"
+    wux-nav-circle="fa fa-circle fa-stack-2x"
+    wux-nav-inner="fa fa-calendar-check-o fa-stack-1x fa-inverse" />
+  <wux-grid label="课时查询"
+    data-item="navQuery"
+    bind:click="toggleGridNav"
+    wux-nav-back="fa-stack fa-lg"
+    wux-nav-circle="fa fa-circle fa-stack-2x"
+    wux-nav-inner="fa fa-search fa-stack-1x fa-inverse" />
+  <wux-grid label="考级报名"
+    data-item="navSign"
+    bind:click="toggleGridNav"
+    wux-nav-back="fa-stack fa-lg"
+    wux-nav-circle="fa fa-circle fa-stack-2x"
+    wux-nav-inner="fa fa-file-text-o fa-stack-1x fa-inverse" />
+  <wux-grid label="宝宝风采"
+    data-item="navBaby"
+    bind:click="toggleGridNav"
+    wux-nav-back="fa-stack fa-lg"
+    wux-nav-circle="fa fa-circle fa-stack-2x"
+    wux-nav-inner="fa fa-user-o fa-stack-1x fa-inverse" />
+</wux-grids>
+
+<view class="home-top-area">
+  <w-tabs bind:onChange="handleChange"
+    textStyles="font-size: 14px;"
+    options="{{ hotTabs }}"
+    activeColor="#ef473a"
+  />
+</view>

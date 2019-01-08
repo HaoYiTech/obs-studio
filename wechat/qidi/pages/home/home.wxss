@@ -1,0 +1,15 @@
+/* pages/home/home.wxss */
+
+@import '../../style/font-awesome.wxss';
+
+.home-load {
+  display: flex;
+  color: #0099e9;
+  padding: 280rpx 0;
+  align-items: center;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.home-top-area {
+  margin-top: 15rpx;
+}
