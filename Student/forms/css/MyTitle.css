@@ -1,0 +1,44 @@
+
+*{font-family:Microsoft YaHei;}
+
+/*标题文字颜色*/
+QLabel#TitleContent
+{
+    color: white;
+	font-size: 14px;
+}
+
+/*最小化按钮*/
+QPushButton#ButtonMin
+{
+    border-image:url(:/login/images/login/min.png) 0 60 0 0 ;
+}
+
+QPushButton#ButtonMin:hover
+{
+    border-image:url(:/login/images/login/min.png) 0 30 0 30 ;
+}
+
+QPushButton#ButtonMin:pressed
+{
+    border-image:url(:/login/images/login/min.png) 0 0 0 60 ;
+}
+
+/*关闭按钮*/
+QPushButton#ButtonClose
+{
+    border-image:url(:/login/images/login/close.png) 0 60 0 0 ;
+    border-top-right-radius:3 ;
+}
+
+QPushButton#ButtonClose:hover
+{
+    border-image:url(:/login/images/login/close.png) 0 30 0 30 ;
+    border-top-right-radius:3 ;
+}
+
+QPushButton#ButtonClose:pressed
+{
+    border-image:url(:/login/images/login/close.png) 0 0 0 60 ;
+    border-top-right-radius:3 ;
+}

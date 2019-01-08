@@ -30,6 +30,13 @@ enum CAMERA_STATE
 	kCameraRec = 2,			// 录像中
 };
 
+// define Mini QRCode type...
+enum {
+	kQRCodeShop       = 1,  // 门店小程序码
+	kQRCodeStudent    = 2,  // 学生端小程序码
+	kQRCodeTeacher    = 3,  // 讲师端小程序码
+};
+
 // define client type...
 enum {
 	kClientPHP         = 1,

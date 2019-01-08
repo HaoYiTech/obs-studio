@@ -74,7 +74,6 @@ tags
 *.opensdf
 *.xml
 *.ipch
-*.css
 *.xslt
 *.aps
 *.suo
@@ -100,3 +99,5 @@ enc-amf
 obs-vst
 obs-browser
 *_autogen
+
+config.inc.php
