@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- 上述3个meta标签*必须*放在最前面，任何其他内容都*必须*跟随其后！ -->
+  <title>{{$my_system.web_title}} - 微信登录</title>
+  <!-- layui css and javascript -->
+  <link href="/wxapi/public/layui/css/layui.css" rel="stylesheet" media="all">
+  <script src="/wxapi/public/layui/layui.js"></script>  
+</head>
+
+<style>
+.layui-form-item {
+  margin-bottom: 10px;
+}
+.user_img {
+  margin-bottom: 10px;
+}
+.user_img img {
+  width: 100px;
+  height: 100px;
+  margin-bottom: 10px;
+}
+</style>
+
+<body>
+
+<div class="layui-field-box">
+  <form class="layui-form layui-form-pane" action="">
+    <div class="layui-form-item user_img" style="text-align:center;">
+      <img class="layui-circle" src="{{$my_login.wx_headurl|str_replace='/0','/96',###}}" onerror="doErrUser();"></img>
+      <p>{{$my_login.wx_nickname}}</p>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">性 别</label>
+      <div class="layui-input-block">
+        <label class="layui-form-label" style="width:100%">
+        {{$my_login.wx_sex}}
+        </label>
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">语 言</label>
+      <div class="layui-input-block">
+        <label class="layui-form-label" style="width:100%">
+        {{$my_login.wx_language}}
+        </label>
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">国家地区</label>
+      <div class="layui-input-block">
+        <label class="layui-form-label" style="width:100%">
+        {{$my_login.wx_country}}&nbsp;{{$my_login.wx_province}}&nbsp;{{$my_login.wx_city}}
+        </label>
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">用户类型</label>
+      <div class="layui-input-block">
+        <label class="layui-form-label" style="width:100%">
+        {{$my_login.user_type}}
+        </label>
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">最近登录</label>
+      <div class="layui-input-block">
+        <label class="layui-form-label" style="width:100%">
+        {{$my_login.update_time}}
+        </label>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+// 处理用户头像无法加载的问题...
+function doErrUser() {
+  var img = event.srcElement; // 获取事件对象...
+  img.src  = "/wxapi/public/images/man.jpg"; 
+  img.onerror = null; // 控制不要一直跳动
+}
+</script>
+
+</body>
+</html>

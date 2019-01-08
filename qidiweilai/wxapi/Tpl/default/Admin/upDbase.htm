@@ -1,0 +1,45 @@
+
+<blockquote class="layui-elem-quote">
+ 升级说明：只把数据表结构跟服务器同步升级，不会改变原数据记录；<br>
+ 升级方式：可以单独对某个特定数据表升级，也可以一次性全部升级；<br>
+ 升级次数：可以多次动态反复升级，不会影响正在使用中的网站系统；<br>
+</blockquote>
+
+<table class="layui-table">
+  <colgroup>
+    <col width="15%">
+    <col width="15%">
+    <col width="15%">
+    <col width="15%">
+    <col width="15%">
+    <col width="15%">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>表结构名称</th>
+      <th>远程大小</th>
+      <th>本地大小</th>
+      <th>远程日期</th>
+      <th>本地日期</th>
+      <th style="text-align:center">升级操作</th>
+    </tr>
+  </thead>
+  <tbody id="tDbase">
+    <volist name="my_dbase" id="vo">
+    <tr>
+      <td>{{$vo.name}}</td>
+      <td>{{$vo.size}}</td>
+      <td>{{$vo.localSize}}</td>
+      <td>{{$vo.time}}</td>
+      <td>{{$vo.localTime}}</td>
+      <td style="text-align:center">
+        <button class="layui-btn" onclick="doUpTable('{{$vo.name}}',this);">立即升级</button>
+        <!--<gt name='vo.needUpgrade' value='0'><i class="fa fa-check-circle-o feed-same">&nbsp;&nbsp;已是最新版本</i></gt>-->
+      </td>
+    </tr>
+    </volist>
+  </tbody>
+</table>
+<div class="feed-all">
+  <button class="layui-btn js_btn_all" onclick="doUpAll();">升级全部数据表</button>
+</div>

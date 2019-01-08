@@ -1,0 +1,251 @@
+
+<include file = "Common:admin_header" />
+
+<style>
+.btn-del {
+  float: left;
+  margin: 10px 15px 10px 0px;
+  background-color: #FF1100;
+}
+</style>
+
+<!-- 中心数据区 -->
+<div class="layui-tab layui-tab-brief">
+  <div class="layui-body layui-tab-content site-demo">
+    <div class="layui-tab-item layui-show">
+      <div class="layui-main">
+        <fieldset class="layui-elem-field layui-field-title">
+          <legend><i class="fa fa-film">&nbsp;录像管理</i></legend>
+        </fieldset>
+        <span class="layui-breadcrumb">
+          <a><cite>录像列表</cite></a>
+          <a><cite id="myTotal">共 {{$my_total_num}} 条记录</cite></a>
+        </span>
+        <div class="layui-form" style="margin-top:10px;width:100%">
+          <table class="layui-table">
+            <colgroup>
+              <col width="5%">
+              <col width="15%">
+              <col width="8%">
+              <col width="8%">
+              <col width="10%">
+              <col width="20%">
+              <col>
+            </colgroup>
+            <thead>
+              <tr>
+                <th><input id="myAll" type="checkbox" lay-skin="primary" lay-filter="allChoose"></th>
+                <th>所在通道</th>
+                <th>播放时长</th>
+                <th>播放次数</th>
+                <th>文件大小</th>
+                <th>文件名称</th>
+                <th>录制时间</th>
+              </tr> 
+            </thead>
+            <tbody class="js_vod">
+            </tbody>
+          </table>
+          <div style="display: inline-block;">
+            <button class="layui-btn layui-btn-small btn-del" onclick="doDelVod();">
+              <i class="layui-icon">&#xe640;&nbsp;删除选中</i>
+            </button>
+            <div style="float:left;" id="myPage"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+//
+// 获取网站地址...
+var siteurl="{{:__APP__}}";
+var g_cur_page = 0;
+//
+// 处理图片无法加载的问题...
+function doErrHead() {
+  var img = event.srcElement; // 获取事件对象...
+  img.src  = "/wxapi/public/images/blank.gif"; 
+  img.onerror = null; // 控制不要一直跳动
+}
+//
+// 点击某一行事件...
+function doTrClick(inVodID, objTr) {
+  // 为了兼容IE8，只能用srcElement获取对象信息...
+  // 如果是第一个td或者是td里的checkbox，直接返回...
+  var $ = layui.jquery;
+  if( $(event.srcElement).hasClass('layui-icon') || event.srcElement.cellIndex == 0 ) {
+    return false;
+  }
+  // 先弹框，然后将背景色进行修改...
+  var index = layer.load(2);
+  $(objTr).css('background-color', '#87CEFA').siblings().css('background-color', '#FFFFFF');
+  // 异步获取通道信息...
+  $.ajaxSetup({ cache:false });
+  $.ajax({
+    type: "get",
+    async: true,
+    url: siteurl+"/Admin/getVod/record_id/"+inVodID,
+    success: function(ajaxData) {
+      layer.closeAll('loading');
+      layer.open({
+        type: 1, //0(dialog), 1(page), 2(iframe), 3(loading), 4(tips)
+        closeBtn: 1,
+        fixed: true,
+        shadeClose: false,
+        area: ['500px', '550px'],
+        title: "<i class='fa fa-film'>&nbsp;&nbsp;编辑 - 录像记录</i>",
+        content: ajaxData,
+        success: function() {
+          var form = layui.form;
+          form.render();
+          // 这里必须调用render才能显示select...
+          form.on('submit(formVod)', function(data) {
+            // 云监控模式...
+            var theCameraID = data.field.myCamera;
+            var theCameraName = $("select[name='myCamera']").find("option:selected").text();
+            if( theCameraID <= 0 ) {
+              layer.msg('【所在通道】不能为空，请更正！', {icon: 2});
+              return false;
+            }
+            // 发送摄像头数据，通过ajax异步发送存盘命令...
+            layer.load(2);
+            $.ajax({
+              type: "post",
+              async: true,
+              url: siteurl+"/Admin/saveVod",
+              data: {record_id: inVodID, camera_id: theCameraID},
+              success: function(ajaxData) {
+                layer.closeAll('loading');
+                layer.msg('恭喜！保存成功！', {icon: 1,time: 1000}, function() {
+                  // 云监控模式...
+                  $(objTr).children('td').eq(1).text(theCameraName);
+                  layer.closeAll('page');
+                });
+              },
+              error: function(XMLHttpRequest, textStatus, errorThrown) {
+                layer.closeAll('loading');
+                layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+              }
+            });
+            // 避免form自动跳转...
+            return false;
+          });
+          // 点击取消操作...
+          $('.js_form_close').unbind("click").click( function() {
+            layer.closeAll('page');
+          });
+        }
+      });
+    },
+    error: function(XMLHttpRequest, textStatus, errorThrown) {
+      layer.closeAll('loading');
+      layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+    }
+  });
+}
+//
+// 处理获取页面数据...
+function doGetPageVod(cur_page, total_num) {
+  var laypage = layui.laypage;
+  var layer = layui.layer;
+  var form = layui.form;
+  var $ = layui.jquery;
+  laypage.render({
+    count: total_num,   // 总记录数...
+    curr: cur_page,     // 当前页码...
+    elem: 'myPage',     // 分页对象...
+    groups: 5,          // 连续显示分页数
+    jump: function(obj, first) {
+      // 记录当前分页，向服务器发送分页命令...
+      g_cur_page = obj.curr;
+      var index = layer.load(2);
+      $.ajaxSetup({ cache:false });
+      $.ajax({
+        type: "get",
+        async: true,
+        url: siteurl+"/Admin/pageVod/p/"+obj.curr,
+        success: function(ajaxData) {
+          layer.closeAll('loading');
+          $('.js_vod').html(ajaxData);
+          $('#myAll').attr('checked', false); 
+          $('tbody tr').css('cursor','pointer');
+          form.render('checkbox');
+        },
+        error: function(XMLHttpRequest, textStatus, errorThrown) {
+          layer.closeAll('loading');
+          layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+        }
+      });
+    }
+  });
+}
+//
+// 处理删除记录事件...
+function doDelVod() {
+  var strList = "";
+  var $ = layui.jquery;
+  var child = $('#myAll').parents('table').find('tbody input[type="checkbox"]');
+  // 遍历所有节点，组合要删除的节点列表...
+  child.each(function(index, item){
+    if( item.checked ) {
+      strList += item.id.split('_')[1];
+      strList += ',';
+    }
+  });
+  // 判断数据的有效性...
+  if( strList.length <= 0 ) {
+    layer.msg('请先选择要删除的记录！', {anim: 6});
+    return;
+  }
+  // 去除最后一个分号...
+  strList = strList.substring(0, strList.length - 1);
+  layer.confirm('确实要删除选中的记录吗？', {icon: 3, title: '删除询问'}, function(index){
+    // 先关闭当前询问框，打开等待框...
+    layer.close(index);
+    layer.load(2);
+    // 向服务器发送删除记录指令，返回当前分页内容...
+    $.ajaxSetup({ cache:false });
+    $.ajax({
+      type: "post",
+      async: true,
+      url: siteurl+"/Admin/delVod",
+      data: {page: g_cur_page, list: strList},
+      success: function(ajaxData) {
+        layer.closeAll('loading');
+        // 解析返回的当前页码和总页面数...
+        var arrJson = $.parseJSON(ajaxData);
+        doGetPageVod(arrJson.curr, arrJson.total);
+        // 更新删除后的记录总数...
+        $('#myTotal').text("共 "+arrJson.total+" 条记录");
+      },
+      error: function(XMLHttpRequest, textStatus, errorThrown) {
+        layer.closeAll('loading');
+        layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+      }
+    });
+  });
+}
+//
+// 处理 layui 过程 => checkbox 必须配合 layui-form 使用...
+layui.use(['element','laypage','layer','form'], function(){
+  var total_num = {{$my_total_num}};
+  var form = layui.form;
+  var $ = layui.jquery;
+  // 获取分页数据...
+  doGetPageVod(1, total_num);
+  // 点击全选需要响应的操作...
+  form.on('checkbox(allChoose)', function(data){
+    var child = $(data.elem).parents('table').find('tbody input[type="checkbox"]');
+    child.each(function(index, item){
+      item.checked = data.elem.checked;
+    });
+    form.render('checkbox');
+  });
+});
+
+</script>
+
+<include file = "Common:admin_footer" />

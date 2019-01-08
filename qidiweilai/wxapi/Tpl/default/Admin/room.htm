@@ -1,0 +1,442 @@
+
+<include file = "Common:admin_header" />
+
+<script src="/wxapi/public/js/jquery-1.12.4.min.js" language="javascript"></script>
+<script src="/wxapi/public/js/jquery.jedate.js" language="javascript"></script>
+<link href="/wxapi/public/css/jedate.css" type="text/css" rel="stylesheet">
+
+<style>
+.btn-del {
+  float: left;
+  margin: 10px 15px 10px 0px;
+  background-color: #FF1100;
+}
+.btn-add {
+  margin-right: 5px;
+}
+.layui-form-item {
+  margin-bottom: 10px;
+}
+.date-datainp {
+  border:1px #A5D2EC solid;
+}
+.date-wicon {
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAAQCAYAAADj5tSrAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAABZ0RVh0Q3JlYXRpb24gVGltZQAwNi8xNS8xNGnF/oAAAAAcdEVYdFNvZnR3YXJlAEFkb2JlIEZpcmV3b3JrcyBDUzVxteM2AAAAoElEQVQ4jWPceOnNfwYqAz9dYRQ+E7UtwAaGjyUsDAyYYUgJ2HT5LXZLcEmSCnA6duOlN///////H0bDALl8dPH/////Z8FuNW6Qtvw2nL3lyjsGBgYGhlmRqnj1kGwJuqHIlhJlCXq8EOITEsdqCXLEbbr8FisfFkTo+vBZRFZwERNEFFkCiw90nxJtCalxQmzegltCzVyP1RJq5HZ8AABuNZr0628DMwAAAABJRU5ErkJggg==");
+  background-repeat: no-repeat;
+  background-position: right center;
+}
+.date-workinput {
+  width: 160px;
+  line-height: 32px;
+  border: 1px #A5D2EC solid;
+  border-radius: 4px;
+  font-size: 14px;
+  padding: 2px 5px;
+}
+</style>
+
+<!-- 中心数据区 -->
+<div class="layui-tab layui-tab-brief">
+  <div class="layui-body layui-tab-content site-demo">
+    <div class="layui-tab-item layui-show">
+      <div class="layui-main">
+        <fieldset class="layui-elem-field layui-field-title">
+          <legend><i class="fa fa-video-camera">&nbsp;教室管理</i></legend>
+        </fieldset>
+        <span class="layui-breadcrumb">
+          <a><cite>教室列表</cite></a>
+          <a><cite id="myTotal">共 {{$my_total_num}} 条记录</cite></a>
+        </span>
+        <div class="layui-form" style="margin-top:10px;width:100%">
+          <table class="layui-table">
+            <colgroup>
+              <col width="5%">
+              <col width="10%">
+              <col width="10%">
+              <col width="15%">
+              <col width="15%">
+              <col width="15%">
+              <col width="15%">
+              <col width="15%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th><input id="myAll" type="checkbox" lay-skin="primary" lay-filter="allChoose"></th>
+                <th>状态</th>
+                <th>编号</th>
+                <th>教室名称</th>
+                <th>授课科目</th>
+                <th>授课讲师</th>
+                <th>开始时间</th>
+                <th>结束时间</th>
+              </tr> 
+            </thead>
+            <tbody class="js_room"></tbody>
+          </table>
+          <div style="display: inline-block;">
+            <button class="layui-btn layui-btn-small btn-add" onclick="doAddRoom();">
+              <i class="layui-icon">&#xe61f;&nbsp;添加</i>
+            </button>
+            <button class="layui-btn layui-btn-small btn-del" onclick="doDelRoom();">
+              <i class="layui-icon">&#xe640;&nbsp;删除选中</i>
+            </button>
+            <div style="float:left;" id="myPage"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+//
+// 获取网站地址...
+var siteurl="{{:__APP__}}";
+var g_cur_page = 0;
+
+// 处理海报截图无法加载的问题...
+function doErrImg() {
+  var img = event.srcElement; // 获取事件对象...
+  img.src  = "/wxapi/public/images/blank.gif";
+  img.onerror = null; // 控制不要一直跳动
+  img.className = ''; 
+}
+//
+// 点击某一行事件...
+function doTrClick(inRoomID, objTr) {
+  // 为了兼容IE8，只能用srcElement获取对象信息...
+  // 如果是第一个td或者是td里的checkbox，直接返回...
+  var $ = layui.jquery;
+  if( $(event.srcElement).hasClass('layui-icon') || event.srcElement.cellIndex == 0 ) {
+    return false;
+  }
+  // 向服务器发送直播状态查看命令...
+  var index = layer.load(2);
+  var nLiveRoomID = {{$my_begin_id}} + inRoomID;
+  // 先将背景色进行修改...
+  $(objTr).css('background-color', '#87CEFA').siblings().css('background-color', '#FFFFFF');
+  // 异步获取通道信息...
+  $.ajaxSetup({ cache:false });
+  $.ajax({
+    type: "get",
+    async: true,
+    url: siteurl+"/Admin/getRoom/room_id/"+inRoomID,
+    success: function(ajaxData) {
+      layer.closeAll('loading');
+      layer.open({
+        type: 1, //0(dialog), 1(page), 2(iframe), 3(loading), 4(tips)
+        closeBtn: 1,
+        fixed: true,
+        shadeClose: false,
+        area: ['510px', '625px'],
+        title: "<i class='fa fa-video-camera'>&nbsp;&nbsp;</i>编辑 - 直播教室 - " + nLiveRoomID,
+        content: ajaxData,
+        success: function() {
+          // 点击上传海报的操作...
+          var upload = layui.upload;
+          upload.render({
+            accept: 'file',
+            elem: '#myUpload',
+            exts: 'jpg|png|jpeg|gif',
+            url: siteurl+"/Admin/upload/room_id/"+inRoomID,
+            done: function(res) {
+              // 发生错误，弹出错误信息框...
+              if(res.code > 0 || res.err_code > 0) {
+                return layer.msg('上传失败：' + res.err_msg, {icon: 2});
+              }
+              // 没有错误，更新海报图片地址信息...
+              $('#myPoster').attr('src', res.poster_fdfs+'_200x300');
+            }
+          });
+          // 更新开始日期，设置日期格式...
+          $("input[name='myStartTime']").jeDate({
+            zIndex: 119891016,
+            isinitVal: false,
+            format: "YYYY-MM-DD hh:mm:ss",
+          });
+          // 更新结束日期，设置日期格式...
+          $("input[name='myEndTime']").jeDate({
+            zIndex: 119891016,
+            isinitVal: false,
+            format: "YYYY-MM-DD hh:mm:ss",
+          });
+          // 针对form的操作处理...
+          var form = layui.form;
+          form.render();
+          // 这里必须调用render才能显示select...
+          form.on('submit(formRoom)', function(data) {
+            // 定义post发送数组集合...
+            var arrData = new Object();
+            arrData['room_id'] = inRoomID;
+            arrData['room_name'] = data.field.myRoomName;
+            arrData['start_time'] = data.field.myStartTime;
+            arrData['end_time'] = data.field.myEndTime;
+            arrData['teacher_id'] = data.field.myRoomTeacher;
+            arrData['subject_id'] = data.field.myRoomSubject;
+            var strRealName = $("select[name='myRoomTeacher']").find("option:selected").text();
+            var strSubjectName = $("select[name='myRoomSubject']").find("option:selected").text();
+            // 授课讲师或授课科目不能为空...
+            if(arrData['teacher_id'] <= 0 || arrData['subject_id'] <= 0) {
+              layer.msg('【授课科目】和【授课讲师】不能为空！', {icon: 2,shade: 0.2});
+              return false;
+            }
+            // 结束时间必须大于开始时间...
+            if(arrData['start_time'] >= arrData['end_time']) {
+              layer.msg('直播【结束时间】必须大于【开始时间】', {icon: 2,shade: 0.2});
+              return false;
+            }
+            // 发送摄像头数据，通过ajax异步发送存盘命令...
+            layer.load(2);
+            $.ajax({
+              type: "post",
+              async: true,
+              data: arrData,
+              url: siteurl+"/Admin/modRoom",
+              success: function(ajaxData) {
+                layer.closeAll('loading');
+                layer.msg('恭喜！保存成功！', {icon: 1,time: 1000,shade: 0.2}, function() {
+                  layer.closeAll('page');
+                  // 对话框页面关闭之后的记录操作...
+                  $(objTr).children('td').eq(3).text(arrData['room_name']);
+                  $(objTr).children('td').eq(4).text(strSubjectName);
+                  $(objTr).children('td').eq(5).text(strRealName.split('-')[0]);
+                  $(objTr).children('td').eq(6).text(arrData['start_time']);
+                  $(objTr).children('td').eq(7).text(arrData['end_time']);
+                });
+              },
+              error: function(XMLHttpRequest, textStatus, errorThrown) {
+                layer.closeAll('loading');
+                layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+              }
+            });
+            // 否则，form会自动跳转...
+            return false;
+          });
+          // 点击取消操作...
+          $('.js_form_close').unbind("click").click( function() {
+            layer.closeAll('page');
+          });
+        }
+      });
+    },
+    error: function(XMLHttpRequest, textStatus, errorThrown) {
+      layer.closeAll('loading');
+      layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+    }
+  });
+}
+//
+// 处理添加记录事件...
+function doAddRoom() {
+  // 异步添加通道信息...
+  var index = layer.load(2);
+  var $ = layui.jquery;
+  var thePosterID = 0;
+  $.ajaxSetup({ cache:false });
+  $.ajax({
+    type: "get",
+    async: true,
+    url: siteurl+"/Admin/getRoom",
+    success: function(ajaxData) {
+      layer.closeAll('loading');
+      layer.open({
+        type: 1, //0(dialog), 1(page), 2(iframe), 3(loading), 4(tips)
+        closeBtn: 1,
+        fixed: true,
+        shadeClose: false,
+        area: ['510px', '625px'],
+        title: "<i class='fa fa-video-camera'>&nbsp;&nbsp;</i>添加 - 直播教室",
+        content: ajaxData,
+        success: function() {
+          // 点击上传海报的操作...
+          var upload = layui.upload;
+          upload.render({
+            accept: 'file',
+            elem: '#myUpload',
+            exts: 'jpg|png|jpeg|gif',
+            url: siteurl+"/Admin/upload/poster_id/"+thePosterID,
+            done: function(res) {
+              // 发生错误，弹出错误信息框...
+              if(res.code > 0 || res.err_code > 0) {
+                return layer.msg('上传失败：' + res.err_msg, {icon: 2});
+              }
+              // 没有错误，更新海报图片地址信息，保存最新的海报编号...
+              $('#myPoster').attr('src', res.poster_fdfs+'_200x300');
+              thePosterID = res.poster_id;
+            }
+          });
+          // 更新开始日期，设置日期格式...
+          $("input[name='myStartTime']").jeDate({
+            zIndex: 119891016,
+            isinitVal: true,
+            format: "YYYY-MM-DD hh:mm:ss",
+          });
+          // 更新结束日期，设置日期格式...
+          $("input[name='myEndTime']").jeDate({
+            zIndex: 119891016,
+            isinitVal: true,
+            format: "YYYY-MM-DD hh:mm:ss",
+          });
+          // 设置房间名称为焦点...
+          $("input[name='myRoomName']").focus();
+          // 针对form的操作处理...
+          var form = layui.form;
+          form.render();
+          // 这里必须调用render才能显示select...
+          form.on('submit(formRoom)', function(data) {
+            // 定义post发送数组集合...
+            var arrData = new Object();
+            arrData['poster_id'] = thePosterID;
+            arrData['room_name'] = data.field.myRoomName;
+            arrData['start_time'] = data.field.myStartTime;
+            arrData['end_time'] = data.field.myEndTime;
+            arrData['teacher_id'] = data.field.myRoomTeacher;
+            arrData['subject_id'] = data.field.myRoomSubject;
+            // 授课讲师或授课科目不能为空...
+            if(arrData['teacher_id'] <= 0 || arrData['subject_id'] <= 0) {
+              layer.msg('【授课科目】和【授课讲师】不能为空！', {icon: 2,shade: 0.2});
+              return false;
+            }
+            // 结束时间必须大于开始时间...
+            if(arrData['start_time'] >= arrData['end_time']) {
+              layer.msg('直播【结束时间】必须大于【开始时间】', {icon: 2,shade: 0.2});
+              return false;
+            }
+            // 向服务器发送添加通道命令...
+            layer.load(2);
+            $.ajax({
+              type: "post",
+              async: true,
+              data: arrData,
+              url: siteurl+"/Admin/addRoom",
+              success: function(ajaxData) {
+                layer.closeAll('loading');
+                layer.msg('恭喜！保存成功！', {icon: 1,time: 1000,shade: 0.2}, function() {
+                  layer.closeAll('page');
+                  location.href = siteurl+"/Admin/room";
+                });
+              },
+              error: function(XMLHttpRequest, textStatus, errorThrown) {
+                layer.closeAll('loading');
+                layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+              }
+            });
+            // 否则，form会自动跳转...
+            return false;
+          });
+          // 点击取消操作...
+          $('.js_form_close').unbind("click").click( function() {
+            layer.closeAll('page');
+          });
+        }
+      });
+    },
+    error: function(XMLHttpRequest, textStatus, errorThrown) {
+      layer.closeAll('loading');
+      layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+    }
+  });
+}
+//
+// 处理删除记录事件...
+function doDelRoom() {
+  var strList = "";
+  var $ = layui.jquery;
+  var child = $('#myAll').parents('table').find('tbody input[type="checkbox"]');
+  // 遍历所有节点，组合要删除的节点列表...
+  child.each(function(index, item){
+    if( item.checked ) {
+      strList += item.id.split('_')[1];
+      strList += ',';
+    }
+  });
+  // 判断数据的有效性...
+  if( strList.length <= 0 ) {
+    layer.msg('请先选择要删除的记录！', {icon: 2,anim: 6,shade: 0.2});
+    return;
+  }
+  // 去除最后一个分号...
+  strList = strList.substring(0, strList.length - 1);
+  layer.confirm('确实要删除选中的记录吗？', {icon: 3, title: '删除询问'}, function(index){
+    // 先关闭当前询问框，打开等待框...
+    layer.close(index);
+    layer.load(2);
+    // 向服务器发送删除记录指令，返回当前分页内容...
+    $.ajaxSetup({ cache:false });
+    $.ajax({
+      type: "post",
+      async: true,
+      url: siteurl+"/Admin/delRoom",
+      data: {page: g_cur_page, list: strList},
+      success: function(ajaxData) {
+        layer.closeAll('loading');
+        // 解析返回的当前页码和总页面数...
+        var arrJson = $.parseJSON(ajaxData);
+        doGetPageRoom(arrJson.curr, arrJson.total);
+        // 更新删除后的记录总数...
+        $('#myTotal').text("共 "+arrJson.total+" 条记录");
+      },
+      error: function(XMLHttpRequest, textStatus, errorThrown) {
+        layer.closeAll('loading');
+        layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+      }
+    });
+  });
+}
+//
+// 处理获取页面数据...
+function doGetPageRoom(cur_page, total_num) {
+  var laypage = layui.laypage;
+  var layer = layui.layer;
+  var form = layui.form;
+  var $ = layui.jquery;
+  laypage.render({
+    count: total_num,   // 总记录数...
+    curr: cur_page,     // 当前页码...
+    elem: 'myPage',     // 分页对象...
+    groups: 5,          // 连续显示分页数
+    jump: function(obj, first) {
+      // 记录当前分页，向服务器发送分页命令...
+      g_cur_page = obj.curr;
+      var index = layer.load(2);
+      $.ajaxSetup({ cache:false });
+      $.ajax({
+        type: "get",
+        async: true,
+        url: siteurl+"/Admin/pageRoom/p/"+obj.curr,
+        success: function(ajaxData) {
+          layer.closeAll('loading');
+          $('.js_room').html(ajaxData);
+          $('#myAll').attr('checked', false); 
+          $('tbody tr').css('cursor','pointer');
+          form.render('checkbox');
+        },
+        error: function(XMLHttpRequest, textStatus, errorThrown) {
+          layer.closeAll('loading');
+          layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+        }
+      });    
+    }
+  });
+}
+//
+// 处理 layui 过程 => checkbox 必须配合 layui-form 使用...
+layui.use(['element','laypage','layer','form','upload'], function(){
+  var total_num = {{$my_total_num}};
+  var form = layui.form;
+  var $ = layui.jquery;
+  // 获取分页数据...
+  doGetPageRoom(1, total_num);
+  // 点击全选需要响应的操作...
+  form.on('checkbox(allChoose)', function(data){
+    var child = $(data.elem).parents('table').find('tbody input[type="checkbox"]');
+    child.each(function(index, item){
+      item.checked = data.elem.checked;
+    });
+    form.render('checkbox');
+  });
+});
+
+</script>
+
+<include file = "Common:admin_footer" />

@@ -1,0 +1,56 @@
+
+<volist name="my_list" id="vo">
+<div class="comment-item">
+  <div class="comment-body">
+    <div class="comment-img">
+      <img class="loading" src="{{$vo.wx_headurl|str_replace='/0','/96',###}}" onload="doHeadLoad();" onerror="doErrUser();">
+    </div>
+    <div class="comment-main">
+      <div class="comment-header">
+        <div class="comment-name">{{$vo.wx_nickname}}</div>
+        <div class="comment-time">{{$vo.created}}</div>
+      </div>
+      <div class="comment-content">{{$vo.content}}</div>
+      <div class="comment-button">
+        <div class="comment-like">
+          <div id="myIconUp" class="fa fa-thumbs-up feed-hand <eq name='vo.is_like' value='1'>feed-like</eq>"
+             <if condition="$my_is_login gt 0">onclick="doLike(this,{{$vo.comment_id}},2,1);"
+            <else />onclick="javascript:doLogin();"
+            </if> ></div>
+          <div id="myLikes" class="comment-text"><gt name='vo.likes' value='0'>{{$vo.likes}}</gt></div>                  
+        </div>
+        <div class="comment-like">
+          <div id="myIconDown" class="fa fa-thumbs-down feed-hand <eq name='vo.is_like' value='0'>feed-like</eq>"
+              <if condition="$my_is_login gt 0">onclick="doLike(this,{{$vo.comment_id}},2,0);"
+             <else />onclick="javascript:doLogin();"
+             </if> ></div>
+          <div id="myKicks" class="comment-text"><gt name='vo.kicks' value='0'>{{$vo.kicks}}</gt></div>                  
+        </div>
+        <div class="comment-like feed-hand" <if condition="$my_is_login gt 0">onclick="doReply(this,{{$vo.comment_id}});"<else />onclick="javascript:doLogin();"</if> >
+          <div class="comment-text">回复</div>
+        </div>
+        <gt name='vo.can_del' value='0'>
+        <div class="comment-like feed-hand removeBlock" onclick="doDelComment(this,{{$vo.comment_id}});">
+          <div class="comment-text">删除</div>
+        </div>
+        </gt>
+      </div>
+    </div>
+  </div>
+  <gt name='vo.childs' value='0'>
+  <div class="comment-expand">
+    <div class="feed-hand" id="myShowReply" onclick="doExChild(this,{{$vo.comment_id}},{{$vo.childs}});">
+      <div class="comment-reply">查看所有</div>
+      <div class="comment-reply js-child-size">{{$vo.childs}}</div>
+      <div class="comment-reply">条回复</div>
+      <div class="fa fa-chevron-down comment-arrow"></div>
+    </div>
+    <div class="feed-hand" id="myHideReply" onclick="doExChild(this,{{$vo.comment_id}},{{$vo.childs}});" style="display: none">
+      <div class="comment-reply">隐藏回复</div>
+      <div class="fa fa-chevron-up comment-arrow"></div>
+    </div>
+    <div id="myChild" style="display:none"></div>
+  </div>
+  </gt>
+</div>
+</volist>

@@ -1,0 +1,16 @@
+
+<!-- 移动入口 -->
+<li role="presentation"><a href="javascript:doMobile();">手机</a></li>
+<if condition="$my_nav.is_login gt 0">
+<!-- 头像 -->
+<li role="presentation" style="float:right;">
+  <a href="javascript:doUserInfo();">
+    <img class="loading" width="36px" height="36px" src="{{$my_nav.headurl|str_replace='/0','/96',###}}" onload="doHeadLoad();" onerror="doErrUser();">
+  </a>
+</li>
+<!-- 注销 -->
+<li role="presentation" style="float:right;"><a href="javascript:doLogout();">退出</a></li>
+<else />
+<!-- 登录 -->
+<li role="presentation" style="float:right;"><a href="javascript:doLogin();">登录</a></li>
+</if>

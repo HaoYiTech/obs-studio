@@ -1,0 +1,17 @@
+
+<ul class="thumb_view" id="page_{{$my_cur_page}}">
+  <volist name="my_list" id="vo">
+  <li class="feed-live"><!--relative-->
+    <div class="item-data"><!--absolute-->
+      <div class="item-mask"></div><!--absolute-->
+      <div class="item-info"><!--relative-->
+        <div class="item-line">教室：{{$vo['room_id']+$my_live_begin}}</div>
+        <div class="item-line">名称：{{$vo.room_name}}</div>
+        <div class="item-line">讲师：{{$vo.teacher_name}}</div>
+        <div class="item-line">时间：{{$vo.start_time}}</div>
+      </div>
+    </div>
+    <img class="lazy" data-original="{{$my_web_tracker}}{{$vo.poster_fdfs}}_254x360" width="254px" height="360px"></img>
+  </li>
+  </volist>
+</ul>

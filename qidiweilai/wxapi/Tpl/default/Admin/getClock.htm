@@ -1,0 +1,50 @@
+
+<style>
+.layui-form-item {
+  margin-bottom: 5px;
+}
+.course-back {
+  background-image:url(/wxapi/public/images/default.png);
+  background-repeat:no-repeat;
+  background-position:center;
+  text-align:center;
+  height:180px;
+}
+</style>
+
+<!-- 定义时钟对话框 -->
+<div class="layui-field-box" style="margin-top: 5px;">
+  <form class="layui-form layui-form-pane" action="">
+    <div class="layui-form-item">
+      <label class="layui-form-label">选择星期</label>
+      <div class="layui-input-block">
+        <select name="myWeek" lay-verify="required" lay-search="">
+          <option value="1">星期一</option>
+          <option value="2">星期二</option>
+          <option value="3">星期三</option>
+          <option value="4">星期四</option>
+          <option value="5">星期五</option>
+          <option value="6">星期六</option>
+          <option value="0">星期日</option>
+        </select>
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">开始时间</label>
+      <div class="layui-input-block">
+        <input type="text" name="myStart" lay-verify="required" autocomplete="off" class="layui-input datainp wicon" value="" readonly>
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">结束时间</label>
+      <div class="layui-input-block">
+        <input type="text" name="myEnd" lay-verify="required" autocomplete="off" class="layui-input datainp wicon" value="" readonly>
+      </div>
+    </div>
+    <div class="layui-form-item course-back"></div>
+    <div class="layui-form-item" style="margin-bottom:5px;margin-top:10px;text-align:center;">
+      <button class="layui-btn" lay-submit lay-filter="formRange">立即应用</button>&nbsp;
+      <button class="layui-btn layui-btn-primary js_form_close" type="button"> 取 消 </button>
+    </div>
+  </form>
+</div>

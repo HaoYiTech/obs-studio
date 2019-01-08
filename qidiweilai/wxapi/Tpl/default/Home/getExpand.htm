@@ -1,0 +1,14 @@
+
+  <div class="comment-expand">
+    <div class="feed-hand" id="myShowReply" onclick="doExChild(this,{{$my_comment.comment_id}},{{$my_comment.childs}});" style="display: none">
+      <div class="comment-reply">查看所有</div>
+      <div class="comment-reply js-child-size">{{$my_comment.childs}}</div>
+      <div class="comment-reply">条回复</div>
+      <div class="fa fa-chevron-down comment-arrow"></div>
+    </div>
+    <div class="feed-hand" id="myHideReply" onclick="doExChild(this,{{$my_comment.comment_id}},{{$my_comment.childs}});">
+      <div class="comment-reply">隐藏回复</div>
+      <div class="fa fa-chevron-up comment-arrow"></div>
+    </div>
+    <div id="myChild"></div>
+  </div>

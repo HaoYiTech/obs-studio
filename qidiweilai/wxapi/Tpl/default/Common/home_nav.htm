@@ -1,0 +1,38 @@
+
+<nav class="main-navigation">
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="collapse navbar-collapse" id="main-menu" style="padding:0 0">
+          <ul class="menu">
+            <!--首页 | 直播间-->
+            <!--<li <eq name='my_nav.type' value='0'>class="nav-current"</eq> role="presentation"><a href="/">首页</a></li>-->
+            <li <eq name='my_nav.type' value='1'>class="nav-current"</eq> role="presentation"><a href="{{:__APP__}}/Home/room">云教室</a></li>
+            <!--<li <eq name='my_nav.type' value='2'>class="nav-current"</eq> role="presentation"><a href="{{:__APP__}}/Home/tour">教室墙</a></li>-->
+            <!-- 横向采集器 -->
+            <volist name="my_nav.list" id="vo">
+            <li title="{{$vo.name_set}}" <eq name='my_nav.type' value='3'> <eq name='my_nav.active_id' value='$vo.gather_id'>class="nav-current"</eq> </eq> role="presentation">
+            <a href="{{:__APP__}}/Home/gather/id/{{$vo.gather_id}}">{{$vo.name_set|msubstr=0,5,"utf-8",false}}</a></li>
+            </volist>
+            <!-- 下拉采集器 -->
+            <if condition="$my_nav.drop_num gt 0">
+            <li class="dropdown <eq name='my_nav.type' value='4'>nav-current</eq>" title="{{$my_nav.drop_more}}">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">{{$my_nav.drop_more|msubstr=0,5,"utf-8",false}} <span class="caret"></span></a>
+              <ul class="dropdown-menu">
+                <volist name="my_nav.drop" id="vo">
+                <li role="presentation" title="{{$vo.name_set}}">
+                  <a href="{{:__APP__}}/Home/gather/id/{{$vo.gather_id}}/more/1">{{$vo.name_set|msubstr=0,5,"utf-8",false}}</a>
+                </li>
+                </volist>
+              </ul>
+            </li>
+            </if>
+            <div id="menuLogin" style="float:right;">
+              <include file = "Common:home_login" />
+            </div>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>

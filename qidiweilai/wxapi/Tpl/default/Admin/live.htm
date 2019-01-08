@@ -1,0 +1,510 @@
+
+<include file = "Common:admin_header" />
+
+<style>
+.btn-del {
+  float: left;
+  margin: 10px 15px 10px 0px;
+  background-color: #FF1100;
+}
+.btn-add {
+  margin-right: 5px;
+}
+</style>
+
+<!-- 中心数据区 -->
+<div class="layui-tab layui-tab-brief">
+  <div class="layui-body layui-tab-content site-demo">
+    <div class="layui-tab-item layui-show">
+      <div class="layui-main">
+        <fieldset class="layui-elem-field layui-field-title">
+          <legend><i class="fa fa-video-camera">&nbsp;直播管理</i></legend>
+        </fieldset>
+        <span class="layui-breadcrumb">
+          <a><cite>直播通道</cite></a>
+          <a><cite id="myTotal">共 {{$my_total_num}} 条记录</cite></a>
+        </span>
+        <div class="layui-form" style="margin-top:10px;width:100%">
+          <table class="layui-table">
+            <colgroup>
+              <col width="5%">
+              <col width="10%">
+              <col width="15%">
+              <col width="15%">
+              <col width="10%">
+              <col width="20%">
+              <col width="25%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th><input id="myAll" type="checkbox" lay-skin="primary" lay-filter="allChoose"></th>
+                <th>状态</th>
+                <th>采集端</th>
+                <th>名称</th>
+                <th>类型</th>
+                <th>数据源</th>
+                <th>操作</th>
+              </tr> 
+            </thead>
+            <tbody class="js_live"></tbody>
+          </table>
+          <div style="display: inline-block;">
+            <button class="layui-btn layui-btn-small btn-add" onclick="doAddLive();">
+              <i class="layui-icon">&#xe61f;&nbsp;添加</i>
+            </button>
+            <button class="layui-btn layui-btn-small btn-del" onclick="doDelLive();">
+              <i class="layui-icon">&#xe640;&nbsp;删除选中</i>
+            </button>
+            <div style="float:left;" id="myPage"></div>
+          </div>
+        </div>        
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+//
+// 获取网站地址...
+var siteurl="{{:__APP__}}";
+var g_cur_page = 0;
+var kCmd_PHP_Start_Camera = 13;
+var kCmd_PHP_Stop_Camera  = 14;
+var g_stream_type = new Array("摄像头","MP4文件","流转发");
+//
+// 点击 查看播放地址...
+function doAddress(inLiveID) {
+  // 需要兼容IE8的访问...
+  stopPropagation(event);
+  // 为了兼容IE8，只能用srcElement获取对象信息...
+  var $ = layui.jquery;
+  var theObjTr = $(event.srcElement).parent().parent();
+  // 先将当前行的背景色进行修改...
+  theObjTr.css('background-color', '#87CEFA').siblings().css('background-color', '#FFFFFF');
+  // 直接使用frame模式...
+  layer.open({
+    type: 2, //0(dialog), 1(page), 2(iframe), 3(loading), 4(tips)
+    closeBtn: 1,
+    fixed: true,
+    shadeClose: false,
+    area: ['500px', '270px'],
+    content: "{{:__APP__}}/Admin/getLiveAddress/camera_id/"+inLiveID,
+    title: "<i class='fa fa-video-camera'>&nbsp;&nbsp;</i>查看 - 直播播放地址 - live"+inLiveID,
+  });
+}
+//
+// 点击某一行事件...
+function doTrClick(inLiveID, inGatherID, inStreamProp, objTr) {
+  // 为了兼容IE8，只能用srcElement获取对象信息...
+  // 如果是第一个td或者是td里的checkbox，直接返回...
+  var $ = layui.jquery;
+  if( $(event.srcElement).hasClass('layui-icon') || event.srcElement.cellIndex == 0 ) {
+    return false;
+  }
+  // 向服务器发送直播状态查看命令...
+  var index = layer.load(2);
+  // 先将背景色进行修改...
+  $(objTr).css('background-color', '#87CEFA').siblings().css('background-color', '#FFFFFF');
+  // 异步获取通道信息...
+  $.ajaxSetup({ cache:false });
+  $.ajax({
+    type: "get",
+    async: true,
+    url: siteurl+"/Admin/getLiveStatus/camera_id/"+inLiveID,
+    success: function(ajaxData) {
+      layer.closeAll('loading');
+      layer.open({
+        type: 1, //0(dialog), 1(page), 2(iframe), 3(loading), 4(tips)
+        closeBtn: 1,
+        fixed: true,
+        shadeClose: false,
+        area: ['530px', '470px'],
+        title: "<i class='fa fa-video-camera'>&nbsp;&nbsp;</i>编辑 - 直播通道 - " + g_stream_type[inStreamProp],
+        content: ajaxData,
+        success: function() {
+          var form = layui.form;
+          form.render();
+          // 这里必须调用render才能显示select...
+          form.on('submit(formCamera)', function(data) {
+            // 定义post发送数组集合...
+            var arrData = new Object();
+            // 通道编号、采集端编号、通道名称...
+            arrData['camera_id'] = inLiveID;
+            arrData['gather_id'] = inGatherID;
+            arrData['camera_name'] = data.field.myCameraName;
+            // 根据流转发类型新增传递的数据列表...
+            if( inStreamProp == 0 ) {
+              // 硬件摄像头需要传递的数据...
+              arrData['stream_prop'] = 0;
+              arrData['device_ip'] = data.field.myDeviceIP;
+              arrData['device_cmd_port'] = data.field.myDeviceCmdPort;
+              arrData['device_user'] = data.field.myDeviceUser;
+              arrData['device_pass'] = data.field.myDevicePass;
+              arrData['device_osd'] = (data.field.myDeviceOSD == "on" ? 1 : 0);
+              arrData['device_mirror'] = (data.field.myDeviceMirror == "on" ? 1 : 0);
+              arrData['device_twice'] = (data.field.myDeviceTwice == "on" ? 1 : 0);
+              arrData['device_show'] = (data.field.myDeviceShow == "on" ? 1 : 0);
+              arrData['use_tcp'] = (data.field.myUseTCP == "on" ? 1 : 0);
+            } else {
+              // 需要根据类型单独验证输入数据的有效性...
+              var theStreamProp = parseInt(data.field.myStreamProp);
+              var theStreamMP4 = data.field.myStreamMP4;
+              var theStreamUrl = data.field.myStreamUrl;
+              // 判断MP4文件地址是否有效 => 先去掉左右的空格字符...
+              theStreamMP4 = theStreamMP4.replace(/(^\s*)|(\s*$)/g, "");
+              if( theStreamProp == 1 && theStreamMP4.length <= 0 ) {
+                layer.msg('【MP4文件】不能为空，请更正！', {anim: 6,closeBtn: 1,time: 0, shade: 0.2});
+                return false;
+              }
+              // 判断拉流地址是否正确 => 先去掉左右的空格字符...
+              theStreamUrl = theStreamUrl.replace(/(^\s*)|(\s*$)/g, "");
+              var reg = /^([rR][tT][mM][pP]:\/\/|[rR][tT][sS][pP]:\/\/)(.)+$/;
+              if( theStreamProp == 2 && !reg.test(theStreamUrl) ) {
+                layer.msg('【拉流地址】格式错误<br>必须是有效的rtmp://或rtsp://，请更正！', {anim: 6,closeBtn: 1,time: 0, shade: 0.2});
+                return false;
+              }
+              // 流转发类型需要传递的数据...
+              arrData['stream_prop'] = theStreamProp;
+              arrData['stream_mp4'] = theStreamMP4;
+              arrData['stream_url'] = theStreamUrl;
+              arrData['use_tcp'] = (data.field.myUseTCP == "on" ? 1 : 0);
+            }
+            // 发送摄像头数据，通过ajax异步发送存盘命令...
+            // 传递 gather_id 和 grade_name 的目的是为了转发摄像头名称给采集端...
+            layer.load(2);
+            $.ajax({
+              type: "post",
+              async: true,
+              data: arrData,
+              url: siteurl+"/Admin/modCamera",
+              success: function(ajaxData) {
+                layer.closeAll('loading');
+                layer.msg('恭喜！保存成功！', {icon: 1,time: 1000,shade: 0.2}, function() {
+                  layer.closeAll('page');
+                  $(objTr).children('td').eq(3).text(arrData['camera_name']);
+                  $(objTr).children('td').eq(4).text(g_stream_type[arrData['stream_prop']]);
+                  var theSrcTD = $(objTr).children('td').eq(5);
+                  switch( arrData['stream_prop'] ) {
+                    case 0: theSrcTD.attr('title', arrData['device_ip']); theSrcTD.text(arrData['device_ip']); break;
+                    case 1: theSrcTD.attr('title', arrData['stream_mp4']); theSrcTD.text(arrData['stream_mp4'].substr(0,20) + '...'); break;
+                    case 2: theSrcTD.attr('title', arrData['stream_url']); theSrcTD.text(arrData['stream_url'].substr(0,20) + '...'); break;
+                  }
+                });
+              },
+              error: function(XMLHttpRequest, textStatus, errorThrown) {
+                layer.closeAll('loading');
+                layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+              }
+            });
+            // 否则，form会自动跳转...
+            return false;
+          });
+          // 点击取消操作...
+          $('.js_form_close').unbind("click").click( function() {
+            layer.closeAll('page');
+          });
+        }
+      });
+    },
+    error: function(XMLHttpRequest, textStatus, errorThrown) {
+      layer.closeAll('loading');
+      layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+    }
+  });
+}
+//
+// 点击操作通道按钮 => 让服务器去判断和处理...
+function doCamera(inCameraID, objBtn)
+{
+  // 需要兼容IE8的访问...
+  stopPropagation(event);
+  // 为了兼容IE8，只能用srcElement获取对象信息...
+  var $ = layui.jquery;
+  var index = layer.load(2);
+  var theObjTr = $(event.srcElement).parent().parent().parent();
+  // 先将当前行的背景色进行修改...
+  theObjTr.css('background-color', '#87CEFA').siblings().css('background-color', '#FFFFFF');
+  $.ajaxSetup({ cache:false });
+  $.ajax({
+    type: "get",
+    async: true,
+    url: siteurl+"/Admin/doCamera/camera_id/"+inCameraID,
+    success: function(ajaxData) {
+      layer.closeAll('loading');
+      // 解析服务器传递过来的json数据包...
+      var arrJson = $.parseJSON(ajaxData);
+      if( arrJson.err_code > 0 ) {
+        var strErr = ((arrJson.err_cmd==kCmd_PHP_Start_Camera) ? "启动通道失败" : "停止通道失败");
+        layer.msg(strErr + "<br>" + arrJson.err_msg, {anim: 6,closeBtn: 1,time: 0, shade: 0.2});
+        return;
+      }
+      // 转发命令成功，将按钮置灰...
+      $(objBtn).addClass('layui-btn-disabled');
+      // 等待采集端写入数据库，然后，查询通道状态 => 等待超时退出...
+      layer.msg('处理中，请稍等...', { icon: 16, shade: 0.2, time: 0 } );
+      // 设置超时函数，3.5秒之后，查询通道状态...
+      setTimeout(function () {
+        doGetCameraStatus(inCameraID, objBtn, arrJson.err_cmd);
+      }, 3500);
+    },
+    error: function(XMLHttpRequest, textStatus, errorThrown) {
+      layer.closeAll('loading');
+      layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+    }
+  });
+}
+//
+// 超时时钟去获取通道状态...
+function doGetCameraStatus(inCameraID, objBtn, inCmd)
+{
+  var $ = layui.jquery;
+  $.ajaxSetup({ cache:false });
+  $.ajax({
+    type: "get",
+    async: true,
+    url: siteurl+"/Admin/getCameraStatus/camera_id/"+inCameraID,
+    success: function(ajaxData) {
+      // 先关闭等待对话框...
+      layer.closeAll('dialog');
+      var theBTN = $(objBtn);
+      var theTD = $(objBtn).parent();
+      // 设置各个按钮样式状态...
+      theBTN.removeClass('layui-btn-disabled');
+      // 解析返回的通道状态信息...
+      var arrJson = $.parseJSON(ajaxData);
+      // 判断通道的状态...
+      if( arrJson.status > 0 ) {
+        theBTN.addClass('layui-btn-danger');
+        theBTN.html('<i class="fa fa-stop-circle-o">&nbsp;停止</i>');
+        theTD.siblings().eq(1).html('<i class="fa fa-tv fa-run">&nbsp;运行中</i>');
+        // 如果是停止命令又回到停止状态，说明停止失败...
+        if(inCmd == kCmd_PHP_Stop_Camera) { layer.msg("停止通道失败，错误号："+arrJson.err_code+"<br>"+arrJson.err_msg, {anim: 6,closeBtn: 1,time: 0, shade: 0.2}); }
+      } else {
+        theBTN.removeClass('layui-btn-danger');
+        theBTN.html('<i class="fa fa-play-circle-o">&nbsp;启动</i>');
+        theTD.siblings().eq(1).html('<i class="fa fa-power-off fa-wait">&nbsp;等待中</i>');
+        // 如果是启动命令又回到启动状态，说明启动失败...
+        if( inCmd == kCmd_PHP_Start_Camera ) { layer.msg("启动通道失败，错误号："+arrJson.err_code+"<br>"+arrJson.err_msg, {anim: 6,closeBtn: 1,time: 0,shade: 0.2}); }
+      }
+    },
+    error: function(XMLHttpRequest, textStatus, errorThrown) {
+      layer.closeAll('dialog');
+      layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+    }
+  });
+}
+//
+// 配置录像课程表...
+function doCourse(inCameraID, inGatherID)
+{
+  // 需要兼容IE8的访问...
+  stopPropagation(event);
+  location.href = siteurl+"/Admin/course/camera_id/"+inCameraID+"/gather_id/"+inGatherID+"/type/live";  
+}
+//
+// 处理添加记录事件...
+function doAddLive() {
+  // 异步添加通道信息...
+  var index = layer.load(2);
+  var $ = layui.jquery;
+  $.ajaxSetup({ cache:false });
+  $.ajax({
+    type: "get",
+    async: true,
+    url: siteurl+"/Admin/getLiveCamera",
+    success: function(ajaxData) {
+      layer.closeAll('loading');
+      layer.open({
+        type: 1, //0(dialog), 1(page), 2(iframe), 3(loading), 4(tips)
+        closeBtn: 1,
+        fixed: true,
+        shadeClose: false,
+        area: ['530px', '450px'],
+        title: "<i class='fa fa-video-camera'>&nbsp;&nbsp;</i>添加 - 直播通道",
+        content: ajaxData,
+        success: function() {
+          var form = layui.form;
+          form.render();
+          // 这里必须调用render才能显示select...
+          form.on('submit(formCamera)', function(data) {
+            // 定义post发送数组集合...
+            var arrData = new Object();
+            // 通道编号、采集端编号、通道名称...
+            arrData['camera_name'] = data.field.myCameraName;
+            arrData['gather_id'] = data.field.myCameraGather;
+            // 判断输入数据的有效性...
+            if( arrData['gather_id'] <= 0 ) {
+              layer.msg('【采集端】不能为空，请更正！', {anim: 6,closeBtn: 1,time: 0, shade: 0.2});
+              return false;
+            }
+            // 需要根据类型单独验证输入数据的有效性...
+            var theStreamProp = parseInt(data.field.myStreamProp);
+            var theStreamMP4 = data.field.myStreamMP4;
+            var theStreamUrl = data.field.myStreamUrl;
+            // 判断MP4文件地址是否有效 => 先去掉左右的空格字符...
+            theStreamMP4 = theStreamMP4.replace(/(^\s*)|(\s*$)/g, "");
+            if( theStreamProp == 1 && theStreamMP4.length <= 0 ) {
+              layer.msg('【MP4文件】不能为空，请更正！', {anim: 6,closeBtn: 1,time: 0, shade: 0.2}, function(){
+                $("input[name='myStreamMP4']").addClass('layui-form-danger');
+                $("input[name='myStreamMP4']").focus();
+              });
+              return false;
+            }
+            // 判断拉流地址是否正确 => 先去掉左右的空格字符...
+            theStreamUrl = theStreamUrl.replace(/(^\s*)|(\s*$)/g, "");
+            var reg = /^([rR][tT][mM][pP]:\/\/|[rR][tT][sS][pP]:\/\/)(.)+$/;
+            if( theStreamProp == 2 && !reg.test(theStreamUrl) ) {
+              layer.msg('【拉流地址】格式错误<br>必须是有效的rtmp://或rtsp://，请更正！', {anim: 6,closeBtn: 1,time: 0, shade: 0.2}, function(){
+                $("input[name='myStreamUrl']").addClass('layui-form-danger');
+                $("input[name='myStreamUrl']").focus();
+              });
+              return false;
+            }
+            // 流转发类型需要传递的数据...
+            arrData['stream_prop'] = theStreamProp;
+            arrData['stream_mp4'] = theStreamMP4;
+            arrData['stream_url'] = theStreamUrl;
+            arrData['use_tcp'] = (data.field.myUseTCP == "on" ? 1 : 0);
+            // 向服务器发送添加通道命令...
+            layer.load(2);
+            $.ajax({
+              type: "post",
+              async: true,
+              data: arrData,
+              url: siteurl+"/Admin/addCamera",
+              success: function(ajaxData) {
+                layer.closeAll('loading');
+                layer.msg('恭喜！保存成功！', {icon: 1,time: 1000,shade: 0.2}, function() {
+                  layer.closeAll('page');
+                  location.href = siteurl+"/Admin/live";
+                });
+              },
+              error: function(XMLHttpRequest, textStatus, errorThrown) {
+                layer.closeAll('loading');
+                layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+              }
+            });
+            // 否则，form会自动跳转...
+            return false;
+          });
+          // 点击取消操作...
+          $('.js_form_close').unbind("click").click( function() {
+            layer.closeAll('page');
+          });
+        }
+      });
+    },
+    error: function(XMLHttpRequest, textStatus, errorThrown) {
+      layer.closeAll('loading');
+      layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+    }
+  });
+}
+//
+// 处理删除记录事件...
+function doDelLive() {
+  var strList = "";
+  var $ = layui.jquery;
+  var child = $('#myAll').parents('table').find('tbody input[type="checkbox"]');
+  // 遍历所有节点，组合要删除的节点列表...
+  child.each(function(index, item){
+    if( item.checked ) {
+      strList += item.id.split('_')[1];
+      strList += ',';
+    }
+  });
+  // 判断数据的有效性...
+  if( strList.length <= 0 ) {
+    layer.msg('请先选择要删除的记录！', {anim: 6});
+    return;
+  }
+  // 去除最后一个分号...
+  strList = strList.substring(0, strList.length - 1);
+  layer.confirm('该通道下所有的录像和配置都会被删除！<br>确实要删除选中的记录吗？', {icon: 3, title: '删除询问'}, function(index){
+    // 先关闭当前询问框，打开等待框...
+    layer.close(index);
+    layer.load(2);
+    // 向服务器发送删除记录指令，返回当前分页内容...
+    $.ajaxSetup({ cache:false });
+    $.ajax({
+      type: "post",
+      async: true,
+      url: siteurl+"/Admin/delCamera",
+      data: {page: g_cur_page, list: strList},
+      success: function(ajaxData) {
+        layer.closeAll('loading');
+        // 解析返回的当前页码和总页面数...
+        var arrJson = $.parseJSON(ajaxData);
+        doGetPageLive(arrJson.curr, arrJson.total);
+        // 更新删除后的记录总数...
+        $('#myTotal').text("共 "+arrJson.total+" 条记录");
+      },
+      error: function(XMLHttpRequest, textStatus, errorThrown) {
+        layer.closeAll('loading');
+        layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+      }
+    });
+  });
+}
+//
+// 处理获取页面数据...
+function doGetPageLive(cur_page, total_num) {
+  var laypage = layui.laypage;
+  var layer = layui.layer;
+  var form = layui.form;
+  var $ = layui.jquery;
+  laypage.render({
+    count: total_num,   // 总记录数...
+    curr: cur_page,     // 当前页码...
+    elem: 'myPage',     // 分页对象...
+    groups: 5,          // 连续显示分页数
+    jump: function(obj, first) {
+      // 记录当前分页，向服务器发送分页命令...
+      g_cur_page = obj.curr;
+      var index = layer.load(2);
+      $.ajaxSetup({ cache:false });
+      $.ajax({
+        type: "get",
+        async: true,
+        url: siteurl+"/Admin/pageLive/p/"+obj.curr,
+        success: function(ajaxData) {
+          layer.closeAll('loading');
+          $('.js_live').html(ajaxData);
+          $('#myAll').attr('checked', false); 
+          $('tbody tr').css('cursor','pointer');
+          form.render('checkbox');
+        },
+        error: function(XMLHttpRequest, textStatus, errorThrown) {
+          layer.closeAll('loading');
+          layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+        }
+      });    
+    }
+  });
+}
+//
+// 处理 layui 过程 => checkbox 必须配合 layui-form 使用...
+layui.use(['element','laypage','layer','form'], function(){
+  var total_num = {{$my_total_num}};
+  var form = layui.form;
+  var $ = layui.jquery;
+  // 获取分页数据...
+  doGetPageLive(1, total_num);
+  // 点击全选需要响应的操作...
+  form.on('checkbox(allChoose)', function(data){
+    var child = $(data.elem).parents('table').find('tbody input[type="checkbox"]');
+    child.each(function(index, item){
+      item.checked = data.elem.checked;
+    });
+    form.render('checkbox');
+  });
+  // 处理流地址参数的显示或隐藏...
+  form.on('radio(modeType)', function(data) {
+    $('#idStreamMP4').css('display', ((data.value == 1) ? 'block' : 'none'));
+    $('#idStreamUrl').css('display', ((data.value == 2) ? 'block' : 'none'));
+  });
+});
+
+</script>
+
+<include file = "Common:admin_footer" />

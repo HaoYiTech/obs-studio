@@ -1,0 +1,258 @@
+
+<include file = "Common:admin_header" />
+
+<style>
+.feed-diff {
+  color: #ff0000;
+}
+.feed-same {
+  color: #3366FF;
+}
+.feed-all {
+  text-align: center;
+  margin-top: 15px;
+}
+</style>
+
+<!-- 中心数据区 -->
+<div class="layui-tab layui-tab-brief">
+  <div class="layui-body layui-tab-content site-demo">
+    <div class="layui-tab-item layui-show">
+      <div class="layui-main">
+        <fieldset class="layui-elem-field layui-field-title">
+          <legend><i class="fa fa-refresh">&nbsp;&nbsp;网站系统升级</i></legend>
+        </fieldset>
+        <div class="layui-tab layui-tab-brief" lay-filter="tabUpgrade">
+          <ul class="layui-tab-title">
+            <li class="layui-this">&nbsp;&nbsp;升级数据库&nbsp;&nbsp;</li>
+            <li>&nbsp;&nbsp;升级网站代码&nbsp;&nbsp;</li>
+          </ul>
+          <div class="layui-tab-content">
+            <div class="layui-tab-item layui-show js_dbase_pane"></div>
+            <div class="layui-tab-item js_web_pane"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 获取网站地址...
+var siteurl="{{:__APP__}}";
+// 判断数字接口...
+function isNumber(obj) {
+  return obj === +obj
+}
+// 响应卡片切换事件...
+function doTabChange(inTabItem) {
+  // 向服务器发送直播状态查看命令...
+  var index = layer.load(2);
+  var $ = layui.jquery;
+  var strCommand, objCard;
+  switch(inTabItem) {
+    case 0: strCommand = "upDbase"; objCard = $('.js_dbase_pane'); break;
+    case 1: strCommand = "upWeb"; objCard = $('.js_web_pane'); break;
+  }
+  // 异步获取通道信息...
+  $.ajaxSetup({ cache:false });
+  $.ajax({
+    type: "get",
+    async: true,
+    url: siteurl+"/Admin/"+strCommand,
+    success: function(ajaxData) {
+      layer.closeAll('loading');
+      objCard.html(ajaxData);
+    },
+    error: function(e) {
+      layer.closeAll('loading');
+      layer.alert(e, {icon: 2});
+    }
+  });
+}
+// 处理 layui 过程...
+layui.use(['element','layer','form'], function(){
+  // 获取表单对象，监听事件...
+  var element = layui.element;
+  var form = layui.form;
+  // 默认切换到升级数据库...
+  doTabChange(0);
+  // 监听Tab切换...
+  element.on('tab(tabUpgrade)', function(data){
+    doTabChange(data.index, this);
+  });
+});
+// 处理点击升级单个数据表操作 => 新增自动升级下一条标志...
+function doUpTable(inName, objBtn, bAutoNext = false) {
+  // 弹框提示 => 单独升级时...
+  var $ = layui.jquery;
+  if( !bAutoNext ) {
+    layer.msg('正在升级，请稍等...', { icon: 16, shade: 0.2, time: 0 } );
+  }
+  // 发起下载命令...
+  $.ajax({
+    type: "post",
+    async: true,
+    data: {name: inName},
+    url: siteurl+"/Admin/upDbTable",
+    success: function(ajaxData) {
+      // 关闭等待对话框 => 单独升级时...
+      !bAutoNext ? layer.closeAll('dialog') : null;
+      // 解析返回的下载结果...
+      var arrJson = $.parseJSON(ajaxData);
+      // 下载文件失败的处理...
+      if( arrJson.err_code > 0 ) {
+        var strErr = "升级数据表失败";
+        layer.msg(strErr + "<br>" + arrJson.err_msg, {anim: 6,closeBtn: 1,time: 0, shade: 0.2});
+        return;
+      }
+      // 升级成功的处理 => 开启按钮和修改状态，保存下载文件列表...
+      $(objBtn).addClass('layui-btn-danger');
+      $(objBtn).text('已完成升级');
+      // 修改本地大小和本地时间...
+      var theTD = $(objBtn).parent();
+      theTD.siblings().eq(2).text(arrJson.localSize);
+      theTD.siblings().eq(4).text(arrJson.localTime);
+      // 如果不自动升级，直接返回...
+      if( !bAutoNext ) return;
+      // 如果需要自动升级，激发事件...
+      var trSize = $('#tDbase').children('tr').length;
+      var trIndex = theTD.parent().index();
+      doUpAll(++trIndex);
+      // 如果到达最后一行，进行特殊处理...
+      if( trIndex >= trSize ) {
+        $('.js_btn_all').addClass('layui-btn-danger');
+        $('.js_btn_all').text('已完成全部数据表升级');
+        layer.closeAll('dialog');
+      }
+    },
+    error: function(XMLHttpRequest, textStatus, errorThrown) {
+      layer.closeAll('dialog');
+      layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+    }
+  });
+}
+// 点击升级“全部数据表”...
+function doUpAll(inTrIndex = 0) {
+  // 升级第一条时，需要弹框提示...
+  if( inTrIndex == 0 ) {
+    layer.msg('正在升级，请稍等...', { icon: 16, shade: 0.2, time: 0 } );
+  }
+  // 获取第一条记录...
+  var $ = layui.jquery;
+  var trFirst = $('#tDbase').children("tr").eq(inTrIndex);
+  if( trFirst.length <= 0 )
+    return;
+  // 获取数据表名称和按钮对象...
+  var theName = trFirst.children('td').eq(0).text();
+  var theBtn  = trFirst.children('td').eq(5).children('button');
+  // 执行升级，注意设置自动下一条标志...
+  doUpTable(theName, theBtn, true);
+}
+// 处理点击单个文件的下载操作...
+/*function doDbDownload(inName, objBtn) {
+  // 弹框提示...
+  var $ = layui.jquery;
+  layer.msg('正在下载，请稍等...', { icon: 16, shade: 0.2, time: 0 } );
+  // 组合下载命令需要参数...
+  var arrData = new Object();
+  arrData['name'] = inName;
+  // 发起下载命令...
+  $.ajax({
+    type: "post",
+    async: true,
+    data: arrData,
+    url: siteurl+"/Admin/upDbFile",
+    success: function(ajaxData) {
+      // 关闭等待对话框...
+      layer.closeAll('dialog');
+      // 解析返回的下载结果...
+      var arrJson = $.parseJSON(ajaxData);
+      // 下载文件失败的处理...
+      if( arrJson.err_code > 0 ) {
+        var strErr = "下载文件失败";
+        layer.msg(strErr + "<br>" + arrJson.err_msg, {anim: 6,closeBtn: 1,time: 0, shade: 0.2});
+        return;
+      }
+      // 下载文件成功的处理 => 开启按钮和修改状态，保存下载文件列表...
+      $('.js_up_dbase').removeClass('layui-btn-disabled');
+      $(objBtn).addClass('layui-btn-danger');
+      $(objBtn).text('完成下载');
+      // 将已下载的文件更新到列表当中...
+      var theTD = $(objBtn).parent();
+      g_arrFile[inName] = theTD.siblings().eq(3).text();
+    },
+    error: function(XMLHttpRequest, textStatus, errorThrown) {
+      layer.closeAll('dialog');
+      layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+    }
+  });
+}
+// 处理点击升级数据库按钮事件...
+function doUpDbase() {
+  // 弹框提示...
+  var $ = layui.jquery;
+  layer.msg('正在升级，请稍等...', { icon: 16, shade: 0.2, time: 0 } );
+  // jquery会对扩展名的.做特殊处理，所以，需要再次转换成json，封装成Object...
+  var thePostData = JSON.stringify(g_arrFile);
+  // 发起升级命令...
+  $.ajax({
+    type: "post",
+    async: true,
+    data: { data: thePostData },
+    url: siteurl+"/Admin/upDbCover",
+    success: function(ajaxData) {
+      // 关闭等待对话框...
+      layer.closeAll('dialog');
+      // 解析返回的升级结果...
+      var arrJson = $.parseJSON(ajaxData);
+      // 升级文件失败的处理...
+      if( arrJson.err_code > 0 ) {
+        var strErr = "升级数据库失败";
+        layer.msg(strErr + "<br>" + arrJson.err_msg, {anim: 6,closeBtn: 1,time: 0, shade: 0.2});
+        return;
+      }
+      // 升级数据库成功的处理 => 将数据更新到界面层...
+      //$('.js_up_dbase').addClass('layui-btn-disabled');
+    },
+    error: function(XMLHttpRequest, textStatus, errorThrown) {
+      layer.closeAll('dialog');
+      layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+    }
+  });
+  
+  var trList = $('#tDbase').children("tr");
+  var theNameList = '';
+  for (var i = 0; i < trList.length; i++) {
+    var theUpgrade = trList.eq(i).data('upgrade');
+    if( theUpgrade <= 0 ) continue;
+    // 只有设置了需要升级的记录才处理...
+    var theName = trList.eq(i).children('td').eq(0).text();
+    theNameList += theName + ',';
+  }
+  // 去掉最后一个逗号
+  var arrData = new Object();
+  arrData['command'] = 0;
+  arrData['name'] = theNameList.substr(0, theNameList.length - 1);
+  // 发起下载命令...
+  $.ajax({
+    type: "post",
+    async: true,
+    data: arrData,
+    url: siteurl+"/Admin/upFile",
+    success: function(ajaxData) {
+    },
+    error: function(XMLHttpRequest, textStatus, errorThrown) {
+      layer.closeAll('loading');
+      layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+    }
+  });
+}
+// 处理点击升级网站按钮事件...
+function doUpWeb() {
+  var $ = layui.jquery;
+}*/
+
+</script>
+
+<include file = "Common:admin_footer" />

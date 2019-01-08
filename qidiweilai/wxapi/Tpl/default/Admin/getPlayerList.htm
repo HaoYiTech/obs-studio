@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- 上述3个meta标签*必须*放在最前面，任何其他内容都*必须*跟随其后！ -->
+  <title>观看用户列表</title>
+  <!-- layui css and javascript -->
+  <link href="/wxapi/public/layui/css/layui.css" rel="stylesheet" media="all">
+  <link href="/wxapi/public/css/weui.min.css" rel="stylesheet" />
+  <script src="/wxapi/public/layui/layui.js"></script>  
+</head>
+
+<style>
+.feed-main {
+  top: 0px;
+  width: 100%;
+  position: absolute;
+}
+.feed-table {
+  margin: 0px 10px;
+  position: relative;
+}
+</style>
+
+<body>
+
+<!-- 错误信息栏 -->
+<gt name="my_show.err_code" value="0"> 
+<div class="weui_msg" style="margin-top:20px;">
+  <div class="weui_icon_area"><i class="weui_icon_safe weui_icon_safe_warn"></i></div>
+  <div class="weui_text_area">
+    <h2 class="weui_msg_title">{{$my_show.err_msg}}</h2>
+    <p class="weui_msg_desc">当前通道没有用户在观看</p>
+  </div>
+</div>
+<else/>
+<div class="feed-main">
+  <div class="feed-table">
+    <table class="layui-table">
+      <colgroup>
+        <col width="20%">
+        <col width="20%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>用户编号</th>
+          <th>用户类型</th>
+        </tr>
+      </thead>
+      <tbody>
+        <volist name="my_show.list" id="vo">
+        <tr>
+          <td>{{$vo[0]}}</td>
+          <td>
+            <switch name="vo[1]">
+              <case value="0">RTMP/Flash</case>
+              <case value="1">FLV/HTML5</case>
+            </switch>
+          </td>
+        </tr>
+        </volist>
+      </tbody>
+    </table>
+  </div>
+</div>
+</gt>
+
+<script>
+// 处理 layui 过程...
+layui.use(['element','layer'], function(){
+  var $ = layui.jquery;
+});
+</script>
+
+</body>
+</html>

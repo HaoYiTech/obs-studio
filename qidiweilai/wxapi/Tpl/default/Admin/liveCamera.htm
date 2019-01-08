@@ -1,0 +1,60 @@
+
+<style>
+.layui-form-item { margin-bottom: 10px; }
+</style>
+
+<div class="layui-field-box" style="margin-top: 10px">
+  <form class="layui-form layui-form-pane" action="">
+    <div class="layui-form-item">
+      <label class="layui-form-label">采集端</label>
+      <div class="layui-input-block">
+        <select name="myCameraGather" lay-verify="required" lay-search="">
+          <volist name="my_list_gather" id="vo">
+          <option value="{{$vo.gather_id}}">{{$vo.name_pc}} - {{$vo.ip_addr}}</option>
+          </volist>
+        </select>
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">通道名称</label>
+      <div class="layui-input-block">
+        <input type="text" name="myCameraName" lay-verify="required" autocomplete="off" class="layui-input" value="{{$my_live.camera_name}}">
+      </div>
+    </div>
+    <div class="layui-form-item" pane>
+      <label class="layui-form-label">模式选择</label>
+      <div class="layui-input-block">
+        <input type="radio" lay-filter="modeType" name="myStreamProp" value="1" title="文件模式" <eq name='my_live.stream_prop' value='1'>checked</eq> >
+        <input type="radio" lay-filter="modeType" name="myStreamProp" value="2" title="拉流模式" <eq name='my_live.stream_prop' value='2'>checked</eq> >
+      </div>
+    </div>
+    <div class="layui-form-item" id="idStreamMP4" style="display: <eq name='my_live.stream_prop' value='1'>block<else/>none</eq>">
+      <label class="layui-form-label">MP4文件</label>
+      <div class="layui-input-block">
+        <input type="text" name="myStreamMP4" autocomplete="off" placeholder="请输入采集端MP4文件全路径" class="layui-input" value="{{$my_live.stream_mp4}}">
+      </div>
+    </div>
+    <div class="layui-form-item" id="idStreamUrl" style="display: <eq name='my_live.stream_prop' value='2'>block<else/>none</eq>">
+      <label class="layui-form-label">拉流地址</label>
+      <div class="layui-input-block">
+        <input type="text" name="myStreamUrl" autocomplete="off" placeholder="请输入rtmp:// 或 rtsp://"  class="layui-input" value="{{$my_live.stream_url}}">
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">TCP模式</label>
+      <div class="layui-input-inline" style="width: 75px;margin-right:0px;">
+        <input type="checkbox" name="myUseTCP" <eq name='my_live.use_tcp' value='1'>checked</eq> lay-skin="switch" lay-text="开启|关闭">
+      </div>
+      <div class="layui-form-mid" style="color: #555;margin-right:0px;">(RTSP数据流是否开启TCP模式，默认UDP模式)</div>
+    </div>
+    <div class="layui-form-item" style="margin-bottom:10px;margin-top:40px;text-align:center;">
+      <button class="layui-btn" lay-submit lay-filter="formCamera">立即保存</button>&nbsp;
+      <button class="layui-btn layui-btn-primary js_form_close" type="button"> 取 消 </button>
+    </div>
+  </form>
+</div>
+
+<script>
+// 这里没有jquery，直接用document事先设定选中项，之后才能被layui识别到...
+document.getElementsByName('myCameraGather')[0].value = {{$my_live.gather_id}};
+</script>

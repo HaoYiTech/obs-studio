@@ -1,0 +1,83 @@
+
+<style>
+.layui-form-item { margin-bottom: 5px; }
+</style>
+
+<div class="layui-field-box">
+  <form class="layui-form layui-form-pane" action="">
+    <div class="layui-form-item">
+      <label class="layui-form-label">标题名称</label>
+      <div class="layui-input-block">
+        <input type="text" name="myNameSet" maxlength="80" lay-verify="required" autocomplete="off" placeholder="请为采集端命名" class="layui-input" value="{{$my_gather.name_set}}">
+      </div>
+    </div>    
+    <div class="layui-form-item">
+      <label class="layui-form-label">录像码流</label>
+      <div class="layui-input-inline" style="width:60px">
+        <input type="text" name="myMainRate" maxlength="4" lay-verify="required" autocomplete="off" class="layui-input" value="{{$my_gather.main_rate}}">
+      </div>
+      <div class="layui-form-mid" style="color: #555">Kbps（主码流，只对IPC摄像头设备启用）</div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">直播码流</label>
+      <div class="layui-input-inline" style="width:60px">
+        <input type="text" name="mySubRate" maxlength="4" lay-verify="required" autocomplete="off" class="layui-input" value="{{$my_gather.sub_rate}}">
+      </div>
+      <div class="layui-form-mid" style="color: #555">Kbps（子码流，只对IPC摄像头设备启用）</div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">录像切片</label>
+      <div class="layui-input-inline" style="width:60px">
+        <input type="text" name="mySliceVal" maxlength="2" lay-verify="required" autocomplete="off" class="layui-input" value="{{$my_gather.slice_val}}">
+      </div>
+      <div class="layui-form-mid" style="color: #555">(每隔0~30分钟产生新切片，0表示不切片)</div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">切片交错</label>
+      <div class="layui-input-inline" style="width:60px">
+        <input type="text" name="myInterVal" maxlength="2" lay-verify="required" autocomplete="off" class="layui-input" value="{{$my_gather.inter_val}}">
+      </div>
+      <div class="layui-form-mid" style="color: #555">(每个新切片交错0~3个关键帧，0表示不交错)</div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">通道截图</label>
+      <div class="layui-input-inline" style="width:60px">
+        <input type="text" name="mySnapVal" maxlength="2" lay-verify="required" autocomplete="off" class="layui-input" value="{{$my_gather.snap_val}}">
+      </div>
+      <div class="layui-form-mid" style="color: #555">(每隔1分钟~10分钟，启动中的通道自动截图)</div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">每页窗口</label>
+      <div class="layui-input-inline" style="width:60px">
+        <input type="text" name="myPageSize" maxlength="2" lay-verify="required" autocomplete="off" class="layui-input" value="{{$my_gather.page_size}}">
+      </div>
+      <div class="layui-form-mid" style="color: #555">(每页窗口数，默认9个窗口开始分页)</div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label" style="width:170px">自动探测网络摄像机</label>
+      <div class="layui-input-inline" style="width:75px">
+        <input type="checkbox" name="myAutoIPC" <eq name='my_gather.auto_ipc' value='1'>checked</eq> lay-skin="switch" lay-text="开启|关闭">
+      </div>
+      <div class="layui-form-mid" style="color: #555">(会不断探测同一网络内的IPC)</div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label" style="width:170px">自动重连已离线通道</label>
+      <div class="layui-input-inline" style="width:75px">
+        <input type="checkbox" name="myAutoDVR" <eq name='my_gather.auto_dvr' value='1'>checked</eq> lay-skin="switch" lay-text="开启|关闭">
+      </div>
+      <div class="layui-form-mid" style="color: #555">(会不断尝试重连已离线通道)</div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label" style="width:170px">自动重连存储服务器</label>
+      <div class="layui-input-inline" style="width:70px">
+        <input type="checkbox" name="myAutoFDFS" <eq name='my_gather.auto_fdfs' value='1'>checked</eq> lay-skin="switch" lay-text="开启|关闭">
+      </div>
+      <div class="layui-form-mid" style="color: #555">(会不断尝试重连存储服务器)</div>
+    </div>
+    <div class="layui-form-item" style="margin-bottom:0px;margin-top:10px;text-align:center;">
+      <button class="layui-btn" lay-submit lay-filter="formGather">立即保存</button>&nbsp;
+      <button class="layui-btn layui-btn-primary js_form_close" type="button"> 取 消 </button>
+    </div>
+  </form>
+</div>
+

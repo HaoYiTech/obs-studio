@@ -1,0 +1,19 @@
+
+<volist name="my_gather" id="vo">
+<tr height="50px" onclick="doModify({{$vo.gather_id}},'{{$vo.mac_addr}}',this);" title="ID: {{$vo.gather_id}}">
+  <td>
+    <switch name="vo.status">
+      <case value="0"><i class="fa fa-power-off fa-wait">&nbsp;离线</i></case>
+      <case value="1"><i class="fa fa-play-circle-o fa-run">&nbsp;在线</i></case>
+    </switch>
+  </td>
+  <td>{{$vo.name_set}}</td>
+  <td>{{$vo.ip_addr}}</td>
+  <td>{{$vo.name_pc}}</td>
+  <td>{{$vo.mac_addr}}</td>
+  <td>{{$vo.os_name}}</td>
+  <!--<td>
+    <button class="layui-btn layui-btn-small" onclick="doCamera({{$vo.gather_id}})"><i class="layui-icon">&#xe6ed;&nbsp;摄像头</i></button>
+  </td>-->
+</tr>
+</volist>

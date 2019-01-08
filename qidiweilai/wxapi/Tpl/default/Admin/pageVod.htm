@@ -1,0 +1,12 @@
+
+<volist name="my_vod" id="vo">
+<tr height="45px" onclick="doTrClick({{$vo.record_id}},this);">
+  <td><input id="c_{{$vo.record_id}}" type="checkbox" lay-skin="primary"></td>
+  <td>通道{{$vo.camera_id}} - {{$vo.camera_name}}</td>
+  <td align="right">{{$vo.disptime}}</td>
+  <td align="right">{{$vo.clicks}}&nbsp;次</td>
+  <td align="right">{{$vo['file_size']/1024/1024|number_format=###,2,'.',''}}&nbsp;MB</td>
+  <td>{{$vo.file_fdfs}}</td>
+  <td>{{$vo.created}}</td>
+</tr>
+</volist>

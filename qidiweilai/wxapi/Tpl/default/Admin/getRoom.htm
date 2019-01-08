@@ -1,0 +1,60 @@
+
+<div class="layui-field-box">
+  <form class="layui-form layui-form-pane" action="">
+    <div class="layui-form-item">
+      <label class="layui-form-label">教室名称</label>
+      <div class="layui-input-block">
+        <input type="text" name="myRoomName" maxlength="30" lay-verify="required" autocomplete="off" class="layui-input" value="{{$my_room.room_name}}">
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">授课科目</label>
+      <div class="layui-input-block">
+        <select name="myRoomSubject" lay-verify="required" lay-search="">
+          <volist name="my_room.arrSubject" id="vo">
+          <option value="{{$vo.subject_id}}">{{$vo.subject_name}}</option>
+          </volist>
+        </select>
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">授课讲师</label>
+      <div class="layui-input-block">
+        <select name="myRoomTeacher" lay-verify="required" lay-search="">
+          <volist name="my_room.arrTeacher" id="vo">
+          <option value="{{$vo.user_id}}">{{$vo.real_name}} - {{$vo.wx_nickname}}</option>
+          </volist>
+        </select>
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <div class="layui-inline" style="margin-right:5px;margin-bottom:0px">
+        <label class="layui-form-label">直播时间</label>
+        <div class="layui-input-block">
+          <input name="myStartTime" type="text" class="date-workinput date-datainp date-wicon" value="{{$my_room.start_time}}" readonly>
+        </div>
+      </div>
+      <div class="layui-inline" style="margin-right:5px;margin-bottom:0px">至</div>
+      <div class="layui-inline" style="margin-right:0px;margin-bottom:0px">
+        <input name="myEndTime" type="text" class="date-workinput date-datainp date-wicon" value="{{$my_room.end_time}}" readonly>
+      </div>
+    </div>
+    <div class="layui-form-item" style="margin-bottom:20px">
+      <button type="button" class="layui-btn layui-btn-danger" id="myUpload" style="float:left;width:110px;">
+        <i class="layui-icon">&#xe67c;</i>上传海报
+      </button>
+      <div style="display:inline-block">
+        <img class="loading" id="myPoster" width="200px" height="300px" style="margin-left:5px;border-radius:8px;" src="{{$my_room.poster_fdfs}}_200x300" onerror="doErrImg();"></img>
+      </div>
+    </div>
+    <div class="layui-form-item" style="text-align:center;">
+      <button class="layui-btn" lay-submit lay-filter="formRoom">立即保存</button>&nbsp;
+      <button class="layui-btn layui-btn-primary js_form_close" type="button"> 取 消 </button>
+    </div>
+  </form>
+</div>
+<script>
+// 这里没有jquery，直接用document事先设定选中项，之后才能被layui识别到...
+document.getElementsByName('myRoomSubject')[0].value = {{$my_room.subject_id|default=0}};
+document.getElementsByName('myRoomTeacher')[0].value = {{$my_room.teacher_id|default=0}};
+</script>

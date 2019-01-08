@@ -1,0 +1,13 @@
+
+<volist name="my_user" id="vo">
+<tr height="50px" onclick="doTrClick({{$vo.user_id}},this);">
+  <td><img width="36px" height="36px" class="layui-circle" src="{{$vo.wx_headurl|str_replace='/0','/96',###}}" onerror="doErrHead();">&nbsp;{{$vo.wx_nickname}}</td>
+  <td>{{$vo.real_phone}}</td>
+  <td>{{$vo.real_name}}</td>
+  <td>{{$vo.user_type}}</td>
+  <td>{{$vo.parent_type}}</td>
+  <td>{{$vo.wx_sex}}</td>
+  <td>{{$vo.wx_province}} / {{$vo.wx_city}}</td>
+  <td>{{$vo.update_time}}</td>
+</tr>
+</volist>

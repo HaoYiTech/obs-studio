@@ -1,0 +1,210 @@
+
+<include file = "Common:home_header" />
+<include file = "Common:home_nav" />
+
+<link href="/wxapi/public/css/tour.css" rel="stylesheet">
+
+<section class="content-wrap">
+  <div class="container">
+    <div class="row">
+      <main class="col-md-12">
+        <div class="video-wall">
+          <div class="header-bar">云教室 - 视频墙</div>
+        </div>
+        <div id="myView"></div>
+      </main>
+    </div>
+  </div>
+</section>
+
+<script>
+// 获取网站地址...
+var siteurl="{{:__APP__}}";
+
+// 处理懒加载前的操作...
+function doLazyAppear(left, setting) {
+  var objCur = $(this);
+  // 给当前对象创建一个子对象 => 加载等待框...
+  objCur.append('<div class="rsPreloader"></div>');
+  // 两秒之后，强制删除加载等待框...
+  setTimeout(function() {
+    objCur.find('.rsPreloader').remove();
+  }, 2000);
+}
+// 处理懒加载后的操作...
+function doLazyLoad(left, setting) {
+  $(this).find('.rsPreloader').remove();
+}
+
+// 对页面数据进行重组...
+function doBuildThumb(pageTag, data, tracker) {
+  var $ = layui.jquery;
+  $(pageTag+' .thumb').each(function(i, thumb){
+    var titleText = $('<div></div>');
+    if( i < data.length ) {
+      var video = data[i];
+      var upDiv = $("<div class='am-gallery-up'></div>");
+      // 创建右上角在线状态提示信息...
+      if( video.status > 0 ) {
+        upDiv.append("<div class='am-thumb-back online'></div>");
+        upDiv.append("<div class='am-thumb-text'>直播中</div>");
+      } else {
+        upDiv.append("<div class='am-thumb-back offline'></div>");
+        upDiv.append("<div class='am-thumb-text'>离线中</div>");
+      }
+      $(thumb).append(upDiv);
+      titleText.addClass('title-text');
+      titleText.html(video.camera_name);
+      // 创建标题信息...
+      $(thumb).append(titleText);
+      $(thumb).css('cursor', 'pointer');
+      $(thumb).css('background-color', '#000');
+      $(thumb).css('background-position', 'center');
+      // 针对IE8需要做特殊的兼容处理 => 通过判断是否支持 backgroud-size 样式...
+      var strSrcImage = (video.image_fdfs ? (tracker+video.image_fdfs) : '/wxapi/public/images/snap.png');
+      if(typeof($(thumb).css('background-size')) == 'undefined') {
+        $(thumb).css('filter', "progid:DXImageTransform.Microsoft.AlphaImageLoader(src='"+strSrcImage+"', sizingMethod='scale')");
+      } else {
+        $(thumb).attr('data-original', strSrcImage);
+      }
+      // 绑定点击事件...
+      $(thumb).unbind("click").click(function(e){
+        // 重新更新当前通道的直播快照...
+        doUpdateImage(this, video, tracker);
+        // 处理当前通道点击事件...
+        handleActivePlayer(this, video);
+      });
+    } else {
+      titleText.addClass('title-none');
+      titleText.html('暂无通道');
+      $(thumb).append(titleText);
+    }
+  });
+}
+// 重新更细您当前通道的直播快照...
+function doUpdateImage(thumb, video, tracker) {
+  // 设置IE8兼容性，加载分页数据...
+  $.ajaxSetup({ cache:false });
+  $.ajax({
+    type: "get",
+    async: true,
+    url: siteurl+"/Home/getImage/camera_id/"+video.camera_id,
+    success: function(ajaxData) {
+      var arrJson = $.parseJSON(ajaxData);
+      if( !arrJson ) return;
+      if( video.status != arrJson.status ) {
+        video.status = arrJson.status;
+        $(thumb).find('.am-gallery-up').remove();
+        var upDiv = $("<div class='am-gallery-up'></div>");
+        if( video.status > 0 ) {
+          upDiv.append("<div class='am-thumb-back online'></div>");
+          upDiv.append("<div class='am-thumb-text'>直播中</div>");
+        } else {
+          upDiv.append("<div class='am-thumb-back offline'></div>");
+          upDiv.append("<div class='am-thumb-text'>离线中</div>");
+        }
+        $(thumb).append(upDiv);
+      }
+      if( video.image_fdfs != arrJson.image_fdfs ) {
+        video.image_fdfs = arrJson.image_fdfs;
+        var theImage = (video.image_fdfs ? (tracker+video.image_fdfs) : '/wxapi/public/images/snap.png');
+        $(thumb).css('background-image', 'url('+theImage+')');
+      }
+    },
+    error: function(XMLHttpRequest, textStatus, errorThrown) {
+      layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+    }
+  });
+  
+}
+// 响应鼠标点击事件...
+function handleActivePlayer(thumb, video) {
+  // 先关闭已经创建的播放器对象...
+  doClosePlayer();
+  // 准备iframe的url地址...
+  var nWidth = $(thumb).width() + 2;
+  var nHeight = $(thumb).height() + 2;
+  var strUrl = "/wxapi.php/Home/show/type/live/camera_id/"+video.camera_id+"/width/"+nWidth+"/height/"+nHeight;
+  var haoYiCode = '<iframe src="%s%" frameborder="no" webkitAllowFullScreen mozallowfullscreen allowFullScreen></iframe>';
+  // 创建frame和holder对象...
+  var objFrame = $(haoYiCode.replace("%s%", strUrl));
+  var objHolder = $('<div class="rsVideoFrameHolder"><div class="rsPreloader"></div><div class="rsCloseVideoBtn"><div class="rsCloseVideoIcn"></div></div></div>');
+  // 处理关闭按钮点击事件...
+  objHolder.find(".rsCloseVideoBtn").off("click").on("click", function (b) {
+    // 删除关闭按钮，找到iframe对象，置空iframe地址...
+    objHolder.find(".rsCloseVideoBtn").remove();
+    var objItem = objHolder.find("iframe");
+    if ( objItem.length ) try  {
+      objItem.attr("src", "")
+    } catch (v) {}
+    // 删除holder对象...
+    objHolder.remove();
+    // 防止事件继续传递...
+    b.preventDefault();
+    b.stopPropagation();
+    return false;
+  });
+  // 将iframe追加到holder当中 => 边框少两个像素...
+  objHolder.find(".rsPreloader").after(objFrame)
+  objHolder.addClass('rsVideoActive');
+  objHolder.css('width', nWidth - 2);
+  objHolder.css('height', nHeight - 2);
+  objHolder.append(objFrame);
+  // 将holder追加到选中对象当中...
+  $(thumb).append(objHolder);
+}
+// 专门处理全局的关闭事件...
+function doClosePlayer() {
+  // 通过class找到holder对象...
+  var objHolders = $('.rsVideoFrameHolder');
+  if( objHolders.length <= 0 ) return;
+  // 删除关闭按钮，找到iframe对象，置空iframe地址...
+  objHolders.find(".rsCloseVideoBtn").remove();
+  var objItems = objHolders.find("iframe");
+  // 自动执行多个记录的操作...
+  if ( objItems.length ) try  {
+    objItems.attr("src", "")
+  } catch (v) {}
+  // 删除holder对象...
+  objHolders.remove();
+}
+// 处理 layui 过程...
+layui.use(['flow','layer'], function(){
+  var max_page = {{$max_page}};
+  var flow = layui.flow;
+  // 流加载过程，不用弹等待框...
+  flow.load({
+    elem: '#myView',
+    isLazyimg: false,
+    done: function(page, next){
+      // 设置IE8兼容性，加载分页数据...
+      $.ajaxSetup({ cache:false });
+      $.ajax({
+        type: "get",
+        async: true,
+        url: siteurl+"/Home/pageTour/p/"+page,
+        success: function(ajaxData) {
+          // 解析json数据包，将页面数据加载...
+          var arrJson = $.parseJSON(ajaxData);
+          next(arrJson.html, page < max_page);
+          // 通过数据进行页面重组...
+          doBuildThumb("#page_"+page, arrJson.data, arrJson.tracker);
+          // 延时加载图片 => 使用外部lazy，不用layui提供的懒加载，不理想...
+          // 分页单独懒加载，否则，每次都要全部懒加载...
+          // placeholder参数针对background-image没用...
+          $("#page_"+page+" div.thumb").lazyload({
+            effect : "fadeIn",
+            load: doLazyLoad,
+            appear: doLazyAppear
+          });
+        },
+        error: function(XMLHttpRequest, textStatus, errorThrown) {
+          layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+        }
+      });
+    }
+  });
+});
+</script>
+
+<include file = "Common:home_footer" />

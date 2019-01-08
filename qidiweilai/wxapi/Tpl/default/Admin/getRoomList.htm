@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- 上述3个meta标签*必须*放在最前面，任何其他内容都*必须*跟随其后！ -->
+  <title>已挂载通道列表</title>
+  <!-- layui css and javascript -->
+  <link href="/wxapi/public/layui/css/layui.css" rel="stylesheet" media="all">
+  <link href="/wxapi/public/css/weui.min.css" rel="stylesheet" />
+  <script src="/wxapi/public/layui/layui.js"></script>  
+</head>
+
+<style>
+.feed-main {
+  top: 0px;
+  width: 100%;
+  position: absolute;
+}
+.feed-table {
+  margin: 0px 10px;
+  position: relative;
+}
+.feed-cursor {
+  cursor: pointer;
+}
+</style>
+
+<body>
+
+<!-- 错误信息栏 -->
+<if condition="($my_show.err_code gt 0) OR ($my_show.list_num elt 0)">
+<div class="weui_msg" style="margin-top:20px;">
+  <div class="weui_icon_area"><i class="weui_icon_safe weui_icon_safe_warn"></i></div>
+  <div class="weui_text_area">
+    <h2 class="weui_msg_title">{{$my_show.err_msg}}</h2>
+    <p class="weui_msg_desc">当前服务器没有挂载任何有效的直播教室</p>
+  </div>
+</div>
+<else/>
+<div class="feed-main">
+  <div class="feed-table">
+    <table class="layui-table">
+      <colgroup>
+        <col width="10%">
+        <col width="20%">
+        <col width="20%">
+        <col width="20%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>教室序号</th>
+          <th>教室编号</th>
+          <th>讲师数量</th>
+          <th>学生数量</th>
+        </tr>
+      </thead>
+      <tbody>
+        <volist name="my_show.list_data" id="vo">
+        <tr class="feed-cursor">
+          <td>{{$key+1}}</td>
+          <td>{{$vo.room_id}}</td>
+          <td>{{$vo.teacher}}</td>
+          <td>{{$vo.student}}</td>
+        </tr>
+        </volist>
+      </tbody>
+    </table>
+  </div>
+</div>
+</if>
+
+<script>
+// onclick="doPlayerList({{$my_server_id}},{{$vo.room_id}});"
+// 处理点击观看用户列表...
+function doPlayerList(inSocketFD, inRoomID) {
+  layer.open({
+    type: 2, //0(dialog), 1(page), 2(iframe), 3(loading), 4(tips)
+    closeBtn: 1,
+    fixed: true,
+    scrollbar: false,
+    shadeClose: false,
+    area: ['600px', '450px'],
+    content: "{{:__APP__}}/Admin/getPlayerList/server_id/" + inSocketFD + '/room_id/' + inRoomID,
+    title: "<i class='layui-icon'>&#xe612;</i>&nbsp;&nbsp;观看用户列表 - 教室编号：" + inRoomID
+  });  
+}
+// 处理 layui 过程...
+layui.use(['element','layer'], function(){
+  var $ = layui.jquery;
+});
+</script>
+
+</body>
+</html>
