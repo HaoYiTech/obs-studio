@@ -6,28 +6,173 @@
 
 class GatherAction extends Action
 {
-  // 测试获取小程序二维码...
-  /*public function qrcode()
-  {
-    $strTokenUrl = 'https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=wx78b419f717fb1552&secret=29605607d5005fa5f1a5dde59eeb42eb';
-    $result = http_get($strTokenUrl);
-    $json = json_decode($result,true);
-    //echo $json['access_token'];
-    
-    $strQueryUrl = 'https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token='.$json['access_token'];
-    $arrPost['scene'] = '100';
-    $arrPost['page'] = 'pages/index/index';
-    $strPost = json_encode($arrPost);
-    $result = http_post($strQueryUrl, $strPost);
-    print_r($result);
-  }*/
   // 初始化页面的默认操作...
   public function _initialize() {
   }
+  //
+  // 计算时间差值...
+  private function diffSecond($dStart, $dEnd)
+  {
+    $one = strtotime($dStart);//开始时间 时间戳
+    $tow = strtotime($dEnd);//结束时间 时间戳
+    $cle = $tow - $one; //得出时间戳差值
+    return $cle; //返回秒数...
+  }
   /**
   +--------------------------------------------------------------------
-  * 处理默认index事件 => 添加或修改gather记录 => 返回系统配置信息...
+  * 中心站 => 验证学生端的合法性 => 是否取得授权继续运行...
   +--------------------------------------------------------------------
+  */
+  public function verify()
+  {
+    // 准备返回数据结构...
+    $arrErr['err_code'] = false;
+    $arrErr['err_msg'] = "OK";
+    // 将获得的数据进行判断和处理 => 测试 => $_GET;
+    $arrData = $_POST;
+    do {
+      // 判断输入数据是否有效...
+      if( !isset($arrData['mac_addr']) || !isset($arrData['version']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = "MAC地址或版本号为空！";
+        break;
+      }
+      // 判断输入的网站节点标记是否有效 => node_tag 来自 web_tag
+      if( !isset($arrData['node_tag']) || !isset($arrData['node_type']) || 
+          !isset($arrData['node_addr']) || !isset($arrData['node_name']) ||
+          !isset($arrData['node_proto']) )
+      {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = "网站节点标记不能为空！";
+        break;
+      }
+      // 根据node_addr判断，是互联网节点还是局域网节点...
+      $arrAddr = explode(':', $arrData['node_addr']);
+      $theIPAddr = gethostbyname($arrAddr[0]);
+      $theWanFlag = (filter_var($theIPAddr, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) ? true : false);
+      // 根据节点标记获取或创建一条新记录...
+      // 注意：node_addr已经包含了端口信息...
+      $map['node_tag'] = $arrData['node_tag'];
+      $dbNode = D('node')->where($map)->find();
+      // 这里是通过元素个数判断，必须单独更新数据...
+      if( count($dbNode) <= 0 ) {
+        // 创建一条新纪录...
+        $dbNode['node_wan'] = $theWanFlag;
+        $dbNode['node_proto'] = $arrData['node_proto'];
+        $dbNode['node_name'] = $arrData['node_name'];
+        $dbNode['node_type'] = $arrData['node_type'];
+        $dbNode['node_addr'] = $arrData['node_addr'];
+        $dbNode['node_tag'] = $arrData['node_tag'];
+        $dbNode['node_ver'] = $arrData['node_ver'];
+        $dbNode['created'] = date('Y-m-d H:i:s');
+        $dbNode['updated'] = date('Y-m-d H:i:s');
+        $dbNode['expired'] = date("Y-m-d H:i:s", strtotime("+30 days"));
+        $dbNode['node_id'] = D('node')->add($dbNode);
+      } else {
+        $dbNode['node_wan'] = $theWanFlag;
+        $dbNode['node_proto'] = $arrData['node_proto'];
+        $dbNode['node_name'] = $arrData['node_name'];
+        $dbNode['node_type'] = $arrData['node_type'];
+        $dbNode['node_addr'] = $arrData['node_addr'];
+        $dbNode['node_tag'] = $arrData['node_tag'];
+        $dbNode['node_ver'] = $arrData['node_ver'];
+        $dbNode['updated'] = date('Y-m-d H:i:s');
+        D('node')->save($dbNode);
+      }
+      /////////////////////////////////////////////////
+      // 注意：学生端不用验证节点网站的有效性...
+      /////////////////////////////////////////////////
+      // 判断获取的节点记录是否有效...
+      if( $dbNode['node_id'] <= 0 ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = "网站节点编号无效！";
+        break;
+      }
+      // 设定学生端所在的节点编号...
+      $arrData['node_id'] = $dbNode['node_id'];
+      // 根据MAC地址获取Gather记录信息...
+      $where['mac_addr'] = $arrData['mac_addr'];
+      $dbGather = D('gather')->where($where)->find();
+      if( count($dbGather) <= 0 ) {
+        // 没有找到记录，直接创建一个新记录 => 默认授权30天...
+        $dbGather = $arrData;
+        $dbGather['status'] = 1;
+        $dbGather['created'] = date('Y-m-d H:i:s');
+        $dbGather['updated'] = date('Y-m-d H:i:s');
+        $dbGather['expired'] = date("Y-m-d H:i:s", strtotime("+30 days"));
+        $dbGather['mac_md5'] = md5($arrData['mac_addr']);
+        $arrErr['gather_id'] = D('gather')->add($dbGather);
+        // 获取数据库设置的默认最大通道数、永久授权标志...
+        $condition['gather_id'] = $arrErr['gather_id'];
+        $dbItem = D('gather')->where($condition)->field('max_camera,license')->find();
+        // 准备返回数据 => 最大通道数、授权有效期、所在节点编号、永久授权标志、绑定用户编号...
+        $arrErr['auth_days'] = 30;
+        $arrErr['auth_license'] = $dbItem['license'];
+        $arrErr['auth_expired'] = $dbGather['expired'];
+        $arrErr['max_camera'] = $dbItem['max_camera'];
+        $arrErr['node_id'] = $arrData['node_id'];
+        $arrErr['mac_md5'] = $dbGather['mac_md5'];
+        $arrErr['user_id'] = 0;
+      } else {
+        // 查看用户授权是否已经过期 => 当前时间 与 过期时间 比较...
+        $nDiffSecond = $this->diffSecond(date("Y-m-d H:i:s"), $dbGather['expired']);
+        // 统一返回最大通道数、授权有效期、剩余天数...
+        $arrErr['auth_days'] = ceil($nDiffSecond/3600/24);
+        $arrErr['auth_license'] = $dbGather['license'];
+        $arrErr['auth_expired'] = $dbGather['expired'];
+        $arrErr['max_camera'] = $dbGather['max_camera'];
+        $arrErr['mac_md5'] = md5($arrData['mac_addr']);
+        // 不是永久授权版，并且授权已过期，返回失败...
+        if( ($arrErr['auth_license'] <= 0) && ($nDiffSecond <= 0) ) {
+          $arrErr['err_code'] = true;
+          $arrErr['err_msg'] = "授权已过期！";
+          break;
+        }
+        // 授权有效，返回所在节点编号...
+        $arrErr['gather_id'] = $dbGather['gather_id'];
+        $arrErr['node_id'] = $arrData['node_id'];
+        // 授权有效，将记录更新到数据库...
+        $arrData['mac_md5'] = $arrErr['mac_md5'];
+        $arrData['gather_id'] = $dbGather['gather_id'];
+        $arrData['updated'] = date('Y-m-d H:i:s');
+        $arrData['status'] = 1;
+        D('gather')->save($arrData);
+      }
+    }while( false );
+    // 直接返回运行结果 => json...
+    echo json_encode($arrErr);
+  }
+  /**
+  +-------------------------------------------------------------------------------------
+  * 中心站 => 处理学生端退出 => 将所有学生端下面的通道状态和学生端自己状态设置为0...
+  +-------------------------------------------------------------------------------------
+  */
+  public function logout()
+  {
+    // 判断输入的学生端编号是否有效...
+    if( !isset($_POST['gather_id']) )
+      return;
+    // 将所有该学生端下面的通道状态设置为0...
+    $map['gather_id'] = $_POST['gather_id'];
+    D('camera')->where($map)->setField('status', 0);
+    // 将学生端自己的状态设置为0...
+    D('gather')->where($map)->setField('status', 0);
+  }
+  /**
+  +----------------------------------------------------------
+  * 节点站 => 保存学生端发送的系统配置信息...
+  +----------------------------------------------------------
+  */
+  public function saveSetSys()
+  {
+    // 直接保存，不返回结果...
+    $_POST['updated'] = date('Y-m-d H:i:s');
+    D('gather')->save($_POST);
+  }
+  /**
+  +--------------------------------------------------------------------------------
+  * 节点站 => 处理默认index事件 => 添加或修改gather记录 => 返回系统配置信息...
+  +--------------------------------------------------------------------------------
   */
   public function index()
   {
@@ -81,15 +226,7 @@ class GatherAction extends Action
       }
       // 返回新增的采集端字段信息...
       $arrErr['name_set'] = $dbGather['name_set'];
-      $arrErr['main_rate'] = $dbGather['main_rate'];
-      $arrErr['sub_rate'] = $dbGather['sub_rate'];
-      $arrErr['slice_val'] = $dbGather['slice_val'];
-      $arrErr['inter_val'] = $dbGather['inter_val'];
       $arrErr['snap_val'] = $dbGather['snap_val'];
-      $arrErr['auto_dvr'] = $dbGather['auto_dvr'];
-      $arrErr['auto_fdfs'] = $dbGather['auto_fdfs'];
-      $arrErr['auto_ipc'] = $dbGather['auto_ipc'];
-      $arrErr['page_size'] = $dbGather['page_size'];
       $arrErr['role_type'] = $dbGather['role_type'];
       $arrErr['ip_send'] = $dbGather['ip_send'];
       // 返回采集端需要的参数配置信息...
@@ -106,71 +243,7 @@ class GatherAction extends Action
   }
   /**
   +----------------------------------------------------------
-  * 处理采集端获取配置 => 采集端在网站里的通用配置信息...
-  +----------------------------------------------------------
-  */
-  /*public function getConfig()
-  {
-    // 准备返回数据结构...
-    $arrErr['err_code'] = false;
-    $arrErr['err_msg'] = "OK";
-    // 将获得的数据进行判断和处理...
-    $arrData = $_POST;
-    do {
-      // 判断输入数据是否有效...
-      if( !isset($arrData['gather_id']) || !isset($arrData['mac_addr']) ) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = "采集端编号或设备地址为空！";
-        break;
-      }
-      // 查询对应的记录...
-      $map['gather_id'] = $arrData['gather_id'];
-      $map['mac_addr'] = $arrData['mac_addr'];
-      $dbGather = D('gather')->where($map)->find();
-      if( count($dbGather) <= 0 ) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = "没有找到指定的采集端记录！";
-        break;
-      }
-      // 读取系统配置表，返回给采集端...
-      $dbSys = D('system')->find();
-      // 将录像切片信息返回给强求采集端 => 后期可以根据需要继续添加...
-      $arrErr['slice_val'] = strval($dbSys['slice_val']);
-      $arrErr['inter_val'] = strval($dbSys['inter_val']);
-    }while( false );
-    // 直接返回运行结果 => json...
-    echo json_encode($arrErr);
-  }*/
-  /**
-  +----------------------------------------------------------
-  * 处理采集端退出 => 将所有采集端下面的通道状态和采集端自己状态设置为0...
-  +----------------------------------------------------------
-  */
-  public function logout()
-  {
-    // 判断输入的采集端编号是否有效...
-    if( !isset($_POST['gather_id']) )
-      return;
-    // 将所有该采集端下面的通道状态设置为0...
-    $map['gather_id'] = $_POST['gather_id'];
-    D('camera')->where($map)->setField('status', 0);
-    // 将采集端自己的状态设置为0...
-    D('gather')->where($map)->setField('status', 0);
-  }
-  /**
-  +----------------------------------------------------------
-  * 保存学生端发送的系统配置信息...
-  +----------------------------------------------------------
-  */
-  public function saveSetSys()
-  {
-    // 直接保存，不返回结果...
-    $_POST['updated'] = date('Y-m-d H:i:s');
-    D('gather')->save($_POST);
-  }
-  /**
-  +----------------------------------------------------------
-  * 获取通道配置信息和录像配置...
+  * 节点站 => 获取通道配置信息和录像配置...
   +----------------------------------------------------------
   */
   public function getCamera()
@@ -195,16 +268,6 @@ class GatherAction extends Action
         $arrErr['err_msg'] = "没有找到指定通道的配置信息！";
         break;
       }
-      // 2017.11.02 - by jackey => 去掉了年级信息...
-      /*$dbCamera['grade_name'] = "";
-      $dbCamera['grade_type'] = "";
-      // 如果grade_id有效，则需要组合年级名称...
-      if( $dbCamera['grade_id'] > 0 ) {
-        $condition['grade_id'] = $dbCamera['grade_id'];
-        $dbGrade = D('grade')->where($condition)->field('grade_type,grade_name')->find();
-        $dbCamera['grade_name'] = $dbGrade['grade_name'];
-        $dbCamera['grade_type'] = $dbGrade['grade_type'];
-      }*/
       // 去掉一些采集端不需要的字段，减少数据量...
       unset($dbCamera['err_code']);
       unset($dbCamera['err_msg']);
@@ -213,23 +276,13 @@ class GatherAction extends Action
       unset($dbCamera['clicks']);
       // 将通道配置组合起来，反馈给采集端...
       $arrErr['camera'] = $dbCamera;
-      // 读取该通道下的所有录像课程表，反馈给采集端...
-      $arrCourse = D('course')->where($map)->select();
-      // 将字符串时间转换成整数时间戳...
-      foreach($arrCourse as &$dbItem) {
-        $dbItem['start_time'] = strval(strtotime($dbItem['start_time']));
-        $dbItem['end_time'] = strval(strtotime($dbItem['end_time']));
-        unset($dbItem['created']); unset($dbItem['updated']);
-      }
-      // 将课程记录保存到返回队列当中...
-      $arrErr['course'] = $arrCourse;      
     }while( false );
     // 直接返回运行结果 => json...
     echo json_encode($arrErr);
   }
   /**
   +----------------------------------------------------------
-  * 处理摄像头注册事件 => 添加或修改camera记录...
+  * 节点站 => 处理摄像头注册事件 => 添加或修改camera记录...
   +----------------------------------------------------------
   */
   public function regCamera()
@@ -270,7 +323,7 @@ class GatherAction extends Action
   }
   /**
   +----------------------------------------------------------
-  * 处理保存摄像头删除过程 => 返回 camera_id ...
+  * 节点站 => 处理保存摄像头删除过程 => 返回 camera_id ...
   +----------------------------------------------------------
   */
   public function delCamera()
@@ -319,38 +372,188 @@ class GatherAction extends Action
     echo json_encode($arrErr);
   }
   /**
-  +----------------------------------------------------------
-  * 处理保存摄像头信息 => 参数 camera_id | status ...
-  +----------------------------------------------------------
+  +--------------------------------------------------------------------
+  * 节点站 => 处理保存摄像头信息 => 参数 camera_id | status ...
+  +--------------------------------------------------------------------
   */
   public function saveCamera()
   {
-    /*// 准备返回数据结构...
-    $arrErr['err_code'] = false;
-    $arrErr['err_msg'] = "OK";
-    // 将获得的数据进行判断和处理...
-    $dbData = $_POST;
-    do {
-      // 判断输入数据是否有效...
-      if( !isset($dbData['camera_id']) || !isset($dbData['status']) ) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = "摄像头编号不能为空！";
-        break;
-      }
-      // 直接保存摄像头数据...
-      $arrErr['camera_id'] = $dbData['camera_id'];
-      $dbData['updated'] = date('Y-m-d H:i:s');
-      D('camera')->save($dbData);
-    }while( false );
-    // 直接返回运行结果 => json...
-    echo json_encode($arrErr);*/
-
     // 直接保存，不返回结果...
     $_POST['updated'] = date('Y-m-d H:i:s');
     D('camera')->save($_POST);
   }
   //
-  // 处理教师端上传保存...
+  // 节点站 => 分页获取房间列表...
+  public function getRoomList()
+  {
+    // 准备返回数据结构...
+    $arrErr['err_code'] = false;
+    $arrErr['err_msg'] = "OK";
+    // 验证发送的终端类型是否正确 => 这里没有验证...
+    $nClientType = intval($_POST['type_id']);
+    // 得到每页条数...
+    $pagePer = 8;
+    $pageCur = (isset($_POST['p']) ? $_POST['p'] : 1);  // 当前页码...
+    $pageLimit = (($pageCur-1)*$pagePer).','.$pagePer;   // 读取范围...
+    // 计算记录总条数和总页数...
+    $totalNum = D('RoomView')->count();
+    $max_page = intval($totalNum / $pagePer);
+    // 判断是否是整数倍的页码...
+    $max_page += (($totalNum % $pagePer) ? 1 : 0);
+    // 填充需要返回的信息 => 都转换成字符串...
+    $arrErr['total_num'] = strval($totalNum);
+    $arrErr['max_page'] = strval($max_page);
+    $arrErr['cur_page'] = strval($pageCur);
+    // 设定房间前缀编号...
+    $arrErr['begin_id'] = strval(LIVE_BEGIN_ID);
+    // 读取当期指定分页的房间列表记录...
+    $arrRoom = D('RoomView')->limit($pageLimit)->order('Room.created DESC')->select();
+    // 组合需要返回的记录字段信息...
+    $arrErr['list'] = $arrRoom;
+    // 返回json编码数据包...
+    echo json_encode($arrErr);    
+  }
+  //
+  // 节点站 => 处理来自学生端或讲师端的云教室登录事件...
+  public function loginLiveRoom()
+  {
+    // 准备返回数据结构...
+    $arrErr['err_code'] = false;
+    $arrErr['err_msg'] = "OK";
+    // 将获得的数据进行判断和处理...$_GET;//
+    $arrPost = $_POST;
+    do {
+      // 判断输入参数是否有效...
+      if( !isset($arrPost['room_id']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '请输入有效的云教室号码，号码从200000开始！';
+        break;
+      }
+      // 获取是否是调试模式的学生端或讲师端对象...
+      $bIsDebugMode = ((intval($arrPost['debug_mode']) > 0) ? 1 : 0);
+      // 计算有效的的直播间的数据库的编号 => 减去数字前缀偏移...
+      $nRoomID = intval($arrPost['room_id']) - LIVE_BEGIN_ID;
+      if( $nRoomID <= 0 ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '请输入有效的云教室号码，号码从200000开始！';
+        break;
+      }
+      // 验证云教室是否存在...
+      $condition['room_id'] = $nRoomID;
+      $dbRoom = D('room')->where($condition)->field('room_id')->find();
+      if( !isset($dbRoom['room_id']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '没有找到指定的云教室号码，请确认后重新输入！';
+        break;
+      }
+      // 验证发送的终端类型是否正确...
+      $nClientType = intval($arrPost['type_id']);
+      if(($nClientType != kClientStudent) && ($nClientType != kClientTeacher)) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '不是合法的终端类型，请确认后重新登录';
+        break;
+      }
+      // 读取系统配置数据库记录...
+      $dbSys = D('system')->find();
+      // 构造UDP中心服务器需要的参数 => 房间编号 => LIVE_BEGIN_ID + room_id
+      $dbParam['room_id'] = LIVE_BEGIN_ID + $dbRoom['room_id'];
+      $dbParam['debug_mode'] = $bIsDebugMode;
+      // 从UDP中心服务器获取UDP直播地址和UDP中转地址...
+      $dbResult = $this->getUdpServerFromUdpCenter($dbSys['udpcenter_addr'], $dbSys['udpcenter_port'], $dbParam);
+      // 如果获取连接中转服务器失败...
+      if( $dbResult['err_code'] > 0 ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = $dbResult['err_msg'];
+        break;
+      }
+      // 注意：需要将数字转换成字符串...
+      // 填充跟踪服务器的地址和端口...
+      $arrErr['tracker_addr'] = $dbSys['tracker_addr'];
+      $arrErr['tracker_port'] = strval($dbSys['tracker_port']);
+      // 填充udp远程服务器的地址和端口 => 从UDPCenter获取的来自UDPServer的汇报...
+      $arrErr['remote_addr'] = $dbResult['remote_addr'];
+      $arrErr['remote_port'] = strval($dbResult['remote_port']);
+      // 填充udp服务器的地址和端口 => 从UDPCenter获取的来自UDPServer的汇报...
+      $arrErr['udp_addr'] = $dbResult['udp_addr'];
+      $arrErr['udp_port'] = strval($dbResult['udp_port']);
+      // 获取当前指定通道上的讲师端和学生端在线数量...
+      $arrErr['teacher'] = strval($dbResult['teacher']);
+      $arrErr['student'] = strval($dbResult['student']);
+      // 如果是讲师端登录，修改房间在线状态...
+      if( $nClientType == kClientTeacher ) {
+        $dbRoom['status'] = 1;
+        D('room')->save($dbRoom);
+      }
+    } while( false );
+    // 直接反馈最终验证的结果...
+    echo json_encode($arrErr);
+  }
+  // 从udp中心服务器获取udp中转服务器和udp直播服务器地址...
+  // 成功 => array()
+  // 失败 => false
+  private function getUdpServerFromUdpCenter($inUdpCenterAddr, $inUdpCenterPort, &$dbParam)
+  {
+    // 通过php扩展插件连接中转服务器 => 性能高...
+    $transmit = transmit_connect_server($inUdpCenterAddr, $inUdpCenterPort);
+    // 链接中转服务器失败，直接返回...
+    if( !$transmit ) {
+      $arrData['err_code'] = true;
+      $arrData['err_msg'] = '无法连接直播中心服务器。';
+      return $arrData;
+    }
+    // 获取当前房间所在UDP直播服务器地址和端口、中转服务器地址和端口...
+    $saveJson = json_encode($dbParam);
+    $json_data = transmit_command(kClientPHP, kCmd_PHP_GetUdpServer, $transmit, $saveJson);
+    // 关闭中转服务器链接...
+    transmit_disconnect_server($transmit);
+    // 获取的JSON数据有效，转成数组，直接返回...
+    $arrData = json_decode($json_data, true);
+    if( !$arrData ) {
+      $arrData['err_code'] = true;
+      $arrData['err_msg'] = '从直播中心服务器获取数据失败。';
+      return $arrData;
+    }
+    // 通过错误码，获得错误信息...
+    $arrData['err_msg'] = getTransmitErrMsg($arrData['err_code']);
+    // 将整个数组返回...
+    return $arrData;
+  }
+  //
+  // 节点站 => 处理学生端或老师端退出事件...
+  public function logoutLiveRoom()
+  {
+    // 判断输入的云教室号码是否有效...
+    if( !isset($_POST['room_id']) || !isset($_POST['type_id']) )
+      return;
+    // 获取终端类型...
+    $nClientType = intval($_POST['type_id']);
+    // 计算有效的的直播间的数据库的编号...
+    $nRoomID = intval($_POST['room_id']) - LIVE_BEGIN_ID;
+    // 如果是讲师端退出，修改房间为离线状态...
+    if( $nClientType == kClientTeacher ) {
+      $dbSave['room_id'] = $nRoomID;
+      $dbSave['status'] = 0;
+      // 直接进行数据库操作...
+      D('room')->save($dbSave);
+    }
+  }
+  //
+  // 节点站 => 获取UDPCenter的地址和端口 => UDPServer调用的接口...
+  /*public function getUDPCenter()
+  {
+    // 获取系统配置信息...
+    $dbSys = D('system')->find();
+    // 准备返回数据结构...
+    $arrErr['err_code'] = false;
+    $arrErr['err_msg'] = "OK";
+    // 填充UDPCenter的地址和端口...
+    $arrErr['udpcenter_addr'] = $dbSys['udpcenter_addr'];
+    $arrErr['udpcenter_port'] = $dbSys['udpcenter_port'];
+    // 直接反馈查询结果...
+    echo json_encode($arrErr);   
+  }*/
+  //
+  // 节点站 => 处理教师端上传保存...
   public function liveFDFS()
   {
     // 准备返回数据结构...
@@ -617,358 +820,6 @@ class GatherAction extends Action
     // 删除该通道下对应的过期录像文件、录像截图...
     $arrList = D('RecordView')->where($condition)->field('record_id,camera_id,file_fdfs,image_id,image_fdfs,created')->select();
     print_r($arrList);
-  }
-  //
-  // 获取直播间列表事件...
-  public function getLiveRoom()
-  {
-    // 准备返回数据结构...
-    $arrErr['err_code'] = false;
-    $arrErr['err_msg'] = "OK";
-    do {
-      // 传递过来的采集端编号是否有效...
-      $condition['gather_id'] = $_POST['gather_id'];
-      $dbGather = D('gather')->where($condition)->field('gather_id,live_id')->find();
-      if( !isset($dbGather['gather_id']) ) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = '没有找到指定的采集端！';
-        break;
-      }
-      // 返回已经挂载的直播间编号...
-      $arrErr['selected'] = strval(LIVE_BEGIN_ID + $dbGather['live_id']);
-      // 查询当前所有的直播间列表...
-      $arrLive = D('LiveView')->order('live_id DESC')->field('live_id,lesson_name,teacher_name,start_time,end_time')->select();
-      // 如果没有直播间，返回错误...
-      if( !is_array($arrLive) ) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = '服务器上没有直播间！';
-        break;
-      }
-      // 如果找到了有效的直播间，设置直播间编号的偏移量...
-      $arrErr['begin'] = strval(LIVE_BEGIN_ID);
-      $arrErr['live'] = $arrLive;
-    } while( false );
-    // 直接反馈获取的数据内容信息...
-    echo json_encode($arrErr);
-  }
-  //
-  // 将指定的采集端挂载到指定的直播间...
-  public function setLiveRoom()
-  {
-    // 准备返回数据结构...
-    $arrErr['err_code'] = false;
-    $arrErr['err_msg'] = "OK";
-    do {
-      // 判断输入参数是否有效...
-      if( !isset($_POST['gather_id']) || !isset($_POST['room_id']) ) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = '输入参数有误！';
-        break;
-      }
-      // 计算需要挂载的直播间的数据库的编号...
-      $nLiveID = intval($_POST['room_id']) - LIVE_BEGIN_ID;
-      if( $nLiveID <= 0 ) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = '输入参数有误！';
-        break;
-      }
-      // 准备数据，执行挂载操作...
-      $dbGather['gather_id'] = $_POST['gather_id'];
-      $dbGather['live_id'] = $nLiveID;
-      D('gather')->save($dbGather);
-    } while( false );
-    // 直接反馈获取的数据内容信息...
-    echo json_encode($arrErr);
-  }*/
-  //
-  // 处理来自学生端或讲师端的云教室登录事件...
-  public function loginLiveRoom()
-  {
-    // 准备返回数据结构...
-    $arrErr['err_code'] = false;
-    $arrErr['err_msg'] = "OK";
-    // 将获得的数据进行判断和处理...$_GET;//
-    $arrPost = $_POST;
-    do {
-      // 判断输入参数是否有效...
-      if( !isset($arrPost['room_id']) ) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = '请输入有效的云教室号码，号码从200000开始！';
-        break;
-      }
-      // 获取是否是调试模式的学生端或讲师端对象...
-      $bIsDebugMode = ((intval($arrPost['debug_mode']) > 0) ? 1 : 0);
-      // 计算有效的的直播间的数据库的编号 => 减去数字前缀偏移...
-      $nRoomID = intval($arrPost['room_id']) - LIVE_BEGIN_ID;
-      if( $nRoomID <= 0 ) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = '请输入有效的云教室号码，号码从200000开始！';
-        break;
-      }
-      // 验证云教室是否存在...
-      $condition['room_id'] = $nRoomID;
-      $dbRoom = D('room')->where($condition)->field('room_id')->find();
-      if( !isset($dbRoom['room_id']) ) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = '没有找到指定的云教室号码，请确认后重新输入！';
-        break;
-      }
-      // 验证发送的终端类型是否正确...
-      $nClientType = intval($arrPost['type_id']);
-      if(($nClientType != kClientStudent) && ($nClientType != kClientTeacher)) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = '不是合法的终端类型，请确认后重新登录';
-        break;
-      }
-
-      // 2018.07.27 - 新的UDP服务器，不需要rtmp地址信息 => 暂时不要删除这段代码...
-      // 构造中转服务器需要的参数 => 直播编号 => LIVE_BEGIN_ID + live_id
-      /*$dbParam['rtmp_live'] = LIVE_BEGIN_ID + $dbLive['live_id'];
-      // 从中转服务器获取云教室直播链接地址...
-      $dbResult = $this->getRtmpUrlFromTransmit($dbParam);
-      // 如果获取连接中转服务器失败...
-      if( $dbResult['err_code'] > 0 ) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = $dbResult['err_msg'];
-        break;
-      }
-      // 将获取到的rtmp地址进行特殊处理...
-      $strRtmpUrl = $dbResult['rtmp_url'];
-      $strRule = '/(^[rR][tT][mM][pP]:\/\/.*\/[lL][iI][vV][eE]\/)(.*)$/';
-      preg_match($strRule, $strRtmpUrl, $arrMatch);
-      if( empty($arrMatch) || !is_array($arrMatch) ) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = '直播地址错误 => ' . $strRtmpUrl;
-        break;
-      }
-      // 将分解后的直播地址反馈给讲师端...
-      $arrErr['live_server'] = $arrMatch[1];
-      $arrErr['live_key'] = $arrMatch[2];*/
-      
-      // 读取系统配置数据库记录...
-      $dbSys = D('system')->find();
-      // 构造UDP中心服务器需要的参数 => 房间编号 => LIVE_BEGIN_ID + room_id
-      $dbParam['room_id'] = LIVE_BEGIN_ID + $dbRoom['room_id'];
-      $dbParam['debug_mode'] = $bIsDebugMode;
-      // 从UDP中心服务器获取UDP直播地址和UDP中转地址...
-      $dbResult = $this->getUdpServerFromUdpCenter($dbSys['udpcenter_addr'], $dbSys['udpcenter_port'], $dbParam);
-      // 如果获取连接中转服务器失败...
-      if( $dbResult['err_code'] > 0 ) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = $dbResult['err_msg'];
-        break;
-      }
-      // 注意：需要将数字转换成字符串...
-      // 填充跟踪服务器的地址和端口...
-      $arrErr['tracker_addr'] = $dbSys['tracker_addr'];
-      $arrErr['tracker_port'] = strval($dbSys['tracker_port']);
-      // 填充udp远程服务器的地址和端口 => 从UDPCenter获取的来自UDPServer的汇报...
-      $arrErr['remote_addr'] = $dbResult['remote_addr'];
-      $arrErr['remote_port'] = strval($dbResult['remote_port']);
-      // 填充udp服务器的地址和端口 => 从UDPCenter获取的来自UDPServer的汇报...
-      $arrErr['udp_addr'] = $dbResult['udp_addr'];
-      $arrErr['udp_port'] = strval($dbResult['udp_port']);
-      // 获取当前指定通道上的讲师端和学生端在线数量...
-      $arrErr['teacher'] = strval($dbResult['teacher']);
-      $arrErr['student'] = strval($dbResult['student']);
-      // 如果是讲师端登录，修改房间在线状态...
-      if( $nClientType == kClientTeacher ) {
-        $dbRoom['status'] = 1;
-        D('room')->save($dbRoom);
-      }
-    } while( false );
-    // 直接反馈最终验证的结果...
-    echo json_encode($arrErr);
-  }
-  // 从udp中心服务器获取udp中转服务器和udp直播服务器地址...
-  // 成功 => array()
-  // 失败 => false
-  private function getUdpServerFromUdpCenter($inUdpCenterAddr, $inUdpCenterPort, &$dbParam)
-  {
-    // 通过php扩展插件连接中转服务器 => 性能高...
-    $transmit = transmit_connect_server($inUdpCenterAddr, $inUdpCenterPort);
-    // 链接中转服务器失败，直接返回...
-    if( !$transmit ) {
-      $arrData['err_code'] = true;
-      $arrData['err_msg'] = '无法连接直播中心服务器。';
-      return $arrData;
-    }
-    // 获取当前房间所在UDP直播服务器地址和端口、中转服务器地址和端口...
-    $saveJson = json_encode($dbParam);
-    $json_data = transmit_command(kClientPHP, kCmd_PHP_GetUdpServer, $transmit, $saveJson);
-    // 关闭中转服务器链接...
-    transmit_disconnect_server($transmit);
-    // 获取的JSON数据有效，转成数组，直接返回...
-    $arrData = json_decode($json_data, true);
-    if( !$arrData ) {
-      $arrData['err_code'] = true;
-      $arrData['err_msg'] = '从直播中心服务器获取数据失败。';
-      return $arrData;
-    }
-    // 通过错误码，获得错误信息...
-    $arrData['err_msg'] = getTransmitErrMsg($arrData['err_code']);
-    // 将整个数组返回...
-    return $arrData;
-  }
-  //
-  // 处理学生端或老师端退出事件...
-  public function logoutLiveRoom()
-  {
-    // 判断输入的云教室号码是否有效...
-    if( !isset($_POST['room_id']) || !isset($_POST['type_id']) )
-      return;
-    // 获取终端类型...
-    $nClientType = intval($_POST['type_id']);
-    // 计算有效的的直播间的数据库的编号...
-    $nRoomID = intval($_POST['room_id']) - LIVE_BEGIN_ID;
-    // 如果是讲师端退出，修改房间为离线状态...
-    if( $nClientType == kClientTeacher ) {
-      $dbSave['room_id'] = $nRoomID;
-      $dbSave['status'] = 0;
-      // 直接进行数据库操作...
-      D('room')->save($dbSave);
-    }
-  }
-  //
-  // 获取UDPCenter的地址和端口 => UDPServer调用的接口...
-  public function getUDPCenter()
-  {
-    // 获取系统配置信息...
-    $dbSys = D('system')->find();
-    // 准备返回数据结构...
-    $arrErr['err_code'] = false;
-    $arrErr['err_msg'] = "OK";
-    // 填充UDPCenter的地址和端口...
-    $arrErr['udpcenter_addr'] = $dbSys['udpcenter_addr'];
-    $arrErr['udpcenter_port'] = $dbSys['udpcenter_port'];
-    // 直接反馈查询结果...
-    echo json_encode($arrErr);   
-  }
-  //
-  // 分页获取房间列表...
-  public function getRoomList()
-  {
-    // 准备返回数据结构...
-    $arrErr['err_code'] = false;
-    $arrErr['err_msg'] = "OK";
-    // 验证发送的终端类型是否正确...
-    $nClientType = intval($_POST['type_id']);
-    // 得到每页条数...
-    $pagePer = 8;
-    $pageCur = (isset($_POST['p']) ? $_POST['p'] : 1);  // 当前页码...
-    $pageLimit = (($pageCur-1)*$pagePer).','.$pagePer;   // 读取范围...
-    // 计算记录总条数和总页数...
-    $totalNum = D('RoomView')->count();
-    $max_page = intval($totalNum / $pagePer);
-    // 判断是否是整数倍的页码...
-    $max_page += (($totalNum % $pagePer) ? 1 : 0);
-    // 填充需要返回的信息 => 都转换成字符串...
-    $arrErr['total_num'] = strval($totalNum);
-    $arrErr['max_page'] = strval($max_page);
-    $arrErr['cur_page'] = strval($pageCur);
-    // 设定房间前缀编号...
-    $arrErr['begin_id'] = strval(LIVE_BEGIN_ID);
-    // 读取当期指定分页的房间列表记录...
-    $arrRoom = D('RoomView')->limit($pageLimit)->order('Room.created DESC')->select();
-    // 组合需要返回的记录字段信息...
-    $arrErr['list'] = $arrRoom;
-    // 返回json编码数据包...
-    echo json_encode($arrErr);    
-  }
-  // 从中转服务器获取直播地址...
-  // 成功 => array()
-  // 失败 => false
-  /*private function getRtmpUrlFromTransmit(&$dbParam)
-  {
-    // 获取系统配置信息...
-    $dbSys = D('system')->find();
-    // 通过php扩展插件连接中转服务器 => 性能高...
-    $transmit = transmit_connect_server($dbSys['transmit_addr'], $dbSys['transmit_port']);
-    // 链接中转服务器失败，直接返回...
-    if( !$transmit ) {
-      $arrData['err_code'] = true;
-      $arrData['err_msg'] = '无法连接中转服务器。';
-      return $arrData;
-    }
-    // 获取直播频道所在的URL地址...
-    $saveJson = json_encode($dbParam);
-    $json_data = transmit_command(kClientPlay, kCmd_Play_Login, $transmit, $saveJson);
-    // 关闭中转服务器链接...
-    transmit_disconnect_server($transmit);
-    // 获取的JSON数据有效，转成数组，直接返回...
-    $arrData = json_decode($json_data, true);
-    if( !$arrData ) {
-      $arrData['err_code'] = true;
-      $arrData['err_msg'] = '从中转服务器获取数据失败。';
-      return $arrData;
-    }
-    // 通过错误码，获得错误信息...
-    $arrData['err_msg'] = getTransmitErrMsg($arrData['err_code']);
-    // 将整个数组返回...
-    return $arrData;
-  }
-  //
-  // 获取指定云教室里面的在线摄像头列表...
-  public function getRoomCameraList()
-  {
-    // 准备返回数据结构...
-    $arrErr['err_code'] = false;
-    $arrErr['err_msg'] = "OK";
-    do {
-      // 判断输入参数是否有效...
-      if( !isset($_POST['room_id']) ) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = '请输入有效的云教室号码，号码从200000开始！';
-        break;
-      }
-      // 计算有效的的直播间的数据库的编号...
-      $nLiveID = intval($_POST['room_id']) - LIVE_BEGIN_ID;
-      if( $nLiveID <= 0 ) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = '请输入有效的云教室号码，号码从200000开始！';
-        break;
-      }
-      // 设置查询条件 => CameraView 当中status是指wk_camera表...
-      $condition['live_id'] = $nLiveID;
-      $condition['status'] = array('gt', 0);
-      $arrErr['camera'] = D('CameraView')->where($condition)->field('camera_id,camera_name,name_pc,name_set')->select();
-    } while( false );
-    // 直接反馈查询结果...
-    echo json_encode($arrErr);   
-  }
-  //
-  // 获取指定在线摄像头的直播地址 => 触发按需推流机制...
-  public function getRoomCameraUrl()
-  {
-    // 准备返回数据结构...
-    $arrErr['err_code'] = false;
-    $arrErr['err_msg'] = "OK";
-    do {
-      // 没有找到指定通道，返回错误...
-      $condition['camera_id'] = $_POST['camera_id'];
-      $dbCamera = D('CameraView')->where($condition)->field('camera_id,mac_addr')->find();
-      if( !isset($dbCamera['camera_id']) ) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = '没有找到指定的摄像头数据！';
-        break;
-      }
-      // 从中转服务器获取摄像头的直播地址，并激发按需推流...
-      $dbParam['mac_addr'] = $dbCamera['mac_addr'];
-      $dbParam['rtmp_live'] = $dbCamera['camera_id'];
-      // 获取直播链接地址...
-      $dbResult = $this->getRtmpUrlFromTransmit($dbParam);
-      // 如果获取连接中转服务器失败...
-      if( $dbResult['err_code'] > 0 ) {
-        $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = $dbResult['err_msg'];
-        break;
-      }
-      // 保存需要返回的 rtmp 直播地址和用户编号...
-      $arrErr['rtmp_url'] = $dbResult['rtmp_url'];
-      $arrErr['player_id'] = $dbResult['player_id'];
-    } while( false );
-    // 直接反馈查询结果...
-    echo json_encode($arrErr);   
   }*/
 }
 ?>

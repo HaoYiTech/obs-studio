@@ -10,11 +10,17 @@
     // 微信登录网站应用需要的参数配置 => 微信开放平台
     'WECHAT_LOGIN' => array(
       'scope'=>'snsapi_login', //用户授权的作用域,使用逗号(,)分隔
-      'appid'=>'', //网站登录应用的appid
+      'appid'=>'wx8e6f2987edbe4b28', //网站登录应用的appid
+      'appsecret'=>'0981672116a85810875759c18144fd7f', //网站登录应用的appsecret
       'redirect_uri'=>'https://www.qidiweilai.com/', //回调地址
       'href'=>'https://www.qidiweilai.com/wxapi/public/css/wxlogin.css', //登录样式地址
     ),
-    
+    // 微信小程序参数配置 => 启迪云 => 云教室...
+    'QIDI_MINI' => array(
+      'appid'=>'wxb324852eab07f380',
+      'appsecret'=>'f55416c405e0a9bc848d3fc1d28126ce'
+    ),
+     
     // 每页显示记录数
     'PAGE_PER' => 10,
     
