@@ -82,6 +82,17 @@ define('kCmd_PHP_GetPlayerList',     21);
 //////////////////////////////////////////////////////
 
 //
+// 去除昵称里的emoji表情符号信息...
+function trimEmo($inNickName)
+{
+  // 对微信昵称进行json编码...
+  $strName = json_encode($inNickName);
+  // 将emoji的unicode置为空，其他不动...
+  $strName = preg_replace("#(\\\ud[0-9a-f]{3})|(\\\ue[0-9a-f]{3})#ie", "", $strName);
+  $strName = json_decode($strName);
+  return $strName;
+}
+//
 // 去掉最后一个字符，如果是反斜杠...
 function removeSlash($strUrl)
 {
