@@ -104,12 +104,6 @@ class LoginAction extends Action
       $strJump = Cookie::get('wx_jump');
       // 注意：$_SERVER['HTTP_HOST'] 自带访问端口...
       $strHost = sprintf("%s://%s", $_SERVER['REQUEST_SCHEME'], $_SERVER['HTTP_HOST']);
-      // 判断当前页面是否是https协议 => 通过$_SERVER['HTTPS']和$_SERVER['REQUEST_SCHEME']来判断...
-      /*if((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on') || (isset($_SERVER['REQUEST_SCHEME']) && $_SERVER['REQUEST_SCHEME'] == 'https')) {
-        $strHost = sprintf("https://%s", $_SERVER['HTTP_HOST']);
-      } else {
-        $strHost = sprintf("http://%s", $_SERVER['HTTP_HOST']);
-      }*/
       // 重置跳转页面的cookie值 => 删除是要用 API...
       setcookie('wx_jump','',-1,'/');
       // 如果跳转页面与当前主机比较...
@@ -308,6 +302,10 @@ class LoginAction extends Action
       if( isset($arrUser['errcode']) ) {
         $strError = 'error: errorcode='.$arrUser['errcode'].',errormsg='.$arrUser['errmsg'];
         break;
+      }
+      // 判断当前页面是否是https协议 => 通过$_SERVER['HTTPS']和$_SERVER['REQUEST_SCHEME']来判断 => 对头像进行最原始的彻底修正...
+      if((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on') || (isset($_SERVER['REQUEST_SCHEME']) && $_SERVER['REQUEST_SCHEME'] == 'https')) {
+        $arrUser['headimgurl'] = str_replace('http://', 'https://', $arrUser['headimgurl']);
       }
       // 微信昵称中去除emoji表情符号的操作...
       $arrUser['nickname'] = trimEmo($arrUser['nickname']);

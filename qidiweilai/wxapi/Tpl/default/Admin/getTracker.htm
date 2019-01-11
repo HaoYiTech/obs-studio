@@ -1,0 +1,90 @@
+
+<blockquote class="layui-elem-quote" style="margin-top:5px;">
+  温馨提示：【存储服务器】是能够进行海量视频存储、录像视频回放，视频缓存的重要组件。
+</blockquote>
+
+<div class="layui-field-box" style="padding-left:0px;margin-top:10px;width:60%;">
+  <form class="layui-form" action="">
+    <div class="layui-form-item">
+      <label class="layui-form-label">运行状态</label>
+      <div class="layui-input-block">
+        <label class="status-form-label js_tracker_status">
+        <switch name="my_system.status">
+          <case value="0"><i class="fa fa-power-off fa-wait">&nbsp;等待中</i></case>
+          <case value="1"><i class="fa fa-tv fa-run">&nbsp;运行中</i></case>
+          <default /><i class="fa fa-power-off fa-wait">&nbsp;等待中</i>
+        </switch>
+        </label>
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <div class="layui-inline">
+        <label class="layui-form-label">跟踪地址</label>
+        <div class="layui-input-block" style="width: 250px;">
+          <input type="text" name="myTrackerAddr" maxlength="50" lay-verify="required" autocomplete="off" placeholder="请输入跟踪服务器地址" class="layui-input" value="{{$my_system.tracker_addr}}">
+        </div>
+      </div>
+      <div class="layui-inline">
+        <label class="layui-form-label">跟踪端口</label>
+        <div class="layui-input-block" style="width: 250px;">
+          <input type="text" name="myTrackerPort" maxlength="5" lay-verify="required" autocomplete="off" placeholder="请输入跟踪服务器端口" class="layui-input" value="{{$my_system.tracker_port}}">
+        </div>
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <div class="layui-inline">
+        <label class="layui-form-label" title="存储访问地址">网站地址</label>
+        <div class="layui-input-block" style="width: 250px;">
+          <input type="text" name="myWebTrackerAddr" maxlength="50" lay-verify="required" autocomplete="off" placeholder="请输入存储访问地址" class="layui-input" value="{{$my_system.web_tracker_addr}}">
+        </div>
+      </div>
+      <div class="layui-inline">
+        <label class="layui-form-label" title="存储访问端口">网站端口</label>
+        <div class="layui-input-block" style="width: 250px;">
+          <input type="text" name="myWebTrackerPort" maxlength="5" lay-verify="required" autocomplete="off" placeholder="请输入存储访问端口" class="layui-input" value="{{$my_system.web_tracker_port}}">
+        </div>
+      </div>
+      <!--<div class="layui-inline layui-word-aux">(https默认端口443)</div>-->
+    </div>
+    <gt name="my_err" value="0">
+      <div style="text-align:center;font-size:30px;color:red;margin-top:20px;margin-bottom:20px;">
+        <i class="fa fa-frown-o">&nbsp;没有在线的存储服务器!</i>
+      </div>
+    <else/>
+    <volist name="my_groups" id="dbGroup">
+    <div class="layui-form-item">
+      <label class="layui-form-label">{{$key}}</label>
+      <volist name="dbGroup" id="vo">
+        <div class="layui-input-block">
+          <label class="status-form-label" style="text-align:left;font-weight:bold;">
+          <switch name="vo.status">
+            <case value="0">INIT</case>
+            <case value="1">WAIT_SYNC</case>
+            <case value="2">SYNCING</case>
+            <case value="3">IP_CHANGED</case>
+            <case value="4"><span style="color:red;">DELETED</span></case>
+            <case value="5"><span style="color:red;">OFFLINE</span></case>
+            <case value="6"><span style="color:green;">ONLINE</span></case>
+            <case value="7"><span style="color:green;">ACTIVE</span></case>
+            <default />NONE
+          </switch>
+          : {{$vo.ip_addr}} : {{$vo.storage_port}} : {{$vo.storage_http_port}}
+          : 总共 {{$vo[total_space]/1000|number_format=###,2,'.',''}}GB
+          : 剩余 {{$vo[free_space]/1000|number_format=###,2,'.',''}}GB
+          </label>
+        </div>
+        <div class="layui-input-block" style="margin-top:10px;">
+          <div class="layui-progress layui-progress-big" lay-showPercent="yes">
+            <div class="layui-progress-bar layui-bg-blue" lay-percent="{{$vo.use_percent}}%"></div>
+          </div>
+        </div>
+      </volist>
+    </div>
+    </volist>
+    </gt>
+    <div class="layui-form-item" style="margin-top:10px;text-align:center;">
+      <button class="layui-btn" lay-submit lay-filter="formTracker">立即保存</button>
+      <button type="button" class="js_test_tracker layui-btn layui-btn-danger">连接测试</button>
+    </div>
+  </form>
+</div>
