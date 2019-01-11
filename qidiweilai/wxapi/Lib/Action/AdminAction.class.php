@@ -378,6 +378,184 @@ class AdminAction extends Action
     $_POST['updated'] = date('Y-m-d H:i:s');
     D('user')->save($_POST);
   }
+  //
+  // 获取直播教室管理页面...
+  public function room()
+  {
+    $this->assign('my_title', $this->m_webTitle . " - 教室管理");
+    $this->assign('my_command', 'room');
+    // 得到每页条数，总记录数，计算总页数...
+    $pagePer = C('PAGE_PER');
+    $totalNum = D('room')->count();
+    $max_page = intval($totalNum / $pagePer);
+    // 判断是否是整数倍的页码...
+    $max_page += (($totalNum % $pagePer) ? 1 : 0);
+    // 设置最大页数，设置模板参数...
+    $this->assign('my_begin_id', LIVE_BEGIN_ID);
+    $this->assign('my_total_num', $totalNum);
+    $this->assign('max_page', $max_page);
+    $this->display();
+  }
+  //
+  // 获取直播教室分页数据...
+  public function pageRoom()
+  {
+    // 加载 ThinkPHP 的扩展函数 => ThinkPHP/Common/extend.php => msubstr()
+    Load('extend');
+    
+    // 准备需要的分页参数...
+    $pagePer = C('PAGE_PER'); // 每页显示的条数...
+    $pageCur = (isset($_GET['p']) ? $_GET['p'] : 1);  // 当前页码...
+    $pageLimit = (($pageCur-1)*$pagePer).','.$pagePer; // 读取范围...
+    // 设置查询条件，查询分页数据，设置模板...
+    $arrRoom = D('RoomView')->limit($pageLimit)->order('room_id DESC')->select();
+    // 设置模板参数，返回模板数据...
+    $this->assign('my_begin_id', LIVE_BEGIN_ID);
+    $this->assign('my_room', $arrRoom);
+    echo $this->fetch('pageRoom');
+  }
+  //
+  // 获取直播教室单条记录信息...
+  public function getRoom()
+  {
+    $condition['room_id'] = $_GET['room_id'];
+    $dbRoom = D('RoomView')->where($condition)->find();
+    $dbRoom['poster_fdfs'] = sprintf("%s:%d/%s", $this->m_dbSys['web_tracker_addr'], $this->m_dbSys['web_tracker_port'], $dbRoom['poster_fdfs']);
+    // 查找所有的老师用户列表，根据用户类型查询...
+    $map['user_type'] = array('eq', kTeacherUser);
+    $dbRoom['arrTeacher'] = D('user')->where($map)->field('user_id,real_name,wx_nickname')->select();
+    // 查找所有的科目记录列表...
+    $dbRoom['arrSubject'] = D('subject')->select();
+    // 赋值给模版对象...
+    $this->assign('my_room', $dbRoom);
+    // 返回构造好的数据...
+    echo $this->fetch('getRoom');
+  }
+  //
+  // 响应上传事件...
+  public function upload()
+  {
+    // 准备结果数组...
+    $arrErr['err_code'] = false;
+    $arrErr['err_msg'] = "";
+    // 实例化上传类, 设置附件上传目录
+    import("@.ORG.UploadFile");
+    $myUpload = new UploadFile();
+    $myUpload->saveRule = 'uniqid';
+    $myUpload->savePath = APP_PATH . '/upload/';
+    // 上传错误提示错误信息
+    if( !$myUpload->upload() ) {
+      $arrErr['err_code'] = true;
+      $arrErr['err_msg'] = $myUpload->getErrorMsg();
+    } else {
+      // 从上传对象当中读取需要的信息...
+      $arrFile = $myUpload->getUploadFileInfo();
+      $theSize = $arrFile[0]['size'];
+      $theName = $arrFile[0]['savename'];
+      $thePath = $arrFile[0]['savepath'];
+      $theExt  = $arrFile[0]['extension'];
+      // 组合完整绝对路径名称地址，相对路径需要删除第一个字符...
+      $strUploadPath = WK_ROOT . substr($thePath, 1) . $theName;
+      // 构造fdfs对象，上传、返回文件ID...
+      $fdfs = new FastDFS();
+      $tracker = $fdfs->tracker_get_connection();
+      $strPosterImg = $fdfs->storage_upload_by_filebuff1(file_get_contents($strUploadPath), $theExt);
+      $fdfs->tracker_close_all_connections();
+      // 构造返回的海报新地址信息...
+      $arrErr['poster_fdfs'] = sprintf("%s:%d/%s", $this->m_dbSys['web_tracker_addr'], $this->m_dbSys['web_tracker_port'], $strPosterImg);
+      // 删除已经上传到fdfs的本地临时文件...
+      unlink($strUploadPath);
+      // 通过房间编号查找房间记录...
+      $condition['room_id'] = $_GET['room_id'];
+      $dbRoom = D('RoomView')->where($condition)->field('room_id,poster_id,poster_fdfs')->find();
+      do {
+        // 构造海报图片记录字段信息...
+        $dbImage['file_fdfs'] = $strPosterImg;
+        $dbImage['file_size'] = $theSize;
+        $dbImage['created'] = date('Y-m-d H:i:s');
+        $dbImage['updated'] = date('Y-m-d H:i:s');
+        // 如果有海报记录，先删除图片再更新记录...
+        if( is_array($dbRoom) && $dbRoom['poster_id'] > 0 ) {
+          // 判断该房间下的海报是否有效，先删除这个海报的物理存在...
+          if( isset($dbRoom['poster_fdfs']) && strlen($dbRoom['poster_fdfs']) > 0 ) { 
+            if( !fastdfs_storage_delete_file1($dbRoom['poster_fdfs']) ) {
+              logdebug("fdfs delete failed => ".$dbRoom['poster_fdfs']);
+            }
+          }
+          // 将新的海报存储路径更新到图片表当中...
+          $dbImage['image_id'] = $dbRoom['poster_id'];
+          D('image')->save($dbImage);
+        } else {
+          // 房间里的海报是无效的，创建新的图片记录...
+          $arrErr['poster_id'] = D('image')->add($dbImage);
+          // 将对应的海报编号更新到房间记录当中...
+          if( is_array($dbRoom) && $dbRoom['room_id'] > 0 ) {
+            $dbRoom['poster_id'] = $arrErr['poster_id'];
+            D('room')->save($dbRoom);
+          }
+        }
+      } while( false );
+    }
+    // 直接返回结果json...
+    echo json_encode($arrErr);
+  }
+  //
+  // 添加房间记录信息...
+  public function addRoom()
+  {
+    $dbRoom = $_POST;
+    $dbRoom['created'] = date('Y-m-d H:i:s');
+    $dbRoom['updated'] = date('Y-m-d H:i:s');
+    D('room')->add($dbRoom);
+  }
+  //
+  // 修改房间记录信息...
+  public function modRoom()
+  {
+    $condition['room_id'] = $_POST['room_id'];
+    D('room')->where($condition)->save($_POST);
+  }
+  //
+  // 删除房间记录信息...
+  public function delRoom()
+  {
+    // 组合通道查询条件房间记录...
+    $map['room_id'] = array('in', $_POST['list']);
+    $arrRoom = D('RoomView')->where($map)->field('room_id,image_id,image_fdfs,poster_id,poster_fdfs')->select();
+    // 遍历房间记录列表，删除对应的截图和海报记录...
+    foreach ($arrRoom as &$dbRoom) {
+      // 删除图片和视频文件，逐一删除...
+      fastdfs_storage_delete_file1($dbRoom['image_fdfs']);
+      fastdfs_storage_delete_file1($dbRoom['poster_fdfs']);
+      // 删除截图图片记录和海报图片记录，只能逐条删除...
+      D('image')->delete($dbRoom['image_id']);
+      D('image')->delete($dbRoom['poster_id']);
+    }
+    // 直接删除房间列表数据记录...
+    D('room')->where($map)->delete();
+    ///////////////////////////////////
+    // 下面是重新获取新的分页数据...
+    ///////////////////////////////////
+    // 得到每页条数，总记录数，计算总页数...
+    $pagePer = C('PAGE_PER');
+    $totalNum = D('room')->count();
+    $max_page = intval($totalNum / $pagePer);
+    // 判断是否是整数倍的页码...
+    $max_page += (($totalNum % $pagePer) ? 1 : 0);
+    // 重新计算当前页面编号，总页面数...
+    if( $max_page <= 0 ) {
+      $arrJson['curr'] = 0;
+      $arrJson['pages'] = 0;
+      $arrJson['total'] = $totalNum;
+    } else {
+      $nCurPage = (($_POST['page'] > $max_page) ? $max_page : $_POST['page']);
+      $arrJson['curr'] = $nCurPage;
+      $arrJson['pages'] = $max_page;
+      $arrJson['total'] = $totalNum;
+    }
+    // 返回json数据包...
+    echo json_encode($arrJson);
+  }
 }
 
 ?>

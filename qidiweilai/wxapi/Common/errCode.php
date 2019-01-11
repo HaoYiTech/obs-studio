@@ -6,7 +6,8 @@
 // 定义日志存储函数
 function logdebug($text)
 {
-  file_put_contents(WK_ROOT . '/logwechat.txt', $text."\n", FILE_APPEND);
+  $strValue = sprintf("%s\t%s\n", date('Y-m-d H:i:s'), $text);
+  file_put_contents(WK_ROOT . '/logwechat.txt', $strValue, FILE_APPEND);
 }
 
 // 定义整个系统模式类型...
