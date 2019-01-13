@@ -1,0 +1,190 @@
+
+* { margin: 0; padding: 0; }
+ul { list-style-type: none; }
+img { border:none; }
+
+body, button, input, select, textarea {
+  font-family: 'PingFangSC','helvetica neue','hiragino sans gb','arial','microsoft yahei ui','microsoft yahei','simsun','微软雅黑', '宋体','sans-serif' !important;
+  font: 12px/1.5 "\5FAE\8F6F\96C5\9ED1", "Microsoft Yahei", "Hiragino Sans GB", "tahoma", "arial", "\5B8B\4F53";
+  -webkit-font-smoothing: antialiased;
+}
+
+/**************************************
+这里是更新日志用到的样式列表...
+**************************************/
+.site-content {
+  width: 100%; /*899px;*/
+  min-height: 500px;
+  padding: 20px 20px;
+  display: inline-block;
+  vertical-align: top;
+  font-size: 14px;
+}
+.site-h1 {
+  margin-bottom: 20px;
+  line-height: 60px;
+  padding-bottom: 10px;
+  color: #393D49;
+  border-bottom: 1px solid #eee;
+  font-size: 28px;
+  font-weight: 300;
+}
+.site-content .layui-timeline-title h2 {
+  display: inline-block;
+}
+.site-content .layui-timeline-title .layui-badge-rim {
+  top: -3px; left: 10px;
+}
+.footer {
+  width: 100%;
+  padding: 10px 0;
+  line-height: 20px;
+  text-align: center;
+  color: #333;
+  font-weight: 300;
+  position: relative;
+  bottom: 0;
+}
+/******************************************
+更新日志移动端的特殊样式处理...
+******************************************/
+@media screen and (max-width: 750px) {
+  .site-content{width: 100%; padding: 0; overflow: auto;}
+  .site-h1{padding-bottom: 0;}
+}
+
+.site-download {
+  margin-top: 10px;
+  font-size: 0;
+}
+.site-download a {
+  position: relative;
+  padding: 0 45px 0 90px;
+  height: 60px;
+  line-height: 60px;
+  border: 1px solid #FF5722;
+  border-color: rgba(255,87,34,.4);
+  font-size: 24px;
+  color: #222;
+  transition: all .5s;
+  -webkit-transition: all .5s;
+  text-decoration: none;
+  background-color: rgba(255,87,34,.7);
+  filter:progid:DXImageTransform.Microsoft.gradient(startColorstr=#B2FF5722,endColorstr=#B2FF5722);
+}
+.site-download a:hover {
+  border-color: rgba(255,87,34,.3);
+  background-color: rgba(255,87,34,.9);
+  border-radius: 30px;
+  color: #fff;
+}
+.site-download a cite {
+  position: absolute;
+  font-size: 30px;
+  left: 45px;
+}
+.site-version {position: relative; margin-top: 10px; color: #222; font-size: 14px;}
+.site-version span{padding: 0 3px;}
+.site-version *{font-style: normal;}
+.site-version a{color: #0168b7; text-decoration: none;}
+.site-version a:hover{color: #0168b7; text-decoration: underline;}
+
+.top {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 999;
+  display: block;
+  height: 70px;
+  background-color: #0168b7;
+}
+.inner {
+  width: 65%;
+  margin: 0 auto;
+  overflow: hidden;
+}
+.logo {
+  float: left;
+  margin-top: 5px;
+}
+.logo a {
+  display: inline-block;
+  text-decoration: none;
+}
+.nav {
+  float: right;
+  margin-top: 20px;
+  font-size: 0;
+}
+.nav li {
+  display: inline-block;
+  margin-left: 30px;
+}
+.nav a {
+  display: inline-block;
+  height: 30px;
+  line-height: 30px;
+  font-size: 22px;
+  color: #fff;
+  text-decoration: none;
+}
+.nav a:hover {
+  color: #83c3f3;
+}
+.nav .active a {
+  color: #83c3f3;
+}
+.section {
+  text-align: center;
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+  background-size: cover;
+  overflow: hidden;
+}
+.bk-blue {
+  background: -webkit-gradient(linear, top left, bottom left, from(#cfe8fc), to(#7BAABE));
+  background: -webkit-linear-gradient(#cfe8fc, #7BAABE);
+  background: linear-gradient(#cfe8fc,#7BAABE);
+}
+.bk-white {
+  background: -webkit-gradient(linear, top left, bottom left, from(#ffffff), to(#eee9e5));
+  background: -webkit-linear-gradient(#ffffff, #eee9e5);
+  background: linear-gradient(#ffffff,#eee9e5);
+}
+.kx-col {
+  width: 30%;
+  float: left;
+  /*border: 1px solid red;*/
+  margin: 10px 10px 10px 20px;
+}
+.kx-title {
+  font-size: 32px;
+  font-weight: 900;
+  color: #0168b7;
+}
+.kx-text {
+  font-size: 20px;
+  color: #0090ff;
+  text-align: left;
+  text-indent: 25px;
+  margin-top: 10px;
+}
+/*#slide1{
+  background-image: url(/wxapi/public/images/banner-1.jpg);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+#slide2{
+	background-image: url(/wxapi/public/images/banner-2.jpg);
+}
+#slide3{
+	background-image: url(/wxapi/public/images/banner-3.jpg);
+}*/
+
+/******************************************
+首页移动端的特殊样式处理...
+******************************************/
+@media screen and (max-width: 750px) {
+}
