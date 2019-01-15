@@ -77,23 +77,32 @@ $(function(){
   <div class="section bk-blue" id="section1">
     <div class="layui-container">
       <div class="layui-row">
-        <div class="layui-col-xs12 layui-col-lg12" id="img-kx-0">
+        <div class="layui-col-xs12 layui-col-lg12" id="kx-img-0">
           <img src="/wxapi/public/images/banner-1.png" />
         </div>
       </div>
+      <!--<div class="kx-banner">
+        <div class="kx-img-left">
+          <img src="/wxapi/public/images/bn-1.png"></img>
+        </div>
+        <div class="kx-img-right">
+          <img src="/wxapi/public/images/bn-2.png"></img>
+        </div>
+        <img src="/wxapi/public/images/banner-1.png"></img>
+      </div>-->
       <div class="layui-row layui-col-space30">
         <div class="layui-col-xs12 layui-col-lg4">
           <div class="layui-row">
             <div class="layui-col-xs12 layui-col-lg12">
               <div class="page-title">科学主题活动</div>
             </div>
-            <div class="layui-col-xs12 layui-col-lg12" id="img-kx-1">
+            <div class="layui-col-xs12 layui-col-lg12" id="kx-img-1">
               <img src="/wxapi/public/images/kx-1.png" />
             </div>
             <div class="layui-col-xs12 layui-col-lg12 page-text row-space">科学主题活动是专门为适龄儿童专门打造的探究实验活动体系，在趣味性、延展性、操作性等方面进行创新设计，涵盖物质科学、生物科学、宇宙与地球科学、工程与技术等主题。该课程具有生活性、趣味性、科技感等特点。</div>
           </div>
         </div>
-        <div class="layui-col-lg5" id="kx-col-2">
+        <div class="layui-col-lg5 layui-hide-xs">
           <div class="layui-row layui-col-space10 row-space">
             <div class="layui-col-lg6" id="img-kx-2">
               <img width="100%" src="/wxapi/public/images/kx-2.png" />
@@ -108,7 +117,7 @@ $(function(){
               <div class="page-text no-indent">丰富有趣的科学亲子秀让孩子在“玩中学”的同时，更能培养科学素养、启发思维，例如“大闹天宫”、“未来水世界”等等，都颇受儿童喜爱！
               </div>
             </div>
-            <div class="layui-col-lg6" id="img-kx-3">
+            <div class="layui-col-lg6" id="kx-img-3">
               <img width="100%" src="/wxapi/public/images/kx-3.png" />
             </div>
             <div class="layui-col-lg12 row-space">
@@ -116,12 +125,12 @@ $(function(){
             </div>
           </div>
         </div>
-        <div class="layui-col-lg3" id="kx-col-3">
+        <div class="layui-col-lg3 layui-hide-xs">
           <div class="layui-row">
             <div class="layui-col-lg12">
               <div class="page-title">科学大讲堂</div>
             </div>
-            <div class="layui-col-lg12 row-space" id="img-kx-4">
+            <div class="layui-col-lg12 row-space" id="kx-img-4">
               <img src="/wxapi/public/images/kx-4.png" />
             </div>
             <div class="layui-col-lg12 row-space">
@@ -131,174 +140,231 @@ $(function(){
         </div>
       </div>
     </div>
-    <!--<div class="kx-banner">
-      <div class="kx-img-left">
-        <img src="/wxapi/public/images/bn-1.png"></img>
-      </div>
-      <div class="kx-img-right">
-        <img src="/wxapi/public/images/bn-2.png"></img>
-      </div>
-      <img src="/wxapi/public/images/banner-1.png"></img>
-    </div>
-    <div class="page-main">
-      <div class="kx-col-1">
-        <div class="page-title">科学主题活动</div>
-        <img src="/wxapi/public/images/kx-1.png" />
-        <div class="page-text">科学主题活动是专门为适龄儿童专门打造的探究实验活动体系，在趣味性、延展性、操作性等方面进行创新设计，涵盖物质科学、生物科学、宇宙与地球科学、工程与技术等主题。该课程具有生活性、趣味性、科技感等特点。</div>
-      </div>
-      <div class="kx-col-2">
-        <img class="kx-img-mid-1" src="/wxapi/public/images/kx-2.png" />
-        <div class="page-text ext-1">启迪未来科学亲子秀将书本中难以理解的科学知识还原为最简洁常见的生活原理，把“科学知识理论”转化为具有游戏性、趣味性的科学亲子秀。</div>
-        <div class="page-text ext-2">丰富有趣的科学亲子秀让孩子在“玩中学”的同时，更能培养科学素养、启发思维，例如“大闹天宫”、“未来水世界”等等，都颇受儿童喜爱！</div>
-        <img class="kx-img-mid-2" src="/wxapi/public/images/kx-3.png" />
-        <div class="page-title">科学亲子秀</div>
-      </div>
-      <div class="kx-col-3">
-        <div class="page-title">科学大讲堂</div>
-        <img src="/wxapi/public/images/kx-4.png" />
-        <div class="page-text">由中科院多名科学博士亲自带队，深入浅出的将深奥的科学原理变成通俗易懂的小知识，更能激发孩子的兴趣。</div>
-      </div>
-    </div>-->
   </div>
   <div class="section bk-white" id="section2">
-    <div class="page-main">
-      <div class="kx-col-1">
-        <img src="/wxapi/public/images/bs-1.png" />
-        <div class="page-text">机器人主题活动都是按照不同年龄段儿童心理特征所设计的，覆盖3-16岁完整年龄段科技创意课程，融合STEAM（科学、技术、工程、艺术、数学）理念，并配有专业的教学指导，寓教于乐，致力让孩子在快乐中学习，创造中成长，为培养出未来社会科技创新型人才打下坚固的基础。</div>
-        <div class="page-title">机器人相关活动</div>
-      </div>
-      <div class="kx-col-1">
-        <div class="page-title" style="margin-bottom: 20px;">比赛&考级</div>
-        <div style="float: left;"><img style="width: 240px" src="/wxapi/public/images/bs-2.png" /></div>
-        <div class="page-text" style="text-indent:0px;margin: 0px 5px 0px 245px;">
-          <ul style="padding-top:10px">
-            <li>FLL中国锦标赛</li>
-            <li>FTC中国区域选拔赛</li>
-            <li>WRO中国区域选拔赛</li>
-            <li>Robofest中国区选拔赛</li>
-          </ul>
+    <div class="layui-container">
+      <div class="layui-row layui-col-space30">
+        <div class="layui-col-xs12 layui-col-lg4">
+          <div class="layui-row">
+            <div class="layui-col-xs12 layui-col-lg12" id="bs-img-1">
+              <img src="/wxapi/public/images/bs-1.png" />
+            </div>
+            <div class="layui-col-xs12 layui-col-lg12 row-space">
+              <div class="page-text">机器人主题活动都是按照不同年龄段儿童心理特征所设计的，覆盖3-16岁完整年龄段科技创意课程，融合STEAM（科学、技术、工程、艺术、数学）理念，并配有专业的教学指导，寓教于乐，致力让孩子在快乐中学习，创造中成长，为培养出未来社会科技创新型人才打下坚固的基础。
+              </div>
+            </div>
+            <div class="layui-col-xs12 layui-col-lg12 row-space">
+              <div class="page-title">机器人相关活动</div>
+            </div>
+          </div>
         </div>
-        <ul style="padding-top:35px;font-size:20px;color:#0090ff;clear:both;">
-          <li>VEX中国赛</li>
-          <li>RCJ中国区域选拔赛</li>
-          <li>RobotChallenge中国区选拔赛</li>
-        </ul>
-        <div><img src="/wxapi/public/images/bs-3.png" /></div>
-      </div>
-      <div class="kx-col-1">
-        <div class="page-text">启迪未来自主研发的娱乐型机器人，更大程度上满足了孩子们对机器人的幻想。</div>
-        <div style="padding-top:10px;text-align:center;"><img style="width:200px;" src="/wxapi/public/images/bs-4.png" /></div>
-        <div style="padding-top:10px;text-align:center;"><img style="width:200px;" src="/wxapi/public/images/bs-5.png" /></div>
-        <div class="page-title">娱乐机器人</div>
+        <div class="layui-col-lg5 layui-hide-xs">
+          <div class="layui-row layui-col-space10">
+            <div class="layui-col-lg12 row-space">
+              <div class="page-title">比赛&考级</div>
+            </div>
+            <div class="layui-col-lg6" id="bs-img-2">
+              <img width="100%" src="/wxapi/public/images/bs-2.png" />
+            </div>
+            <div class="layui-col-lg6 row-space">   
+              <div class="page-text no-indent">
+                <ul class="row-space" id="bs-ul-1">
+                  <li>VEX中国赛</li>
+                  <li>RCJ中国区域选拔赛</li>
+                  <li>RobotChallenge中国区选拔赛</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="layui-row layui-col-space10 row-space">
+            <div class="layui-col-lg6 row-space">
+              <div class="page-text no-indent">
+                <ul class="row-space" id="bs-ul-2">
+                  <li>FLL中国锦标赛</li>
+                  <li>FTC中国区域选拔赛</li>
+                  <li>WRO中国区域选拔赛</li>
+                  <li>Robofest中国区选拔赛</li>
+                </ul>
+              </div>
+            </div>
+            <div class="layui-col-lg6" id="bs-img-3">
+              <img width="100%" src="/wxapi/public/images/bs-3.png" />
+            </div>
+          </div>
+        </div>
+        <div class="layui-col-lg3 layui-hide-xs">
+          <div class="layui-row">
+            <div class="layui-col-lg12">
+              <div class="page-text">启迪未来自主研发的娱乐型机器人，更大程度上满足了孩子们对机器人的幻想。</div>
+            </div>
+            <div class="layui-col-lg12 row-space" id="bs-img-4">
+              <img width="200px" src="/wxapi/public/images/bs-4.png" />
+            </div>
+            <div class="layui-col-lg12 row-space" id="bs-img-5">
+              <img width="150px" src="/wxapi/public/images/bs-5.png" />
+            </div>
+            <div class="layui-col-lg12 row-space">
+              <div class="page-title">娱乐机器人</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
   <div class="section bk-blue" id="section3">
-    <div class="page-main">
-      <div class="page-title" style="margin-bottom:10px">双师系统</div>
-      <div style="margin:15px 5px;">
-        <div class="site-download">
-          <a class="layui-inline" href="/changelog">
-            <cite class="layui-icon">&#xe601;</cite>立即下载
-          </a>
-        </div>
-        <div class="site-version">
-          <span>当前版本：<cite>1.1.5</cite>&nbsp;</span>
-          <span><a href="/changelog" rel="nofollow">更新日志</a></span>
+    <div class="layui-container">
+      <div class="layui-row layui-col-space30">
+        <div class="layui-col-lg12">
+          <div class="page-title">双师系统</div>
+          <div class="site-download">
+            <a class="layui-inline" href="/changelog">
+              <cite class="layui-icon">&#xe601;</cite>立即下载
+            </a>
+          </div>
+          <div class="site-version">
+            <span>当前版本：<cite>1.1.5</cite>&nbsp;</span>
+            <span><a href="/changelog" rel="nofollow">更新日志</a></span>
+          </div>
         </div>
       </div>
-      <div class="kx-col-1"><img width="380px" src="/wxapi/public/images/ss-1.png" /></div>
-      <div class="kx-col-1"><img width="380px" src="/wxapi/public/images/ss-2.png" /></div>
-      <div class="kx-col-1"><img width="380px" src="/wxapi/public/images/ss-3.png" /></div>
-      <div class="page-text" style="clear:both;padding-top:15px">STEAM双师云平台是由公司重资打造的新一代创客双师云平台，拥有自己的底层技术和核心压缩算法，能把视频推流、双向与多向音视频交流互动达到及时、同步，能基于现有的网络带宽环境实现延时在毫秒级别，在国内属于领先水平，满足一对多大班教学、一对一个性化学习的多样化需求，并且可以自由切换，真正解决现在中小学普遍存在的缺师资、创客课程开不起来的痛点和难点问题。同时，平台还具有录课、录播、存储等功能，也具有自己的机器人课程体系，科学实验课和经验丰富的师资团队，能帮助中小学解决STEAM教育的师资问题，同时也能利用该平台来开展其它的双师课程。</div>
+      <div class="layui-row">
+        <div class="layui-col-lg4 layui-hide-xs">
+          <img width="370px" src="/wxapi/public/images/ss-1.png" />
+        </div>
+        <div class="layui-col-lg4 layui-hide-xs">
+          <img width="370px" src="/wxapi/public/images/ss-2.png" />
+        </div>
+        <div class="layui-col-lg4 layui-hide-xs">
+          <img width="370px" src="/wxapi/public/images/ss-3.png" />
+        </div>
+      </div>
+      <div class="layui-row layui-col-space30">
+        <div class="layui-col-lg12 layui-col-xs12">
+          <div class="page-text">STEAM双师云平台是由公司重资打造的新一代创客双师云平台，拥有自己的底层技术和核心压缩算法，能把视频推流、双向与多向音视频交流互动达到及时、同步，能基于现有的网络带宽环境实现延时在毫秒级别，在国内属于领先水平，满足一对多大班教学、一对一个性化学习的多样化需求，并且可以自由切换，真正解决现在中小学普遍存在的缺师资、创客课程开不起来的痛点和难点问题。同时，平台还具有录课、录播、存储等功能，也具有自己的机器人课程体系，科学实验课和经验丰富的师资团队，能帮助中小学解决STEAM教育的师资问题，同时也能利用该平台来开展其它的双师课程。</div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="section bk-white" id="section4">
-    <div class="page-main">
-      <div class="page-title" style="margin-bottom:15px">专家导师</div>
-      <div style="width: 45%;float: left;margin:10px 10px 0px;">
-        <img width="300px" src="/wxapi/public/images/zj-1.jpg" />
-        <div class="page-title">罗思扬</div>
-        <div class="page-text">男，博士，高级工程师。中国科学院理化技术研究所。师从于陈创天院士，2010年毕业于中国科学院理化技术研究所，获凝聚态物理博士学位。承担并参加多个国家重大科研项目，其中“KBBF族深紫外非线性光学晶体的发现、生长和应用”曾获北京市科技一等奖，并入选中科院青年创新促进会会员，在国内外发表数十篇论文，申请多个发明专利。专利：一种钼硝酸钾化合物、其非线性光学晶体及其制备方法和用途，ZL201310289080；硼铍酸盐化合物、硼铍酸盐非线性光学晶体及制法和用途。</div>
-      </div>
-      <div style="width: 45%;float: left;margin:10px 10px 0px;">
-        <img width="350px" src="/wxapi/public/images/zj-2.jpg" />
-        <div class="page-title">王克伟</div>
-        <div class="page-text">全国十佳优秀科技辅导员、全国优秀科技工作者，山东省骨干科技辅导员，临沂市青少年科技辅导员协会监事长，《青少年创意发明之路》和《小创客玩转Arduino》两本专著作者。2010年在山东省建立全省首个中小学创客空间，是创客教育行业的领先者，从2012年开始共辅导学生获得各项发明专利400多项，创意5万多个；辅导500多名学生参加国家、省市区科技竞赛，获单项奖600多项，团体奖35项。同时支持参与6项国家、省级教育课题，个人获得国家专利10项。多次代表临沂市在全国、全省进行创客教育交流，《中国航天报》、《中国教具网》、《网易》、《大众日报》、《鲁南商报》等多家媒体报道创客教育事迹。</div>
+    <div class="layui-container">
+      <div class="layui-row layui-col-space30">
+        <div class="layui-col-lg12">
+          <div class="page-title">专家导师</div>
+        </div>
+        <div class="layui-col-lg6 layui-col-xs12">
+          <div class="layui-row" id="zj-img-1">
+            <img width="300px" src="/wxapi/public/images/zj-1.jpg" />
+            <div class="page-title">罗思扬</div>
+            <div class="page-text layui-hide-xs">男，博士，高级工程师。中国科学院理化技术研究所。师从于陈创天院士，2010年毕业于中国科学院理化技术研究所，获凝聚态物理博士学位。承担并参加多个国家重大科研项目，其中“KBBF族深紫外非线性光学晶体的发现、生长和应用”曾获北京市科技一等奖，并入选中科院青年创新促进会会员，在国内外发表数十篇论文，申请多个发明专利。专利：一种钼硝酸钾化合物、其非线性光学晶体及其制备方法和用途，ZL201310289080；硼铍酸盐化合物、硼铍酸盐非线性光学晶体及制法和用途。</div>
+          </div>
+        </div>
+        <div class="layui-col-lg6 layui-col-xs12">
+          <div class="layui-row" id="zj-img-2">
+            <img width="350px" src="/wxapi/public/images/zj-2.jpg" />
+            <div class="page-title">王克伟</div>
+            <div class="page-text layui-hide-xs">全国十佳优秀科技辅导员、全国优秀科技工作者，山东省骨干科技辅导员，临沂市青少年科技辅导员协会监事长，《青少年创意发明之路》和《小创客玩转Arduino》两本专著作者。2010年在山东省建立全省首个中小学创客空间，是创客教育行业的领先者，从2012年开始共辅导学生获得各项发明专利400多项，创意5万多个；辅导500多名学生参加国家、省市区科技竞赛，获单项奖600多项，团体奖35项。同时支持参与6项国家、省级教育课题，个人获得国家专利10项。多次代表临沂市在全国、全省进行创客教育交流，《中国航天报》、《中国教具网》、《网易》、《大众日报》、《鲁南商报》等多家媒体报道创客教育事迹。</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
   <div class="section bk-blue" id="section5">
-    <div class="page-main">
-      <div class="page-title" style="margin-bottom:25px">学生作品</div>
-      <div style="width: 24%;float: left;text-align:left;">
-        <img style="margin-bottom: 10px;" height="300px" src="/wxapi/public/images/xs-1.jpg" />
-        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">姓名：李非凡</div>
-        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">年龄：4岁</div>
-        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">课程名称：吊车</div>
-      </div>
-      <div style="width: 24%;float: left;text-align:left;">
-        <img style="margin-bottom: 10px;" height="300px" src="/wxapi/public/images/xs-2.jpg" />
-        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">姓名：薄海滨</div>
-        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">年龄：4岁</div>
-        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">课程名称：吊车</div>
-      </div>
-      <div style="width: 24%;float: left;text-align:left;">
-        <img style="margin-bottom: 10px;" height="300px" src="/wxapi/public/images/xs-3.jpg" />
-        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">姓名：于沐涵</div>
-        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">年龄：3岁</div>
-        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">课程名称：动物园</div>
-      </div>
-      <div style="width: 24%;float: left;text-align:left;">
-        <img style="margin-bottom: 10px;" height="300px" src="/wxapi/public/images/xs-4.jpg" />
-        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">班级合照</div>
-        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">年龄：3岁</div>
-        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">课程名称：动物园</div>
+    <div class="layui-container">
+      <div class="layui-row layui-col-space10">
+        <div class="layui-col-lg12 layui-col-xs12">
+          <div class="page-title">学生作品</div>
+        </div>
+        <div class="layui-col-lg3 layui-col-xs6">
+          <img src="/wxapi/public/images/xs-1.jpg" />
+          <div class="page-name">姓名：李非凡</div>
+          <div class="page-name">年龄：4岁</div>
+          <div class="page-name">课程名称：吊车</div>
+        </div>
+        <div class="layui-col-lg3 layui-col-xs6">
+          <img src="/wxapi/public/images/xs-2.jpg" />
+          <div class="page-name">姓名：薄海滨</div>
+          <div class="page-name">年龄：4岁</div>
+          <div class="page-name">课程名称：吊车</div>
+        </div>
+        <div class="layui-col-lg3 layui-col-xs6">
+          <img src="/wxapi/public/images/xs-3.jpg" />
+          <div class="page-name">姓名：于沐涵</div>
+          <div class="page-name">年龄：3岁</div>
+          <div class="page-name">课程名称：动物园</div>
+        </div>
+        <div class="layui-col-lg3 layui-col-xs6">
+          <img src="/wxapi/public/images/xs-4.jpg" />
+          <div class="page-name">班级合照</div>
+          <div class="page-name">年龄：3岁</div>
+          <div class="page-name">课程名称：动物园</div>
+        </div>
       </div>
     </div>
   </div>
   <div class="section bk-white" id="section6">
-    <div class="page-main">
-      <div class="page-title" style="margin-bottom:20px">加盟咨询</div>
-      <div class="kx-col-1">
-        <img src="/wxapi/public/images/jm-1.jpg" />
-        <div class="page-title" style="color:#028eff;margin: 15px 15px;">运营服务支持</div>
-        <img src="/wxapi/public/images/jm-2.png" />
-      </div>
-      <div class="kx-col-1">
-        <div style="background-color:#cfe8fc;width:45%;float:left;margin: 0px 10px 10px;">
-          <div style="color:#028eff;font-size:22px;text-align:center;font-weight:900;margin:10px 10px 5px;">教研团队</div>
-          <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;">中科院参与教研</div>
-          <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;margin-bottom: 10px;">持续研发保障</div>
+    <div class="layui-container">
+      <div class="layui-row">
+        <div class="layui-col-lg12 layui-hide-xs">
+          <div class="page-title">加盟咨询</div>
         </div>
-        <div style="background-color:#cfe8fc;width:45%;float:right;margin: 0px 10px 10px;">
-          <div style="color:#028eff;font-size:22px;text-align:center;font-weight:900;margin:10px 10px 5px;">覆盖维度</div>
-          <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;">覆盖科学和机器人 </div>
-          <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;margin-bottom: 10px;">精准定位孩子成长需求</div>
+        <div class="layui-col-lg4 layui-hide-xs">
+          <img src="/wxapi/public/images/jm-1.jpg" />
+          <div class="page-title" style="color:#028eff;margin-top:10px;">运营服务支持</div>
+          <img src="/wxapi/public/images/jm-2.png" />
         </div>
-        <div class="page-title" style="color:#028eff;clear:both;margin: 15px 15px;">教研支持</div>
-        <div style="background-color:#cfe8fc;width:45%;float:left;margin: 0px 10px 10px;">
-          <div style="color:#028eff;font-size:22px;text-align:center;font-weight:900;margin:10px 10px 5px;">教学范围</div>
-          <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;">涵盖了科学、机器人</div>
-          <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;margin-bottom: 10px;">VR等等多个维度</div>
+        <div class="layui-col-lg4 row-space layui-hide-xs">
+          <div class="layui-row layui-col-space20" >
+            <div class="layui-col-lg6">
+              <div style="background-color:#cfe8fc;">
+                <div style="color:#028eff;font-size:22px;text-align:center;font-weight:900;padding:10px 10px 5px;">教研团队</div>
+                <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;">中科院参与教研</div>
+                <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;padding-bottom: 10px;">持续研发保障</div>
+              </div>
+            </div>
+            <div class="layui-col-lg6">
+              <div style="background-color:#cfe8fc;">
+                <div style="color:#028eff;font-size:22px;text-align:center;font-weight:900;padding:10px 10px 5px;">覆盖维度</div>
+                <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;">覆盖科学和机器人</div>
+                <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;padding-bottom: 10px;">精准定位孩子成长需求</div>
+              </div>
+            </div>
+            <div class="layui-col-lg12">
+              <div class="page-title" style="color:#028eff;">教研支持</div>
+            </div>
+            <div class="layui-col-lg6">
+              <div style="background-color:#cfe8fc;">
+                <div style="color:#028eff;font-size:22px;text-align:center;font-weight:900;padding:10px 10px 5px;">教学范围</div>
+                <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;">涵盖了科学、机器人</div>
+                <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;padding-bottom: 10px;">VR等等多个维度</div>
+              </div>
+            </div>
+            <div class="layui-col-lg6">
+              <div style="background-color:#cfe8fc;">
+                <div style="color:#028eff;font-size:22px;text-align:center;font-weight:900;padding:10px 10px 5px;">自主研发</div>
+                <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;">远程双师系统</div>
+                <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;padding-bottom: 10px;">保障课程品质</div>
+              </div>
+            </div>
+            <div class="layui-col-lg12 row-space">
+              <img width="400px" src="/wxapi/public/images/jm-3.png" />
+            </div>
+          </div>
         </div>
-        <div style="background-color:#cfe8fc;width:45%;float:right;margin: 0px 10px 10px;">
-          <div style="color:#028eff;font-size:22px;text-align:center;font-weight:900;margin:10px 10px 5px;">自主研发</div>
-          <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;">远程双师系统</div>
-          <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;margin-bottom: 10px;">保障课程品质</div>
+        <div class="layui-col-lg4 row-space layui-col-xs12">
+          <div class="layui-row layui-col-space20" >
+            <div class="layui-col-lg12">
+              <img src="/wxapi/public/images/jm-4.jpg" />
+              <div class="jm-title">加入我们</div>
+              <div class="jm-addr">电话：010-57109620</div>
+              <div class="jm-addr">地址：北京市海淀区中关村大街18号 电子科贸城B座909</div>
+            </div>
+          </div>
         </div>
-        <img style="margin-top:40px;" width="400px" src="/wxapi/public/images/jm-3.png" />
-      </div>
-      <div class="kx-col-1">
-        <img src="/wxapi/public/images/jm-4.jpg" />
-        <div class="page-title" style="color:#028eff;margin: 30px 30px;">加入我们</div>
-        <div class="page-title" style="font-size:24px;font-weight:normal;text-align:left;">电话：010-57109620</div>
-        <div class="page-title" style="font-size:24px;font-weight:normal;text-align:left;">地址：北京市海淀区中关村大街18号 电子科贸城B座909</div>
       </div>
     </div>
-    <div style="width:100%;background-color:#89adcd;position:absolute;bottom:0;text-align:center;font-size:16px;color:#04558d;padding:20px 20px;">
-      <div style="line-height:25px;font-weight:600">地址：北京市海淀区中关村大街18号电子科贸城B座9层909 / 电话：010-57109620 / 邮箱：532721092@qq.com</div>
-      <div style="line-height:25px;font-weight:600">北京众智未来科技有限公司 版权所有 / 京ICP备17028722号-3</div>
+    <div class="jm-bot layui-hide-xs">
+      <div class="jm-text">地址：北京市海淀区中关村大街18号电子科贸城B座9层909 / 电话：010-57109620 / 邮箱：532721092@qq.com</div>
+      <div class="jm-text">北京众智未来科技有限公司 版权所有 / 京ICP备17028722号-3</div>
     </div>
   </div>
 </div>

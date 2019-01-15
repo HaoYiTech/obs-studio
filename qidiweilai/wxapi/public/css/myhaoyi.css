@@ -166,20 +166,37 @@ body, button, input, select, textarea {
   text-indent: 25px;
   line-height: 25px;
 }
+.page-name {
+  color: #028eff;
+  font-size: 24px;
+  text-align: left;
+  line-height: 30px;
+  font-weight: normal;
+  text-indent: 5px;
+}
 .no-indent {
   text-indent: 0px !important;
 }
 .row-space {
   margin-top: 10px;
 }
-#img-kx-2 img {
+#kx-img-2 img {
   border-radius: 20px;
 }
-#img-kx-3 img {
+#kx-img-3 img {
   border-radius: 20px;
 }
-
-.kx-banner {
+#bs-ul-1 #bs-ul-2 {
+  line-height: 30px;
+}
+#bs-img-5 {
+  text-align: right;
+}
+#section5 img {
+  width: 280px;
+  margin-bottom: 10px;
+}
+/*.kx-banner {
   margin: 20px auto 10px;
   position:relative;
 }
@@ -198,78 +215,54 @@ body, button, input, select, textarea {
 }
 .kx-img-right img {
   width: 150px;
-}
-.kx-col-1 {
-  width: 400px;
-  float: left;
-}
-.kx-col-1 .page-title {
-  margin-bottom: 10px;
-}
-.kx-col-1 .page-text {
-  margin: 10px 10px;
-}
-.kx-col-2 {
-  width: 500px;
-  float: left;
-  margin-top: 20px;
-}
-.kx-img-mid-1 {
-  float: left;
-  width: 270px;
-  border-radius: 20px;
-}
-.kx-col-2 .ext-1 {
-  margin: 0px 5px 0px 275px;
-  text-indent:0px;
-}
-.kx-col-2 .ext-2 {
-  float: left;
-  width: 250px;
-  text-indent:0px;
-  padding-top: 20px;
-}
-.kx-img-mid-2 {
-  width: 250px;
-  margin-top: 30px;
-  border-radius: 20px;
-}
-.kx-col-2 .page-title {
-   clear: both;
-   margin:30px 30px;
-}
-.kx-col-3 {
-  width: 300px;
-  float: left;
-}
-.kx-col-3 .page-title {
-  margin-bottom:10px;
-}
-/*#slide1{
-  background-image: url(/wxapi/public/images/banner-1.jpg);
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-}
-#slide2{
-	background-image: url(/wxapi/public/images/banner-2.jpg);
-}
-#slide3{
-	background-image: url(/wxapi/public/images/banner-3.jpg);
 }*/
 
+.jm-title {
+  color: #028eff;
+  font-size: 32px;
+  margin: 20px 10px;
+  font-weight: 900;
+}
+.jm-addr {
+  color: #0168b7;
+  font-size: 22px;
+  text-align: left;
+  margin: auto 20px;
+  font-weight: normal;
+}
+.jm-bot {
+  bottom: 0;
+  width: 100%;
+  color: #04558d;
+  font-size: 16px;
+  padding: 20px 20px;  
+  position: absolute;
+  text-align: center;
+  background-color: #89adcd;
+}
+.jm-text {
+  line-height: 25px;
+  font-weight: 600;
+}
 /******************************************
 首页移动端的特殊样式处理...
 ******************************************/
 @media screen and (max-width: 750px) {
   .top { display: none; }
-  #img-kx-0 img { width: 100%; }
-  #img-kx-1 img { width: 60%; }
-  #kx-col-2 { display: none; }
-  #kx-col-3 { display: none; }
+  #kx-img-0 img { width: 100%; }
+  #kx-img-1 img { width: 60%; }
   #section1 { background: #cfe8fc; }
+  #bs-img-1 img { width: 60%; }
+  #section3 { background: #cfe8fc; }
+  #zj-img-1 img { width: 200px; }
+  #zj-img-2 img { width: 200px; }
+  #section5 { background: #cfe8fc; }
+  #section5 img { width: 150px; }
+  #section5 .page-name { font-size: 16px; line-height: 20px; text-indent: 25px; }
   .page-text { font-size: 16px; line-height: 20px; }
   .page-title { font-size: 20px; }
+  .jm-title { font-size: 20px; }
+  .jm-addr { font-size: 18px; }
   .layui-col-space30 { margin: 0 0; }
-  .layui-col-space30>* { padding: 5px 10px; }
+  .layui-col-space30>* { padding: 5px 20px; }
 }
