@@ -90,13 +90,12 @@ body, button, input, select, textarea {
 .site-version a:hover{color: #0168b7; text-decoration: underline;}
 
 .top {
-  position: fixed;
   left: 0;
   right: 0;
   top: 0;
-  z-index: 999;
-  display: block;
   height: 70px;
+  z-index: 999;
+  position: fixed;
   background-color: #0168b7;
 }
 .inner {
@@ -142,9 +141,18 @@ body, button, input, select, textarea {
   background-size: cover;
   overflow: hidden;
 }
-.page-main {
-  width: 1200px;
-  margin: 0 auto;
+.bk-blue {
+  background: -webkit-gradient(linear, top left, bottom left, from(#cfe8fc), to(#7BAABE));
+  background: -webkit-linear-gradient(#cfe8fc, #7BAABE);
+  background: linear-gradient(#cfe8fc,#7BAABE);
+}
+.bk-white {
+  background: -webkit-gradient(linear, top left, bottom left, from(#ffffff), to(#eee9e5));
+  background: -webkit-linear-gradient(#ffffff, #eee9e5);
+  background: linear-gradient(#ffffff,#eee9e5);
+}
+.layui-container {
+  padding: 0px 0px;
 }
 .page-title {
   color: #0168b7;
@@ -156,18 +164,21 @@ body, button, input, select, textarea {
   font-size: 20px;
   text-align: left;
   text-indent: 25px;
+  line-height: 25px;
+}
+.no-indent {
+  text-indent: 0px !important;
+}
+.row-space {
   margin-top: 10px;
 }
-.bk-blue {
-  background: -webkit-gradient(linear, top left, bottom left, from(#cfe8fc), to(#7BAABE));
-  background: -webkit-linear-gradient(#cfe8fc, #7BAABE);
-  background: linear-gradient(#cfe8fc,#7BAABE);
+#img-kx-2 img {
+  border-radius: 20px;
 }
-.bk-white {
-  background: -webkit-gradient(linear, top left, bottom left, from(#ffffff), to(#eee9e5));
-  background: -webkit-linear-gradient(#ffffff, #eee9e5);
-  background: linear-gradient(#ffffff,#eee9e5);
+#img-kx-3 img {
+  border-radius: 20px;
 }
+
 .kx-banner {
   margin: 20px auto 10px;
   position:relative;
@@ -251,4 +262,14 @@ body, button, input, select, textarea {
 首页移动端的特殊样式处理...
 ******************************************/
 @media screen and (max-width: 750px) {
+  .top { display: none; }
+  #img-kx-0 img { width: 100%; }
+  #img-kx-1 img { width: 60%; }
+  #kx-col-2 { display: none; }
+  #kx-col-3 { display: none; }
+  #section1 { background: #cfe8fc; }
+  .page-text { font-size: 16px; line-height: 20px; }
+  .page-title { font-size: 20px; }
+  .layui-col-space30 { margin: 0 0; }
+  .layui-col-space30>* { padding: 5px 10px; }
 }
