@@ -89,6 +89,12 @@ body, button, input, select, textarea {
 .site-version a{color: #0168b7; text-decoration: none;}
 .site-version a:hover{color: #0168b7; text-decoration: underline;}
 
+.loading {
+  background-image:url(/wxapi/public/images/loading.gif);
+  background-repeat:no-repeat;
+  background-position:center;
+}
+
 .top {
   left: 0;
   right: 0;
@@ -99,7 +105,7 @@ body, button, input, select, textarea {
   background-color: #0168b7;
 }
 .inner {
-  width: 1000px;
+  width: 1170px;
   margin: 0 auto;
   overflow: hidden;
 }
@@ -127,12 +133,17 @@ body, button, input, select, textarea {
   font-size: 22px;
   color: #fff;
   text-decoration: none;
+  transition:all .3s;
+  -webkit-transition:all .3s
 }
 .nav a:hover {
   color: #83c3f3;
 }
 .nav .active a {
   color: #83c3f3;
+}
+.nav .login a:hover {
+  color: #e67e22 !important;
 }
 .section {
   text-align: center;

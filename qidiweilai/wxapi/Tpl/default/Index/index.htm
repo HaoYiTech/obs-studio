@@ -16,6 +16,13 @@
 <script src="/wxapi/public/js/jquery-1.12.4.min.js"></script>
 <script src="/wxapi/public/js/jquery.fullpage.min.js"></script>
 <script src="/wxapi/public/js/jquery.easings.min.js"></script>
+<script src="/wxapi/public/layui/layui.js"></script>
+
+<!-- 让IE8/9支持媒体查询，从而兼容栅格 -->
+<!--[if lt IE 9]>
+  <script src="https://cdn.staticfile.org/html5shiv/r29/html5.min.js"></script>
+  <script src="https://cdn.staticfile.org/respond.js/1.4.2/respond.min.js"></script>
+<![endif]-->
 
 <script>
 $(function(){
@@ -49,6 +56,67 @@ $(function(){
     }
   });
 });
+
+// 响应头像点击事件...
+function doUserInfo() {
+  // 弹出登录框...
+  layer.open({
+    type: 2, //0(dialog), 1(page), 2(iframe), 3(loading), 4(tips)
+    closeBtn: 1,
+    fixed: true,
+    shadeClose: true,
+    area: ['450px', '450px'],
+    content: "{{:__APP__}}/Index/userInfo/",
+    title: "<i class='fa fa-user'>&nbsp;&nbsp;</i>已登录用户信息"
+  });
+}
+// 处理头像加载成功事件 => 去掉旋转背景，增加圆形框...
+function doHeadLoad() {
+  $(event.srcElement).removeClass('loading');
+  $(event.srcElement).addClass('layui-circle');
+}
+// 处理用户头像无法加载的问题...
+function doErrUser() {
+  var img = event.srcElement; // 获取事件对象...
+  img.src  = "/wxapi/public/images/man.jpg"; 
+  img.onerror = null; // 控制不要一直跳动
+}
+// 响应注销点击事件...
+function doLogout() {
+  $.ajax({
+    type: "get",
+    async: true,
+    url: "{{:__APP__}}/Index/logout",
+    success: function(ajaxData) {
+      $('#menuLogin').html(ajaxData);
+      location.reload();
+    },
+    error: function(XMLHttpRequest, textStatus, errorThrown) {
+      layer.alert(textStatus+': '+XMLHttpRequest.status+','+errorThrown, {icon: 2});
+    }
+  });
+}
+// 响应登录点击事件...
+function doLogin() {
+  // 弹出登录框...
+  layer.open({
+    type: 2, //0(dialog), 1(page), 2(iframe), 3(loading), 4(tips)
+    closeBtn: 0,
+    fixed: true,
+    title: false,
+    shadeClose: true,
+    area: ['450px', '450px'],
+    content: "{{:__APP__}}/Index/login/"
+  });
+}
+// cookie有效时iframe内部访问...
+function doReload() {
+  location.href = "{{:__APP__}}/Index/index";
+}
+
+// 加载layui的layer模块...
+layui.use(['layer']);
+
 </script>
 
 </head>
@@ -69,6 +137,7 @@ $(function(){
       <li data-menuanchor="page4"><a href="#page4">专家导师</a></li>
       <li data-menuanchor="page5"><a href="#page5">学生作品</a></li>
       <li data-menuanchor="page6"><a href="#page6">加盟咨询</a></li>
+      <include file = "Common:index_login" />
     </ul>
   </div>
 </div>
