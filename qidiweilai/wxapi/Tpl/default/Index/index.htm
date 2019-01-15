@@ -25,13 +25,27 @@ $(function(){
   $(document.body).show();
   // 处理滚动页面过程...
   $('#haoyi').fullpage({
-    anchors: ['page1', 'page2', 'page3', 'page4', 'page5', 'page6', 'page7'],
+    anchors: ['page1', 'page2', 'page3', 'page4', 'page5', 'page6'],
     //continuousVertical: true, // 垂直方向循环
     navigation: bShowNav, // 导航栏，默认在右侧
     menu: '#menu', // 菜单ID
     afterLoad: function(anchorLink, index){
+      if( index == 1 ) {
+      } else if( index == 2 ) {
+      } else if( index == 3 ) {
+      } else if( index == 4 ) {
+      } else if( index == 5 ) {
+      } else if( index == 6 ) {
+      }
     },
     onLeave: function(index, direction){
+      if( index == 1 ) {
+      } else if( index == 2 ) {
+      } else if( index == 3 ) {
+      } else if( index == 4 ) {
+      } else if( index == 5 ) {
+      } else if( index == 6 ) {
+      }
     }
   });
 });
@@ -61,48 +75,46 @@ $(function(){
 
 <div id="haoyi">
   <div class="section bk-blue" id="section1">
-    <div style="margin:20px auto 10px;">
-      <div style="position:relative;">
-        <div style="position:absolute;left:30%;bottom:150px;">
-          <img width="150px" src="/wxapi/public/images/bn-1.png"></img>
-        </div>
-        <div style="position:absolute;right:30%;bottom:150px;">
-          <img width="150px" src="/wxapi/public/images/bn-2.png"></img>
-        </div>
-        <img src="/wxapi/public/images/banner-1.png"></img>
+    <div class="kx-banner">
+      <div class="kx-img-left">
+        <img src="/wxapi/public/images/bn-1.png"></img>
       </div>
+      <div class="kx-img-right">
+        <img src="/wxapi/public/images/bn-2.png"></img>
+      </div>
+      <img src="/wxapi/public/images/banner-1.png"></img>
     </div>
-    <div style="width: 90%;margin: 0 auto;">
-      <div class="kx-col">
-        <div class="kx-title" style="margin-bottom:10px;">科学主题活动</div>
-        <div class="kx-image"><img src="/wxapi/public/images/kx-1.png" /></div>
-        <div class="kx-text">科学主题活动是专门为适龄儿童专门打造的探究实验活动体系，在趣味性、延展性、操作性等方面进行创新设计，涵盖物质科学、生物科学、宇宙与地球科学、工程与技术等主题。该课程具有生活性、趣味性、科技感等特点。</div>
+    <div class="page-main">
+      <div class="kx-col-1">
+        <div class="page-title">科学主题活动</div>
+        <img src="/wxapi/public/images/kx-1.png" />
+        <div class="page-text">科学主题活动是专门为适龄儿童专门打造的探究实验活动体系，在趣味性、延展性、操作性等方面进行创新设计，涵盖物质科学、生物科学、宇宙与地球科学、工程与技术等主题。该课程具有生活性、趣味性、科技感等特点。</div>
       </div>
-      <div class="kx-col">
-        <div style="float: left;"><img style="width: 220px" src="/wxapi/public/images/kx-2.png" /></div>
-        <div class="kx-text" style="margin: 0px 5px 0px 225px;text-indent:0px;">启迪未来科学亲子秀将书本中难以理解的科学知识还原为最简洁常见的生活原理，把“科学知识理论”转化为具有游戏性、趣味性的科学亲子秀。</div>
-        <div class="kx-text" style="float: left;width: 220px;text-indent:0px;">丰富有趣的科学亲子秀让孩子在“玩中学”的同时，更能培养科学素养、启发思维，例如“大闹天宫”、“未来水世界”等等，都颇受儿童喜爱！</div>
-        <div style="margin-top:15px"><img width="220px" src="/wxapi/public/images/kx-3.png" /></div>
-        <div class="kx-title" style="clear:both;margin:40px 30px;">科学亲子秀</div>
+      <div class="kx-col-2">
+        <img class="kx-img-mid-1" src="/wxapi/public/images/kx-2.png" />
+        <div class="page-text ext-1">启迪未来科学亲子秀将书本中难以理解的科学知识还原为最简洁常见的生活原理，把“科学知识理论”转化为具有游戏性、趣味性的科学亲子秀。</div>
+        <div class="page-text ext-2">丰富有趣的科学亲子秀让孩子在“玩中学”的同时，更能培养科学素养、启发思维，例如“大闹天宫”、“未来水世界”等等，都颇受儿童喜爱！</div>
+        <img class="kx-img-mid-2" src="/wxapi/public/images/kx-3.png" />
+        <div class="page-title">科学亲子秀</div>
       </div>
-      <div class="kx-col">
-        <div class="kx-title" style="margin-bottom:10px;">科学大讲堂</div>
-        <div><img src="/wxapi/public/images/kx-4.png" /></div>
-        <div class="kx-text">由中科院多名科学博士亲自带队，深入浅出的将深奥的科学原理变成通俗易懂的小知识，更能激发孩子的兴趣。</div>
+      <div class="kx-col-3">
+        <div class="page-title">科学大讲堂</div>
+        <img src="/wxapi/public/images/kx-4.png" />
+        <div class="page-text">由中科院多名科学博士亲自带队，深入浅出的将深奥的科学原理变成通俗易懂的小知识，更能激发孩子的兴趣。</div>
       </div>
     </div>
   </div>
   <div class="section bk-white" id="section2">
-    <div style="width: 90%;margin: 0 auto;">
-      <div class="kx-col">
-        <div><img src="/wxapi/public/images/bs-1.png" /></div>
-        <div class="kx-text">机器人主题活动都是按照不同年龄段儿童心理特征所设计的，覆盖3-16岁完整年龄段科技创意课程，融合STEAM（科学、技术、工程、艺术、数学）理念，并配有专业的教学指导，寓教于乐，致力让孩子在快乐中学习，创造中成长，为培养出未来社会科技创新型人才打下坚固的基础。</div>
-        <div class="kx-title">机器人相关活动</div>
+    <div class="page-main">
+      <div class="kx-col-1">
+        <img src="/wxapi/public/images/bs-1.png" />
+        <div class="page-text">机器人主题活动都是按照不同年龄段儿童心理特征所设计的，覆盖3-16岁完整年龄段科技创意课程，融合STEAM（科学、技术、工程、艺术、数学）理念，并配有专业的教学指导，寓教于乐，致力让孩子在快乐中学习，创造中成长，为培养出未来社会科技创新型人才打下坚固的基础。</div>
+        <div class="page-title">机器人相关活动</div>
       </div>
-      <div class="kx-col">
-        <div class="kx-title" style="margin-bottom: 20px;">比赛&考级</div>
+      <div class="kx-col-1">
+        <div class="page-title" style="margin-bottom: 20px;">比赛&考级</div>
         <div style="float: left;"><img style="width: 240px" src="/wxapi/public/images/bs-2.png" /></div>
-        <div class="kx-text" style="text-indent:0px;margin: 0px 5px 0px 245px;">
+        <div class="page-text" style="text-indent:0px;margin: 0px 5px 0px 245px;">
           <ul style="padding-top:10px">
             <li>FLL中国锦标赛</li>
             <li>FTC中国区域选拔赛</li>
@@ -117,18 +129,18 @@ $(function(){
         </ul>
         <div><img src="/wxapi/public/images/bs-3.png" /></div>
       </div>
-      <div class="kx-col">
-        <div class="kx-text">启迪未来自主研发的娱乐型机器人，更大程度上满足了孩子们对机器人的幻想。</div>
+      <div class="kx-col-1">
+        <div class="page-text">启迪未来自主研发的娱乐型机器人，更大程度上满足了孩子们对机器人的幻想。</div>
         <div style="padding-top:10px;text-align:center;"><img style="width:200px;" src="/wxapi/public/images/bs-4.png" /></div>
         <div style="padding-top:10px;text-align:center;"><img style="width:200px;" src="/wxapi/public/images/bs-5.png" /></div>
-        <div class="kx-title">娱乐机器人</div>
+        <div class="page-title">娱乐机器人</div>
       </div>
     </div>
   </div>
   <div class="section bk-blue" id="section3">
-    <div style="width: 90%;margin: 0 auto;">
-      <div class="kx-title" style="margin-bottom:10px">双师系统</div>
-      <div style="margin:5px 5px;">
+    <div class="page-main">
+      <div class="page-title" style="margin-bottom:10px">双师系统</div>
+      <div style="margin:15px 5px;">
         <div class="site-download">
           <a class="layui-inline" href="/changelog">
             <cite class="layui-icon">&#xe601;</cite>立即下载
@@ -139,65 +151,65 @@ $(function(){
           <span><a href="/changelog" rel="nofollow">更新日志</a></span>
         </div>
       </div>
-      <div class="kx-col"><img src="/wxapi/public/images/ss-1.png" /></div>
-      <div class="kx-col"><img src="/wxapi/public/images/ss-2.png" /></div>
-      <div class="kx-col"><img src="/wxapi/public/images/ss-3.png" /></div>
-      <div class="kx-text" style="padding-top:10px">STEAM双师云平台是由公司重资打造的新一代创客双师云平台，拥有自己的底层技术和核心压缩算法，能把视频推流、双向与多向音视频交流互动达到及时、同步，能基于现有的网络带宽环境实现延时在毫秒级别，在国内属于领先水平，满足一对多大班教学、一对一个性化学习的多样化需求，并且可以自由切换，真正解决现在中小学普遍存在的缺师资、创客课程开不起来的痛点和难点问题。同时，平台还具有录课、录播、存储等功能，也具有自己的机器人课程体系，科学实验课和经验丰富的师资团队，能帮助中小学解决STEAM教育的师资问题，同时也能利用该平台来开展其它的双师课程。</div>
+      <div class="kx-col-1"><img width="380px" src="/wxapi/public/images/ss-1.png" /></div>
+      <div class="kx-col-1"><img width="380px" src="/wxapi/public/images/ss-2.png" /></div>
+      <div class="kx-col-1"><img width="380px" src="/wxapi/public/images/ss-3.png" /></div>
+      <div class="page-text" style="clear:both;padding-top:15px">STEAM双师云平台是由公司重资打造的新一代创客双师云平台，拥有自己的底层技术和核心压缩算法，能把视频推流、双向与多向音视频交流互动达到及时、同步，能基于现有的网络带宽环境实现延时在毫秒级别，在国内属于领先水平，满足一对多大班教学、一对一个性化学习的多样化需求，并且可以自由切换，真正解决现在中小学普遍存在的缺师资、创客课程开不起来的痛点和难点问题。同时，平台还具有录课、录播、存储等功能，也具有自己的机器人课程体系，科学实验课和经验丰富的师资团队，能帮助中小学解决STEAM教育的师资问题，同时也能利用该平台来开展其它的双师课程。</div>
     </div>
   </div>
   <div class="section bk-white" id="section4">
-    <div style="width: 90%;margin: 0 auto;">
-      <div class="kx-title" style="margin-bottom:15px">专家导师</div>
+    <div class="page-main">
+      <div class="page-title" style="margin-bottom:15px">专家导师</div>
       <div style="width: 45%;float: left;margin:10px 10px 0px;">
-        <div class="kx-title" style="margin-bottom:10px">罗思扬</div>
-        <div style="float:left"><img width="350px" src="/wxapi/public/images/zj-1.jpg" /></div>
-        <div class="kx-text" style="margin: 0px 5px 0px 360px;">男，博士，高级工程师。中国科学院理化技术研究所。师从于陈创天院士，2010年毕业于中国科学院理化技术研究所，获凝聚态物理博士学位。承担并参加多个国家重大科研项目，其中“KBBF族深紫外非线性光学晶体的发现、生长和应用”曾获北京市科技一等奖，并入选中科院青年创新促进会会员，在国内外发表数十篇论文，申请多个发明专利。专利：一种钼硝酸钾化合物、其非线性光学晶体及其制备方法和用途，ZL201310289080；硼铍酸盐化合物、硼铍酸盐非线性光学晶体及制法和用途。</div>
+        <img width="300px" src="/wxapi/public/images/zj-1.jpg" />
+        <div class="page-title">罗思扬</div>
+        <div class="page-text">男，博士，高级工程师。中国科学院理化技术研究所。师从于陈创天院士，2010年毕业于中国科学院理化技术研究所，获凝聚态物理博士学位。承担并参加多个国家重大科研项目，其中“KBBF族深紫外非线性光学晶体的发现、生长和应用”曾获北京市科技一等奖，并入选中科院青年创新促进会会员，在国内外发表数十篇论文，申请多个发明专利。专利：一种钼硝酸钾化合物、其非线性光学晶体及其制备方法和用途，ZL201310289080；硼铍酸盐化合物、硼铍酸盐非线性光学晶体及制法和用途。</div>
       </div>
       <div style="width: 45%;float: left;margin:10px 10px 0px;">
-        <div class="kx-title" style="margin-bottom:10px">王克伟</div>
-        <div style="float:left"><img width="350px" src="/wxapi/public/images/zj-2.jpg" /></div>
-        <div class="kx-text" style="margin: 0px 5px 0px 360px;">全国十佳优秀科技辅导员、全国优秀科技工作者，山东省骨干科技辅导员，临沂市青少年科技辅导员协会监事长，《青少年创意发明之路》和《小创客玩转Arduino》两本专著作者。2010年在山东省建立全省首个中小学创客空间，是创客教育行业的领先者，从2012年开始共辅导学生获得各项发明专利400多项，创意5万多个；辅导500多名学生参加国家、省市区科技竞赛，获单项奖600多项，团体奖35项。同时支持参与6项国家、省级教育课题，个人获得国家专利10项。多次代表临沂市在全国、全省进行创客教育交流，《中国航天报》、《中国教具网》、《网易》、《大众日报》、《鲁南商报》等多家媒体报道创客教育事迹。</div>
+        <img width="350px" src="/wxapi/public/images/zj-2.jpg" />
+        <div class="page-title">王克伟</div>
+        <div class="page-text">全国十佳优秀科技辅导员、全国优秀科技工作者，山东省骨干科技辅导员，临沂市青少年科技辅导员协会监事长，《青少年创意发明之路》和《小创客玩转Arduino》两本专著作者。2010年在山东省建立全省首个中小学创客空间，是创客教育行业的领先者，从2012年开始共辅导学生获得各项发明专利400多项，创意5万多个；辅导500多名学生参加国家、省市区科技竞赛，获单项奖600多项，团体奖35项。同时支持参与6项国家、省级教育课题，个人获得国家专利10项。多次代表临沂市在全国、全省进行创客教育交流，《中国航天报》、《中国教具网》、《网易》、《大众日报》、《鲁南商报》等多家媒体报道创客教育事迹。</div>
       </div>
     </div>
   </div>
   <div class="section bk-blue" id="section5">
-    <div style="width: 80%;margin: 0 auto;">
-      <div class="kx-title" style="margin-bottom:25px">学生作品</div>
+    <div class="page-main">
+      <div class="page-title" style="margin-bottom:25px">学生作品</div>
       <div style="width: 24%;float: left;text-align:left;">
         <img style="margin-bottom: 10px;" height="300px" src="/wxapi/public/images/xs-1.jpg" />
-        <div class="kx-title" style="color:#028eff;font-size:24px;font-weight:normal">姓名：李非凡</div>
-        <div class="kx-title" style="color:#028eff;font-size:24px;font-weight:normal">年龄：4岁</div>
-        <div class="kx-title" style="color:#028eff;font-size:24px;font-weight:normal">课程名称：吊车</div>
+        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">姓名：李非凡</div>
+        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">年龄：4岁</div>
+        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">课程名称：吊车</div>
       </div>
       <div style="width: 24%;float: left;text-align:left;">
         <img style="margin-bottom: 10px;" height="300px" src="/wxapi/public/images/xs-2.jpg" />
-        <div class="kx-title" style="color:#028eff;font-size:24px;font-weight:normal">姓名：薄海滨</div>
-        <div class="kx-title" style="color:#028eff;font-size:24px;font-weight:normal">年龄：4岁</div>
-        <div class="kx-title" style="color:#028eff;font-size:24px;font-weight:normal">课程名称：吊车</div>
+        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">姓名：薄海滨</div>
+        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">年龄：4岁</div>
+        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">课程名称：吊车</div>
       </div>
       <div style="width: 24%;float: left;text-align:left;">
         <img style="margin-bottom: 10px;" height="300px" src="/wxapi/public/images/xs-3.jpg" />
-        <div class="kx-title" style="color:#028eff;font-size:24px;font-weight:normal">姓名：于沐涵</div>
-        <div class="kx-title" style="color:#028eff;font-size:24px;font-weight:normal">年龄：3岁</div>
-        <div class="kx-title" style="color:#028eff;font-size:24px;font-weight:normal">课程名称：动物园</div>
+        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">姓名：于沐涵</div>
+        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">年龄：3岁</div>
+        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">课程名称：动物园</div>
       </div>
       <div style="width: 24%;float: left;text-align:left;">
         <img style="margin-bottom: 10px;" height="300px" src="/wxapi/public/images/xs-4.jpg" />
-        <div class="kx-title" style="color:#028eff;font-size:24px;font-weight:normal">班级合照</div>
-        <div class="kx-title" style="color:#028eff;font-size:24px;font-weight:normal">年龄：3岁</div>
-        <div class="kx-title" style="color:#028eff;font-size:24px;font-weight:normal">课程名称：动物园</div>
+        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">班级合照</div>
+        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">年龄：3岁</div>
+        <div class="page-title" style="color:#028eff;font-size:24px;font-weight:normal">课程名称：动物园</div>
       </div>
     </div>
   </div>
   <div class="section bk-white" id="section6">
-    <div style="width: 80%;margin: 0 auto;">
-      <div class="kx-title" style="margin-bottom:20px">加盟咨询</div>
-      <div class="kx-col">
+    <div class="page-main">
+      <div class="page-title" style="margin-bottom:20px">加盟咨询</div>
+      <div class="kx-col-1">
         <img src="/wxapi/public/images/jm-1.jpg" />
-        <div class="kx-title" style="color:#028eff;margin: 15px 15px;">运营服务支持</div>
+        <div class="page-title" style="color:#028eff;margin: 15px 15px;">运营服务支持</div>
         <img src="/wxapi/public/images/jm-2.png" />
       </div>
-      <div class="kx-col">
+      <div class="kx-col-1">
         <div style="background-color:#cfe8fc;width:45%;float:left;margin: 0px 10px 10px;">
           <div style="color:#028eff;font-size:22px;text-align:center;font-weight:900;margin:10px 10px 5px;">教研团队</div>
           <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;">中科院参与教研</div>
@@ -208,7 +220,7 @@ $(function(){
           <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;">覆盖科学和机器人 </div>
           <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;margin-bottom: 10px;">精准定位孩子成长需求</div>
         </div>
-        <div class="kx-title" style="color:#028eff;clear:both;margin: 15px 15px;">教研支持</div>
+        <div class="page-title" style="color:#028eff;clear:both;margin: 15px 15px;">教研支持</div>
         <div style="background-color:#cfe8fc;width:45%;float:left;margin: 0px 10px 10px;">
           <div style="color:#028eff;font-size:22px;text-align:center;font-weight:900;margin:10px 10px 5px;">教学范围</div>
           <div style="color:#07548f;font-size:16px;text-align:center;line-height:20px;font-weight:900;">涵盖了科学、机器人</div>
@@ -221,11 +233,11 @@ $(function(){
         </div>
         <img style="margin-top:40px;" width="400px" src="/wxapi/public/images/jm-3.png" />
       </div>
-      <div class="kx-col">
+      <div class="kx-col-1">
         <img src="/wxapi/public/images/jm-4.jpg" />
-        <div class="kx-title" style="color:#028eff;margin: 30px 30px;">加入我们</div>
-        <div class="kx-title" style="font-size:24px;font-weight:normal;text-align:left;">电话：010-57109620</div>
-        <div class="kx-title" style="font-size:24px;font-weight:normal;text-align:left;">地址：北京市海淀区中关村大街18号 电子科贸城B座909</div>
+        <div class="page-title" style="color:#028eff;margin: 30px 30px;">加入我们</div>
+        <div class="page-title" style="font-size:24px;font-weight:normal;text-align:left;">电话：010-57109620</div>
+        <div class="page-title" style="font-size:24px;font-weight:normal;text-align:left;">地址：北京市海淀区中关村大街18号 电子科贸城B座909</div>
       </div>
     </div>
     <div style="width:100%;background-color:#89adcd;position:absolute;bottom:0;text-align:center;font-size:16px;color:#04558d;padding:20px 20px;">
