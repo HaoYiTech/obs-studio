@@ -112,7 +112,7 @@ class LoginAction extends Action
         header("location:".$strJump);
       } else {
         // 不一致，跳转到首页...
-        A('Home')->index();
+        A('Index')->index();
       }
       return;
     }
