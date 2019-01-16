@@ -58,8 +58,6 @@ CViewCamera::CViewCamera(QWidget *parent, int nDBCameraID)
 	// 注意：只有QT线程当中才能启动时钟对象...
 	// 开启一个定时检测时钟 => 每隔1秒执行一次...
 	m_nFlowTimer = this->startTimer(1 * 1000);
-	// 建立摄像头数据拉取成功的信号槽，为了避免RTSP数据线程调用QT的socket造成的问题...
-	this->connect(this, SIGNAL(doTriggerReadyToRecvFrame()), this, SLOT(onTriggerReadyToRecvFrame()));
 	// 初始化回音消除互斥对象和播放线程互斥对象...
 	pthread_mutex_init_value(&m_MutexPlay);
 	pthread_mutex_init_value(&m_MutexAEC);
@@ -495,7 +493,7 @@ void CViewCamera::onTriggerReadyToRecvFrame()
 // 这里必须用信号槽，关联到同一线程，避免QTSocket的多线程访问故障...
 void CViewCamera::doReadyToRecvFrame()
 {
-	emit this->doTriggerReadyToRecvFrame();
+	QMetaObject::invokeMethod(this, "onTriggerReadyToRecvFrame");
 }
 
 void CViewCamera::doPushFrame(FMS_FRAME & inFrame)

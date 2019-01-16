@@ -79,11 +79,7 @@ public:
 	string & GetAuthExpired() { return m_strAuthExpired; }
 	string & GetAuthMacMD5() { return m_strAuthMacMD5; }
 	string & GetMainName() { return m_strMainName; }
-	int		 GetSliceVal() { return m_nSliceVal; }
-	int		 GetInterVal() { return m_nInterVal; }
 	int		 GetSnapVal() { return m_nSnapVal; }
-	bool	 GetAutoLinkDVR() { return m_bAutoLinkDVR; }
-	bool	 GetAutoLinkFDFS() { return m_bAutoLinkFDFS; }
 	int		 GetMaxCamera() { return m_nMaxCamera; }
 	string & GetWebVer() { return m_strWebVer; }
 	string & GetWebTag() { return m_strWebTag; }
@@ -96,7 +92,6 @@ public:
 	string & GetTrackerAddr() { return m_strTrackerAddr; }
 	int		 GetTrackerPort() { return m_nTrackerPort; }
 	int      GetDBGatherID() { return m_nDBGatherID; }
-	int      GetDBHaoYiUserID() { return m_nDBHaoYiUserID; }
 	int      GetDBHaoYiNodeID() { return m_nDBHaoYiNodeID; }
 	int      GetDBHaoYiGatherID() { return m_nDBHaoYiGatherID; }
 	int      GetRtpTCPSockFD() { return m_nRtpTCPSockFD; }
@@ -122,7 +117,6 @@ public:
 	void	 SetWebTag(const string & strWebTag) { m_strWebTag = strWebTag; }
 	void	 SetWebVer(const string & strWebVer) { m_strWebVer = strWebVer; }
 	void	 SetDBGatherID(int nDBGatherID) { m_nDBGatherID = nDBGatherID; }
-	void     SetDBHaoYiUserID(int nDBUserID) { m_nDBHaoYiUserID = nDBUserID; }
 	void	 SetDBHaoYiNodeID(int nDBNodeID) { m_nDBHaoYiNodeID = nDBNodeID; }
 	void     SetDBHaoYiGatherID(int nDBGatherID) { m_nDBHaoYiGatherID = nDBGatherID; }
 
@@ -131,11 +125,7 @@ public:
 	void	 SetAuthExpired(const string & strExpired) { m_strAuthExpired = strExpired; }
 	void	 SetAuthLicense(bool bLicense) { m_bAuthLicense = bLicense; }
 	void	 SetMainName(const string & strName) { m_strMainName = strName; }
-	void	 SetSliceVal(int nSliceVal) { m_nSliceVal = nSliceVal; }
-	void	 SetInterVal(int nInterVal) { m_nInterVal = nInterVal; }
 	void	 SetSnapVal(int nSnapVal) { m_nSnapVal = nSnapVal; }
-	void	 SetAutoLinkDVR(bool bAutoLinkDVR) { m_bAutoLinkDVR = bAutoLinkDVR; }
-	void	 SetAutoLinkFDFS(bool bAutoLinkFDFS) { m_bAutoLinkFDFS = bAutoLinkFDFS; }
 	void	 SetMaxCamera(int nMaxCamera) { m_nMaxCamera = nMaxCamera; }
 
 	string   GetCameraSName(int nDBCameraID);
@@ -219,7 +209,6 @@ private:
 	string				m_strUdpAddr;					// 远程UDP服务器的IP地址...
 	int					m_nUdpPort;						// 远程UDP服务器的端口地址...
 	int                 m_nDBGatherID;					// 数据库中采集端编号...
-	int					m_nDBHaoYiUserID;				// 在中心服务器上的绑定用户编号...
 	int					m_nDBHaoYiNodeID;				// 在中心服务器上的节点编号...
 	int                 m_nDBHaoYiGatherID;				// 在中心服务器上的采集端编号...
 	string              m_strMultiIPSendAddr;           // 中心服务器反馈的组播发送接口...
@@ -228,11 +217,7 @@ private:
 	bool				m_bAuthLicense;					// 中心服务器反馈的永久授权标志...
 	int					m_nAuthDays;					// 中心服务器反馈的剩余授权天数...
 	string				m_strMainName;					// 主窗口标题名称...
-	int					m_nSliceVal;					// 录像切片时间(0~30分钟)
-	int					m_nInterVal;					// 切片交错关键帧(0~3个)
 	int				    m_nSnapVal;						// 通道截图间隔(1~10分钟)
-	bool				m_bAutoLinkDVR;					// 自动重连DVR摄像头...
-	bool				m_bAutoLinkFDFS;				// 自动重连FDFS服务器...
 	int                 m_nRtpTCPSockFD;                // CRemoteSession在服务器端的套接字号码...
 	int                 m_nAudioOutSampleRate;          // 音频播放、压缩输出采样率 
 	int                 m_nAudioOutChannelNum;          // 音频播放、压缩输出声道数

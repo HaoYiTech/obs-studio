@@ -170,27 +170,12 @@ bool CWebThread::RegisterGather()
 	}
 	// 处理新增的配置内容 => name_set | web_name => 中间存放都是UTF8格式，显示时才转换成Unicode...
 	string strMainName = CStudentApp::getJsonString(value["name_set"]);
-	int nMainKbps = atoi(CStudentApp::getJsonString(value["main_rate"]).c_str());
-	int nSubKbps = atoi(CStudentApp::getJsonString(value["sub_rate"]).c_str());
-	int nSliceVal = atoi(CStudentApp::getJsonString(value["slice_val"]).c_str());
-	int nInterVal = atoi(CStudentApp::getJsonString(value["inter_val"]).c_str());
 	int nSnapVal = atoi(CStudentApp::getJsonString(value["snap_val"]).c_str());
-	bool bAutoLinkDVR = atoi(CStudentApp::getJsonString(value["auto_dvr"]).c_str());
-	bool bAutoLinkFDFS = atoi(CStudentApp::getJsonString(value["auto_fdfs"]).c_str());
-	bool bAutoDetectIPC = atoi(CStudentApp::getJsonString(value["auto_ipc"]).c_str());
-	int nPageSize = atoi(CStudentApp::getJsonString(value["page_size"]).c_str());
 	ROLE_TYPE nRoleType = (ROLE_TYPE)atoi(CStudentApp::getJsonString(value["role_type"]).c_str());
 	// 对每页窗口数进行重新适配判断计算...
 	//nPageSize = ((nPageSize <= 1 || nPageSize > 36) ? DEF_PER_PAGE_SIZE : nPageSize);
 	//int nColNum = ceil(sqrt(nPageSize * 1.0f));
 	//nPageSize = nColNum * nColNum;
-	// 判断是否需要处理挂载的直播间信息...
-	/*if (value.isMember("selected") && value.isMember("begin")) {
-		int nCurSelRoomID = atoi(CStudentApp::getJsonString(value["selected"]).c_str());
-		int nBeginID = atoi(CStudentApp::getJsonString(value["begin"]).c_str());
-		theConfig.SetCurSelRoomID(nCurSelRoomID);
-		theConfig.SetBeginRoomID(nBeginID);
-	}*/
 	// 获取Tracker|Remote|Local，并存放到配置文件，但不存盘...
 	int nDBGatherID = atoi(CStudentApp::getJsonString(value["gather_id"]).c_str());
 	int nWebType = atoi(CStudentApp::getJsonString(value["web_type"]).c_str());
@@ -224,11 +209,7 @@ bool CWebThread::RegisterGather()
 	App()->SetMultiIPSendAddr(strIPSend);
 	// 存放新增的采集端配置信息 => 字符串都是UTF8格式...
 	App()->SetMainName(strMainName);
-	App()->SetInterVal(nInterVal);
-	App()->SetSliceVal(nSliceVal);
 	App()->SetSnapVal(nSnapVal);
-	App()->SetAutoLinkFDFS(bAutoLinkFDFS);
-	App()->SetAutoLinkDVR(bAutoLinkDVR);
 	// 注意：已经获取了通道编号列表...
 	// 通知主窗口授权网站注册结果 => 通过信号槽代替消息异步发送...
 	emit App()->msgFromWebThread(WM_WEB_AUTH_RESULT, kAuthRegister, ((nDBGatherID > 0) ? true : false));
@@ -275,7 +256,7 @@ bool CWebThread::RegisterHaoYi()
 	sprintf(strPost, "mac_addr=%s&ip_addr=%s&name_pc=%s&name_set=%s&version=%s&node_ver=%s&node_tag=%s&node_type=%d&node_addr=%s:%d&node_proto=%s&node_name=%s&os_name=%s",
 		strMacAddr.c_str(), strIPAddr.c_str(), szDNS, szMainName, _T(SZ_VERSION_NAME), strWebVer.c_str(), strWebTag.c_str(), nWebType,
 		strOnlyAddr.c_str(), nWebPort, strWebProto.c_str(), szWebName, CStudentApp::GetServerOS());
-	// 这里需要用到 https 模式，因为，myhaoyi.com 全站都用 https 模式...
+	// 这里需要用到 https 模式，因为，qidiweilai.com 全站都用 https 模式...
 	sprintf(strUrl, "%s/wxapi.php/Gather/verify", App()->GetWebCenter().c_str());
 	// 调用Curl接口，汇报采集端信息...
 	CURLcode res = CURLE_OK;
@@ -323,7 +304,6 @@ bool CWebThread::RegisterHaoYi()
 	int nMaxCameraNum = atoi(CStudentApp::getJsonString(value["max_camera"]).c_str());
 	int nHaoYiGatherID = atoi(CStudentApp::getJsonString(value["gather_id"]).c_str());
 	int nHaoYiNodeID = atoi(CStudentApp::getJsonString(value["node_id"]).c_str());
-	int nHaoYiUserID = atoi(CStudentApp::getJsonString(value["user_id"]).c_str());
 	int nAuthDays = atoi(CStudentApp::getJsonString(value["auth_days"]).c_str());
 	string strExpired = CStudentApp::getJsonString(value["auth_expired"]);
 	string strMacMD5 = CStudentApp::getJsonString(value["mac_md5"]);
@@ -335,7 +315,6 @@ bool CWebThread::RegisterHaoYi()
 	App()->SetAuthExpired(strExpired);
 	App()->SetAuthLicense(bAuthLicense);
 	App()->SetMaxCamera(nMaxCameraNum);
-	App()->SetDBHaoYiUserID(nHaoYiUserID);
 	App()->SetDBHaoYiNodeID(nHaoYiNodeID);
 	App()->SetDBHaoYiGatherID(nHaoYiGatherID);
 	return ((nHaoYiGatherID > 0) ? true : false);
@@ -376,7 +355,7 @@ bool CWebThread::LogoutHaoYi()
 	char strPost[MAX_PATH] = { 0 };
 	char strUrl[MAX_PATH] = { 0 };
 	sprintf(strPost, "gather_id=%d", nDBHaoYiGatherID);
-	// 这里需要用到 https 模式，因为，myhaoyi.com 全站都用 https 模式...
+	// 这里需要用到 https 模式，因为，qidiweilai.com 全站都用 https 模式...
 	sprintf(strUrl, "%s/wxapi.php/Gather/logout", App()->GetWebCenter().c_str());
 	// 调用Curl接口，汇报摄像头数据...
 	CURLcode res = CURLE_OK;

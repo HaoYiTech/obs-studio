@@ -19,8 +19,6 @@ class CViewCamera : public OBSQTDisplay {
 public:
 	CViewCamera(QWidget *parent, int nDBCameraID);
 	virtual ~CViewCamera();
-signals:
-	void		doTriggerReadyToRecvFrame();
 protected slots:
 	void		onTriggerReadyToRecvFrame();
 public:
