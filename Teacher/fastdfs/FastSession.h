@@ -47,6 +47,7 @@ protected slots:
 	void onError(QAbstractSocket::SocketError nError) override;
 private:
 	void SendCmd(char inCmd);
+	void doStorageWanAddr();
 private:
 	TrackerHeader		m_TrackerCmd;				// Tracker-Header-Cmd...
 	StorageServer		m_NewStorage;				// 当前有效的存储服务器...

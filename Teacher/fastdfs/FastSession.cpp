@@ -1,6 +1,9 @@
 
 #include "obs-app.hpp"
 #include "FastSession.h"
+#include <winsock2.h>
+
+#pragma comment(lib, "WS2_32.Lib")
 
 void long2buff(int64_t n, char *buff)
 {
@@ -131,6 +134,26 @@ void CTrackerSession::onConnected()
 	this->SendCmd(TRACKER_PROTO_CMD_SERVICE_QUERY_STORE_WITHOUT_GROUP_ONE);
 }
 
+void CTrackerSession::doStorageWanAddr()
+{
+	// 将获取的Storage的IP地址进行转换判断...
+	uint32_t nHostAddr = ntohl(inet_addr(m_NewStorage.ip_addr));
+	// 检查是否是以下三类内网地址...
+	// A类：10.0.0.0 ~ 10.255.255.255
+	// B类：172.16.0.0 ~ 172.31.255.255
+	// C类：192.168.0.0 ~ 192.168.255.255
+	if ((nHostAddr >= 0x0A000000 && nHostAddr <= 0x0AFFFFFF) ||
+		(nHostAddr >= 0xAC100000 && nHostAddr <= 0xAC1FFFFF) ||
+		(nHostAddr >= 0xC0A80000 && nHostAddr <= 0xC0A8FFFF))
+	{
+		// 如果是内网地址，替换成tracker地址...
+		strcpy(m_NewStorage.ip_addr, m_strAddress.c_str());
+		blog(LOG_INFO, "Adjust => Group = %s, Storage = %s:%d, PathIndex = %d", 
+			 m_NewStorage.group_name, m_NewStorage.ip_addr, m_NewStorage.port,
+			 m_NewStorage.store_path_index);
+	}
+}
+
 void CTrackerSession::onReadyRead()
 {
 	// 从网络层读取所有的缓冲区，并将缓冲区连接起来...
@@ -152,7 +175,9 @@ void CTrackerSession::onReadyRead()
 		memcpy(m_NewStorage.ip_addr, in_buff + FDFS_GROUP_NAME_MAX_LEN, IP_ADDRESS_SIZE - 1);
 		m_NewStorage.port = (int)buff2long(in_buff + FDFS_GROUP_NAME_MAX_LEN + IP_ADDRESS_SIZE - 1);
 		m_NewStorage.store_path_index = (int)(*(in_buff + FDFS_GROUP_NAME_MAX_LEN + IP_ADDRESS_SIZE - 1 + FDFS_PROTO_PKG_LEN_SIZE)); // 内存中只有一个字节...
-		blog(LOG_INFO, "Group = %s, Storage = %s:%d, PathIndex = %d", m_NewStorage.group_name, m_NewStorage.ip_addr, m_NewStorage.port, m_NewStorage.store_path_index);
+		blog(LOG_INFO, "Source => Group = %s, Storage = %s:%d, PathIndex = %d", m_NewStorage.group_name, m_NewStorage.ip_addr, m_NewStorage.port, m_NewStorage.store_path_index);
+		// 分析并判断Storage地址是否是内网地址，如果是内网地址，就用tracker地址替换之...
+		this->doStorageWanAddr();
 		// 将缓冲区进行减少处理...
 		m_strRecv.erase(0, nCmdLength + TRACKER_QUERY_STORAGE_STORE_BODY_LEN);
 		// 发起新的命令 => 查询所有的组列表...
