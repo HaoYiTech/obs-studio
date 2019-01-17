@@ -5844,6 +5844,7 @@ void OBSBasic::OpenSourceProjector()
 		ProjectorType::Source);
 }*/
 
+// mixerIdx => 指的是轨道编号，0~5总共有6个音频轨道，通过32位整型数字的比特位来记录是否进行混音标志...
 static inline void setAudioMixer(obs_sceneitem_t *scene_item, const int mixerIdx, const bool enabled)
 {
 	obs_source_t *source = obs_sceneitem_get_source(scene_item);
