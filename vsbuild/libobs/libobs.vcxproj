@@ -123,6 +123,15 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
 setlocal
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/libobs/Debug/obs.dll E:/obs-studio/vsbuild/student/Debug/bin/32bit/obs.dll
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -DCONFIG=Debug -DFNAME=obs.dll -DINPUT=E:/obs-studio/vsbuild/libobs/Debug -DOUTPUT=E:/obs-studio/vsbuild/libobs/pdbs -P E:/obs-studio/cmake/copy_on_debug_helper.cmake
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
@@ -272,6 +281,15 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/libobs/Release/obs.dll E:/obs-studio/vsbuild/rundir/Release/bin/32bit/obs.dll
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/libobs/Release/obs.dll E:/obs-studio/vsbuild/student/Release/bin/32bit/obs.dll
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
