@@ -664,7 +664,6 @@ void CAudioThread::doConvertAudio(int64_t in_pts_ms, AVFrame * lpDFrame)
 	// 累加环形队列中有效数据帧的个数...
 	++m_frame_num;
 #ifdef DEBUG_AEC
-	// 注意：格式统一成8K采样率，单声道...
 	DoSaveTeacherPCM(m_max_buffer_ptr, cur_data_size, m_out_sample_rate, m_out_channel_num);
 #endif // DEBUG_AEC
 }
