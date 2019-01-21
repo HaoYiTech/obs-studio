@@ -24,8 +24,8 @@
 // 
 
 #define VERSION_MJR		1
-#define VERSION_MIN		3
-#define VERSION_UPDATE  4
+#define VERSION_MIN		1
+#define VERSION_UPDATE  6
 #define VERSION_BUILD   0
 
 #define	SZ_VERSION_NAME		chSTR(VERSION_MJR) _T(".") chSTR(VERSION_MIN) _T(".") chSTR(VERSION_UPDATE) _T(".") chSTR(VERSION_BUILD)

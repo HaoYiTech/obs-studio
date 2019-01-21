@@ -2,7 +2,7 @@
 ====================================================
 1. 修改 E:\obs-studio\libobs\obs-config.h 里面的版本号码；
 2. 重新编译 teacher|student 都需要完整编译发行版本；
-3. E:\obs-studio\vsbuild\student\Release 与 E:\obs-studio\vsbuild\rundir\Release\bin\32bit 比较，更新变化的obs.dll文件；
+3. obs.dll编译时已经自动投递到teacher|student发行目录；
 4. 编写更新日志：
    E:\obs-studio\vsbuild\update_studio\teacher\changelog.txt => 讲师端更新日志
    E:\obs-studio\vsbuild\update_studio\student\changelog.txt => 学生端更新日志

@@ -1410,6 +1410,7 @@ inline void AdvancedOutput::UpdateAudioSettings()
 		SetEncoderName(aacTrack[i], name, def_name.c_str());
 	}
 
+	// 这里设定rtmp特有的service配置，因使用了rtp输出，这段就失去意义了...
 	for (size_t i = 0; i < MAX_AUDIO_MIXES; i++) {
 		if (applyServiceSettings && (int)(i + 1) == streamTrackIndex)
 			obs_service_apply_encoder_settings(main->GetService(),
@@ -1459,8 +1460,7 @@ bool AdvancedOutput::StartStreaming(obs_service_t *service)
 	if (!Active())
 		SetupOutputs();
 
-	/* --------------------- */
-
+	// 获得当前配置的声音轨道编号 => 始终默认选择 轨道1 和 轨道2 进行音频流压缩输出...
 	int trackIndex = config_get_int(main->Config(), "AdvOut", "TrackIndex");
 
 	// 注意：这里直接指定使用rtp输出流...
@@ -1469,8 +1469,7 @@ bool AdvancedOutput::StartStreaming(obs_service_t *service)
 	////////////////////////////////////////////////////////////////////
 	/*// obs采用默认的rtmp输出流...
 	const char *type = obs_service_get_output_type(service);
-	if (!type)
-		type = "rtmp_output";*/
+	if (!type) type = "rtmp_output";*/
 	////////////////////////////////////////////////////////////////////
 
 	/* XXX: this is messy and disgusting and should be refactored */
