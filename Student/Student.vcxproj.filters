@@ -174,6 +174,21 @@
     <ClCompile Include="remote-text.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="common\HTTPProtocol.cpp">
+      <Filter>Common Files</Filter>
+    </ClCompile>
+    <ClCompile Include="common\tinyxml.cpp">
+      <Filter>Common Files</Filter>
+    </ClCompile>
+    <ClCompile Include="common\tinyxmlerror.cpp">
+      <Filter>Common Files</Filter>
+    </ClCompile>
+    <ClCompile Include="common\tinyxmlparser.cpp">
+      <Filter>Common Files</Filter>
+    </ClCompile>
+    <ClCompile Include="window-view-ptz.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="window-login-base.h">
@@ -230,6 +245,9 @@
     <QtMoc Include="remote-text.hpp">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="window-view-ptz.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="forms\LoginWindow.ui">
@@ -248,6 +266,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="forms\OBSUpdate.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="forms\PTZWindow.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>
@@ -408,6 +429,18 @@
     <ClInclude Include="win-update\win-update-helpers.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="common\HTTPDefine.h">
+      <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common\HTTPProtocol.h">
+      <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common\tinyxml.h">
+      <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneratedFiles\ui_PTZWindow.h">
+      <Filter>Generated Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="forms\images\student.png">
@@ -440,6 +473,9 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="forms\css\LoginWindow.css">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="forms\css\PTZWindow.css">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

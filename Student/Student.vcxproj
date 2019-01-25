@@ -148,12 +148,16 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="common\getopt.cpp" />
+    <ClCompile Include="common\HTTPProtocol.cpp" />
     <ClCompile Include="common\md5.cpp" />
     <ClCompile Include="common\OSThread.cpp" />
     <ClCompile Include="common\Socket.cpp" />
     <ClCompile Include="common\SocketUtils.cpp" />
     <ClCompile Include="common\StringParser.cpp" />
     <ClCompile Include="common\StrPtrLen.cpp" />
+    <ClCompile Include="common\tinyxml.cpp" />
+    <ClCompile Include="common\tinyxmlerror.cpp" />
+    <ClCompile Include="common\tinyxmlparser.cpp" />
     <ClCompile Include="common\UDPSocket.cpp" />
     <ClCompile Include="fastdfs\FastSession.cpp" />
     <ClCompile Include="json\json_reader.cpp" />
@@ -196,6 +200,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="window-student-main.cpp" />
     <ClCompile Include="window-view-camera.cpp" />
     <ClCompile Include="window-view-left.cpp" />
+    <ClCompile Include="window-view-ptz.cpp" />
     <ClCompile Include="window-view-render.cpp" />
     <ClCompile Include="window-view-right.cpp" />
     <ClCompile Include="window-view-teacher.cpp" />
@@ -206,6 +211,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <QtUic Include="forms\DlgSetSys.ui" />
     <QtUic Include="forms\LoginWindow.ui" />
     <QtUic Include="forms\OBSUpdate.ui" />
+    <QtUic Include="forms\PTZWindow.ui" />
     <QtUic Include="forms\StudentWindow.ui" />
   </ItemGroup>
   <ItemGroup>
@@ -237,6 +243,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="common\BitWritter.h" />
     <ClInclude Include="common\getopt.h" />
     <ClInclude Include="common\GMError.h" />
+    <ClInclude Include="common\HTTPDefine.h" />
+    <ClInclude Include="common\HTTPProtocol.h" />
     <ClInclude Include="common\HYDefine.h" />
     <ClInclude Include="common\HYVersion.h" />
     <ClInclude Include="common\md5.h" />
@@ -245,6 +253,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="common\SocketUtils.h" />
     <ClInclude Include="common\StringParser.h" />
     <ClInclude Include="common\StrPtrLen.h" />
+    <ClInclude Include="common\tinyxml.h" />
     <ClInclude Include="common\UDPSocket.h" />
     <ClInclude Include="curl\curl.h" />
     <ClInclude Include="curl\curlbuild.h" />
@@ -258,7 +267,13 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="fastdfs\fastdfs.h" />
     <ClInclude Include="GeneratedFiles\ui_DlgAbout.h" />
     <ClInclude Include="GeneratedFiles\ui_DlgSetSys.h" />
+    <ClInclude Include="GeneratedFiles\ui_PTZWindow.h" />
     <ClInclude Include="play-thread.h" />
+    <QtMoc Include="window-view-ptz.h">
+      <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.;.\rtp;.\json;.\curl;.\fastdfs;.\common;.\win-update;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName)\.;.\obs-frontend-api;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\deps\libff;E:\obs-studio\deps\blake2\src;E:\obs-studio\vsbuild\config;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork;$(QTDIR)\mkspecs\win32-msvc2015;.\..\librtsp\liveMedia\include;.\..\librtsp\groupsock\include;.\..\librtsp\UsageEnvironment\include;.\..\librtsp\BasicUsageEnvironment\include;.\..\libwebrtc-aec\inc;.\..\libwebrtc-aec\ns</IncludePath>
+      <Define Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;_UNICODE</Define>
+      <Define Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">WIN32;_WINDOWS;NDEBUG;DL_OPENGL=libobs-opengl.dll;DL_D3D9= -DDL_D3D11=libobs-d3d11.dll -DUNICODE -D_UNICODE -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_WARNINGS -DHAVE_OBSCONFIG_H -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -DQT_NO_DEBUG  -I. -I.\rtp -I.\json -I.\curl -I.\fastdfs -I.\common -I.\win-update -I.\GeneratedFiles -I.\GeneratedFiles\$(ConfigurationName)\. -I.\obs-frontend-api -IE:\obs-deps\win32\include -IE:\obs-studio\libobs -IE:\obs-studio\deps\libff -IE:\obs-studio\deps\blake2\src -IE:\obs-studio\vsbuild\config -IE:\obs-studio\deps\jansson\src -IE:\obs-studio\vsbuild\deps\jansson\include -I$(QTDIR)\include -I$(QTDIR)\include\QtCore -I$(QTDIR)\include\QtGui -I$(QTDIR)\include\QtANGLE -I$(QTDIR)\include\QtWidgets -I$(QTDIR)\include\QtNetwork -I$(QTDIR)\mkspecs\win32-msvc2015 -I.\..\librtsp\liveMedia\include -I.\..\librtsp\groupsock\include -I.\..\librtsp\UsageEnvironment\include -I.\..\librtsp\BasicUsageEnvironment\include -I.\..\libwebrtc-aec\inc -I.\..\libwebrtc-aec\ns</Define>
+    </QtMoc>
     <QtMoc Include="remote-text.hpp">
       <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.;.\rtp;.\json;.\curl;.\fastdfs;.\common;.\win-update;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName)\.;.\obs-frontend-api;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\deps\libff;E:\obs-studio\deps\blake2\src;E:\obs-studio\vsbuild\config;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork;$(QTDIR)\mkspecs\win32-msvc2015;.\..\librtsp\liveMedia\include;.\..\librtsp\groupsock\include;.\..\librtsp\UsageEnvironment\include;.\..\librtsp\BasicUsageEnvironment\include;.\..\libwebrtc-aec\inc;.\..\libwebrtc-aec\ns</IncludePath>
       <Define Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;_UNICODE</Define>
@@ -411,6 +426,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </None>
+    <None Include="forms\css\PTZWindow.css" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Student.rc" />

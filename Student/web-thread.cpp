@@ -501,14 +501,14 @@ bool CWebThread::doWebGetCamera(int nDBCameraID)
 		// 算子itorItem必须放在内部定义，否则，会出现越界问题...
 		for (Json::Value::iterator itorItem = theDBCamera.begin(); itorItem != theDBCamera.end(); ++itorItem) {
 			const char * theKey = itorItem.memberName();
+			dbMapCamera[theKey] = CStudentApp::getJsonString(theDBCamera[theKey]);
 			// 包含中文的Key本身就是UTF8格式转换，只有在显示时才转换成QString格式...
-			if (stricmp(theKey, "stream_url") == 0 || stricmp(theKey, "stream_mp4") == 0 ||
+			/*if (stricmp(theKey, "stream_url") == 0 || stricmp(theKey, "stream_mp4") == 0 ||
 				stricmp(theKey, "camera_name") == 0 || stricmp(theKey, "device_user") == 0) {
 				dbMapCamera[theKey] = CStudentApp::getJsonString(theDBCamera[theKey]);
-			}
-			else {
+			} else {
 				dbMapCamera[theKey] = CStudentApp::getJsonString(theDBCamera[theKey]);
-			}
+			}*/
 		}
 		//Json::Value::Members arrayMember = theDBCamera.getMemberNames();
 	}
@@ -718,6 +718,10 @@ bool CWebThread::doWebRegCamera(GM_MapData & inData)
 	// 将更新后的通道信息写入集合当中 => 添加或修改...
 	ASSERT(nDBCameraID > 0);
 	inData["camera_id"] = strDBCamera;
+	// 进一步解析device_user|device_pass|device_ip...
+	inData["device_user"] = CStudentApp::getJsonString(value["device_user"]);
+	inData["device_pass"] = CStudentApp::getJsonString(value["device_pass"]);
+	inData["device_ip"] = CStudentApp::getJsonString(value["device_ip"]);
 	App()->SetCamera(nDBCameraID, inData);
 	return true;
 }
@@ -780,6 +784,59 @@ bool CWebThread::doWebGatherLogout()
 	this->LogoutHaoYi();
 	return true;
 }
+
+/*static size_t header_write(char *ptr, size_t size, size_t nmemb, vector<string> &list)
+{
+	string str;
+	size_t total = size * nmemb;
+	if (total) {
+		str.append(ptr, total);
+	}
+	if (str.back() == '\n') {
+		str.resize(str.size() - 1);
+	}
+	if (str.back() == '\r') {
+		str.resize(str.size() - 1);
+	}
+	list.push_back(std::move(str));
+	return total;
+}
+
+void CWebThread::doTest()
+{
+	long responseCode = 0;
+	char strUrl[MAX_PATH] = { 0 };
+	vector<string> header_in_list;
+	//sprintf(strUrl, "%s/ISAPI/PTZCtrl/channels/1/capabilities", "http://192.168.1.65");
+	sprintf(strUrl, "%s/ISAPI/PTZCtrl/channels/1/capabilities", "http://192.168.1.73");
+	// 调用Curl接口，汇报摄像头数据...
+	CURLcode res = CURLE_OK;
+	CURL  *  curl = curl_easy_init();
+	do {
+		if (curl == NULL) break;
+		// 设定curl参数，采用post模式...
+		res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
+		//res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, strPost);
+		//res = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(strPost));
+		res = curl_easy_setopt(curl, CURLOPT_HEADER, false);
+		res = curl_easy_setopt(curl, CURLOPT_POST, false);
+		res = curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
+		res = curl_easy_setopt(curl, CURLOPT_URL, strUrl);
+		// 获取返回的http协议头信息...
+		res = curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_write);
+		res = curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header_in_list);
+		// 这里不需要网站返回的数据...
+		res = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, procWebPostCurl);
+		res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)this);
+		res = curl_easy_perform(curl);
+		// 获取http返回的错误码编号...
+		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
+	} while (false);
+	// 释放资源...
+	if (curl != NULL) {
+		curl_easy_cleanup(curl);
+	}
+}*/
 
 void CWebThread::Entry()
 {
