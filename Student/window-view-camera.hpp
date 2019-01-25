@@ -13,6 +13,7 @@ class CAudioPlay;
 class CWebrtcAEC;
 class CViewRender;
 class CDataThread;
+class TiXmlElement;
 class CUDPSendThread;
 class CViewCamera : public OBSQTDisplay {
 	Q_OBJECT
@@ -22,10 +23,11 @@ public:
 protected slots:
 	void		onTriggerReadyToRecvFrame();
 public:
-	bool		IsCameraOffLine() { return ((m_nCameraState == kCameraOffLine) ? true : false); }
-	bool		IsCameraOnLine() { return ((m_nCameraState == kCameraOnLine) ? true : false); }
+	bool		IsCameraOffLine() { return ((m_nCameraState <= kCameraConnect) ? true : false); }
+	bool		IsCameraOnLine() { return ((m_nCameraState >= kCameraOnLine) ? true : false); }
 	bool		IsCameraPreviewShow() { return m_bIsPreviewShow; }
 	bool		IsCameraPreviewMute() { return m_bIsPreviewMute; }
+	bool        IsCameraLoginISAPI() { return m_bIsLoginISAPI; }
 	int			GetDBCameraID() { return m_nDBCameraID; }
 public:
 	void        doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf);
@@ -38,8 +40,18 @@ public:
 	void		doReadyToRecvFrame();
 	void		doTogglePreviewShow();
 	void		doTogglePreviewMute();
+	bool        doCameraLoginISAPI();
 	bool		doCameraStart();
 	bool		doCameraStop();
+public:
+	void        doCurlHeaderWrite(char * pData, size_t nSize);
+	void        doCurlContent(char * pData, size_t nSize);
+private:
+	int         doCurlCommISAPI(const char * lpAuthHeader = NULL);
+	bool        doCurlAuthISAPI();
+	void        doParseWWWAuth(string & inHeader);
+	void        doParsePTZRange(TiXmlElement * lpXmlElem, POINT & outRange);
+	string      doCreateCNonce(int inLength = 16);
 private:
 	void		DrawTitleArea();
 	void		DrawRenderArea();
@@ -69,6 +81,7 @@ private:
 	int                 m_nDBCameraID;      // 通道在数据库中的编号...
 	bool                m_bIsPreviewMute;   // 通道是否处于静音状态...
 	bool                m_bIsPreviewShow;   // 通道是否正在预览画面...
+	bool                m_bIsLoginISAPI;    // 通道是否成功登录IPC的ISAPI...
 	CViewLeft       *   m_lpViewLeft;       // 左侧父窗口对象...
 	CWebrtcAEC      *   m_lpWebrtcAEC;      // 回音处理对象...
 	CDataThread     *   m_lpDataThread;     // 数据基础类线程...
@@ -82,4 +95,14 @@ private:
 	CVideoPlay      *   m_lpVideoPlay;      // 视频回放对象接口...
 	CAudioPlay      *   m_lpAudioPlay;      // 音频回放对象接口...
 	CViewRender     *   m_lpViewPlayer;     // 视频回放窗口对象...
+
+	GM_MapDict			m_MapHttpDict;		// HTTP协议头字典集合...
+	string				m_strUTF8Content;	// 统一的ISAPI反馈数据...
+	string              m_strAuthQop;		// ISAPI Digest qop
+	string              m_strAuthRealm;		// ISAPI Digest realm
+	string              m_strAuthNonce;		// ISAPI Digest nonce
+	string              m_strCurlURI;		// ISAPI 当前请求的URI
+	POINT				m_XRange = { -100, 100 };	// ISAPI PTZ XRange
+	POINT				m_YRange = { -100, 100 };	// ISAPI PTZ YRange
+	POINT				m_ZRange = { -100, 100 };	// ISAPI PTZ ZRange
 };

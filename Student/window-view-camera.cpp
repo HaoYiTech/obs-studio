@@ -10,6 +10,11 @@
 #include "window-view-left.hpp"
 #include "window-view-render.hpp"
 #include "window-view-camera.hpp"
+#include "HTTPProtocol.h"
+#include "StringParser.h"
+#include "tinyxml.h"
+#include <curl.h>
+#include <md5.h>
 
 #define LINE_SPACE_PIXEL		6
 #define LEFT_SPACE_PIXEL		20
@@ -23,11 +28,13 @@
 #define WINDOW_BK_COLOR			QColor(32, 32, 32)
 #define FOCUS_BK_COLOR			QColor(255,255, 0)
 #define STATUS_TEXT_COLOR		QColor(20, 220, 20)
+#define DEF_WWW_AUTH			"Digest"
 
 CViewCamera::CViewCamera(QWidget *parent, int nDBCameraID)
   : OBSQTDisplay(parent, 0)
   , m_nCameraState(kCameraOffLine)
   , m_nDBCameraID(nDBCameraID)
+  , m_bIsLoginISAPI(false)
   , m_bIsPreviewMute(true)
   , m_bIsPreviewShow(false)
   , m_bFindFirstVKey(false)
@@ -549,6 +556,312 @@ void CViewCamera::doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, 
 	pthread_mutex_unlock(&m_MutexAEC);
 }
 
+size_t procCurlContent(void *ptr, size_t size, size_t nmemb, void *stream)
+{
+	CViewCamera * lpViewCamera = (CViewCamera*)stream;
+	lpViewCamera->doCurlContent((char*)ptr, size * nmemb);
+	return size * nmemb;
+}
+
+size_t procCurlHeaderWrite(char *ptr, size_t size, size_t nmemb, void *stream)
+{
+	CViewCamera * lpViewCamera = (CViewCamera*)stream;
+	lpViewCamera->doCurlHeaderWrite(ptr, size * nmemb);
+	return size * nmemb;
+}
+
+// 注意：每次解析一个HTTP协议头...
+void CViewCamera::doCurlHeaderWrite(char * pData, size_t nSize)
+{
+	StrPtrLen	 theHoleLine;
+	StrPtrLen	 theCurPtr(pData, nSize);
+	StringParser thePeek(&theCurPtr);
+	StringParser parser(&theCurPtr);
+	// 必须是完整的一行,不是,就是数据断裂...
+	if (!thePeek.GetThruEOL(&theHoleLine))
+		return;
+	StrPtrLen	theKeyWord;
+	Bool16		isStreamOK;
+	// 解析HTTP协议头的标识字符串...
+	if (!parser.GetThru(&theKeyWord, ':'))
+		return;
+	// 标识符后面如果空格，跳过去...
+	if (parser.PeekFast() == ' ') {
+		isStreamOK = parser.Expect(' ');
+		ASSERT(isStreamOK);
+	}
+	// 解析HTTP协议头的内容值...
+	string		strValue;
+	StrPtrLen	theHeaderVal;
+	UInt32		theKeyIndex = 0;
+	if (!parser.GetThruEOL(&theHeaderVal))
+		return;
+	strValue.assign(theHeaderVal.Ptr, theHeaderVal.Len);
+	theKeyIndex = HTTPProtocol::GetHeader(theKeyWord);
+	if (theKeyIndex == httpIllegalHeader)
+		return;
+	// 如果服务器反馈的授权信息，需要单独解析...
+	if (theKeyIndex == httpWWWAuthenticateHeader) {
+		this->doParseWWWAuth(strValue);
+	}
+	// 如果HTTP协议头已经存在，需要累加，用分号做为分隔符...
+	GM_MapDict::iterator itorItem = m_MapHttpDict.find(theKeyIndex);
+	if (itorItem != m_MapHttpDict.end()) {
+		string strDict = itorItem->second;
+		strDict.append(_T("\r\n"));
+		strDict.append(strValue);
+		strValue = strDict;
+	}
+	// 将最终计算后的HTTP协议内容保存到字典当中...
+	m_MapHttpDict[theKeyIndex] = strValue;
+}
+
+void CViewCamera::doParseWWWAuth(string & inHeader)
+{
+	blog(LOG_INFO, "curl WWW-AUTH => %s", inHeader.c_str());
+	StrPtrLen	 theCurPtr((char*)inHeader.c_str(), inHeader.size());
+	StringParser parser(&theCurPtr);
+	StrPtrLen	 theKeyWord;
+	Bool16		 isStreamOK;
+	// 获取加密授权模式，以空格结束...
+	if (!parser.GetThru(&theKeyWord, ' '))
+		return;
+	// 如果不是Digest模式，直接丢弃，返回...
+	if (strnicmp(DEF_WWW_AUTH, theKeyWord.Ptr, theKeyWord.Len) != 0)
+		return;
+	// 解析键值对信息 => key=value, or key,
+	StrPtrLen	theItem, theValue;
+	while (parser.GetDataRemaining() > 0) {
+		parser.GetThru(&theItem, ',');
+		if (theItem.Ptr == NULL || theItem.Len <= 0)
+			continue;
+		StringParser theSubParse(&theItem);
+		while (theSubParse.GetDataRemaining() > 0) {
+			// 排除key前面的空格符号信息...
+			if (theSubParse.PeekFast() == ' ') {
+				theSubParse.Expect(' ');
+			}
+			// 解析出key字段，以等号为结束界限...
+			theSubParse.GetThru(&theKeyWord, '=');
+			if (theKeyWord.Ptr == NULL || theKeyWord.Len <= 0)
+				continue;
+			// 解析出value，如果有引号，需要去掉引号...
+			if (theSubParse.PeekFast() == '"') {
+				theSubParse.Expect('"');
+				theSubParse.GetThru(&theValue, '"');
+			} else {
+				theSubParse.GetThru(&theValue, ',');
+			}
+			// 保存服务器传递过来的授权特定字段信息...
+			if (strnicmp("qop", theKeyWord.Ptr, theKeyWord.Len) == 0) {
+				m_strAuthQop.assign(theValue.Ptr, theValue.Len);
+			} else if (strnicmp("realm", theKeyWord.Ptr, theKeyWord.Len) == 0) {
+				m_strAuthRealm.assign(theValue.Ptr, theValue.Len);
+			} else if (strnicmp("nonce", theKeyWord.Ptr, theKeyWord.Len) == 0) {
+				m_strAuthNonce.assign(theValue.Ptr, theValue.Len);
+			}
+		}
+	}
+}
+
+void CViewCamera::doCurlContent(char * pData, size_t nSize)
+{
+	m_strUTF8Content.append(pData, nSize);
+	//TRACE("Curl: %s\n", pData);
+	//TRACE输出有长度限制，太长会截断...
+}
+
+// 创建16个字符的客户端随机字符串...
+string CViewCamera::doCreateCNonce(int inLength/* = 16*/)
+{
+	string strCNonce;
+	char * lpStrPtr = NULL;
+	strCNonce.resize(inLength);
+	lpStrPtr = (char*)strCNonce.c_str();
+	srand((unsigned)time(NULL));
+	static char CCH[] = "0123456789abcdef";
+	for (int i = 0; i < inLength; ++i) {
+		int x = rand() / (RAND_MAX / (sizeof(CCH) - 1));
+		lpStrPtr[i] = CCH[x];
+	}
+	return strCNonce;
+}
+
+// 通用的ISAPI调用接口函数 => 返回 http 状态码...
+int CViewCamera::doCurlCommISAPI(const char * lpAuthHeader/* = NULL*/)
+{
+	ASSERT(m_strCurlURI.size() > 0);
+	// 先对上次交互的缓存进行重置...
+	m_strUTF8Content.clear();
+	m_MapHttpDict.clear();
+	// 获取当前通道的配置参数...
+	GM_MapData theMapData;
+	char strUrl[MAX_PATH] = { 0 };
+	App()->GetCamera(m_nDBCameraID, theMapData);
+	sprintf(strUrl, "http://%s%s", theMapData["device_ip"].c_str(), m_strCurlURI.c_str());
+	// 如果输入了附加授权协议头，需要特殊处理...
+	struct curl_slist *header = nullptr;
+	if (lpAuthHeader != NULL) {
+		header = curl_slist_append(header, lpAuthHeader);
+	}
+	// 调用Curl接口，使用IPC的ISAPI接口...
+	long     responseCode = 0;
+	CURLcode res = CURLE_OK;
+	CURL  *  curl = curl_easy_init();
+	char     error_in[CURL_ERROR_SIZE] = { 0 };
+	KT_HTTPStatusIndex nStatusIndex = httpOK;
+	do {
+		if (curl == NULL) break;
+		// 设定curl参数，采用 GET 模式...
+		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
+		curl_easy_setopt(curl, CURLOPT_POST, false);
+		curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
+		curl_easy_setopt(curl, CURLOPT_URL, strUrl);
+		if (header != NULL) {
+			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header);
+		} else {
+			curl_easy_setopt(curl, CURLOPT_HEADER, false);
+		}
+		curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, error_in);
+		// 获取返回的http协议头信息...
+		curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, procCurlHeaderWrite);
+		curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)this);
+		// 这里需收集网站返回的数据...
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, procCurlContent);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)this);
+		res = curl_easy_perform(curl);
+		if (res != CURLE_OK) {
+			blog(LOG_INFO, "curl error => %s", error_in);
+		}
+		// 获取http返回的错误码编号...
+		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
+		nStatusIndex = HTTPProtocol::GetStatusIndex(responseCode);
+	} while (false);
+	// 释放附加的http协议头信息...
+	if (header != NULL) {
+		curl_slist_free_all(header);
+	}
+	// 释放资源...
+	if (curl != NULL) {
+		curl_easy_cleanup(curl);
+	}
+	return nStatusIndex;
+}
+
+// 尝试使用ISAPI登录IPC摄像头...
+bool CViewCamera::doCameraLoginISAPI()
+{
+	// 如果通道处于离线状态，返回失败...
+	if (this->IsCameraOffLine())
+		return false;
+	// 通道已经成功登录ISAPI，返回成功...
+	if (this->IsCameraLoginISAPI())
+		return true;
+	ASSERT(!this->m_bIsLoginISAPI);
+	ASSERT(this->IsCameraOnLine());
+	// 设定URI并调用通用接口访问...
+	KT_HTTPStatusIndex nStatusIndex = httpOK;
+	m_strCurlURI = "/ISAPI/PTZCtrl/channels/1/capabilities";
+	nStatusIndex = this->doCurlCommISAPI();
+	// 打印状态信息，以便调试跟踪...
+	blog(LOG_INFO, "curl ISAPI Login => %d, %s", HTTPProtocol::GetStatusCode(nStatusIndex), HTTPProtocol::GetStatusCodeString(nStatusIndex).Ptr);
+	// 如果状态码为OK，设定登录成功状态...
+	if (nStatusIndex == httpOK) {
+		m_bIsLoginISAPI = true;
+		return true;
+	}
+	// 如果不是未授权状态码，直接返回...
+	if (nStatusIndex != httpUnAuthorized)
+		return false;
+	// 如果是未授权状态码，需要解析特定授权信息...
+	ASSERT(nStatusIndex == httpUnAuthorized);
+	return this->doCurlAuthISAPI();
+}
+
+bool CViewCamera::doCurlAuthISAPI()
+{
+	// 如果没有realm和nonce，返回失败，qop可以没有...
+	if (m_strAuthRealm.size() <= 0 || m_strAuthNonce.size() <= 0)
+		return false;
+	// 定义一些预先设定的常量...
+	string strMethod = "GET";
+	string strNCount = "00000001";
+	string strCNonce = this->doCreateCNonce();
+	// 获取存放的通道配置...
+	GM_MapData theMapData;
+	char szBuffer[MAX_PATH * 3] = { 0 };
+	App()->GetCamera(m_nDBCameraID, theMapData);
+	// 准备计算response需要的变量信息 => md5必须重置...
+	MD5	md5; string strHA1, strHA2, strResponse;
+	// 开始计算 HA1=MD5(username:realm:password)
+	sprintf(szBuffer, "%s:%s:%s", theMapData["device_user"].c_str(), m_strAuthRealm.c_str(), theMapData["device_pass"].c_str());
+	md5.reset(); md5.update(szBuffer, strlen(szBuffer));
+	strHA1 = md5.toString();
+	// 开始计算 HA2=MD5(method:digestURI) => md5必须重置...
+	sprintf(szBuffer, "%s:%s", strMethod.c_str(), m_strCurlURI.c_str());
+	md5.reset(); md5.update(szBuffer, strlen(szBuffer));
+	strHA2 = md5.toString();
+	// 开始计算 response，与qop有关...
+	if (m_strAuthQop.size() > 0) {
+		// response = MD5(HA1:nonce:nonceCount:clientNonce:qop:HA2)
+		sprintf(szBuffer, "%s:%s:%s:%s:%s:%s", strHA1.c_str(), m_strAuthNonce.c_str(), strNCount.c_str(), strCNonce.c_str(), m_strAuthQop.c_str(), strHA2.c_str());
+	} else {
+		// response=MD5(HA1:nonce:HA2)
+		sprintf(szBuffer, "%s:%s:%s", strHA1.c_str(), m_strAuthNonce.c_str(), strHA2.c_str());
+	}
+	// 计算并返回最终的response值 => md5必须重置...
+	md5.reset(); md5.update(szBuffer, strlen(szBuffer));
+	strResponse = md5.toString();
+	// 计算并构造Authorization的HTTP信息头内容...
+	sprintf(szBuffer, "Authorization: Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", response=\"%s\", qop=%s, nc=%s, cnonce=\"%s\"", 
+			theMapData["device_user"].c_str(), m_strAuthRealm.c_str(), m_strAuthNonce.c_str(), m_strCurlURI.c_str(),
+			strResponse.c_str(), m_strAuthQop.c_str(), strNCount.c_str(), strCNonce.c_str());
+	// 调用curl通用的ISAPI接口，返回http状态码...
+	KT_HTTPStatusIndex nStatusIndex = httpOK;
+	nStatusIndex = this->doCurlCommISAPI(szBuffer);
+	// 打印状态信息，以便调试跟踪...
+	blog(LOG_INFO, "curl ISAPI Auth => %d, %s", HTTPProtocol::GetStatusCode(nStatusIndex), HTTPProtocol::GetStatusCodeString(nStatusIndex).Ptr);
+	// 如果状态码不为为OK，直接返回...
+	if (nStatusIndex != httpOK)
+		return false;
+	ASSERT(nStatusIndex == httpOK);
+	// 登录授权成功，设定状态标志...
+	m_bIsLoginISAPI = true;
+	// 进一步解析获取到的xml数据包内容...
+	TiXmlDocument theXmlDoc;
+	theXmlDoc.Parse(m_strUTF8Content.c_str());
+	TiXmlElement * lpRootElem = theXmlDoc.RootElement();
+	if (theXmlDoc.Error() || lpRootElem == NULL ) {
+		blog(LOG_INFO, "xml error => %s", theXmlDoc.ErrorDesc());
+		return false;
+	}
+	// 解析xml成功之后的处理...
+	TiXmlElement * lpZoomElem = lpRootElem->FirstChildElement("ContinuousZoomSpace");
+	TiXmlElement * lpPanTiltElem = lpRootElem->FirstChildElement("ContinuousPanTiltSpace");
+	TiXmlElement * lpXRange = ((lpPanTiltElem != NULL) ? lpPanTiltElem->FirstChildElement("XRange") : NULL);
+	TiXmlElement * lpYRange = ((lpPanTiltElem != NULL) ? lpPanTiltElem->FirstChildElement("YRange") : NULL);
+	TiXmlElement * lpZRange = ((lpZoomElem != NULL) ? lpZoomElem->FirstChildElement("ZRange") : NULL);
+
+	// 获取云台操作的PTZ三个向量步进的最小值和最大值，便于设定精度...
+	this->doParsePTZRange(lpXRange, m_XRange);
+	this->doParsePTZRange(lpYRange, m_YRange);
+	this->doParsePTZRange(lpZRange, m_ZRange);
+
+	return true;
+}
+
+void CViewCamera::doParsePTZRange(TiXmlElement * lpXmlElem, POINT & outRange)
+{
+	TiXmlElement * lpMinElem = ((lpXmlElem != NULL) ? lpXmlElem->FirstChildElement("Min") : NULL);
+	TiXmlElement * lpMaxElem = ((lpXmlElem != NULL) ? lpXmlElem->FirstChildElement("Max") : NULL);
+	if (lpMinElem != NULL && lpMinElem->FirstChild() != NULL) {
+		outRange.x = atoi(lpMinElem->FirstChild()->ToText()->Value());
+	}
+	if (lpMaxElem != NULL && lpMaxElem->FirstChild() != NULL) {
+		outRange.y = atoi(lpMaxElem->FirstChild()->ToText()->Value());
+	}
+}
+
 bool CViewCamera::doCameraStart()
 {
 	// 如果数据线程对象有效，直接返回...
@@ -614,6 +927,7 @@ bool CViewCamera::doCameraStop()
 	}
 	// 设置通道状态为离线未连接状态...
 	m_nCameraState = kCameraOffLine;
+	m_bIsLoginISAPI = false;
 	// 重置与拉流相关的变量信息...
 	m_nRecvKbps = 0;
 	m_dwTimeOutMS = 0;

@@ -6,6 +6,7 @@
 #include <QPointer>
 #include <QThread>
 
+class CPTZWindow;
 class StudentWindow : public QMainWindow
 {
 	Q_OBJECT
@@ -52,4 +53,5 @@ private:
 	Ui::StudentClass m_ui;
 	bool m_bIsSlientClose = false;
 	QPointer<QThread> updateCheckThread;
+	QPointer<CPTZWindow> m_PTZWindow = NULL;
 };

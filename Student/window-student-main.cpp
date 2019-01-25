@@ -17,6 +17,7 @@
 #include "window-view-camera.hpp"
 #include "window-view-render.hpp"
 #include "window-view-teacher.hpp"
+#include "window-view-ptz.h"
 
 #define STARTUP_SEPARATOR   "==== Startup complete ==============================================="
 #define SHUTDOWN_SEPARATOR 	"==== Shutting down =================================================="
@@ -113,6 +114,9 @@ StudentWindow::StudentWindow(QWidget *parent)
 			setGeometry(QStyle::alignedRect(Qt::LeftToRight,Qt::AlignCenter,size(), rect));
 		}
 	}
+	// 创建云台控制窗口，并隐藏起来...
+	m_PTZWindow = new CPTZWindow(this);
+	m_PTZWindow->hide();
 }
 
 // 响应摄像头通道菜单显示激活事件...
@@ -188,12 +192,19 @@ void StudentWindow::on_LeftViewCustomContextMenuRequested(const QPoint &pos)
 	QMenu popup(this);
 	bool bIsPreviewShow = lpViewCamera->IsCameraPreviewShow();
 	bool bIsPreviewMute = lpViewCamera->IsCameraPreviewMute();
+	bool bIsCameraOnLine = lpViewCamera->IsCameraOnLine();
+	bool bIsLoginISAPI = lpViewCamera->IsCameraLoginISAPI();
+	// 设定云台操作菜单的有效性...
+	//m_ui.actionCameraPTZ->setEnabled(bIsLoginISAPI);
+	// 设置画面预览菜单的有效性...
 	m_ui.actionCameraPreview->setCheckable(true);
 	m_ui.actionCameraPreview->setChecked(bIsPreviewShow);
+	m_ui.actionCameraPreview->setEnabled(bIsCameraOnLine);
 	// 静音菜单是否有效要依赖预览菜单...
 	m_ui.actionPreviewMute->setCheckable(true);
 	m_ui.actionPreviewMute->setChecked(bIsPreviewMute);
 	m_ui.actionPreviewMute->setEnabled(bIsPreviewShow);
+	// 加入菜单列表，显示右键菜单...
 	popup.addAction(m_ui.actionCameraPreview);
 	popup.addAction(m_ui.actionPreviewMute);
 	popup.addAction(m_ui.actionCameraPTZ);
@@ -227,6 +238,9 @@ void StudentWindow::on_actionPreviewMute_triggered()
 // 响应摄像头通道的PTZ云台菜单事件...
 void StudentWindow::on_actionCameraPTZ_triggered()
 {
+	if (m_PTZWindow != NULL) {
+		m_PTZWindow->show();
+	}
 }
 
 // 响应服务器发送的UDP连接对象被删除的事件通知...
