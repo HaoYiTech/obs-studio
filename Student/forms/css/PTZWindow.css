@@ -1,0 +1,80 @@
+
+*{font-family:Microsoft YaHei;}
+
+/*标题文字颜色*/
+QLabel#titleName
+{
+	color: white;
+	font-size: 14px;
+	font-weight: 500;
+}
+
+/*关闭按钮*/
+QPushButton#btnClose {
+    border-image:url(:/ptz/images/ptz/close.png) 0 60 0 0 ;
+    border-top-right-radius:3;
+}
+QPushButton#btnClose:hover {
+    border-image:url(:/ptz/images/ptz/close.png) 0 30 0 30 ;
+    border-top-right-radius:3 ;
+}
+QPushButton#btnClose:pressed {
+    border-image:url(:/ptz/images/ptz/close.png) 0 0 0 60 ;
+    border-top-right-radius:3 ;
+}
+
+/*button top*/
+QPushButton#btnTop {
+    border-image:url(:/ptz/images/ptz/up.png) 0 60 0 0 ;
+    border-top-right-radius:3;
+}
+QPushButton#btnTop:hover {
+    border-image:url(:/ptz/images/ptz/up.png) 0 30 0 30 ;
+    border-top-right-radius:3 ;
+}
+QPushButton#btnTop:pressed {
+    border-image:url(:/ptz/images/ptz/up.png) 0 0 0 60 ;
+    border-top-right-radius:3 ;
+}
+
+/*button bottom*/
+QPushButton#btnBot {
+    border-image:url(:/ptz/images/ptz/down.png) 0 60 0 0 ;
+    border-top-right-radius:3;
+}
+QPushButton#btnBot:hover {
+    border-image:url(:/ptz/images/ptz/down.png) 0 30 0 30 ;
+    border-top-right-radius:3 ;
+}
+QPushButton#btnBot:pressed {
+    border-image:url(:/ptz/images/ptz/down.png) 0 0 0 60 ;
+    border-top-right-radius:3 ;
+}
+
+/*button left*/
+QPushButton#btnLeft {
+    border-image:url(:/ptz/images/ptz/left.png) 0 60 0 0 ;
+    border-top-right-radius:3;
+}
+QPushButton#btnLeft:hover {
+    border-image:url(:/ptz/images/ptz/left.png) 0 30 0 30 ;
+    border-top-right-radius:3 ;
+}
+QPushButton#btnLeft:pressed {
+    border-image:url(:/ptz/images/ptz/left.png) 0 0 0 60 ;
+    border-top-right-radius:3 ;
+}
+
+/*button right*/
+QPushButton#btnRight {
+    border-image:url(:/ptz/images/ptz/right.png) 0 60 0 0 ;
+    border-top-right-radius:3;
+}
+QPushButton#btnRight:hover {
+    border-image:url(:/ptz/images/ptz/right.png) 0 30 0 30 ;
+    border-top-right-radius:3 ;
+}
+QPushButton#btnRight:pressed {
+    border-image:url(:/ptz/images/ptz/right.png) 0 0 0 60 ;
+    border-top-right-radius:3 ;
+}
