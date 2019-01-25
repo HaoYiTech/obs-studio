@@ -9,7 +9,7 @@ QLabel#titleName,#speedTitle,#speedNum {
 }
 
 /* speed controls */
-QLabel#speedTitle,#speedNum {
+QLabel#speedTitle,#speedNum,#titleZoom,#titleFocus,#titleIris {
 	color: #B0B0B0;
 	font-size: 14px;
 	font-weight: 500;
@@ -96,5 +96,33 @@ QPushButton#btnRight:hover {
 }
 QPushButton#btnRight:pressed {
     border-image:url(:/ptz/images/ptz/right.png) 0 0 0 60 ;
+    border-top-right-radius:3 ;
+}
+
+/*button add*/
+QPushButton#addZoom,#addFocus,#addIris {
+    border-image:url(:/ptz/images/ptz/add.png) 0 60 0 0 ;
+    border-top-right-radius:3;
+}
+QPushButton#addZoom:hover,#addFocus:hover,#addIris:hover {
+    border-image:url(:/ptz/images/ptz/add.png) 0 30 0 30 ;
+    border-top-right-radius:3 ;
+}
+QPushButton#addZoom:pressed,#addFocus:pressed,#addIris:pressed {
+    border-image:url(:/ptz/images/ptz/add.png) 0 0 0 60 ;
+    border-top-right-radius:3 ;
+}
+
+/*button sub*/
+QPushButton#subZoom,#subFocus,#subIris {
+    border-image:url(:/ptz/images/ptz/sub.png) 0 60 0 0 ;
+    border-top-right-radius:3;
+}
+QPushButton#subZoom:hover,#subFocus:hover,#subIris:hover {
+    border-image:url(:/ptz/images/ptz/sub.png) 0 30 0 30 ;
+    border-top-right-radius:3 ;
+}
+QPushButton#subZoom:pressed,#subFocus:pressed,#subIris:pressed {
+    border-image:url(:/ptz/images/ptz/sub.png) 0 0 0 60 ;
     border-top-right-radius:3 ;
 }

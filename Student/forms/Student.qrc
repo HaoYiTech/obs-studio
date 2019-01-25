@@ -28,6 +28,8 @@
   </qresource>
   <qresource prefix="/ptz">
     <file>css/PTZWindow.css</file>
+    <file>images/ptz/add.png</file>
+    <file>images/ptz/sub.png</file>
     <file>images/ptz/pan.png</file>
     <file>images/ptz/back.png</file>
     <file>images/ptz/close.png</file>
