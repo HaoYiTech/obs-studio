@@ -43,12 +43,16 @@ void CPTZWindow::initWindow()
 	this->resize(240, 400);
 	// 加载PTZ窗口的层叠显示样式表...
 	this->loadStyleSheet(":/ptz/css/PTZWindow.css");
+	// 关联点击关闭按钮的信号槽事件...
+	connect(ui->btnClose, SIGNAL(clicked()), this, SLOT(onButtonCloseClicked()));
+	connect(ui->speedSlider, SIGNAL(valueChanged(int)), this, SLOT(onSliderChanged(int)));
+	// 直接更新转数的数值内容...
+	int nValue = ui->speedSlider->value();
+	this->onSliderChanged(nValue);
 }
 
 void CPTZWindow::initMyTitle()
 {
-	// 关联点击关闭按钮的信号槽事件...
-	connect(ui->btnClose, SIGNAL(clicked()), this, SLOT(onButtonCloseClicked()));
 	// 设置云台窗口的标题栏文字信息...
 	ui->titleName->setText(QTStr("PTZ.Window.TitleContent"));
 }
@@ -56,6 +60,11 @@ void CPTZWindow::initMyTitle()
 void CPTZWindow::onButtonCloseClicked()
 {
 	this->hide();
+}
+
+void CPTZWindow::onSliderChanged(int value)
+{
+	ui->speedNum->setText(QString("%1").arg(value));
 }
 
 // 绘制圆角窗口背景...

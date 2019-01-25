@@ -21,6 +21,7 @@ private:
 	virtual void mouseReleaseEvent(QMouseEvent *event);
 private slots:
 	void onButtonCloseClicked();
+	void onSliderChanged(int value);
 private:
 	Ui::PTZWindow  *  ui;
 	QPoint	          m_startMovePos;
