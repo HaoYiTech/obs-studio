@@ -2,11 +2,31 @@
 *{font-family:Microsoft YaHei;}
 
 /*标题文字颜色*/
-QLabel#titleName
-{
+QLabel#titleName,#speedTitle,#speedNum {
 	color: white;
 	font-size: 14px;
 	font-weight: 500;
+}
+
+/* speed controls */
+QLabel#speedTitle,#speedNum {
+	color: #B0B0B0;
+	font-size: 14px;
+	font-weight: 500;
+}
+QSlider#speedSlider:groove:horizontal {
+	top: 2px;
+	border-image: url(:/ptz/images/ptz/speed-black.png);
+}
+QSlider#speedSlider:sub-page:horizontal {
+	top: 2px;
+	border-image: url(:/ptz/images/ptz/speed-blue.png);
+}
+QSlider#speedSlider:handle:horizontal {
+	width: 16px;
+	height: 16px;
+	border-radius: 16px;
+	border-image: url(:/ptz/images/ptz/speed-circle.png);
 }
 
 /*关闭按钮*/

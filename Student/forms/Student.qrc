@@ -35,5 +35,8 @@
     <file>images/ptz/down.png</file>
     <file>images/ptz/left.png</file>
     <file>images/ptz/right.png</file>
+    <file>images/ptz/speed-blue.png</file>
+    <file>images/ptz/speed-black.png</file>
+    <file>images/ptz/speed-circle.png</file>
   </qresource>
 </RCC>
