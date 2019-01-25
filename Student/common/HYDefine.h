@@ -59,6 +59,7 @@ using namespace std;
 #define WM_WEB_LOAD_RESOURCE		(WM_USER + 108)
 #define	WM_WEB_AUTH_RESULT			(WM_USER + 110)
 
+typedef map<int, string>			GM_MapDict;					// Dictionary collection for http/rtsp header
 typedef	map<string, string>			GM_MapData;
 typedef map<int, GM_MapData>		GM_MapNodeCamera;			// int  => 是指数据库DBCameraID
 
