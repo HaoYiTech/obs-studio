@@ -8,6 +8,13 @@ QLabel#titleName,#speedTitle,#speedNum {
 	font-weight: 500;
 }
 
+/* error notice */
+QLabel#errTitle {
+	color: red;
+	font-size: 14px;
+	font-weight: 500;
+}
+
 /* speed controls */
 QLabel#speedTitle,#speedNum,#titleZoom,#titleFocus,#titleIris {
 	color: #B0B0B0;
