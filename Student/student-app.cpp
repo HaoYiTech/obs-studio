@@ -27,6 +27,7 @@
 #include "SDL2/SDL.h"
 
 #include "window-login-main.h"
+#include "window-view-camera.hpp"
 #include "window-view-teacher.hpp"
 
 #pragma comment(lib, "iphlpapi.lib")
@@ -1071,6 +1072,17 @@ void CStudentApp::doSaveFocus(OBSQTDisplay * lpNewDisplay)
 	}
 	// 保存为新的焦点对象...
 	m_lpFocusDisplay = lpNewDisplay;
+	// 如果新焦点是CViewCamera对象...
+	CViewCamera * lpViewCamera = dynamic_cast<CViewCamera*>(lpNewDisplay);
+	if (lpViewCamera == NULL)
+		return;
+	int nDBCameraID = lpViewCamera->GetDBCameraID();
+	this->doUpdatePTZ(nDBCameraID);
+}
+
+void CStudentApp::doUpdatePTZ(int nDBCameraID)
+{
+	m_studentWindow->doUpdatePTZ(nDBCameraID);
 }
 
 void CStudentApp::doDelCamera(int nDBCameraID)

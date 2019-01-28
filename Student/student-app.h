@@ -56,6 +56,7 @@ public:
 	void onWebLoadResource();
 	void onWebAuthExpired();
 	void onUdpRecvThreadStop();
+	void doUpdatePTZ(int nDBCameraID);
 	void doSaveFocus(OBSQTDisplay * lpNewDisplay);
 	void doResetFocus(OBSQTDisplay * lpCurDisplay);
 	void doProcessCmdLine(int argc, char * argv[]);

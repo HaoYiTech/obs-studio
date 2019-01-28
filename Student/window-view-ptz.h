@@ -1,17 +1,17 @@
 
 #pragma once
 
+#include "HYDefine.h"
 #include "ui_PTZWindow.h"
 
 class CPTZWindow : public QDialog
 {
     Q_OBJECT
 public:
-	CPTZWindow(QWidget *parent = NULL);
+	CPTZWindow(QWidget *parent);
     ~CPTZWindow();
-private:
-	void initMyTitle();
-	void initWindow();
+public:
+	void doUpdatePTZ(int nDBCameraID);
 protected:
 	void loadStyleSheet(const QString &sheetName);
 private:
@@ -22,8 +22,30 @@ private:
 private slots:
 	void onButtonCloseClicked();
 	void onSliderChanged(int value);
+	void onFlipIndexChanged(int index);
+	void onBtnUpPressed();
+	void onBtnDownPressed();
+	void onTiltFinish();
+	void onBtnLeftPressed();
+	void onBtnRightPressed();
+	void onPanFinish();
+	void onAddZoomPressed();
+	void onSubZoomPressed();
+	void onZoomFinish();
+	void onAddFocusPressed();
+	void onSubFocusPressed();
+	void onFocusFinish();
+	void onAddIrisPressed();
+	void onSubIrisPressed();
+	void onIrisFinish();
+private:
+	void initWindow();
+	void doUpdateImageFlip(string & inFlipVal);
+	bool doPTZCmd(CMD_ISAPI inCMD, int inSpeedVal);
 private:
 	Ui::PTZWindow  *  ui;
 	QPoint	          m_startMovePos;
 	bool	          m_isPressed = false;
+	int               m_nDBCameraID = 0;
+	int               m_nSpeedValue = 0;
 };

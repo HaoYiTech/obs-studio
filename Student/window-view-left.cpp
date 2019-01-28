@@ -89,7 +89,7 @@ void CViewLeft::doAutoLinkIPC()
 		emit this->enableCameraStart(!bResult);
 		emit this->enableCameraStop(bResult);
 	}
-	// 调用IPC的ISAPI接口尝试登录，便于发送云台控制命令...s
+	// 调用IPC的ISAPI接口初始化，便于后续命令发送...
 	lpViewCamera->doCameraLoginISAPI();
 }
 

@@ -6,6 +6,33 @@
 #include <QMouseEvent>
 #include "qt-display.hpp"
 #include <util/threading.h>
+#include <QNetworkAccessManager>
+
+class QNetworkReply;
+class CViewCamera;
+class CCmdItem
+{
+public:
+	CCmdItem(CViewCamera * lpViewCamera, CMD_ISAPI inCmdISAPI, int inSpeedVal);
+	~CCmdItem();
+public:
+	void            doUpdateCmdRequest();
+	void            SetNetReply(QNetworkReply * lpNetReply) { m_lpNetReply = lpNetReply; }
+	QNetworkReply * GetNetReply() { return m_lpNetReply; }
+	CMD_ISAPI       GetCmdISAPI() { return m_nCmdISAPI; }
+	QString      &  GetRequestURL() { return m_strRequestURL; }
+	QString      &  GetContentVal() { return m_strContentVal; }
+	int             GetSpeedVal() { return m_nSpeedVal; }
+private:
+	QNetworkReply * m_lpNetReply;           // 命令相关的网络对象
+	CViewCamera   * m_lpViewCamera;         // 命令对应的摄像头
+	int             m_nSpeedVal;            // 命令对应的转速
+	CMD_ISAPI		m_nCmdISAPI;			// 对应的命令编号
+	QString         m_strRequestURL;		// 完整的请求命令连接地址
+	QString         m_strContentVal;		// 需要发送的附加数据内容
+};
+
+typedef	deque<CCmdItem *>	GM_DeqCmd;		// 命令队列...
 
 class CViewLeft;
 class CVideoPlay;
@@ -15,6 +42,9 @@ class CViewRender;
 class CDataThread;
 class TiXmlElement;
 class CUDPSendThread;
+class QNetworkReply;
+class QAuthenticator;
+class QNetworkAccessManager;
 class CViewCamera : public OBSQTDisplay {
 	Q_OBJECT
 public:
@@ -22,14 +52,18 @@ public:
 	virtual ~CViewCamera();
 protected slots:
 	void		onTriggerReadyToRecvFrame();
+	void		onReplyFinished(QNetworkReply *reply);
+	void        onAuthRequest(QNetworkReply *reply, QAuthenticator *authenticator);
 public:
 	bool		IsCameraOffLine() { return ((m_nCameraState <= kCameraConnect) ? true : false); }
 	bool		IsCameraOnLine() { return ((m_nCameraState >= kCameraOnLine) ? true : false); }
 	bool		IsCameraPreviewShow() { return m_bIsPreviewShow; }
 	bool		IsCameraPreviewMute() { return m_bIsPreviewMute; }
 	bool        IsCameraLoginISAPI() { return m_bIsLoginISAPI; }
+	string   &  GetImageFilpVal() { return m_ImageFilpEnableVal; }
 	int			GetDBCameraID() { return m_nDBCameraID; }
 public:
+	bool        doPTZCmd(CMD_ISAPI inCMD, int inSpeedVal);
 	void        doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf);
 	void        doPushAudioAEC(FMS_FRAME & inFrame);
 	void		doPushFrame(FMS_FRAME & inFrame);
@@ -40,19 +74,15 @@ public:
 	void		doReadyToRecvFrame();
 	void		doTogglePreviewShow();
 	void		doTogglePreviewMute();
-	bool        doCameraLoginISAPI();
+	void        doCameraLoginISAPI();
 	bool		doCameraStart();
 	bool		doCameraStop();
-public:
-	void        doCurlHeaderWrite(char * pData, size_t nSize);
-	void        doCurlContent(char * pData, size_t nSize);
 private:
-	int         doCurlCommISAPI(const char * lpAuthHeader = NULL);
-	bool        doCurlAuthISAPI();
-	void        doParseWWWAuth(string & inHeader);
 	void        doParsePTZRange(TiXmlElement * lpXmlElem, POINT & outRange);
-	string      doCreateCNonce(int inLength = 16);
+	void        doParseResult(CCmdItem * lpCmdItem, string & inXmlData);
+	bool        doFirstCmdItem();
 private:
+	void        ClearAllCmd();
 	void		DrawTitleArea();
 	void		DrawRenderArea();
 	void		DrawStatusText();
@@ -96,13 +126,18 @@ private:
 	CAudioPlay      *   m_lpAudioPlay;      // 音频回放对象接口...
 	CViewRender     *   m_lpViewPlayer;     // 视频回放窗口对象...
 
-	GM_MapDict			m_MapHttpDict;		// HTTP协议头字典集合...
-	string				m_strUTF8Content;	// 统一的ISAPI反馈数据...
-	string              m_strAuthQop;		// ISAPI Digest qop
-	string              m_strAuthRealm;		// ISAPI Digest realm
-	string              m_strAuthNonce;		// ISAPI Digest nonce
-	string              m_strCurlURI;		// ISAPI 当前请求的URI
-	POINT				m_XRange = { -100, 100 };	// ISAPI PTZ XRange
-	POINT				m_YRange = { -100, 100 };	// ISAPI PTZ YRange
-	POINT				m_ZRange = { -100, 100 };	// ISAPI PTZ ZRange
+	POINT				m_XRange = {0,0};	// ISAPI PTZ XRange
+	POINT				m_YRange = {0,0};	// ISAPI PTZ YRange
+	POINT				m_ZRange = {0,0};	// ISAPI PTZ ZRange
+	POINT				m_FRange = {0,0};	// ISAPI PTZ Focus
+	POINT				m_IRange = {0,0};	// ISAPI PTZ Iris
+	string              m_ImageFilpStyle;
+	string              m_ImageFilpEnableVal;
+	string              m_ImageFilpEnableOpt;
+
+	bool                   m_bIsNetRunning = false;		// 是否正在执行命令
+	GM_DeqCmd              m_deqCmd;					// 名列队列对象...
+	QNetworkAccessManager  m_objNetManager;				// QT 网络管理对象...
+
+	friend class CCmdItem;
 };

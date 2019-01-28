@@ -239,7 +239,16 @@ void StudentWindow::on_actionPreviewMute_triggered()
 void StudentWindow::on_actionCameraPTZ_triggered()
 {
 	if (m_PTZWindow != NULL) {
+		m_PTZWindow->doUpdatePTZ(m_ui.LeftView->GetFocusID());
 		m_PTZWindow->show();
+	}
+}
+
+// 焦点窗口变化时，更新PTZ云台...
+void StudentWindow::doUpdatePTZ(int nDBCameraID)
+{
+	if (m_PTZWindow != NULL) {
+		m_PTZWindow->doUpdatePTZ(nDBCameraID);
 	}
 }
 

@@ -1,8 +1,44 @@
 
 *{font-family:Microsoft YaHei;}
 
+/*下拉列表框*/
+QComboBox
+{
+	font-size: 14px;
+	background: white;
+    padding-left: 5px;
+    border-radius: 3px;
+    border: 1px solid rgb(209 , 209 , 209);
+}
+QComboBox:hover
+{
+    border: 1px solid rgb(21 , 131 , 221);
+}
+QComboBox QAbstractItemView::item
+{
+    height:40px;
+}
+QComboBox::down-arrow
+{
+    border-image:url(:/login/images/login/drop_down_Button.png) 0 34 0 0 ;
+}
+QComboBox::down-arrow:hover
+{
+    border-image:url(:/login/images/login/drop_down_Button.png) 0 17 0 17 ;
+}
+QComboBox::down-arrow:on
+{
+    border-image:url(:/login/images/login/drop_down_Button.png) 0 0 0 34 ;
+}
+QComboBox::drop-down
+{
+    width:20px;
+    padding-right:5px;
+    background:transparent; /*不加此句下拉箭头背景色为灰色与整体样式不一致，也可设置 border:0px; border-radius:0px; background:white; border-left:0px ; 即设置为无边框*/
+}
+
 /*标题文字颜色*/
-QLabel#titleName,#speedTitle,#speedNum {
+QLabel#titleName {
 	color: white;
 	font-size: 14px;
 	font-weight: 500;
@@ -16,7 +52,7 @@ QLabel#errTitle {
 }
 
 /* speed controls */
-QLabel#speedTitle,#speedNum,#titleZoom,#titleFocus,#titleIris {
+QLabel#speedTitle,#speedNum,#titleZoom,#titleFocus,#titleIris,#titleFlip {
 	color: #B0B0B0;
 	font-size: 14px;
 	font-weight: 500;

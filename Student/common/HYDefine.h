@@ -26,6 +26,7 @@ typedef UInt16				Bool16;
 #pragma warning(disable: 4786)
 
 #include <map>
+#include <deque>
 #include <string>
 #include <functional>
 
@@ -59,7 +60,6 @@ using namespace std;
 #define WM_WEB_LOAD_RESOURCE		(WM_USER + 108)
 #define	WM_WEB_AUTH_RESULT			(WM_USER + 110)
 
-typedef map<int, string>			GM_MapDict;					// Dictionary collection for http/rtsp header
 typedef	map<string, string>			GM_MapData;
 typedef map<int, GM_MapData>		GM_MapNodeCamera;			// int  => 是指数据库DBCameraID
 
@@ -143,5 +143,18 @@ typedef struct {
 	int   m_cmd;        // command id...
 	int   m_sock;       // php sock in transmit...
 } Cmd_Header;
+
+// define IPC ISAPI command...
+const long ISAPI_LINE_START = __LINE__ + 2;
+enum CMD_ISAPI {
+	kIMAGE_CAPABILITY = __LINE__ - ISAPI_LINE_START,     // Image 能力查询命令
+	kPTZ_CAPABILITY   = __LINE__ - ISAPI_LINE_START,     // PTZ 能力查询命令
+	kPTZ_X_PAN        = __LINE__ - ISAPI_LINE_START,     // PTZ X轴向右(+)向左(-)
+	kPTZ_Y_TILT       = __LINE__ - ISAPI_LINE_START,     // PTZ Y轴向上(+)向下(-)
+	kPTZ_Z_ZOOM       = __LINE__ - ISAPI_LINE_START,     // PTZ Z轴放大(+)缩小(-)
+	kPTZ_F_FOCUS      = __LINE__ - ISAPI_LINE_START,     // PTZ 焦距放大(+)缩小(-)
+	kPTZ_I_IRIS       = __LINE__ - ISAPI_LINE_START,     // PTZ 光圈放大(+)缩小(-)
+	kIMAGE_FLIP       = __LINE__ - ISAPI_LINE_START,     // 图像画面翻转命令
+};
 
 #define MsgLogGM(nErr) blog(LOG_ERROR, "Error: %lu, %s(%d)", nErr, __FILE__, __LINE__)
