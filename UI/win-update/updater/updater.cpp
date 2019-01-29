@@ -32,7 +32,7 @@ using namespace std;
 #define UTF8ToWideBuf(wide, utf8) UTF8ToWide(wide, _countof(wide), utf8)
 #define WideToUTF8Buf(utf8, wide) WideToUTF8(utf8, _countof(utf8), wide)
 
-#define DEF_WEB_CLASS     L"edu.ihaoyi.cn"
+#define DEF_WEB_CLASS     L"www.qidiweilai.com"
 #define DEF_UPDATE_URL    L"https://" DEF_WEB_CLASS L"/update_studio"
 #define DEF_TEACHER_DATA  L"obs-teacher"
 #define DEF_STUDENT_DATA  L"obs-student"
