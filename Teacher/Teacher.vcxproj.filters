@@ -195,6 +195,9 @@
     <ClCompile Include="getopt.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="window-view-ptz.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="crash-report.hpp">
@@ -314,6 +317,9 @@
     <QtMoc Include="win-update\win-update.hpp">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="window-view-ptz.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="platform.hpp">
@@ -417,6 +423,9 @@
     <QtUic Include="forms\OBSUpdate.ui">
       <Filter>Form Files</Filter>
     </QtUic>
+    <QtUic Include="forms\PTZWindow.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
   </ItemGroup>
   <ItemGroup>
     <Image Include="forms\images\mute.png">
@@ -511,6 +520,9 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="forms\css\MyTitle.css">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="forms\css\PTZWindow.css">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

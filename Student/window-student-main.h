@@ -28,6 +28,7 @@ private slots:
     void onCameraMenuToShow();
 	void doWebThreadMsg(int nMessageID, int nWParam, int nLParam);
 	void onTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID);
+	void onTriggerCameraPTZ(int nDBCameraID, int nCmdID, int nSpeedVal);
 	void on_LeftViewCustomContextMenuRequested(const QPoint &pos);
 	void on_actionSettingReconnect_triggered();
 	void on_actionSettingUpdater_triggered();

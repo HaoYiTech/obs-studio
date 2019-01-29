@@ -110,6 +110,7 @@ struct BaseSceneItem {
 	uint32_t          other_height;
 };
 
+class CPTZWindow;
 class OBSBasic : public OBSMainWindow {
 	Q_OBJECT
 
@@ -151,6 +152,7 @@ private:
 	const char *copyFiltersString;
 	bool copyVisible = true;
 
+	QPointer<CPTZWindow> m_PTZWindow = NULL;
 	QPointer<QThread> updateCheckThread;
 	QPointer<QThread> logUploadThread;
 
@@ -720,6 +722,7 @@ private slots:
 
 	void OpenFloatSource();
 	void ShutFloatSource();
+	void OpenWindowPTZ();
 
 	void NudgeUp();
 	void NudgeDown();

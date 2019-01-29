@@ -224,6 +224,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="window-login-title.cpp" />
     <ClCompile Include="window-namedialog.cpp" />
     <ClCompile Include="window-projector.cpp" />
+    <ClCompile Include="window-view-ptz.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="obs-app.hpp">
@@ -247,6 +248,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\deps\libff\libff\ff-util.h" />
+    <QtMoc Include="window-view-ptz.h">
+      <Define Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">WIN32;_WINDOWS;DEBUG=1;_DEBUG=1;DL_OPENGL=libobs-opengl.dll;DL_D3D9= -DDL_D3D11=libobs-d3d11.dll -DUNICODE -D_UNICODE -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_WARNINGS -DHAVE_OBSCONFIG_H -DENABLE_WIN_UPDATER -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -D%(PreprocessorDefinitions)  -I. -I.\json -I.\fastdfs -I.\win-update -I.\obs-frontend-api -I.\GeneratedFiles -I.\GeneratedFiles\$(ConfigurationName) -IE:\obs-deps\win32\include -IE:\obs-studio\libobs -IE:\obs-studio\deps\libff -IE:\obs-studio\deps\blake2\src -IE:\obs-studio\vsbuild\config -IE:\obs-studio\deps\jansson\src -IE:\obs-studio\vsbuild\deps\jansson\include -I$(QTDIR)\include -I$(QTDIR)\include\QtCore -I$(QTDIR)\include\QtGui -I$(QTDIR)\include\QtANGLE -I$(QTDIR)\include\QtWidgets -I$(QTDIR)\include\QtNetwork -I$(QTDIR)\mkspecs\win32-msvc2015</Define>
+      <Define Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">WIN32;_WINDOWS;NDEBUG;DL_OPENGL=libobs-opengl.dll;DL_D3D9= -DDL_D3D11=libobs-d3d11.dll -DUNICODE -D_UNICODE -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_WARNINGS -DHAVE_OBSCONFIG_H -DENABLE_WIN_UPDATER -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -DQT_NO_DEBUG -D%(PreprocessorDefinitions)  -I. -I.\json -I.\fastdfs -I.\win-update -I.\obs-frontend-api -I.\GeneratedFiles -I.\GeneratedFiles\$(ConfigurationName) -IE:\obs-deps\win32\include -IE:\obs-studio\libobs -IE:\obs-studio\deps\libff -IE:\obs-studio\deps\blake2\src -IE:\obs-studio\vsbuild\config -IE:\obs-studio\deps\jansson\src -IE:\obs-studio\vsbuild\deps\jansson\include -I$(QTDIR)\include -I$(QTDIR)\include\QtCore -I$(QTDIR)\include\QtGui -I$(QTDIR)\include\QtANGLE -I$(QTDIR)\include\QtWidgets -I$(QTDIR)\include\QtNetwork -I$(QTDIR)\mkspecs\win32-msvc2015</Define>
+    </QtMoc>
     <QtMoc Include="adv-audio-control.hpp">
       <Define Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">WIN32;_WINDOWS;DEBUG=1;_DEBUG=1;DL_OPENGL=libobs-opengl.dll;DL_D3D9= -DDL_D3D11=libobs-d3d11.dll -DUNICODE -D_UNICODE -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_WARNINGS -DHAVE_OBSCONFIG_H -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB  -I. -I.\GeneratedFiles -I.\GeneratedFiles\$(ConfigurationName)\. -I.\fastdfs -I.\obs-frontend-api -IE:\obs-deps\win32\include -IE:\obs-studio\libobs -IE:\obs-studio\deps\libff -IE:\obs-studio\deps\blake2\src -IE:\obs-studio\vsbuild\config -IE:\obs-studio\deps\jansson\src -IE:\obs-studio\vsbuild\deps\jansson\include -I$(QTDIR)\include -I$(QTDIR)\include\QtCore -I$(QTDIR)\include\QtGui -I$(QTDIR)\include\QtANGLE -I$(QTDIR)\include\QtWidgets -I$(QTDIR)\include\QtNetwork -I$(QTDIR)\mkspecs\win32-msvc2015</Define>
       <Define Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">WIN32;_WINDOWS;NDEBUG;DL_OPENGL=libobs-opengl.dll;DL_D3D9= -DDL_D3D11=libobs-d3d11.dll -DUNICODE -D_UNICODE -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_WARNINGS -DHAVE_OBSCONFIG_H -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -DQT_NO_DEBUG  -I. -I.\GeneratedFiles -I.\GeneratedFiles\$(ConfigurationName)\. -I.\fastdfs -I.\obs-frontend-api -IE:\obs-deps\win32\include -IE:\obs-studio\libobs -IE:\obs-studio\deps\libff -IE:\obs-studio\deps\blake2\src -IE:\obs-studio\vsbuild\config -IE:\obs-studio\deps\jansson\src -IE:\obs-studio\vsbuild\deps\jansson\include -I$(QTDIR)\include -I$(QTDIR)\include\QtCore -I$(QTDIR)\include\QtGui -I$(QTDIR)\include\QtANGLE -I$(QTDIR)\include\QtWidgets -I$(QTDIR)\include\QtNetwork -I$(QTDIR)\mkspecs\win32-msvc2015</Define>
@@ -454,6 +459,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <QtUic Include="forms\OBSBasicSourceSelect.ui" />
     <QtUic Include="forms\OBSBasicTransform.ui" />
     <QtUic Include="forms\OBSUpdate.ui" />
+    <QtUic Include="forms\PTZWindow.ui" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="forms\images\add.png">
@@ -574,6 +580,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </None>
     <None Include="forms\css\MyTitle.css" />
+    <None Include="forms\css\PTZWindow.css" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

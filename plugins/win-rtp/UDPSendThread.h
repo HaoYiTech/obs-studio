@@ -3,7 +3,7 @@
 
 #include <util/threading.h>
 #include "OSThread.h"
-#include "rtp.h"
+#include "HYDefine.h"
 
 class UDPSocket;
 class CUDPSendThread : public OSThread

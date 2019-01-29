@@ -801,6 +801,7 @@ OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
 {
 	m_strWebCenter = DEF_WEB_CENTER;
 	m_strWebClass = DEF_WEB_CLASS;
+	m_nRtpDBCameraID = 0;
 	m_nRtpTCPSockFD = 0;
 	m_nOnLineTimer = -1;
 	m_nFastTimer = -1;
@@ -1290,6 +1291,14 @@ bool OBSApp::doSendCameraLiveStartCmd(int nDBCameraID, int nSceneItemID)
 	if (m_RemoteSession == NULL)
 		return false;
 	return m_RemoteSession->doSendCameraLiveStartCmd(nDBCameraID, nSceneItemID);
+}
+
+// 通过中转服务器向学生端发送云台操作命令...
+bool OBSApp::doSendCameraPTZCmd(int nDBCameraID, int nCmdID, int nSpeedVal)
+{
+	if (m_RemoteSession == NULL || nDBCameraID <= 0)
+		return false;
+	return m_RemoteSession->doSendCameraPTZCmd(nDBCameraID, nCmdID, nSpeedVal);
 }
 
 // 自动检测并创建TrackerSession...

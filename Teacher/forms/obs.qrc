@@ -41,4 +41,20 @@
     <file>images/login/deleteAccount.png</file>
     <file>images/login/drop_down_Button.png</file>
   </qresource>
+  <qresource prefix="/ptz">
+    <file>css/PTZWindow.css</file>
+    <file>images/ptz/ptz.png</file>
+    <file>images/ptz/add.png</file>
+    <file>images/ptz/sub.png</file>
+    <file>images/ptz/pan.png</file>
+    <file>images/ptz/back.png</file>
+    <file>images/ptz/close.png</file>
+    <file>images/ptz/up.png</file>
+    <file>images/ptz/down.png</file>
+    <file>images/ptz/left.png</file>
+    <file>images/ptz/right.png</file>
+    <file>images/ptz/speed-blue.png</file>
+    <file>images/ptz/speed-black.png</file>
+    <file>images/ptz/speed-circle.png</file>
+  </qresource>
 </RCC>

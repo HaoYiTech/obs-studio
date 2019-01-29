@@ -21,6 +21,24 @@ using namespace std;
 OBSBasicPreview::OBSBasicPreview(QWidget *parent, Qt::WindowFlags flags)
   : OBSQTDisplay(parent, flags)
 {
+	/*#include <QBitmap>
+	#include <QPushButton>
+	m_btnPTZ = new QPushButton(this);
+	m_btnPTZ->setObjectName(QStringLiteral("btnPTZ"));
+	m_btnPTZ->setMinimumSize(QSize(30, 30));
+	m_btnPTZ->setMaximumSize(QSize(30, 30));
+	m_btnPTZ->setCursor(QCursor(Qt::PointingHandCursor));
+	m_btnPTZ->setGeometry(200, 100, 10, 30);
+	m_btnPTZ->setStyleSheet("QPushButton{background:transparent;border-image:url(:/ptz/images/ptz/ptz.png) 0 60 0 0;}"
+							"QPushButton:hover{border-image:url(:ptz/images/ptz/ptz.png) 0 30 0 30;}"
+							"QPushButton:pressed{border-image:url(:ptz/images/ptz/ptz.png) 0 0 0 60;}");
+	QPalette myPalette;
+	QPixmap  myPixmap(":/ptz/images/ptz/ptz.png");
+	// 让背景图片适应窗口的大小，在背景图片上做 scaled 操作...
+	myPalette.setBrush(QPalette::Background, QBrush(myPixmap));
+	m_btnPTZ->setPalette(myPalette);
+	m_btnPTZ->setMask(myPixmap.mask());*/
+
 	ResetScrollingOffset();
 	setMouseTracking(true);
 }

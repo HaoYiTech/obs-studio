@@ -2,7 +2,7 @@
 #pragma once
 
 #include "OSThread.h"
-#include "rtp.h"
+#include "HYDefine.h"
 
 class CPlaySDL;
 class UDPSocket;

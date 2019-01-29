@@ -268,6 +268,11 @@ class GatherAction extends Action
         $arrErr['err_msg'] = "没有找到指定通道的配置信息！";
         break;
       }
+      // 分解stream_url，存放到device_ip|device_user|device_pass
+      $arrUrl = preg_split('/[:\/@]/', $dbCamera['stream_url']);
+      $dbCamera['device_user'] = $arrUrl[3];
+      $dbCamera['device_pass'] = $arrUrl[4];
+      $dbCamera['device_ip']   = $arrUrl[5];
       // 去掉一些采集端不需要的字段，减少数据量...
       unset($dbCamera['err_code']);
       unset($dbCamera['err_msg']);
@@ -315,8 +320,15 @@ class GatherAction extends Action
         $arrData['camera_id'] = $dbCamera['camera_id'];
         $arrData['updated'] = date('Y-m-d H:i:s');
         D('camera')->save($arrData);
+        // 更新通道的stream_url字段，便于统一进行分离...
+        $dbCamera['stream_url'] = $arrData['stream_url'];
       }
       // 这里不用返回课程列表内容 => 只返回camera_id...
+      // 分解stream_url，存放到device_ip|device_user|device_pass
+      $arrUrl = preg_split('/[:\/@]/', $dbCamera['stream_url']);
+      $arrErr['device_user'] = $arrUrl[3];
+      $arrErr['device_pass'] = $arrUrl[4];
+      $arrErr['device_ip']   = $arrUrl[5];
     }while( false );
     // 直接返回运行结果 => json...
     echo json_encode($arrErr);

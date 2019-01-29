@@ -987,6 +987,7 @@ void CStudentApp::doCheckRemote()
 	m_RemoteSession->InitSession(m_strRemoteAddr.c_str(), m_nRemotePort);
 	// 将远程会话的信号槽与主窗口对象进行相互关联操作 => UDP连接断开时的事件通知...
 	connect(m_RemoteSession, SIGNAL(doTriggerUdpLogout(int, int, int)), m_studentWindow, SLOT(onTriggerUdpLogout(int, int, int)));
+	connect(m_RemoteSession, SIGNAL(doTriggerCameraPTZ(int, int, int)), m_studentWindow, SLOT(onTriggerCameraPTZ(int, int, int)));
 	// 建立左侧窗口与发送线程事件、连接服务器成功的信号槽...
 	CViewLeft * lpViewLeft = m_studentWindow->GetViewLeft();
 	connect(m_RemoteSession, SIGNAL(doTriggerConnected()), lpViewLeft, SLOT(onTriggerConnected()));

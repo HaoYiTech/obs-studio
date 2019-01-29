@@ -66,17 +66,18 @@ define('kCmd_Camera_PullStop',        7);
 define('kCmd_Camera_OnLineList',      8);
 define('kCmd_Camera_LiveStart',       9);
 define('kCmd_Camera_LiveStop',       10);
-define('kCmd_UdpServer_Login',       11);
-define('kCmd_UdpServer_OnLine',      12);
-define('kCmd_UdpServer_AddTeacher',  13);
-define('kCmd_UdpServer_DelTeacher',  14);
-define('kCmd_UdpServer_AddStudent',  15);
-define('kCmd_UdpServer_DelStudent',  16);
-define('kCmd_PHP_GetUdpServer',      17);
-define('kCmd_PHP_GetAllServer',      18);
-define('kCmd_PHP_GetAllClient',      19);
-define('kCmd_PHP_GetRoomList',       20);
-define('kCmd_PHP_GetPlayerList',     21);
+define('kCmd_Camera_PTZCommand',     11);
+define('kCmd_UdpServer_Login',       12);
+define('kCmd_UdpServer_OnLine',      13);
+define('kCmd_UdpServer_AddTeacher',  14);
+define('kCmd_UdpServer_DelTeacher',  15);
+define('kCmd_UdpServer_AddStudent',  16);
+define('kCmd_UdpServer_DelStudent',  17);
+define('kCmd_PHP_GetUdpServer',      18);
+define('kCmd_PHP_GetAllServer',      19);
+define('kCmd_PHP_GetAllClient',      20);
+define('kCmd_PHP_GetRoomList',       21);
+define('kCmd_PHP_GetPlayerList',     22);
 
 //////////////////////////////////////////////////////
 // 定义一组通用的公用函数列表...

@@ -67,6 +67,7 @@ private:
 	int                            m_nFastTimer;               // 分布式存储、中转链接检测时钟...
 	int                            m_nOnLineTimer;             // 中转服务器在线检测时钟...
 	int                            m_nRtpTCPSockFD;            // CRemoteSession在服务器端的套接字号码...
+	int                            m_nRtpDBCameraID;           // 当前正在观看的互动教室的摄像头编号...
 	bool                           m_bIsDebugMode;             // 是否是调试模式 => 挂载到调试服务器...
 	std::string                    locale;
 	std::string	                   theme;
@@ -111,7 +112,9 @@ public:
 	string & GetUdpAddr() { return m_strUdpAddr; }
 	int		 GetUdpPort() { return m_nUdpPort; }
 	int      GetRtpTCPSockFD() { return m_nRtpTCPSockFD; }
+	int      GetRtpDBCameraID() { return m_nRtpDBCameraID; }
 
+	void     SetRtpDBCameraID(int nDBCameraID) { m_nRtpDBCameraID = nDBCameraID; }
 	void     SetRtpTCPSockFD(int nTCPSockFD) { m_nRtpTCPSockFD = nTCPSockFD; }
 	void	 SetUdpAddr(const string & strAddr) { m_strUdpAddr = strAddr; }
 	void     SetUdpPort(int nPort) { m_nUdpPort = nPort; }
@@ -137,6 +140,7 @@ public:
 	bool doSendCameraOnLineListCmd();
 	bool doSendCameraLiveStopCmd(int nDBCameraID, int nSceneItemID);
 	bool doSendCameraLiveStartCmd(int nDBCameraID, int nSceneItemID);
+	bool doSendCameraPTZCmd(int nDBCameraID, int nCmdID, int nSpeedVal);
 
 	void doCheckTracker();
 	void doCheckStorage();

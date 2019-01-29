@@ -249,6 +249,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="common\HYVersion.h" />
     <ClInclude Include="common\md5.h" />
     <ClInclude Include="common\OSThread.h" />
+    <ClInclude Include="common\rtp.h" />
     <ClInclude Include="common\Socket.h" />
     <ClInclude Include="common\SocketUtils.h" />
     <ClInclude Include="common\StringParser.h" />
@@ -333,7 +334,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Define Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">WIN32;_WINDOWS;NDEBUG;DL_OPENGL=libobs-opengl.dll;DL_D3D9= -DDL_D3D11=libobs-d3d11.dll -DUNICODE -D_UNICODE -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_WARNINGS -DHAVE_OBSCONFIG_H -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -DQT_NO_DEBUG  -I. -I.\GeneratedFiles -I.\GeneratedFiles\$(ConfigurationName)\. -I.\obs-frontend-api -IE:\obs-deps\win32\include -IE:\obs-studio\libobs -IE:\obs-studio\deps\libff -IE:\obs-studio\deps\blake2\src -IE:\obs-studio\vsbuild\config -IE:\obs-studio\deps\jansson\src -IE:\obs-studio\vsbuild\deps\jansson\include -I$(QTDIR)\include -I$(QTDIR)\include\QtCore -I$(QTDIR)\include\QtGui -I$(QTDIR)\include\QtANGLE -I$(QTDIR)\include\QtWidgets -I$(QTDIR)\include\QtNetwork -I$(QTDIR)\mkspecs\win32-msvc2015</Define>
     </QtMoc>
     <ClInclude Include="ReadSPS.h" />
-    <ClInclude Include="rtp\rtp.h" />
     <ClInclude Include="rtp\UDPPlayThread.h" />
     <ClInclude Include="rtp\UDPRecvThread.h" />
     <ClInclude Include="rtp\UDPSendThread.h" />

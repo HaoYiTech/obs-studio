@@ -99,6 +99,7 @@ signals:
 	void doTriggerLiveStart(int nDBCameraID);
 	void doTriggerRecvThread(bool bIsUDPTeacherOnLine);
 	void doTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID);
+	void doTriggerCameraPTZ(int nDBCameraID, int nCmdID, int nSpeedVal);
 public:
 	bool IsCanReBuild() { return m_bCanReBuild; }
 	bool doSendStartCameraCmd(int nDBCameraID);
@@ -114,6 +115,7 @@ protected slots:
 private:
 	bool doSendCommonCmd(int nCmdID, const char * lpJsonPtr = NULL, int nJsonSize = 0);
 	bool doParseJson(const char * lpData, int nSize, Json::Value & outValue);
+	bool doCmdCameraPTZCommand(const char * lpData, int nSize);
 	bool doCmdCameraLiveStart(const char * lpData, int nSize);
 	bool doCmdCameraLiveStop(const char * lpData, int nSize);
 	bool doCmdStudentOnLine(const char * lpData, int nSize);

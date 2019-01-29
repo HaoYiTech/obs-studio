@@ -271,6 +271,13 @@ void StudentWindow::onTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID)
 	}
 }
 
+// 响应讲师端远程发送的云台控制命令 => 找到指定的摄像头通道，并发起云台控制命令...
+void StudentWindow::onTriggerCameraPTZ(int nDBCameraID, int nCmdID, int nSpeedVal)
+{
+	CViewCamera * lpViewCamera = m_ui.LeftView->FindDBCameraByID(nDBCameraID);
+	((lpViewCamera != NULL) ? lpViewCamera->doPTZCmd((CMD_ISAPI)nCmdID, nSpeedVal) : NULL);
+}
+
 void StudentWindow::doWebThreadMsg(int nMessageID, int nWParam, int nLParam)
 {
 	if (nMessageID == WM_WEB_AUTH_RESULT) {

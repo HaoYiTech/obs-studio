@@ -3,13 +3,8 @@
 
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 
-#include <assert.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-
-#ifndef ASSERT
-#define ASSERT assert 
-#endif // ASSERT
 
 typedef unsigned char		UInt8;
 typedef signed char			SInt8;
@@ -35,33 +30,50 @@ using namespace std;
 #include "obs.h"
 #include "rtp.h"
 #include "GMError.h"
+#include "HYCommon.h"
 #include "HYVersion.h"
 #include <util/platform.h>
 #include <util/circlebuf.h>
 
-#define DEF_MULTI_DATA_ADDR         "234.5.6.7"                 // 组播音视频数据转发地址...
-#define DEF_MULTI_LOSE_ADDR         "235.6.7.8"                 // 组播丢包重传转发地址...
+//#define DEBUG_AEC	                                      // 是否调试AEC...
+//#define DEBUG_FRAME                                     // RTP是否调试数据帧...
+//#define DEBUG_DECODE                                    // RTP是否调试解码器...
+//#define DEBUG_SEND_ONLY                                 // RTP是否只启动推流线程...
+//#define DEBUG_RECV_ONLY                                 // RTP是否只启动观看线程...
 
-#define DEF_WEB_CENTER				"https://www.qidiweilai.com"// 默认中心网站(443) => 必须是 https:// 兼容小程序接口...
-#define DEF_WEB_CLASS				"https://www.qidiweilai.com"// 默认云教室网站(443) => 必须是 https:// 兼容小程序接口...
-#define DEF_SSL_PROTO               "https"                     // 默认协议头
-#define DEF_WEB_PROTO               "http"                      // 默认协议头
-#define DEF_SSL_PORT                443                         // 默认https端口
-#define DEF_WEB_PORT                80                          // 默认http 端口
+#define TM_RECV_NAME               "[Student-Looker]"     // 学生观看端...
+#define TM_SEND_NAME               "[Student-Pusher]"     // 学生推流端...
 
-#define DEF_AUDIO_OUT_CHANNEL_NUM   1                           // 默认音频播放、压缩声道数
-#define DEF_AUDIO_OUT_SAMPLE_RATE   16000                       // 默认音频播放、压缩采样率
-#define DEF_AUDIO_OUT_BITRATE_AAC   32000                       // 默认回音消除后AAC压缩输出码流
-#define DEF_WEBRTC_AEC_NN           160                         // 回音消除单次样本数(单个声道) => 采样率是16000时，刚好是10毫秒...
-#define DEF_CAMERA_START_ID			1							// 默认摄像头开始ID
-#define DEF_MAX_CAMERA              8							// 默认最大摄像头数目
-#define LINGER_TIME					500							// SOCKET停止时数据链路层BUFF清空的最大延迟时间
+#define DEF_MTU_SIZE                800                   // 默认MTU分片大小(字节)...
+#define LOG_MAX_SIZE                2048                  // 单条日志最大长度(字节)...
+#define MAX_BUFF_LEN                1024                  // 最大报文长度(字节)...
+#define MAX_SLEEP_MS                15                    // 最大休息时间(毫秒)
+#define ADTS_HEADER_SIZE            7                     // AAC音频数据包头长度(字节)...
+#define DEF_CIRCLE_SIZE	            128	* 1024            // 默认环形队列长度(字节)...
+#define MAX_SEND_JAM_MS             4000                  // 最大发送拥塞缓存时间(毫秒)...
+#define MAX_MULTI_JAM_MS            4000                  // 最大组播拥塞缓存时间(毫秒)...
+
+#define DEF_MULTI_DATA_ADDR         "234.5.6.7"           // 组播音视频数据转发地址...
+#define DEF_MULTI_LOSE_ADDR         "235.6.7.8"           // 组播丢包重传转发地址...
+														  
+#define DEF_SSL_PROTO               "https"               // 默认协议头
+#define DEF_WEB_PROTO               "http"                // 默认协议头
+#define DEF_SSL_PORT                443                   // 默认https端口
+#define DEF_WEB_PORT                80                    // 默认http 端口
+														  
+#define DEF_AUDIO_OUT_CHANNEL_NUM   1                     // 默认音频播放、压缩声道数
+#define DEF_AUDIO_OUT_SAMPLE_RATE   16000                 // 默认音频播放、压缩采样率
+#define DEF_AUDIO_OUT_BITRATE_AAC   32000                 // 默认回音消除后AAC压缩输出码流
+#define DEF_WEBRTC_AEC_NN           160                   // 回音消除单次样本数(单个声道) => 采样率是16000时，刚好是10毫秒...
+#define DEF_CAMERA_START_ID			1                     // 默认摄像头开始ID
+#define DEF_MAX_CAMERA              8                     // 默认最大摄像头数目
+#define LINGER_TIME					500	                  // SOCKET停止时数据链路层BUFF清空的最大延迟时间
 
 #define WM_WEB_LOAD_RESOURCE		(WM_USER + 108)
 #define	WM_WEB_AUTH_RESULT			(WM_USER + 110)
 
 typedef	map<string, string>			GM_MapData;
-typedef map<int, GM_MapData>		GM_MapNodeCamera;			// int  => 是指数据库DBCameraID
+typedef map<int, GM_MapData>		GM_MapNodeCamera;     // int  => 是指数据库DBCameraID
 
 typedef struct
 {
@@ -79,82 +91,12 @@ enum ROLE_TYPE
 	kRoleMultiSend = 2,      // 组播发送者角色
 };
 
-enum AUTH_STATE
-{
-	kAuthRegister  = 1,		// 网站注册授权
-	kAuthExpired   = 2,		// 授权过期验证
-};
-
-enum STREAM_PROP
-{
-	kStreamDevice  = 0,		// 摄像头设备流类型 => camera
-	kStreamMP4File = 1,		// MP4文件流类型    => .mp4
-	kStreamUrlLink = 2,		// URL链接流类型    => rtsp/rtmp
-};
-
 enum CAMERA_STATE
 {
 	kCameraOffLine = 0,		// 未连接
 	kCameraConnect = 1,		// 正在连接
 	kCameraOnLine  = 2,		// 已连接
 	kCameraPusher  = 3,     // 推流中
-};
-
-// define Mini QRCode type...
-enum {
-	kQRCodeShop       = 1,  // 门店小程序码
-	kQRCodeStudent    = 2,  // 学生端小程序码
-	kQRCodeTeacher    = 3,  // 讲师端小程序码
-};
-
-// define client type...
-enum {
-	kClientPHP        = 1,
-	kClientStudent    = 2,
-	kClientTeacher    = 3,
-	kClientUdpServer  = 4,
-};
-
-// define command id...
-enum {
-	kCmd_Student_Login		  = 1,
-	kCmd_Student_OnLine		  = 2,
-	kCmd_Teacher_Login		  = 3,
-	kCmd_Teacher_OnLine		  = 4,
-	kCmd_UDP_Logout			  = 5,
-	kCmd_Camera_PullStart     = 6,
-	kCmd_Camera_PullStop      = 7,
-	kCmd_Camera_OnLineList    = 8,
-	kCmd_Camera_LiveStart     = 9,
-	kCmd_Camera_LiveStop      = 10,
-	kCmd_UdpServer_Login      = 11,
-	kCmd_UdpServer_OnLine     = 12,
-	kCmd_UdpServer_AddTeacher = 13,
-	kCmd_UdpServer_DelTeacher = 14,
-	kCmd_UdpServer_AddStudent = 15,
-	kCmd_UdpServer_DelStudent = 16,
-	kCmd_PHP_GetUdpServer     = 17,
-};
-
-// define the command header...
-typedef struct {
-	int   m_pkg_len;    // body size...
-	int   m_type;       // client type...
-	int   m_cmd;        // command id...
-	int   m_sock;       // php sock in transmit...
-} Cmd_Header;
-
-// define IPC ISAPI command...
-const long ISAPI_LINE_START = __LINE__ + 2;
-enum CMD_ISAPI {
-	kIMAGE_CAPABILITY = __LINE__ - ISAPI_LINE_START,     // Image 能力查询命令
-	kPTZ_CAPABILITY   = __LINE__ - ISAPI_LINE_START,     // PTZ 能力查询命令
-	kPTZ_X_PAN        = __LINE__ - ISAPI_LINE_START,     // PTZ X轴向右(+)向左(-)
-	kPTZ_Y_TILT       = __LINE__ - ISAPI_LINE_START,     // PTZ Y轴向上(+)向下(-)
-	kPTZ_Z_ZOOM       = __LINE__ - ISAPI_LINE_START,     // PTZ Z轴放大(+)缩小(-)
-	kPTZ_F_FOCUS      = __LINE__ - ISAPI_LINE_START,     // PTZ 焦距放大(+)缩小(-)
-	kPTZ_I_IRIS       = __LINE__ - ISAPI_LINE_START,     // PTZ 光圈放大(+)缩小(-)
-	kIMAGE_FLIP       = __LINE__ - ISAPI_LINE_START,     // 图像画面翻转命令
 };
 
 #define MsgLogGM(nErr) blog(LOG_ERROR, "Error: %lu, %s(%d)", nErr, __FILE__, __LINE__)

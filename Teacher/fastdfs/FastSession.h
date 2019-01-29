@@ -105,6 +105,7 @@ public:
 	bool doSendCameraOnLineListCmd();
 	bool doSendCameraLiveStopCmd(int nDBCameraID, int nSceneItemID);
 	bool doSendCameraLiveStartCmd(int nDBCameraID, int nSceneItemID);
+	bool doSendCameraPTZCmd(int nDBCameraID, int nCmdID, int nSpeedVal);
 protected slots:
 	void onConnected() override;
 	void onReadyRead() override;

@@ -993,7 +993,7 @@
   </layout>
  </widget>
  <resources>
-  <include location="Student.qrc"/>
+  <include location="obs.qrc"/>
  </resources>
  <connections/>
 </ui>

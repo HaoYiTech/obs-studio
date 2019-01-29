@@ -390,9 +390,6 @@
     <ClInclude Include="fastdfs\fastdfs.h">
       <Filter>FastDFS Files</Filter>
     </ClInclude>
-    <ClInclude Include="rtp\rtp.h">
-      <Filter>rtp Files</Filter>
-    </ClInclude>
     <ClInclude Include="rtp\UDPSendThread.h">
       <Filter>rtp Files</Filter>
     </ClInclude>
@@ -440,6 +437,9 @@
     </ClInclude>
     <ClInclude Include="GeneratedFiles\ui_PTZWindow.h">
       <Filter>Generated Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common\rtp.h">
+      <Filter>rtp Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

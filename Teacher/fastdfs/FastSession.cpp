@@ -649,6 +649,25 @@ bool CRemoteSession::doSendCameraLiveStartCmd(int nDBCameraID, int nSceneItemID)
 	return this->doSendCommonCmd(kCmd_Camera_LiveStart, strJson.c_str(), strJson.size());
 }
 
+bool CRemoteSession::doSendCameraPTZCmd(int nDBCameraID, int nCmdID, int nSpeedVal)
+{
+	// 没有处于链接状态，直接返回...
+	if (!m_bIsConnected)
+		return false;
+	// 组合命令需要的JSON数据包 => 通道编号|场景资源编号...
+	string strJson;	Json::Value root;
+	char szDataBuf[32] = { 0 };
+	sprintf(szDataBuf, "%d", nDBCameraID);
+	root["camera_id"] = szDataBuf;
+	sprintf(szDataBuf, "%d", nCmdID);
+	root["cmd_id"] = szDataBuf;
+	sprintf(szDataBuf, "%d", nSpeedVal);
+	root["speed_val"] = szDataBuf;
+	strJson = root.toStyledString();
+	// 调用统一的接口进行命令数据的发送操作...
+	return this->doSendCommonCmd(kCmd_Camera_PTZCommand, strJson.c_str(), strJson.size());
+}
+
 // 获取讲师端所在房间的所有在线摄像头列表...
 bool CRemoteSession::doSendCameraOnLineListCmd()
 {

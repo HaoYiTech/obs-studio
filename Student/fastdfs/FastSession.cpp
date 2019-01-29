@@ -478,11 +478,29 @@ void CRemoteSession::onReadyRead()
 		case kCmd_Student_OnLine:   bResult = this->doCmdStudentOnLine(lpDataPtr, lpCmdHeader->m_pkg_len); break;
 		case kCmd_Camera_LiveStop:  bResult = this->doCmdCameraLiveStop(lpDataPtr, lpCmdHeader->m_pkg_len); break;
 		case kCmd_Camera_LiveStart: bResult = this->doCmdCameraLiveStart(lpDataPtr, lpCmdHeader->m_pkg_len); break;
+		case kCmd_Camera_PTZCommand: bResult = this->doCmdCameraPTZCommand(lpDataPtr, lpCmdHeader->m_pkg_len); break;
 		}
 		// 删除已经处理完毕的数据 => Header + pkg_len...
 		m_strRecv.erase(0, lpCmdHeader->m_pkg_len + sizeof(Cmd_Header));
 		// 如果还有数据，则继续解析命令...
 	}
+}
+
+bool CRemoteSession::doCmdCameraPTZCommand(const char * lpData, int nSize)
+{
+	Json::Value value;
+	// 进行Json数据包的内容解析...
+	if (!this->doParseJson(lpData, nSize, value)) {
+		blog(LOG_INFO, "CRemoteSession::doParseJson Error!");
+		return false;
+	}
+	// 获取服务器发送过来的数据信息...
+	int nCmdID = atoi(CStudentApp::getJsonString(value["cmd_id"]).c_str());
+	int nSpeedVal = atoi(CStudentApp::getJsonString(value["speed_val"]).c_str());
+	int nDBCameraID = atoi(CStudentApp::getJsonString(value["camera_id"]).c_str());
+	// 通知云台控制接口向指定的摄像头通道发送控制命令...
+	emit this->doTriggerCameraPTZ(nDBCameraID, nCmdID, nSpeedVal);
+	return true;
 }
 
 bool CRemoteSession::doCmdCameraLiveStop(const char * lpData, int nSize)

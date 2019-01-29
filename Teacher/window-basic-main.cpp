@@ -55,7 +55,8 @@
 #include "volume-control.hpp"
 //#include "remote-text.hpp"
 
-#include "../plugins/win-rtp/rtp.h"
+#include "../Student/common/rtp.h"
+#include "window-view-ptz.h"
 
 #define VOLUME_METER_DECAY_FAST        23.53
 #define VOLUME_METER_DECAY_MEDIUM      11.76
@@ -138,9 +139,7 @@ OBSBasic::OBSBasic(QWidget *parent)
 	  ui             (new Ui::OBSBasic)
 {
 	setAttribute(Qt::WA_NativeWindow);
-
 	setAcceptDrops(true);
-
 	ui->setupUi(this);
 
 	// 设置窗口图标 => 必须用png图片 => 解决有些机器不认ico，造成左上角图标无法显示...
@@ -3892,6 +3891,18 @@ QMenu *OBSBasic::AddScaleFilteringMenu(obs_sceneitem_t *item)
 	return menu;
 }
 
+void OBSBasic::OpenWindowPTZ()
+{
+	// 创建云台控制窗口...
+	if (m_PTZWindow == NULL) {
+		m_PTZWindow = new CPTZWindow(this);
+	}
+	// 注意：远程云台控制，只管发命令，不用处理反馈结果...
+	// 显示云台控制窗口，获取观看的摄像头编号，并更新状态...
+	m_PTZWindow->doUpdatePTZ(App()->GetRtpDBCameraID());
+	m_PTZWindow->show();
+}
+
 void OBSBasic::OpenFloatSource()
 {
 	OBSScene scene = this->GetCurrentScene();
@@ -3938,6 +3949,10 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 	QPointer<QMenu> previewProjector;
 	QPointer<QMenu> sourceProjector;
 
+	OBSSceneItem sceneItem = this->GetSceneItem(item);
+	obs_source_t *source = obs_sceneitem_get_source(sceneItem);
+	bool bIsRtpSource = ((astrcmpi(obs_source_get_id(source), App()->InteractRtpSource()) == 0) ? true : false);
+
 	// 始终自动追加一个“检查升级”的菜单...
 	if (ui->actionCheckForUpdates != NULL) {
 		popup.addAction(ui->actionCheckForUpdates);
@@ -3962,12 +3977,17 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 										this, bHasFloatedSource ? SLOT(ShutFloatSource()) : SLOT(OpenFloatSource()));
 		// 获取坐标位置...
 		vec2 posDisp = {1.0f, 1.0f};
-		obs_sceneitem_get_pos(this->GetSceneItem(item), &posDisp);
+		obs_sceneitem_get_pos(sceneItem, &posDisp);
 		// 如果是第一个数据源并且是未浮动状态，需要对菜单进行灰色处理...
 		if (posDisp.x <= 0.0f && posDisp.y <= 0.0f && !bHasFloatedSource) {
 			actionFloated->setEnabled(false);
 		}
 		// 增加一个分隔符...
+		popup.addSeparator();
+	}
+	// 针对互动教室，增加打开云台控制菜单...
+	if ((source != NULL) && bIsRtpSource) {
+		popup.addAction(QTStr("Basic.Main.OpenRtpPTZ"), this, SLOT(OpenWindowPTZ()));
 		popup.addSeparator();
 	}
 	// 针对预览窗口的右键菜单...
@@ -4015,17 +4035,12 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 
 	if (item != NULL) {
 		if (addSourceMenu) popup.addSeparator();
-		OBSSceneItem sceneItem = this->GetSceneItem(item);
-		obs_source_t *source = obs_sceneitem_get_source(sceneItem);
 		uint32_t flags = obs_source_get_output_flags(source);
 		bool isAsyncVideo = (flags & OBS_SOURCE_ASYNC_VIDEO) == OBS_SOURCE_ASYNC_VIDEO;
 		bool hasAudio = (flags & OBS_SOURCE_AUDIO) == OBS_SOURCE_AUDIO;
-		QAction *action;
 
-		popup.addAction(QTStr("RenameSource"), this,
-				SLOT(EditSceneItemName()));
-		popup.addAction(QTStr("RemoveSource"), this,
-				SLOT(on_actionRemoveSource_triggered()));
+		popup.addAction(QTStr("RenameSource"), this, SLOT(EditSceneItemName()));
+		popup.addAction(QTStr("RemoveSource"), this, SLOT(on_actionRemoveSource_triggered()));
 		popup.addSeparator();
 
 		// 加入排序和变换菜单...
@@ -5144,6 +5159,12 @@ void OBSBasic::onTriggerRtpSource(int nSceneItemID, int nDBCameraID, bool bIsCam
 	obs_data_t * lpSettings = obs_source_get_settings(lpFindSource);
 	if (lpSettings == NULL)
 		return;
+	// 如果云台窗口有效，需要更新...
+	if (m_PTZWindow != NULL) {
+		m_PTZWindow->doUpdatePTZ(nDBCameraID);
+	}
+	// 更新正在观看的互动教室的摄像头编号...
+	App()->SetRtpDBCameraID(nDBCameraID);
 	// 将rtp_source需要的参数写入配置结构当中...
 	int nRoomID = atoi(App()->GetRoomIDStr().c_str());
 	obs_data_set_int(lpSettings, "room_id", nRoomID);
