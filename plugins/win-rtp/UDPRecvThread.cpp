@@ -656,8 +656,10 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 				m_server_cache_time_ms = m_server_rtt_ms + m_server_rtt_var_ms;
 			}
 			// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
+			const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
 			blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, ACircle: %d, VCircle: %d", TM_RECV_NAME,
-				 rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms, m_server_cache_time_ms, m_audio_circle.size / 812, m_video_circle.size / 812);
+				 rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms, m_server_cache_time_ms,
+				 m_audio_circle.size / nPerPackSize, m_video_circle.size / nPerPackSize);
 			// 打印播放器底层的缓存状态信息...
 			/*if (m_lpPlaySDL != NULL) {
 				blog(LOG_INFO, "%s Recv Detect => APacket: %d, VPacket: %d, AFrame: %d, VFrame: %d", TM_RECV_NAME,
@@ -679,8 +681,10 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 				m_p2p_cache_time_ms = m_p2p_rtt_ms + m_p2p_rtt_var_ms;
 			}
 			// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
+			const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
 			blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, ACircle: %d, VCircle: %d", TM_RECV_NAME,
-				 rtpDetect.dtDir, rtpDetect.dtNum, m_p2p_rtt_ms, m_p2p_rtt_var_ms, m_p2p_cache_time_ms, m_audio_circle.size/812, m_video_circle.size/812 );
+				 rtpDetect.dtDir, rtpDetect.dtNum, m_p2p_rtt_ms, m_p2p_rtt_var_ms, m_p2p_cache_time_ms,
+				 m_audio_circle.size / nPerPackSize, m_video_circle.size / nPerPackSize);
 			// 打印播放器底层的缓存状态信息...
 			if (m_lpPlaySDL != NULL) {
 				blog(LOG_INFO, "%s Recv Detect => APacket: %d, VPacket: %d, AFrame: %d, VFrame: %d", TM_RECV_NAME,
@@ -1038,12 +1042,12 @@ void CUDPRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 		//blog(LOG_INFO, "%s Supply Discard => Seq: %lu, MaxPlaySeq: %lu, Type: %d", TM_RECV_NAME, new_id, nMaxPlaySeq, pt_tag);
 		return;
 	}
-	// 打印收到的音频数据包信息 => 包括缓冲区填充量 => 每个数据包都是统一大小 => rtp_hdr_t + slice + Zero => 812
+	// 打印收到的音频数据包信息 => 包括缓冲区填充量 => 每个数据包都是统一大小 => rtp_hdr_t + slice + Zero
 	//log_trace("[Teacher-Looker] Seq: %lu, TS: %lu, Type: %d, pst: %d, ped: %d, Slice: %d, ZeroSize: %d", lpNewHeader->seq, lpNewHeader->ts, lpNewHeader->pt, lpNewHeader->pst, lpNewHeader->ped, lpNewHeader->psize, nZeroSize);
 	// 首先，将当前包序列号从丢包队列当中删除...
 	this->doEraseLoseSeq(pt_tag, new_id);
 	//////////////////////////////////////////////////////////////////////////////////////////////////
-	// 注意：每个环形队列中的数据包大小是一样的 => rtp_hdr_t + slice + Zero => 12 + 800 => 812
+	// 注意：每个环形队列中的数据包大小是一样的 => rtp_hdr_t + slice + Zero
 	//////////////////////////////////////////////////////////////////////////////////////////////////
 	static char szPacketBuffer[nPerPackSize] = {0};
 	// 如果环形队列为空 => 需要对丢包做提前预判并进行处理...

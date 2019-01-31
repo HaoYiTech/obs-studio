@@ -342,7 +342,7 @@ BOOL CUDPSendThread::PushFrame(encoder_packet * lpEncPacket)
 		int nZeroSize = DEF_MTU_SIZE - rtpHeader.psize;
 		// 计算分片包的数据头指针...
 		const char * lpszSlicePtr = lpszFramePtr + i * DEF_MTU_SIZE;
-		// 加入环形队列当中 => rtp_hdr_t + slice + Zero => 12 + 800 => 812
+		// 加入环形队列当中 => rtp_hdr_t + slice + Zero
 		circlebuf_push_back(&cur_circle, &rtpHeader, sizeof(rtpHeader));
 		circlebuf_push_back(&cur_circle, lpszSlicePtr, rtpHeader.psize);
 		// 加入填充数据内容，保证数据总是保持一个MTU单元大小...
