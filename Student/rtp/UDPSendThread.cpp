@@ -341,7 +341,7 @@ BOOL CUDPSendThread::PushFrame(FMS_FRAME & inFrame)
 		int nZeroSize = DEF_MTU_SIZE - rtpHeader.psize;
 		// 计算分片包的数据头指针...
 		const char * lpszSlicePtr = lpszFramePtr + i * DEF_MTU_SIZE;
-		// 加入环形队列当中 => rtp_hdr_t + slice + Zero => 12 + 800 => 812
+		// 加入环形队列当中 => rtp_hdr_t + slice + Zero
 		circlebuf_push_back(&cur_circle, &rtpHeader, sizeof(rtpHeader));
 		circlebuf_push_back(&cur_circle, lpszSlicePtr, rtpHeader.psize);
 		// 加入填充数据内容，保证数据总是保持一个MTU单元大小...
@@ -524,15 +524,16 @@ void CUDPSendThread::doSendDetectCmd()
 	(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
 	// 累加总的输出字节数，便于计算输出平均码流...
 	m_total_output_bytes += sizeof(m_rtp_detect);
+	// 由于新增扩展音频，不能用P2P模式进行数据包发送...
 	// 通过P2P进行的探测 => 如果观看端的映射地址有效...
-	if( m_rtp_ready.recvAddr > 0 && m_rtp_ready.recvPort > 0 ) {
+	/*if( m_rtp_ready.recvAddr > 0 && m_rtp_ready.recvPort > 0 ) {
 		m_rtp_detect.dtDir = DT_TO_P2P;
 		m_rtp_detect.tsSrc = (uint32_t)(cur_time_ns / 1000000);
 		theErr = m_lpUDPSocket->SendTo( m_rtp_ready.recvAddr, m_rtp_ready.recvPort, 
 										(void*)&m_rtp_detect, sizeof(m_rtp_detect) );
 		(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
 		m_total_output_bytes += sizeof(m_rtp_detect);
-	}
+	}*/
 	// 打印已发送探测命令包...
 	//blog(LOG_INFO,"%s Send Detect dtNum: %d", TM_SEND_NAME, m_rtp_detect.dtNum);
 	// 计算下次发送探测命令的时间戳...
