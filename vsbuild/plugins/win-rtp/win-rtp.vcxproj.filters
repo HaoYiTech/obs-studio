@@ -54,9 +54,6 @@
     <ClInclude Include="..\..\..\plugins\win-rtp\OSThread.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\plugins\win-rtp\rtp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\plugins\win-rtp\Socket.h">
       <Filter>Header Files</Filter>
     </ClInclude>

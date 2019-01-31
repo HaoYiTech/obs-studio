@@ -213,7 +213,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="..\..\..\plugins\win-rtp\GMError.h" />
     <ClInclude Include="..\..\..\plugins\win-rtp\HYDefine.h" />
     <ClInclude Include="..\..\..\plugins\win-rtp\OSThread.h" />
-    <ClInclude Include="..\..\..\plugins\win-rtp\rtp.h" />
     <ClInclude Include="..\..\..\plugins\win-rtp\Socket.h" />
     <ClInclude Include="..\..\..\plugins\win-rtp\SocketUtils.h" />
     <ClInclude Include="..\..\..\plugins\win-rtp\StrPtrLen.h" />
