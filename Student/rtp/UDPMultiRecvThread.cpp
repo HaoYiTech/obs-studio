@@ -291,14 +291,14 @@ void CUDPMultiRecvThread::doRecvPacket()
 	// 对收到命令包进行类型分发...
 	switch (ptTag)
 	{
-	case PT_TAG_HEADER:	 this->doProcServerHeader(ioBuffer, outRecvLen); break;
+	case PT_TAG_HEADER:	 this->doTagHeaderProcess(ioBuffer, outRecvLen); break;
 	case PT_TAG_DETECT:	 this->doTagDetectProcess(ioBuffer, outRecvLen); break;
 	case PT_TAG_AUDIO:	 this->doTagAVPackProcess(ioBuffer, outRecvLen); break;
 	case PT_TAG_VIDEO:	 this->doTagAVPackProcess(ioBuffer, outRecvLen); break;
 	}
 }
 
-void CUDPMultiRecvThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
+void CUDPMultiRecvThread::doTagHeaderProcess(char * lpBuffer, int inRecvLen)
 {
 	// 通过 rtp_header_t 做为载体发送过来的 => 服务器直接原样转发的学生推流端的序列头结构体...
 	if (m_lpUdpData == NULL || lpBuffer == NULL || inRecvLen < 0 || inRecvLen < sizeof(rtp_header_t))
@@ -393,6 +393,8 @@ void CUDPMultiRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 		if (rtpDetect.dtDir != DT_TO_SERVER)
 			return;
 		ASSERT(rtpDetect.dtDir == DT_TO_SERVER);
+
+		// 网络极端情况下避免服务器补包失败...
 		// 先处理服务器回传的音频最小序号包...
 		this->doServerMinSeq(true, rtpDetect.maxAConSeq);
 		// 再处理服务器回传的视频最小序号包...
@@ -430,6 +432,8 @@ void CUDPMultiRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 	}
 }
 
+// 本地接收缓存数据包的清理是靠解析数据帧，不是靠服务器的最小数据包...
+// 但是，在网络极端情况下，这种主动删除的方式就会起作用，避免服务器补包失败...
 void CUDPMultiRecvThread::doServerMinSeq(bool bIsAudio, uint32_t inMinSeq)
 {
 	// 根据数据包类型，找到丢包集合、环形队列、最大播放包...
@@ -474,7 +478,8 @@ void CUDPMultiRecvThread::doServerMinSeq(bool bIsAudio, uint32_t inMinSeq)
 	if (min_seq >= inMinSeq)
 		return;
 	// 打印环形队列清理前的各个变量状态值...
-	blog(LOG_INFO, "%s Clear => Audio: %d, ServerMin: %lu, MinSeq: %lu, MaxSeq: %lu, MaxPlaySeq: %lu", TM_RECV_NAME, bIsAudio, inMinSeq, min_seq, max_seq, nMaxPlaySeq);
+	blog(LOG_INFO, "%s Clear => Audio: %d, ServerMin: %lu, MinSeq: %lu, MaxSeq: %lu, MaxPlaySeq: %lu",
+		 TM_RECV_NAME, bIsAudio, inMinSeq, min_seq, max_seq, nMaxPlaySeq);
 	// 如果环形队列中的最大序号包比服务器端的最小序号包小，清理全部缓存...
 	if (max_seq < inMinSeq) {
 		inMinSeq = max_seq + 1;

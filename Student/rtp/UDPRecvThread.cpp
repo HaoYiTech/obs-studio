@@ -250,7 +250,7 @@ void CUDPRecvThread::doSendDetectCmd()
 	m_rtp_detect.tsSrc  = (uint32_t)(cur_time_ns / 1000000);
 	m_rtp_detect.dtDir  = DT_TO_SERVER;
 	m_rtp_detect.dtNum += 1;
-	// 计算已收到音视频最大连续包号...
+	// 计算已收到音视频最大连续包号 => 服务器并没有使用...
 	m_rtp_detect.maxAConSeq = this->doCalcMaxConSeq(true);
 	m_rtp_detect.maxVConSeq = this->doCalcMaxConSeq(false);
 	// 调用接口发送探测命令包 => 学生观看端只有一个服务器探测方向...
@@ -399,14 +399,14 @@ void CUDPRecvThread::doRecvPacket()
 	// 对收到命令包进行类型分发...
 	switch( ptTag )
 	{
-	case PT_TAG_HEADER:	 this->doProcServerHeader(ioBuffer, outRecvLen); break;
+	case PT_TAG_HEADER:	 this->doTagHeaderProcess(ioBuffer, outRecvLen); break;
 	case PT_TAG_DETECT:	 this->doTagDetectProcess(ioBuffer, outRecvLen); break;
 	case PT_TAG_AUDIO:	 this->doTagAVPackProcess(ioBuffer, outRecvLen); break;
 	case PT_TAG_VIDEO:	 this->doTagAVPackProcess(ioBuffer, outRecvLen); break;
 	}
 }
 
-void CUDPRecvThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
+void CUDPRecvThread::doTagHeaderProcess(char * lpBuffer, int inRecvLen)
 {
 	// 通过 rtp_header_t 做为载体发送过来的 => 服务器直接原样转发的学生推流端的序列头结构体...
 	if( m_lpUDPSocket == NULL || lpBuffer == NULL || inRecvLen < 0 || inRecvLen < sizeof(rtp_header_t) )
@@ -585,6 +585,7 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 		if (rtpDetect.dtDir != DT_TO_SERVER)
 			return;
 		ASSERT( rtpDetect.dtDir == DT_TO_SERVER );
+		// 网络极端情况下避免服务器补包失败...
 		// 先处理服务器回传的音频最小序号包...
 		this->doServerMinSeq(true, rtpDetect.maxAConSeq);
 		// 再处理服务器回传的视频最小序号包...
@@ -629,6 +630,8 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 	}
 }
 
+// 本地接收缓存数据包的清理是靠解析数据帧，不是靠服务器的最小数据包...
+// 但是，在网络极端情况下，这种主动删除的方式就会起作用，避免服务器补包失败...
 void CUDPRecvThread::doServerMinSeq(bool bIsAudio, uint32_t inMinSeq)
 {
 	// 如果输入的最小包号无效，直接返回...
@@ -677,7 +680,8 @@ void CUDPRecvThread::doServerMinSeq(bool bIsAudio, uint32_t inMinSeq)
 	if( min_seq >= inMinSeq )
 		return;
 	// 打印环形队列清理前的各个变量状态值...
-	blog(LOG_INFO, "%s Clear => Audio: %d, ServerMin: %lu, MinSeq: %lu, MaxSeq: %lu, MaxPlaySeq: %lu", TM_RECV_NAME, bIsAudio, inMinSeq, min_seq, max_seq, nMaxPlaySeq);
+	blog(LOG_INFO, "%s Clear => Audio: %d, ServerMin: %lu, MinSeq: %lu, MaxSeq: %lu, MaxPlaySeq: %lu",
+		 TM_RECV_NAME, bIsAudio, inMinSeq, min_seq, max_seq, nMaxPlaySeq);
 	// 如果环形队列中的最大序号包比服务器端的最小序号包小，清理全部缓存...
 	if( max_seq < inMinSeq ) {
 		inMinSeq = max_seq + 1;

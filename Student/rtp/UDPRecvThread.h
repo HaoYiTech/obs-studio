@@ -31,8 +31,7 @@ private:
 	void			doRecvPacket();
 	void			doSleepTo();
 
-	void			doProcServerHeader(char * lpBuffer, int inRecvLen);
-
+	void			doTagHeaderProcess(char * lpBuffer, int inRecvLen);
 	void			doTagDetectProcess(char * lpBuffer, int inRecvLen);
 	void			doTagAVPackProcess(char * lpBuffer, int inRecvLen);
 
