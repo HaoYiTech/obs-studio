@@ -42,10 +42,7 @@ CUDPRecvThread::CUDPRecvThread(CViewRender * lpViewRender, int nDBRoomID, int nD
 	circlebuf_init(&m_video_circle);
 	circlebuf_reserve(&m_audio_circle, DEF_CIRCLE_SIZE);
 	circlebuf_reserve(&m_video_circle, DEF_CIRCLE_SIZE);
-	//////////////////////////////////////////////////////////////////////////////////////
-	// 注意：这里暂时模拟讲师端观看者身份 => 本身应该为学生观看者...
-	//////////////////////////////////////////////////////////////////////////////////////
-	// 设置终端类型和结构体类型 => m_rtp_header => 等待网络填充...
+	// 设置终端类型和结构体类型 => m_rtp_header => 等待网络填充 => 学生观看者身份...
 	m_rtp_detect.tm = m_rtp_create.tm = m_rtp_delete.tm = m_rtp_supply.tm = TM_TAG_STUDENT;
 	m_rtp_detect.id = m_rtp_create.id = m_rtp_delete.id = m_rtp_supply.id = ID_TAG_LOOKER;
 	m_rtp_detect.pt = PT_TAG_DETECT;
@@ -358,8 +355,7 @@ void CUDPRecvThread::doSendSupplyCmd(bool bIsAudio)
 	GM_Error theErr = GM_NoErr;
 	int nDataSize = nHeadSize + m_rtp_supply.suSize;
 	////////////////////////////////////////////////////////////////////////////////////////
-	// 调用套接字接口，直接发送RTP数据包 => 根据发包线路进行有选择的路线发送...
-	// 目前只有一条服务器发包路线...
+	// 调用套接字接口，直接发送RTP数据包 => 目前只有一条服务器发包路线...
 	////////////////////////////////////////////////////////////////////////////////////////
 	ASSERT( m_dt_to_dir == DT_TO_SERVER );
 	theErr = m_lpUDPSocket->SendTo(szPacket, nDataSize);
@@ -445,7 +441,7 @@ void CUDPRecvThread::doTagHeaderProcess(char * lpBuffer, int inRecvLen)
 		lpData += m_rtp_header.ppsSize;
 	}
 	// 修改命令状态 => 不向服务器准备就绪命令包...
-	m_nCmdState = kCmdConnetOK;
+	m_nCmdState = kCmdConnectOK;
 	// 打印收到序列头结构体信息...
 	blog(LOG_INFO, "%s Recv Header SPS: %d, PPS: %d", TM_RECV_NAME, m_strSPS.size(), m_strPPS.size());
 	// 如果播放器已经创建，直接返回...
@@ -614,8 +610,10 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 			m_server_cache_time_ms = m_server_rtt_ms + m_server_rtt_var_ms;
 		}
 		// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
+		const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
 		blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, ACircle: %d, VCircle: %d", TM_RECV_NAME,
-			 rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms, m_server_cache_time_ms, m_audio_circle.size/812, m_video_circle.size/812 );
+			 rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms, m_server_cache_time_ms,
+			 m_audio_circle.size / nPerPackSize, m_video_circle.size / nPerPackSize);
 		// 打印播放器底层的缓存状态信息...
 		/*if (m_lpPlaySDL != NULL) {
 			blog(LOG_INFO, "%s Recv Detect => APacket: %d, VPacket: %d, AFrame: %d, VFrame: %d", TM_RECV_NAME,
@@ -809,8 +807,8 @@ void CUDPRecvThread::doParseFrame(bool bIsAudio)
 		// 修改休息状态 => 已经抽取数据包，不能休息...
 		m_bNeedSleep = false;
 		// 打印抽帧失败信息 => 没有找到数据帧的开始标记...
-		blog(LOG_INFO, "%s Error => Frame start code not find, Seq: %lu, Type: %d, Key: %d, PTS: %lu", TM_RECV_NAME,
-					lpFrontHeader->seq, lpFrontHeader->pt, lpFrontHeader->pk, lpFrontHeader->ts );
+		blog(LOG_INFO, "%s Error => Frame start code not find, Seq: %lu, Type: %d, Key: %d, PTS: %lu",
+			 TM_RECV_NAME, lpFrontHeader->seq, lpFrontHeader->pt, lpFrontHeader->pk, lpFrontHeader->ts );
 		return;
 	}
 	ASSERT( lpFrontHeader->pst );
@@ -1064,12 +1062,12 @@ void CUDPRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 	if (m_lpMultiSendThread != NULL) {
 		m_lpMultiSendThread->Transfer(lpBuffer, inRecvLen);
 	}
-	// 打印收到的音频数据包信息 => 包括缓冲区填充量 => 每个数据包都是统一大小 => rtp_hdr_t + slice + Zero => 812
+	// 打印收到的音频数据包信息 => 包括缓冲区填充量 => 每个数据包都是统一大小 => rtp_hdr_t + slice + Zero
 	//blog(LOG_INFO, "%s Size: %d, Seq: %lu, TS: %lu, Type: %d, pst: %d, ped: %d, Slice: %d, ZeroSize: %d", TM_RECV_NAME, inRecvLen, lpNewHeader->seq, lpNewHeader->ts, lpNewHeader->pt, lpNewHeader->pst, lpNewHeader->ped, lpNewHeader->psize, nZeroSize);
 	// 首先，将当前包序列号从丢包队列当中删除...
 	this->doEraseLoseSeq(pt_tag, new_id);
 	//////////////////////////////////////////////////////////////////////////////////////////////////
-	// 注意：每个环形队列中的数据包大小是一样的 => rtp_hdr_t + slice + Zero => 12 + 800 => 812
+	// 注意：每个环形队列中的数据包大小是一样的 => rtp_hdr_t + slice + Zero
 	//////////////////////////////////////////////////////////////////////////////////////////////////
 	static char szPacketBuffer[nPerPackSize] = {0};
 	// 如果环形队列为空 => 需要对丢包做提前预判并进行处理...

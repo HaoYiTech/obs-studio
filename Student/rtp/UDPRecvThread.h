@@ -44,7 +44,7 @@ private:
 private:
 	enum {
 		kCmdSendCreate	= 0,				// 开始发送 => 创建命令状态
-		kCmdConnetOK	= 1,				// 接入交互完毕，只是做为一个阻止继续发送准备就绪命令的标志
+		kCmdConnectOK	= 1,				// 接入交互完毕，已经开始接收音视频数据了
 	} m_nCmdState;							// 命令状态变量...
 
 	string			m_strSPS;				// 视频sps

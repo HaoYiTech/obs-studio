@@ -44,6 +44,7 @@ const char * get_command_name(int inCmd)
 	case kCmd_Camera_OnLineList:    return "Camera_OnLineList";
 	case kCmd_Camera_LiveStart:     return "Camera_LiveStart";
 	case kCmd_Camera_LiveStop:      return "Camera_LiveStop";
+	case kCmd_Camera_PTZCommand:    return "Camera_PTZCommand";
 	case kCmd_UdpServer_Login:      return "UdpServer_Login";
 	case kCmd_UdpServer_OnLine:     return "UdpServer_OnLine";
 	case kCmd_UdpServer_AddTeacher: return "UdpServer_AddTeacher";
@@ -51,6 +52,10 @@ const char * get_command_name(int inCmd)
 	case kCmd_UdpServer_AddStudent: return "UdpServer_AddStudent";
 	case kCmd_UdpServer_DelStudent: return "UdpServer_DelStudent";
 	case kCmd_PHP_GetUdpServer:     return "PHP_GetUdpServer";
+	case kCmd_PHP_GetAllServer:     return "PHP_GetAllServer";
+	case kCmd_PHP_GetAllClient:     return "PHP_GetAllClient";
+	case kCmd_PHP_GetRoomList:      return "PHP_GetRoomList";
+	case kCmd_PHP_GetPlayerList:    return "PHP_GetPlayerList";
 	}
 	return "unknown";
 }
