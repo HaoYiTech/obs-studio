@@ -53,7 +53,7 @@ CUDPSendThread::CUDPSendThread(int nTCPSockFD, int nDBRoomID)
 	circlebuf_init(&m_video_circle);
 	circlebuf_reserve(&m_audio_circle, DEF_CIRCLE_SIZE);
 	circlebuf_reserve(&m_video_circle, DEF_CIRCLE_SIZE);
-	// 设置终端类型和结构体类型 => m_rtp_ready => 等待网络填充 => 老师推流者身份...
+	// 设置终端类型和结构体类型 => 老师推流者身份...
 	m_rtp_detect.tm = m_rtp_create.tm = m_rtp_delete.tm = m_rtp_header.tm = TM_TAG_TEACHER;
 	m_rtp_detect.id = m_rtp_create.id = m_rtp_delete.id = m_rtp_header.id = ID_TAG_PUSHER;
 	m_rtp_detect.pt = PT_TAG_DETECT;
@@ -685,7 +685,7 @@ void CUDPSendThread::doSendLosePacket(bool bIsAudio)
 		// 累加总的输出字节数，便于计算输出平均码流...
 		m_total_output_bytes += nSendSize;
 		// 打印已经发送补包信息...
-		//blog(LOG_INFO, "%s Supply Send => Dir: %d, Seq: %lu, TS: %lu, Slice: %d, Type: %d", TM_SEND_NAME, m_dt_to_dir, lpSendHeader->seq, lpSendHeader->ts, lpSendHeader->psize, lpSendHeader->pt);
+		blog(LOG_INFO, "%s Supply Send => Dir: %d, Seq: %lu, TS: %lu, Slice: %d, Type: %d", TM_SEND_NAME, m_dt_to_dir, lpSendHeader->seq, lpSendHeader->ts, lpSendHeader->psize, lpSendHeader->pt);
 		// 修改休息状态 => 已经有发包，不能休息...
 		m_bNeedSleep = false;
 	} while (false);
@@ -824,8 +824,8 @@ void CUDPSendThread::doRecvPacket()
 	// 对收到命令包进行类型分发...
 	switch( ptTag )
 	{
-	case PT_TAG_CREATE:  this->doProcServerCreate(ioBuffer, outRecvLen); break;
-	case PT_TAG_HEADER:  this->doProcServerHeader(ioBuffer, outRecvLen); break;
+	case PT_TAG_CREATE:  this->doTagCreateProcess(ioBuffer, outRecvLen); break;
+	case PT_TAG_HEADER:  this->doTagHeaderProcess(ioBuffer, outRecvLen); break;
 
 	case PT_TAG_DETECT:	 this->doTagDetectProcess(ioBuffer, outRecvLen); break;
 	case PT_TAG_SUPPLY:  this->doTagSupplyProcess(ioBuffer, outRecvLen); break;
@@ -835,7 +835,7 @@ void CUDPSendThread::doRecvPacket()
 	pthread_mutex_unlock(&m_Mutex);
 }
 
-void CUDPSendThread::doProcServerCreate(char * lpBuffer, int inRecvLen)
+void CUDPSendThread::doTagCreateProcess(char * lpBuffer, int inRecvLen)
 {
 	// 通过 rtp_hdr_t 做为载体发送过来的...
 	if( m_lpUDPSocket == NULL || lpBuffer == NULL || inRecvLen <= 0 || inRecvLen < sizeof(rtp_hdr_t) )
@@ -852,7 +852,7 @@ void CUDPSendThread::doProcServerCreate(char * lpBuffer, int inRecvLen)
 	blog(LOG_INFO, "%s Recv Create from Server", TM_SEND_NAME);
 }
 
-void CUDPSendThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
+void CUDPSendThread::doTagHeaderProcess(char * lpBuffer, int inRecvLen)
 {
 	// 通过 rtp_hdr_t 做为载体发送过来的...
 	if( m_lpUDPSocket == NULL || lpBuffer == NULL || inRecvLen <= 0 || inRecvLen < sizeof(rtp_hdr_t) )
@@ -863,7 +863,7 @@ void CUDPSendThread::doProcServerHeader(char * lpBuffer, int inRecvLen)
 	// 判断数据包的有效性 => 必须是服务器反馈的序列头命令...
 	if( rtpHdr.tm != TM_TAG_SERVER || rtpHdr.id != ID_TAG_SERVER || rtpHdr.pt != PT_TAG_HEADER )
 		return;
-	// 修改命令状态 => 开始接收观看端准备就绪命令...
+	// 修改命令状态 => 可以发送数据包了...
 	m_nCmdState = kCmdSendAVPack;
 	// 打印收到服务器反馈的序列头命令包...
 	blog(LOG_INFO, "%s Recv Header from Server", TM_SEND_NAME);
@@ -954,7 +954,7 @@ void CUDPSendThread::doTagSupplyProcess(char * lpBuffer, int inRecvLen)
 		nDataSize -= sizeof(int);
 	}
 	// 打印已收到补包命令...
-	//blog(LOG_INFO, "%s Supply Recv => Count: %d, Type: %d", TM_SEND_NAME, rtpSupply.suSize / sizeof(int), rtpSupply.suType);
+	blog(LOG_INFO, "%s Supply Recv => Count: %d, Type: %d", TM_SEND_NAME, rtpSupply.suSize / sizeof(int), rtpSupply.suType);
 }
 
 void CUDPSendThread::doProcMaxConSeq(bool bIsAudio, uint32_t inMaxConSeq)
@@ -980,11 +980,11 @@ void CUDPSendThread::doProcMaxConSeq(bool bIsAudio, uint32_t inMaxConSeq)
 	if( inMaxConSeq < lpFrontHeader->seq )
 		return;
 	// 注意：当前已发送包号是一个超前包号，是指下一个要发送的包号...
-	// 观看端收到的最大连续包号相等或大于当前已发送包号 => 直接返回...
+	// 服务器收到的最大连续包号相等或大于当前已发送包号 => 直接返回...
 	if( inMaxConSeq >= nCurSendSeq )
 		return;
 	// 注意：环形队列当中的序列号一定是连续的...
-	// 注意：观看端收到的最大连续包号一定比当前已发送包号小...
+	// 注意：服务器收到的最大连续包号一定比当前已发送包号小...
 	// 两者之差加1就是要删除的数据长度 => 要包含最大连续包本身的删除...
 	uint32_t nPopSize = (inMaxConSeq - lpFrontHeader->seq + 1) * nPerPackSize;
 	circlebuf_pop_front(&cur_circle, NULL, nPopSize);
@@ -992,7 +992,7 @@ void CUDPSendThread::doProcMaxConSeq(bool bIsAudio, uint32_t inMaxConSeq)
 	// 打印环形队列删除结果，计算环形队列剩余的数据包个数...
 	//uint32_t nRemainCount = cur_circle.size / nPerPackSize;
 	//blog(LOG_INFO, "%s Detect Erase Success => %s, MaxConSeq: %lu, MinSeq: %lu, CurSendSeq: %lu, CurPackSeq: %lu, Circle: %lu", 
-	//	 TM_SEND_NAME, bIsAudio ? "Audio" : "Video", inMaxConSeq, lpFrontHeader->seq, nCurSendSeq, nCurPackSeq, nRemainCount );
+	//     TM_SEND_NAME, bIsAudio ? "Audio" : "Video", inMaxConSeq, lpFrontHeader->seq, nCurSendSeq, nCurPackSeq, nRemainCount );
 }
 
 void CUDPSendThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
@@ -1037,7 +1037,7 @@ void CUDPSendThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 		if (m_server_rtt_var_ms < 0) { m_server_rtt_var_ms = abs(m_server_rtt_ms - keep_rtt); }
 		else { m_server_rtt_var_ms = (m_server_rtt_var_ms * 3 + abs(m_server_rtt_ms - keep_rtt)) / 4; }
 		// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
-		//blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms", TM_SEND_NAME, rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms);
+		blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms", TM_SEND_NAME, rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms);
 	}
 }
 ///////////////////////////////////////////////////////
