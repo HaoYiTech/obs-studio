@@ -441,6 +441,9 @@
     <ClInclude Include="common\rtp.h">
       <Filter>rtp Files</Filter>
     </ClInclude>
+    <ClInclude Include="common\HYCommon.h">
+      <Filter>Common Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="forms\images\student.png">

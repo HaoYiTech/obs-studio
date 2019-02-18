@@ -245,6 +245,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="common\GMError.h" />
     <ClInclude Include="common\HTTPDefine.h" />
     <ClInclude Include="common\HTTPProtocol.h" />
+    <ClInclude Include="common\HYCommon.h" />
     <ClInclude Include="common\HYDefine.h" />
     <ClInclude Include="common\HYVersion.h" />
     <ClInclude Include="common\md5.h" />
