@@ -535,6 +535,7 @@ bool CRemoteSession::doCmdCameraLiveStart(const char * lpData, int nSize)
 	int nDBCameraID = atoi(CStudentApp::getJsonString(value["camera_id"]).c_str());
 	// 通知左侧窗口，对应通道可以创建推流线程了...
 	emit this->doTriggerLiveStart(nDBCameraID);
+	emit this->doTriggerDeleteExAudioThread();
 	return true;
 }
 

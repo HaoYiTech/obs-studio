@@ -95,6 +95,7 @@ public:
 	virtual ~CRemoteSession();
 signals:
 	void doTriggerConnected();
+	void doTriggerDeleteExAudioThread();
 	void doTriggerLiveStop(int nDBCameraID);
 	void doTriggerLiveStart(int nDBCameraID);
 	void doTriggerRecvThread(bool bIsUDPTeacherOnLine);
