@@ -23,6 +23,7 @@ private:
 	bool  doRoleMultiRecv();
 	bool  doRoleMultiSend();
 public slots:
+	void  onTriggerDeleteExAudioThread();
 	void  onTriggerUdpRecvThread(bool bIsUDPTeacherOnLine);
 protected:
 	void  paintEvent(QPaintEvent *event) override;

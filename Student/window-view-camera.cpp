@@ -162,6 +162,7 @@ CViewCamera::CViewCamera(QWidget *parent, int nDBCameraID)
 	// 初始化回音消除互斥对象和播放线程互斥对象...
 	pthread_mutex_init_value(&m_MutexPlay);
 	pthread_mutex_init_value(&m_MutexAEC);
+	pthread_mutex_init_value(&m_MutexSend);
 	// 信号槽建立后，需要注意保存QNetworkReply对象...
 	connect(&m_objNetManager, SIGNAL(finished(QNetworkReply *)), this, SLOT(onReplyFinished(QNetworkReply *)));
 	connect(&m_objNetManager, SIGNAL(authenticationRequired(QNetworkReply *, QAuthenticator*)), this, SLOT(onAuthRequest(QNetworkReply *, QAuthenticator*)));
@@ -175,10 +176,12 @@ CViewCamera::~CViewCamera()
 		m_nFlowTimer = -1;
 	}
 	// 删除UDP推流线程 => 数据使用者...
+	pthread_mutex_lock(&m_MutexSend);
 	if (m_lpUDPSendThread != NULL) {
 		delete m_lpUDPSendThread;
 		m_lpUDPSendThread = NULL;
 	}
+	pthread_mutex_unlock(&m_MutexSend);
 	// 删除音频回音消除对象 => 数据使用者...
 	pthread_mutex_lock(&m_MutexAEC);
 	if (m_lpWebrtcAEC != NULL) {
@@ -198,6 +201,7 @@ CViewCamera::~CViewCamera()
 	// 释放回音消除互斥对象和播放互斥对象...
 	pthread_mutex_destroy(&m_MutexPlay);
 	pthread_mutex_destroy(&m_MutexAEC);
+	pthread_mutex_destroy(&m_MutexSend);
 	// 释放还没有执行的命令队列...
 	this->ClearAllCmd();
 }
@@ -468,6 +472,7 @@ void CViewCamera::DrawTitleArea()
 	QString strTitleText = QString("%1%2 - %3").arg(QStringLiteral("ID：")).arg(m_nDBCameraID).arg(strTitleContent);
 	painter.drawText(nPosX, nPosY, strTitleText);
 	// 绘制在线LIVE文字信息 => UDP线程有效...
+	pthread_mutex_lock(&m_MutexSend);
 	if (m_lpUDPSendThread != NULL) {
 		painter.setPen(TITLE_LIVE_COLOR);
 		QFontMetrics & fontMetrics = painter.fontMetrics();
@@ -475,6 +480,7 @@ void CViewCamera::DrawTitleArea()
 		nPosX = rcRect.width() - 2 * fontMetrics.width(strLive);
 		painter.drawText(nPosX, nPosY, strLive);
 	}
+	pthread_mutex_unlock(&m_MutexSend);
 }
 
 void CViewCamera::DrawRenderArea()
@@ -589,13 +595,16 @@ void CViewCamera::DrawStatusText()
 
 QString CViewCamera::GetStreamPushUrl()
 {
-	if (m_lpUDPSendThread == NULL) {
-		return QTStr("Camera.Window.None");
+	QString strUrlVal = QTStr("Camera.Window.None");
+	pthread_mutex_lock(&m_MutexSend);
+	if (m_lpUDPSendThread != NULL) {
+		string & strServerAddr = m_lpUDPSendThread->GetServerAddrStr();
+		QString strQServerStr = QString::fromUtf8(strServerAddr.c_str());
+		int nServerPort = m_lpUDPSendThread->GetServerPortInt();
+		strUrlVal = QString("udp://%1/%2").arg(strQServerStr).arg(nServerPort);
 	}
-	string & strServerAddr = m_lpUDPSendThread->GetServerAddrStr();
-	QString strQServerStr = QString::fromUtf8(strServerAddr.c_str());
-	int nServerPort = m_lpUDPSendThread->GetServerPortInt();
-	return QString("udp://%1/%2").arg(strQServerStr).arg(nServerPort);
+	pthread_mutex_unlock(&m_MutexSend);
+	return strUrlVal;
 }
 
 bool CViewCamera::IsDataFinished()
@@ -641,7 +650,9 @@ QString CViewCamera::GetRecvPullRate()
 QString CViewCamera::GetSendPushRate()
 {
 	// 获取发送码率的具体数字 => 直接从UDP发送线程当中获取 => 注意：默认值是0...
+	pthread_mutex_lock(&m_MutexSend);
 	int nSendKbps = ((m_lpUDPSendThread != NULL) ? m_lpUDPSendThread->GetSendTotalKbps() : 0);
+	pthread_mutex_unlock(&m_MutexSend);
 	// 如果为负数，需要删除UDP推流线程对象...
 	if (nSendKbps < 0) {
 		// 先删除UDP推流线程对象...
@@ -695,6 +706,7 @@ void CViewCamera::doUdpSendThreadStart()
 void CViewCamera::doUdpSendThreadStop()
 {
 	// 只有当推流线程有效才能修改通道状态为在线状态...
+	pthread_mutex_lock(&m_MutexSend);
 	if (m_lpUDPSendThread != NULL) {
 		m_nCameraState = kCameraOnLine;
 	}
@@ -703,6 +715,7 @@ void CViewCamera::doUdpSendThreadStop()
 		delete m_lpUDPSendThread;
 		m_lpUDPSendThread = NULL;
 	}
+	pthread_mutex_unlock(&m_MutexSend);
 	// 后删除回音消除对象...
 	pthread_mutex_lock(&m_MutexAEC);
 	if (m_lpWebrtcAEC != NULL) {
@@ -829,19 +842,23 @@ void CViewCamera::doPushFrame(FMS_FRAME & inFrame)
 			pthread_mutex_unlock(&m_MutexAEC);
 		}
 		// 如果是视频，投递到UDP发送线程，进行打包发送...
-		if (inFrame.typeFlvTag == PT_TAG_VIDEO) {
+		pthread_mutex_lock(&m_MutexSend);
+		if (inFrame.typeFlvTag == PT_TAG_VIDEO && m_lpUDPSendThread != NULL) {
 			m_lpUDPSendThread->PushFrame(inFrame);
 		}
+		pthread_mutex_unlock(&m_MutexSend);
 	}
 }
 
 // 把回音消除之后的AAC音频，返回给UDP发送对象当中...
 void CViewCamera::doPushAudioAEC(FMS_FRAME & inFrame)
 {
+	pthread_mutex_lock(&m_MutexSend);
 	// 如果UDP推流线程有效，并且，推流线程没有发生严重拥塞，继续传递数据...
 	if (m_lpUDPSendThread != NULL && !m_lpUDPSendThread->IsNeedDelete()) {
 		m_lpUDPSendThread->PushFrame(inFrame);
 	}
+	pthread_mutex_unlock(&m_MutexSend);
 }
 
 // 把投递到扬声器的PCM音频，放入回音消除当中...
@@ -901,10 +918,12 @@ bool CViewCamera::doCameraStop()
 		}
 	}
 	// 删除UDP推流线程 => 数据使用者...
+	pthread_mutex_lock(&m_MutexSend);
 	if (m_lpUDPSendThread != NULL) {
 		delete m_lpUDPSendThread;
 		m_lpUDPSendThread = NULL;
 	}
+	pthread_mutex_unlock(&m_MutexSend);
 	// 删除音频回音消除对象 => 数据使用者...
 	pthread_mutex_lock(&m_MutexAEC);
 	if (m_lpWebrtcAEC != NULL) {

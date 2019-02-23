@@ -999,6 +999,7 @@ void CStudentApp::doCheckRemote()
 	// 将远程会话的信号槽进行相互关联 => 老师推流端上线或下线时的事件通知...
 	if (lpViewTeacher != NULL) {
 		connect(m_RemoteSession, SIGNAL(doTriggerRecvThread(bool)), lpViewTeacher, SLOT(onTriggerUdpRecvThread(bool)));
+		connect(m_RemoteSession, SIGNAL(doTriggerDeleteExAudioThread()), lpViewTeacher, SLOT(onTriggerDeleteExAudioThread()));
 	}
 }
 

@@ -115,6 +115,13 @@ void CViewTeacher::doResetMulticastIPSend()
 	}
 }
 
+void CViewTeacher::onTriggerDeleteExAudioThread()
+{
+	if (m_lpUDPRecvThread != NULL) {
+		m_lpUDPRecvThread->doDeleteExAudioThread();
+	}
+}
+
 CViewTeacher::~CViewTeacher()
 {
 	// 删除UDP组播接收线程对象...
