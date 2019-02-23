@@ -363,7 +363,8 @@ void CUDPRecvThread::doSendSupplyCmd(bool bIsAudio)
 	// 修改休息状态 => 已经有发包，不能休息...
 	m_bNeedSleep = false;
 	// 打印已发送补包命令...
-	//blog(LOG_INFO, "%s Supply Send => Dir: %d, Count: %d, MaxResend: %d", TM_RECV_NAME, m_dt_to_dir, m_rtp_supply.suSize/sizeof(uint32_t), nCalcMaxResend);
+	blog(LOG_INFO, "%s Supply Send => PType: %d, Dir: %d, Count: %d, MaxResend: %d", TM_RECV_NAME, 
+	     m_rtp_supply.suType, m_dt_to_dir, m_rtp_supply.suSize/sizeof(uint32_t), nCalcMaxResend);
 }
 
 void CUDPRecvThread::doRecvPacket()
