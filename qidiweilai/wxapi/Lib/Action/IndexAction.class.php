@@ -49,6 +49,7 @@ class IndexAction extends Action
     }*/
     // 电脑终端页面显示 => 设定登录导航数据...
     $this->assign('my_nav', $this->m_LoginNav);
+    $this->assign('my_ver', C('VERSION'));
     $this->display('index');
   }
   //

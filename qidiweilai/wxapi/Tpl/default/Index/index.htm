@@ -288,22 +288,27 @@ layui.use(['layer']);
         </div>
         <div class="layui-col-lg6 layui-hide-xs" style="text-align:right;">
           <div class="site-download">
-            <a class="layui-inline" href="/update_studio/cloud-teacher-win32-1.1.6.exe">
+            <a class="layui-inline" href="/update_studio/cloud-teacher-win32-{{$my_ver}}.exe">
               <cite class="layui-icon">&#xe601;</cite>下载讲师端
             </a>
           </div>
         </div>
         <div class="layui-col-lg6 layui-hide-xs" style="text-align:left;">
           <div class="site-download">
-            <a class="layui-inline" href="/update_studio/cloud-student-win32-1.1.6.exe">
+            <a class="layui-inline" href="/update_studio/cloud-student-win32-{{$my_ver}}.exe">
               <cite class="layui-icon">&#xe601;</cite>下载学生端
             </a>
           </div>
         </div>
         <div class="layui-col-lg12 layui-col-xs12">
           <div class="site-version">
-            <span>当前版本：<cite>1.1.6</cite>&nbsp;</span>
+            <span>当前版本：<cite>{{$my_ver}}</cite>&nbsp;</span>
             <span><a href="/changelog" rel="nofollow">更新日志</a></span>
+          </div>
+          <div class="site-version layui-hide-xs">
+            <span><a href="/update_studio/vc_redist.x64.exe" rel="nofollow">VS2015.x64&nbsp;</a></span>
+            <span><a href="/update_studio/vc_redist.x86.exe" rel="nofollow">VS2015.x86&nbsp;</a></span>
+            <span><a href="/update_studio/dxwebsetup.exe" rel="nofollow">DXWebSetup</a></span>
           </div>
         </div>
       </div>
