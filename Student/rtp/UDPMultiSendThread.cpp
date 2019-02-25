@@ -14,6 +14,7 @@ CUDPMultiSendThread::CUDPMultiSendThread(CUDPRecvThread * lpServerThread)
 	// 初始化音视频环形队列，预分配空间...
 	circlebuf_init(&m_audio_circle);
 	circlebuf_init(&m_video_circle);
+	circlebuf_init(&m_ex_audio_circle);
 	// 初始化环形队列互斥保护对象...
 	pthread_mutex_init_value(&m_MutexBuff);
 	pthread_mutex_init_value(&m_MutexSock);
@@ -209,7 +210,7 @@ BOOL CUDPMultiSendThread::Transfer(char * lpBuffer, int inRecvLen)
 	return true;
 }
 
-void CUDPMultiSendThread::PushPacket(string & strPacket, bool bIsAudio)
+void CUDPMultiSendThread::PushPacket(string & strPacket, uint8_t inPType)
 {
 	// 进行组播缓存互斥保护...
 	pthread_mutex_lock(&m_MutexBuff);
@@ -218,7 +219,7 @@ void CUDPMultiSendThread::PushPacket(string & strPacket, bool bIsAudio)
 	static char szPacketBuffer[nPerPackSize] = { 0 };
 	ASSERT((strPacket.size() % nPerPackSize) == 0);
 	// 根据标志定位到音频或视频环形队列，并将输入的缓存追加到环形队列当中...
-	circlebuf & cur_circle = bIsAudio ? m_audio_circle : m_video_circle;
+	circlebuf & cur_circle = ((inPType == PT_TAG_EX_AUDIO) ? m_ex_audio_circle : ((inPType == PT_TAG_AUDIO) ? m_audio_circle : m_video_circle));
 	circlebuf_push_back(&cur_circle, strPacket.c_str(), strPacket.size());
 	// 遍历环形队列，删除所有超过n秒的缓存数据包 => 不管是否是关键帧或完整包，只是为补包而存在...
 	rtp_hdr_t * lpCurHeader = NULL;
@@ -289,29 +290,26 @@ void CUDPMultiSendThread::doRecvPacket()
 	memcpy(&rtpSupply, ioBuffer, nHeadSize);
 	if ((rtpSupply.suSize <= 0) || ((nHeadSize + rtpSupply.suSize) != outRecvLen))
 		return;
-	// 根据数据包类型，找到缓存集合...
-	bool bIsAudio = (rtpSupply.suType == PT_TAG_AUDIO) ? true : false;
 	// 获取需要补包的序列号，加入到补包队列当中...
 	char * lpDataPtr = ioBuffer + nHeadSize;
 	int    nDataSize = rtpSupply.suSize;
 	while (nDataSize > 0) {
-		uint32_t   nLoseSeq = 0;
-		rtp_lose_t rtpLose = { 0 };
 		// 获取补包序列号...
+		uint32_t nLoseSeq = 0;
 		memcpy(&nLoseSeq, lpDataPtr, sizeof(int));
 		// 移动数据区指针位置...
 		lpDataPtr += sizeof(int);
 		nDataSize -= sizeof(int);
 		// 查看这个丢包号是否是服务器端也要补的包...
 		// 服务器收到补包后会自动转发，这里就不用补了...
-		if (m_lpServerThread->doIsServerLose(bIsAudio, nLoseSeq)) {
-			//blog(LOG_INFO, "%s Multicast ServerLose, Seq: %lu, Audio: %d", TM_RECV_NAME, nLoseSeq, bIsAudio);
+		if (m_lpServerThread->doIsServerLose(rtpSupply.suType, nLoseSeq)) {
+			//blog(LOG_INFO, "%s Multicast ServerLose, Seq: %lu, PType: %d", TM_RECV_NAME, nLoseSeq, rtpSupply.suType);
 			continue;
 		}
 		// 进行组播缓存互斥保护...
 		pthread_mutex_lock(&m_MutexBuff);
 		// 是观看端丢失的新包，需要进行补包队列处理...
-		this->doSendLosePacket(bIsAudio, nLoseSeq);
+		this->doSendLosePacket(rtpSupply.suType, nLoseSeq);
 		// 组播缓存互斥保护结束...
 		pthread_mutex_unlock(&m_MutexBuff);
 	}
@@ -319,10 +317,10 @@ void CUDPMultiSendThread::doRecvPacket()
 ///////////////////////////////////////////////////////////////////////////////////
 // 注意：服务器和发送端，都是假定环形队列里的序号是连续的，直接通过序号偏移进行定位...
 ///////////////////////////////////////////////////////////////////////////////////
-void CUDPMultiSendThread::doSendLosePacket(bool bIsAudio, uint32_t inLoseSeq)
+void CUDPMultiSendThread::doSendLosePacket(uint8_t inPType, uint32_t inLoseSeq)
 {
 	// 根据数据包类型，找到缓存集合...
-	circlebuf & cur_circle = bIsAudio ? m_audio_circle : m_video_circle;
+	circlebuf & cur_circle = ((inPType == PT_TAG_EX_AUDIO) ? m_ex_audio_circle : ((inPType == PT_TAG_AUDIO) ? m_audio_circle : m_video_circle));
 	// 如果环形队列为空，直接返回...
 	if (cur_circle.size <= 0)
 		return;
@@ -346,12 +344,12 @@ void CUDPMultiSendThread::doSendLosePacket(bool bIsAudio, uint32_t inLoseSeq)
 	max_seq = lpFrontHeader->seq;
 	// 发生最大序号越界是有可能的 => 组合数据帧需要凑齐...
 	if (max_seq < inLoseSeq) {
-		blog(LOG_INFO, "%s Multicast MaxSeq: [%lu, %lu], LoseSeq: %lu, Audio: %d", TM_RECV_NAME, min_seq, max_seq, inLoseSeq, bIsAudio);
+		blog(LOG_INFO, "%s Multicast MaxSeq: [%lu, %lu], LoseSeq: %lu, PType: %d", TM_RECV_NAME, min_seq, max_seq, inLoseSeq, inPType);
 		return;
 	}
 	// 如果要补充的数据包序号比最小序号还要小 => 没有找到，直接返回...
 	if (inLoseSeq < min_seq) {
-		blog(LOG_INFO, "%s Multicast MinSeq: [%lu, %lu], LoseSeq: %lu, Audio: %d", TM_RECV_NAME, min_seq, max_seq, inLoseSeq, bIsAudio);
+		blog(LOG_INFO, "%s Multicast MinSeq: [%lu, %lu], LoseSeq: %lu, PType: %d", TM_RECV_NAME, min_seq, max_seq, inLoseSeq, inPType);
 		return;
 	}
 	ASSERT(inLoseSeq >= min_seq);
@@ -360,7 +358,7 @@ void CUDPMultiSendThread::doSendLosePacket(bool bIsAudio, uint32_t inLoseSeq)
 	nSendPos = (inLoseSeq - min_seq) * nPerPackSize;
 	// 如果补包位置大于或等于环形队列长度 => 补包越界...
 	if (nSendPos >= cur_circle.size) {
-		blog(LOG_INFO, "%s Multicast Position Error, CurSeq: [%lu, %lu], LoseSeq: %lu, Audio: %d", TM_RECV_NAME, min_seq, max_seq, inLoseSeq, bIsAudio);
+		blog(LOG_INFO, "%s Multicast Position Error, CurSeq: [%lu, %lu], LoseSeq: %lu, PType: %d", TM_RECV_NAME, min_seq, max_seq, inLoseSeq, inPType);
 		return;
 	}
 	////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -372,7 +370,7 @@ void CUDPMultiSendThread::doSendLosePacket(bool bIsAudio, uint32_t inLoseSeq)
 	lpSendHeader = (rtp_hdr_t*)szPacketBuffer;
 	// 如果找到的序号位置不对 或 本身就是需要补的丢包...
 	if ((lpSendHeader->pt == PT_TAG_LOSE) || (lpSendHeader->seq != inLoseSeq)) {
-		blog(LOG_INFO, "%s Multicast Supply Error, CurSeq: %lu, LoseSeq: %lu, Audio: %d", TM_RECV_NAME, lpSendHeader->seq, inLoseSeq, bIsAudio);
+		blog(LOG_INFO, "%s Multicast Supply Error, CurSeq: %lu, LoseSeq: %lu, PType: %d", TM_RECV_NAME, lpSendHeader->seq, inLoseSeq, inPType);
 		return;
 	}
 	// 获取有效的数据区长度 => 包头 + 数据...
@@ -381,7 +379,7 @@ void CUDPMultiSendThread::doSendLosePacket(bool bIsAudio, uint32_t inLoseSeq)
 	GM_Error theErr = (m_lpUdpData != NULL) ? m_lpUdpData->SendTo((void*)szPacketBuffer, nSendSize) : GM_NoErr;
 	(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
 	// 打印已经成功补包 => 组播丢失的数据包序号...
-	blog(LOG_INFO, "%s Multicast SendLose OK, CurSeq: [%lu, %lu], LoseSeq: %lu, Audio: %d", TM_RECV_NAME, min_seq, max_seq, inLoseSeq, bIsAudio);
+	blog(LOG_INFO, "%s Multicast SendLose OK, CurSeq: [%lu, %lu], LoseSeq: %lu, PType: %d", TM_RECV_NAME, min_seq, max_seq, inLoseSeq, inPType);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////

@@ -117,6 +117,11 @@ void CViewTeacher::doResetMulticastIPSend()
 
 void CViewTeacher::onTriggerDeleteExAudioThread()
 {
+	// 如果组播接收对象有效，删除扩展音频播放线程...
+	if (m_lpUDPMultiRecvThread != NULL) {
+		m_lpUDPMultiRecvThread->doDeleteExAudioThread();
+	}
+	// 如果接收线程有效，删除扩展音频播放线程...
 	if (m_lpUDPRecvThread != NULL) {
 		m_lpUDPRecvThread->doDeleteExAudioThread();
 	}

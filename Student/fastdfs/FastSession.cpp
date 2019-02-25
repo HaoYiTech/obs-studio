@@ -670,12 +670,16 @@ bool CRemoteSession::SendLoginCmd()
 	if (!m_bIsConnected)
 		return false;
 	// 组合Login命令需要的JSON数据包 => 用采集端的MAC地址作为唯一标识...
+	char szDataBuf[32] = { 0 };
 	string strJson;	Json::Value root;
+	sprintf(szDataBuf, "%d", App()->GetRoleType());
+	root["role_type"] = szDataBuf;
 	root["mac_addr"] = App()->GetLocalMacAddr();
 	root["ip_addr"] = App()->GetLocalIPAddr();
 	root["room_id"] = App()->GetRoomIDStr();
 	root["pc_name"] = App()->GetMainName();
-	strJson = root.toStyledString(); ASSERT(strJson.size() > 0);
+	strJson = root.toStyledString();
+	ASSERT(strJson.size() > 0);
 	// 调用统一的接口进行命令数据的发送操作...
 	return this->doSendCommonCmd(kCmd_Student_Login, strJson.c_str(), strJson.size());
 }

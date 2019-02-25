@@ -17,13 +17,15 @@ public:
 	BOOL            InitThread();
 	bool            doVolumeEvent(bool bIsVolPlus);
 	void            doResetMulticastIPSend();
+	void            doDeleteExAudioThread();
 private:
+	void            ResetExAudio();
 	void            ClosePlayer();
 	void            ClearAllSocket();
 	BOOL            BuildDataSocket();
 	BOOL            BuildLoseSocket();
 
-	void			doSendSupplyCmd(bool bIsAudio);
+	void			doSendSupplyCmd(uint8_t inPType);
 	void            doCheckRecvTimeout();
 	void			doRecvPacket();
 	void			doSleepTo();
@@ -34,9 +36,9 @@ private:
 
 	void			doFillLosePack(uint8_t inPType, uint32_t nStartLoseID, uint32_t nEndLoseID);
 	void			doEraseLoseSeq(uint8_t inPType, uint32_t inSeqID);
-	void			doParseFrame(bool bIsAudio);
+	void			doParseFrame(uint8_t inPType);
 
-	void			doServerMinSeq(bool bIsAudio, uint32_t inMinSeq);
+	void			doServerMinSeq(uint8_t inPType, uint32_t inMinSeq);
 private:
 	enum {
 		kCmdSendCreate = 0,					// 开始发送 => 创建命令状态
@@ -55,8 +57,8 @@ private:
 	int				m_nMaxResendCount;		// 当前丢包最大重发次数
 
 	rtp_supply_t	m_rtp_supply;			// RTP补包命令结构体
-	rtp_header_t	m_rtp_header;			// RTP序列头结构体 => 接收 => 来自推流端...
-	string          m_strSeqHeader;         // 推流端上传的序列头命令包...
+	rtp_header_t	m_rtp_header;			// RTP序列头结构体 => 接收 => 来自老师推流端...
+	string          m_strSeqHeader;         // 老师推流端上传的序列头命令包...
 
 	circlebuf		m_audio_circle;			// 音频环形队列
 	circlebuf		m_video_circle;			// 视频环形队列
@@ -65,6 +67,12 @@ private:
 	bool			m_bFirstVideoSeq;		// 视频第一个数据包已收到标志...
 	uint32_t		m_nAudioMaxPlaySeq;		// 音频RTP当前最大播放序列号 => 最大连续有效序列号...
 	uint32_t		m_nVideoMaxPlaySeq;		// 视频RTP当前最大播放序列号 => 最大连续有效序列号...
+
+	bool            m_Ex_bFirstAudioSeq;    // 扩展音频第一个数据包已收到标志...
+	uint16_t        m_Ex_wAudioChangeNum;   // 扩展音频变化次数...
+	uint32_t        m_Ex_nAudioMaxPlaySeq;  // 扩展音频RTP当前最大播放序列号 => 最大连续有效序列号...
+	GM_MapLose		m_Ex_AudioMapLose;		// 扩展音频检测到的丢包集合队列...
+	circlebuf		m_Ex_audio_circle;		// 扩展音频环形队列
 
 	GM_MapLose		m_AudioMapLose;			// 音频检测到的丢包集合队列...
 	GM_MapLose		m_VideoMapLose;			// 视频检测到的丢包集合队列...

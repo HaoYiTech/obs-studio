@@ -1003,6 +1003,13 @@ void CStudentApp::doCheckRemote()
 	}
 }
 
+// 返回左侧是否处于正在推流状态...
+bool CStudentApp::IsLeftPusher()
+{
+	CViewLeft * lpViewLeft = m_studentWindow->GetViewLeft();
+	return ((lpViewLeft->GetLiveCameraID() <= 0) ? false : true);
+}
+
 void CStudentApp::doCheckOnLine()
 {
 	if (m_RemoteSession == NULL)

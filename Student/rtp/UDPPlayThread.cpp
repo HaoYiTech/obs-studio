@@ -503,12 +503,13 @@ ACTUALLY_DEFINE_GUID(IID_IMMDeviceEnumerator, 0xA95664D2, 0x9614, 0x4F35, 0xA7, 
 ACTUALLY_DEFINE_GUID(IID_IAudioClient, 0x1CB9AD4C, 0xDBFA, 0x4C32, 0xB1, 0x78, 0xC2, 0xF5, 0x68, 0xA7, 0x03, 0xB2);
 ACTUALLY_DEFINE_GUID(IID_IAudioRenderClient, 0xF294ACFC, 0x3146, 0x4483, 0xA7, 0xBF, 0xAD, 0xDC, 0xA7, 0xC2, 0x60, 0xE2);
 
-CAudioThread::CAudioThread(CPlaySDL * lpPlaySDL)
+CAudioThread::CAudioThread(CPlaySDL * lpPlaySDL, bool bIsExAudio/* = false*/)
 {
 	m_device = NULL;
 	m_client = NULL;
 	m_render = NULL;
 	m_frame_num = 0;
+	m_bIsExAudio = bIsExAudio;
 	m_lpPlaySDL = lpPlaySDL;
 	m_in_rate_index = 0;
 	m_in_sample_rate = 0;
@@ -579,7 +580,7 @@ void CAudioThread::doDecodeFrame()
 		return;
 	}
 	// 这是为了测试原始PTS而获取的初始PTS值 => 只在打印调试信息时使用...
-	int64_t inStartPtsMS = m_lpPlaySDL->GetStartPtsMS();
+	int64_t inStartPtsMS = (m_bIsExAudio ? m_lpPlaySDL->GetExStartPtsMS() : m_lpPlaySDL->GetStartPtsMS());
 	// 抽取一个AVPacket进行解码操作，一个AVPacket不一定能解码出一个Picture...
 	int got_picture = 0, nResult = 0;
 	// 为了快速解码，只要有数据就解码，同时与数据输入线程互斥...
@@ -691,11 +692,13 @@ void CAudioThread::doDisplaySDL()
 		return;
 	}
 	// 这是为了测试原始PTS而获取的初始PTS值 => 只在打印调试信息时使用...
-	int64_t inStartPtsMS = m_lpPlaySDL->GetStartPtsMS();
+	int64_t inStartPtsMS = (m_bIsExAudio ? m_lpPlaySDL->GetExStartPtsMS() : m_lpPlaySDL->GetStartPtsMS());
 	// 计算当前时间与0点位置的时间差 => 转换成毫秒...
 	int64_t sys_cur_ms = (os_gettime_ns() - m_lpPlaySDL->GetSysZeroNS())/1000000;
 	// 累加人为设定的延时毫秒数 => 相减...
 	sys_cur_ms -= m_lpPlaySDL->GetZeroDelayMS();
+	// 如果是扩展音频，需要对时间差做特殊计算 => 忽略网络延时，使用特殊的扩展零点时刻点...
+	sys_cur_ms = (m_bIsExAudio ? (os_gettime_ns() - m_lpPlaySDL->GetExSysZeroNS()) / 1000000 : sys_cur_ms);
 	// 获取第一个已解码数据帧 => 时间最小的数据帧...
 	int64_t frame_pts_ms = 0; int out_buffer_size = 0;
 	circlebuf_peek_front(&m_circle, &frame_pts_ms, sizeof(int64_t));
@@ -765,13 +768,18 @@ void CAudioThread::doDisplaySDL()
 			memcpy(output, m_max_buffer_ptr, out_buffer_size);
 			hr = m_render->ReleaseBuffer(resample_frames, 0);
 			// 把解码后的音频数据投递给当前正在被拉取的通道进行回音消除...
-			App()->doEchoCancel(m_max_buffer_ptr, out_buffer_size, m_out_sample_rate, m_out_channel_num, msInSndCardBuf);
+			if (!m_bIsExAudio) {
+				App()->doEchoCancel(m_max_buffer_ptr, out_buffer_size, m_out_sample_rate, m_out_channel_num, msInSndCardBuf);
+			}
 		}
 	} else {
 		// 注意：经过试验，丢弃或保持原样，都会降低AEC效果...
 		// 声卡缓存大于300毫秒，重置静音，打印调试信息...
 		memset(m_max_buffer_ptr, out_buffer_size, 0);
-		App()->doEchoCancel(m_max_buffer_ptr, out_buffer_size, m_out_sample_rate, m_out_channel_num, msInSndCardBuf);
+		// 不是扩展音频才能进行回音消除...
+		if (!m_bIsExAudio) {
+			App()->doEchoCancel(m_max_buffer_ptr, out_buffer_size, m_out_sample_rate, m_out_channel_num, msInSndCardBuf);
+		}
 		blog(LOG_INFO, "%s [Audio] Delayed, Padding: %u, AVPacket: %d, AVFrame: %d", TM_RECV_NAME, nCurPadFrame, m_MapPacket.size(), m_frame_num);
 	}
 	// 删除已经使用的音频数据 => 从环形队列中移除...
@@ -901,7 +909,7 @@ BOOL CAudioThread::InitAudio(int nInRateIndex, int nInChannelNum)
 	m_out_frame_bytes = av_samples_get_buffer_size(NULL, out_audio_channel_num, out_nb_samples, out_sample_fmt, 1);
 
 	// 通过所有通道扬声器创建成功...
-	App()->SetAudioHorn(true);
+	(m_bIsExAudio ? NULL : App()->SetAudioHorn(true));
 
 	/*//SDL_AudioSpec => 不能使用系统推荐参数 => 不用回调模式，主动投递...
 	SDL_AudioSpec audioSpec = {0};
@@ -948,7 +956,7 @@ void CAudioThread::doMonitorFree()
 		uRef = m_render->Release();
 	}
 	// 通过所有通道扬声器释放完成...
-	App()->SetAudioHorn(false);
+	(m_bIsExAudio ? NULL : App()->SetAudioHorn(false));
 }
 
 void CAudioThread::Entry()
@@ -1024,11 +1032,15 @@ CPlaySDL::CPlaySDL(CViewRender * lpViewRender, int64_t inSysZeroNS)
   : m_lpViewRender(lpViewRender)
   , m_sys_zero_ns(inSysZeroNS)
   , m_bFindFirstVKey(false)
+  , m_lpExAudioThread(NULL)
   , m_lpVideoThread(NULL)
   , m_lpAudioThread(NULL)
   , m_zero_delay_ms(-1)
   , m_start_pts_ms(-1)
   , m_fVolRate(1.0f)
+  , m_ex_start_ms(-1)
+  , m_ex_zero_ns(-1)
+  , m_ex_format(0)
 {
 	ASSERT( m_lpViewRender != NULL );
 	ASSERT( m_sys_zero_ns > 0 );
@@ -1036,6 +1048,11 @@ CPlaySDL::CPlaySDL(CViewRender * lpViewRender, int64_t inSysZeroNS)
 
 CPlaySDL::~CPlaySDL()
 {
+	// 释放扩展音频解码对象...
+	if (m_lpExAudioThread != NULL) {
+		delete m_lpExAudioThread;
+		m_lpExAudioThread = NULL;
+	}
 	// 释放音视频解码对象...
 	if( m_lpAudioThread != NULL ) {
 		delete m_lpAudioThread;
@@ -1094,6 +1111,57 @@ BOOL CPlaySDL::InitAudio(int nInRateIndex, int nInChannelNum)
 	}
 	// 返回成功...
 	return true;
+}
+
+// 由左侧窗口触发的删除扩展音频播放线程事件...
+void CPlaySDL::doDeleteExAudioThread()
+{
+	// 释放扩展音频解码对象...
+	if (m_lpExAudioThread != NULL) {
+		delete m_lpExAudioThread;
+		m_lpExAudioThread = NULL;
+	}
+	// 重置其它相关变量...
+	m_ex_start_ms = -1;
+	m_ex_format = 0;
+}
+
+// 针对扩展音频数据包的特殊处理过程...
+void CPlaySDL::PushExAudio(string & inData, uint32_t inSendTime, uint32_t inExFormat)
+{
+	// 注意：只要次数或格式变化都要重置，因为数据包的序号会重置...
+	// 如果扩展音频格式发生变化 => 必须整体检测...
+	if (m_ex_format != inExFormat) {
+		// 必须保存整体的扩展音频...
+		m_ex_format = inExFormat;
+		// 解析扩展音频新的rateIndex|channelNum...
+		int nRateIndex = (inExFormat & 0x1F);         // rateIndex  => 截取 低5位...
+		int nChannelNum = (inExFormat & 0xE0) >> 5;   // channelNum => 截取 高3位...
+		// 重置播放起点时间和系统计时零点时间...
+		m_ex_start_ms = -1;
+		m_ex_zero_ns = os_gettime_ns();
+		// 释放扩展音频解码对象...
+		if (m_lpExAudioThread != NULL) {
+			delete m_lpExAudioThread;
+			m_lpExAudioThread = NULL;
+		}
+		// 重建扩展音频播放线程...
+		m_lpExAudioThread = new CAudioThread(this, true);
+		m_lpExAudioThread->InitAudio(nRateIndex, nChannelNum);
+	}
+	// 获取第一帧的PTS时间戳 => 做为启动时间戳，注意不是系统0点时刻...
+	if (m_ex_start_ms < 0) {
+		m_ex_start_ms = inSendTime;
+		blog(LOG_INFO, "%s StartPTS: %lu, Type: %d", TM_RECV_NAME, inSendTime, PT_TAG_EX_AUDIO);
+	}
+	// 如果当前帧的时间戳比第一帧的时间戳还要小，不要扔掉，设置成启动时间戳就可以了...
+	if (inSendTime < m_ex_start_ms) {
+		inSendTime = m_ex_start_ms;
+	}
+	// 计算当前帧的时间戳 => 时间戳必须做修正，否则会混乱...
+	int nCalcPTS = inSendTime - (uint32_t)m_ex_start_ms;
+	m_lpExAudioThread->doFillPacket(inData, nCalcPTS, true, 0);
+	//blog(LOG_INFO, "[ExAudio] CalcPTS: %lu, ExFormat: %lu", nCalcPTS, inExFormat);
 }
 
 void CPlaySDL::PushPacket(int zero_delay_ms, string & inData, int inTypeTag, bool bIsKeyFrame, uint32_t inSendTime)

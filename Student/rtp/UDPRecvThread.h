@@ -16,17 +16,19 @@ public:
 	virtual ~CUDPRecvThread();
 	virtual void Entry();
 public:
-	BOOL            doIsServerLose(bool bIsAudio, uint32_t inLoseSeq);
+	BOOL            doIsServerLose(uint8_t inPType, uint32_t inLoseSeq);
 	BOOL			InitThread(string & strUdpAddr, int nUdpPort);
 	bool            doVolumeEvent(bool bIsVolPlus);
 	void            doResetMulticastIPSend();
+	void            doDeleteExAudioThread();
 private:
+	void            ResetExAudio();
 	void            CloseMultiSend();
 	void			ClosePlayer();
 	void			CloseSocket();
 	void			doSendCreateCmd();
 	void			doSendDeleteCmd();
-	void			doSendSupplyCmd(bool bIsAudio);
+	void			doSendSupplyCmd(uint8_t inPType);
 	void			doSendDetectCmd();
 	void			doRecvPacket();
 	void			doSleepTo();
@@ -37,10 +39,10 @@ private:
 
 	void			doFillLosePack(uint8_t inPType, uint32_t nStartLoseID, uint32_t nEndLoseID);
 	void			doEraseLoseSeq(uint8_t inPType, uint32_t inSeqID);
-	void			doParseFrame(bool bIsAudio);
+	void			doParseFrame(uint8_t inPType);
 
-	uint32_t		doCalcMaxConSeq(bool bIsAudio);
-	void			doServerMinSeq(bool bIsAudio, uint32_t inMinSeq);
+	uint32_t		doCalcMaxConSeq(uint8_t inPType);
+	void			doServerMinSeq(uint8_t inPType, uint32_t inMinSeq);
 private:
 	enum {
 		kCmdSendCreate	= 0,				// 开始发送 => 创建命令状态
@@ -68,8 +70,8 @@ private:
 	rtp_delete_t	m_rtp_delete;			// RTP删除房间和直播结构体
 	rtp_supply_t	m_rtp_supply;			// RTP补包命令结构体
 
-	rtp_header_t	m_rtp_header;			// RTP序列头结构体 => 接收 => 来自推流端...
-	string          m_strSeqHeader;         // 推流端上传的序列头命令包...
+	rtp_header_t	m_rtp_header;			// RTP序列头结构体 => 接收 => 来自老师推流端...
+	string          m_strSeqHeader;         // 老师推流端上传的序列头命令包...
 
 	int64_t			m_sys_zero_ns;			// 系统计时零点 => 第一个数据包到达的系统时刻点 => 纳秒...
 	int64_t			m_next_create_ns;		// 下次发送创建命令时间戳 => 纳秒 => 每隔100毫秒发送一次...
@@ -82,6 +84,12 @@ private:
 	bool			m_bFirstVideoSeq;		// 视频第一个数据包已收到标志...
 	uint32_t		m_nAudioMaxPlaySeq;		// 音频RTP当前最大播放序列号 => 最大连续有效序列号...
 	uint32_t		m_nVideoMaxPlaySeq;		// 视频RTP当前最大播放序列号 => 最大连续有效序列号...
+
+	bool            m_Ex_bFirstAudioSeq;    // 扩展音频第一个数据包已收到标志...
+	uint16_t        m_Ex_wAudioChangeNum;   // 扩展音频变化次数...
+	uint32_t        m_Ex_nAudioMaxPlaySeq;  // 扩展音频RTP当前最大播放序列号 => 最大连续有效序列号...
+	GM_MapLose		m_Ex_AudioMapLose;		// 扩展音频检测到的丢包集合队列...
+	circlebuf		m_Ex_audio_circle;		// 扩展音频环形队列
 
 	GM_MapLose		m_AudioMapLose;			// 音频检测到的丢包集合队列...
 	GM_MapLose		m_VideoMapLose;			// 视频检测到的丢包集合队列...

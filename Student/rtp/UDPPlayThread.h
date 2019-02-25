@@ -75,7 +75,7 @@ private:
 class CAudioThread : public CDecoder, public OSThread
 {
 public:
-	CAudioThread(CPlaySDL * lpPlaySDL);
+	CAudioThread(CPlaySDL * lpPlaySDL, bool bIsExAudio = false);
 	virtual ~CAudioThread();
 	virtual void Entry();
 public:
@@ -88,6 +88,7 @@ private:
 	void	doDisplaySDL();
 	void    doMonitorFree();
 private:
+	bool                m_bIsExAudio;          // 扩展音频标志
 	int					m_in_rate_index;       // 输入采样索引
 	int					m_in_channel_num;      // 输入声道数
 	int				    m_in_sample_rate;      // 输入采样率
@@ -117,10 +118,13 @@ public:
 	CPlaySDL(CViewRender * lpViewRender, int64_t inSysZeroNS);
 	~CPlaySDL();
 public:
+	void        doDeleteExAudioThread();
+	void        PushExAudio(string & inData, uint32_t inSendTime, uint32_t inExFormat);
 	void		PushPacket(int zero_delay_ms, string & inData, int inTypeTag, bool bIsKeyFrame, uint32_t inSendTime);
 	BOOL		InitVideo(string & inSPS, string & inPPS, int nWidth, int nHeight, int nFPS);
 	BOOL		InitAudio(int nInRateIndex, int nInChannelNum);
 	bool        doVolumeEvent(bool bIsVolPlus);
+	float       GetVolRate() { return m_fVolRate; }
 	int			GetAPacketSize() { return ((m_lpAudioThread != NULL) ? m_lpAudioThread->GetMapPacketSize() : 0); }
 	int			GetVPacketSize() { return ((m_lpVideoThread != NULL) ? m_lpVideoThread->GetMapPacketSize() : 0); }
 	int			GetAFrameSize() { return ((m_lpAudioThread != NULL) ? m_lpAudioThread->GetCircleSize() : 0); }
@@ -128,15 +132,21 @@ public:
 	int64_t		GetZeroDelayMS() { return m_zero_delay_ms; }
 	int64_t		GetSysZeroNS() { return m_sys_zero_ns; }
 	int64_t		GetStartPtsMS() { return m_start_pts_ms; }
-	float       GetVolRate() { return m_fVolRate; }
+	int64_t     GetExStartPtsMS() { return m_ex_start_ms; }
+	int64_t     GetExSysZeroNS() { return m_ex_zero_ns; }
+	void        ResetExAudioFormat() { m_ex_format = 0; }
 private:
 	float               m_fVolRate;         // 音量放大倍率
 	bool				m_bFindFirstVKey;	// 是否找到第一个视频关键帧标志...
 	int64_t				m_sys_zero_ns;		// 系统计时零点 => 启动时间戳 => 纳秒...
 	int64_t				m_start_pts_ms;		// 第一帧的PTS时间戳计时起点 => 毫秒...
 	int64_t				m_zero_delay_ms;	// 延时设定毫秒数 => 可以根据情况自动调节...
+	int64_t             m_ex_start_ms;      // 扩展音频第一帧PTS时间戳计时起点 => 毫秒...
+	int64_t             m_ex_zero_ns;       // 扩展音频系统计时零点 => 启动时间戳 => 纳秒...
+	uint32_t            m_ex_format;        // 扩展音频的格式信息，包含rateIndex|channelNum...
 
-	CVideoThread    *   m_lpVideoThread;	// 视频线程...
+	CAudioThread    *   m_lpExAudioThread;	// 扩展音频...
 	CAudioThread    *   m_lpAudioThread;	// 音频线程...
+	CVideoThread    *   m_lpVideoThread;	// 视频线程...
 	CViewRender     *   m_lpViewRender;     // 渲染窗口...
 };

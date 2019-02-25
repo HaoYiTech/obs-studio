@@ -22,6 +22,11 @@ CUDPMultiRecvThread::CUDPMultiRecvThread(CViewRender * lpViewRender)
   , m_sys_zero_ns(-1)
 {
 	ASSERT(m_lpViewRender != NULL);
+	// 单独重置扩展音频变化次数和缓存...
+	m_Ex_wAudioChangeNum = 0;
+	circlebuf_init(&m_Ex_audio_circle);
+	// 重置扩展音频相关变量...
+	this->ResetExAudio();
 	// 初始化命令状态...
 	m_nCmdState = kCmdSendCreate;
 	// 初始化rtp序列头结构体...
@@ -49,10 +54,20 @@ CUDPMultiRecvThread::~CUDPMultiRecvThread()
 	// 释放音视频环形队列空间...
 	circlebuf_free(&m_audio_circle);
 	circlebuf_free(&m_video_circle);
+	circlebuf_free(&m_Ex_audio_circle);
 	// 通知左侧窗口，拉流线程已经停止...
 	App()->onUdpRecvThreadStop();
 
 	blog(LOG_INFO, "%s == [~CUDPMultiRecvThread Exit] ==", TM_RECV_NAME);
+}
+
+void CUDPMultiRecvThread::ResetExAudio()
+{
+	m_Ex_bFirstAudioSeq = false;
+	m_Ex_nAudioMaxPlaySeq = 0;
+	m_Ex_AudioMapLose.clear();
+	circlebuf_free(&m_Ex_audio_circle);
+	circlebuf_reserve(&m_Ex_audio_circle, DEF_CIRCLE_SIZE / 4);
 }
 
 void CUDPMultiRecvThread::ClosePlayer()
@@ -193,6 +208,13 @@ void CUDPMultiRecvThread::doResetMulticastIPSend()
 	(theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL;
 }
 
+void CUDPMultiRecvThread::doDeleteExAudioThread()
+{
+	if (m_lpPlaySDL != NULL) {
+		m_lpPlaySDL->doDeleteExAudioThread();
+	}
+}
+
 void CUDPMultiRecvThread::Entry()
 {
 	blog(LOG_INFO, "== CUDPMultiRecvThread::Entry() ==");
@@ -207,13 +229,17 @@ void CUDPMultiRecvThread::Entry()
 		// 接收一个到达的服务器反馈包...
 		this->doRecvPacket();
 		// 先发送音频补包命令...
-		this->doSendSupplyCmd(true);
+		this->doSendSupplyCmd(PT_TAG_AUDIO);
 		// 再发送视频补包命令...
-		this->doSendSupplyCmd(false);
+		this->doSendSupplyCmd(PT_TAG_VIDEO);
+		// 最后发送扩展音频补包命令...
+		this->doSendSupplyCmd(PT_TAG_EX_AUDIO);
 		// 从环形队列中抽取完整一帧音频放入播放器...
-		this->doParseFrame(true);
+		this->doParseFrame(PT_TAG_AUDIO);
 		// 从环形队列中抽取完整一帧视频放入播放器...
-		this->doParseFrame(false);
+		this->doParseFrame(PT_TAG_VIDEO);
+		// 从环形队列中抽取完整一帧扩展音频放入播放器...
+		this->doParseFrame(PT_TAG_EX_AUDIO);
 		// 等待发送或接收下一个数据包...
 		this->doSleepTo();
 	}
@@ -233,6 +259,9 @@ void CUDPMultiRecvThread::doCheckRecvTimeout()
 	m_nMaxResendCount = 0;
 	m_nAudioMaxPlaySeq = 0;
 	m_nVideoMaxPlaySeq = 0;
+	m_Ex_wAudioChangeNum = 0;
+	m_Ex_nAudioMaxPlaySeq = 0;
+	m_Ex_bFirstAudioSeq = false;
 	m_bFirstAudioSeq = false;
 	m_bFirstVideoSeq = false;
 	m_server_cache_time_ms = -1;
@@ -246,11 +275,13 @@ void CUDPMultiRecvThread::doCheckRecvTimeout()
 	// 初始化rtp序列头结构体...
 	memset(&m_rtp_header, 0, sizeof(m_rtp_header));
 	// 初始化音视频环形队列，预分配空间...
-	circlebuf_init(&m_audio_circle);
-	circlebuf_init(&m_video_circle);
+	circlebuf_free(&m_audio_circle);
+	circlebuf_free(&m_video_circle);
+	circlebuf_free(&m_Ex_audio_circle);
 	// 清空补包序号队列...
 	m_AudioMapLose.clear();
 	m_VideoMapLose.clear();
+	m_Ex_AudioMapLose.clear();
 	// 删除音视频播放线程...
 	this->ClosePlayer();
 	// 通知左侧窗口，拉流线程已经停止...
@@ -396,14 +427,16 @@ void CUDPMultiRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 
 		// 网络极端情况下避免服务器补包失败...
 		// 先处理服务器回传的音频最小序号包...
-		this->doServerMinSeq(true, rtpDetect.maxAConSeq);
+		this->doServerMinSeq(PT_TAG_AUDIO, rtpDetect.maxAConSeq);
 		// 再处理服务器回传的视频最小序号包...
-		this->doServerMinSeq(false, rtpDetect.maxVConSeq);
-		
+		this->doServerMinSeq(PT_TAG_VIDEO, rtpDetect.maxVConSeq);
+		// 最后处理服务器回传的扩展音频最小序号包...
+		this->doServerMinSeq(PT_TAG_EX_AUDIO, rtpDetect.maxExAConSeq);
+
 		// 注意：网络延时是组播发送端已经计算完毕的数值...
 		int keep_rtt = rtpDetect.tsSrc;
-		// 如果音频和视频都没有丢包，直接设定最大重发次数为0...
-		if (m_AudioMapLose.size() <= 0 && m_VideoMapLose.size() <= 0) {
+		// 如果音频|视频|扩展音频都没有丢包，直接设定最大重发次数为0...
+		if (m_AudioMapLose.size() <= 0 && m_VideoMapLose.size() <= 0 && m_Ex_AudioMapLose.size() <= 0) {
 			m_nMaxResendCount = 0;
 		}
 		// 防止网络突发延迟增大, 借鉴 TCP 的 RTT 遗忘衰减的算法...
@@ -421,9 +454,9 @@ void CUDPMultiRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 
 		// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
 		const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-		blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, ACircle: %d, VCircle: %d", TM_RECV_NAME,
+		blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, ACircle: %d, VCircle: %d, EXACircle: %d", TM_RECV_NAME,
 			 rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms, m_server_cache_time_ms,
-			 m_audio_circle.size/nPerPackSize, m_video_circle.size/nPerPackSize);
+			 m_audio_circle.size/nPerPackSize, m_video_circle.size/nPerPackSize, m_Ex_audio_circle.size/nPerPackSize);
 		// 打印播放器底层的缓存状态信息...
 		/*if (m_lpPlaySDL != NULL) {
 			blog(LOG_INFO, "%s Recv Detect => APacket: %d, VPacket: %d, AFrame: %d, VFrame: %d", TM_RECV_NAME,
@@ -434,12 +467,12 @@ void CUDPMultiRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 
 // 本地接收缓存数据包的清理是靠解析数据帧，不是靠服务器的最小数据包...
 // 但是，在网络极端情况下，这种主动删除的方式就会起作用，避免服务器补包失败...
-void CUDPMultiRecvThread::doServerMinSeq(bool bIsAudio, uint32_t inMinSeq)
+void CUDPMultiRecvThread::doServerMinSeq(uint8_t inPType, uint32_t inMinSeq)
 {
 	// 根据数据包类型，找到丢包集合、环形队列、最大播放包...
-	GM_MapLose & theMapLose = bIsAudio ? m_AudioMapLose : m_VideoMapLose;
-	circlebuf  & cur_circle = bIsAudio ? m_audio_circle : m_video_circle;
-	uint32_t  & nMaxPlaySeq = bIsAudio ? m_nAudioMaxPlaySeq : m_nVideoMaxPlaySeq;
+	GM_MapLose & theMapLose = ((inPType == PT_TAG_EX_AUDIO) ? m_Ex_AudioMapLose : ((inPType == PT_TAG_AUDIO) ? m_AudioMapLose : m_VideoMapLose));
+	circlebuf  & cur_circle = ((inPType == PT_TAG_EX_AUDIO) ? m_Ex_audio_circle : ((inPType == PT_TAG_AUDIO) ? m_audio_circle : m_video_circle));
+	uint32_t  & nMaxPlaySeq = ((inPType == PT_TAG_EX_AUDIO) ? m_Ex_nAudioMaxPlaySeq : ((inPType == PT_TAG_AUDIO) ? m_nAudioMaxPlaySeq : m_nVideoMaxPlaySeq));
 	// 如果输入的最小包号无效，直接返回...
 	if (inMinSeq <= 0)
 		return;
@@ -478,8 +511,8 @@ void CUDPMultiRecvThread::doServerMinSeq(bool bIsAudio, uint32_t inMinSeq)
 	if (min_seq >= inMinSeq)
 		return;
 	// 打印环形队列清理前的各个变量状态值...
-	blog(LOG_INFO, "%s Clear => Audio: %d, ServerMin: %lu, MinSeq: %lu, MaxSeq: %lu, MaxPlaySeq: %lu",
-		 TM_RECV_NAME, bIsAudio, inMinSeq, min_seq, max_seq, nMaxPlaySeq);
+	blog(LOG_INFO, "%s Clear => PType: %d, ServerMin: %lu, MinSeq: %lu, MaxSeq: %lu, MaxPlaySeq: %lu",
+		 TM_RECV_NAME, inPType, inMinSeq, min_seq, max_seq, nMaxPlaySeq);
 	// 如果环形队列中的最大序号包比服务器端的最小序号包小，清理全部缓存...
 	if (max_seq < inMinSeq) {
 		inMinSeq = max_seq + 1;
@@ -493,8 +526,8 @@ void CUDPMultiRecvThread::doServerMinSeq(bool bIsAudio, uint32_t inMinSeq)
 
 void CUDPMultiRecvThread::doEraseLoseSeq(uint8_t inPType, uint32_t inSeqID)
 {
-	// 根据数据包类型，找到丢包集合...
-	GM_MapLose & theMapLose = (inPType == PT_TAG_AUDIO) ? m_AudioMapLose : m_VideoMapLose;
+	// 根据数据包类型，找到丢包集合 => 有三种类型数据 => 音频|视频|扩展音频...
+	GM_MapLose & theMapLose = ((inPType == PT_TAG_EX_AUDIO) ? m_Ex_AudioMapLose : ((inPType == PT_TAG_AUDIO) ? m_AudioMapLose : m_VideoMapLose));
 	// 如果没有找到指定的序列号，直接返回...
 	GM_MapLose::iterator itorItem = theMapLose.find(inSeqID);
 	if (itorItem == theMapLose.end())
@@ -510,9 +543,9 @@ void CUDPMultiRecvThread::doEraseLoseSeq(uint8_t inPType, uint32_t inSeqID)
 // 给丢失数据包预留环形队列缓存空间...
 void CUDPMultiRecvThread::doFillLosePack(uint8_t inPType, uint32_t nStartLoseID, uint32_t nEndLoseID)
 {
-	// 根据数据包类型，找到丢包集合...
-	circlebuf & cur_circle = (inPType == PT_TAG_AUDIO) ? m_audio_circle : m_video_circle;
-	GM_MapLose & theMapLose = (inPType == PT_TAG_AUDIO) ? m_AudioMapLose : m_VideoMapLose;
+	// 根据数据包类型，找到丢包集合 => 有三种类型数据 => 音频|视频|扩展音频...
+	circlebuf & cur_circle = ((inPType == PT_TAG_EX_AUDIO) ? m_Ex_audio_circle : ((inPType == PT_TAG_AUDIO) ? m_audio_circle : m_video_circle));
+	GM_MapLose & theMapLose = ((inPType == PT_TAG_EX_AUDIO) ? m_Ex_AudioMapLose : ((inPType == PT_TAG_AUDIO) ? m_AudioMapLose : m_VideoMapLose));
 	// 需要对网络抖动时间差进行线路选择 => 只有一条服务器补包路线...
 	int cur_rtt_var_ms = m_server_rtt_var_ms;
 	// 准备数据包结构体并进行初始化 => 连续丢包，设置成相同的重发时间点，否则，会连续发非常多的补包命令...
@@ -559,8 +592,11 @@ void CUDPMultiRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 	rtp_hdr_t * lpNewHeader = (rtp_hdr_t*)lpBuffer;
 	int nDataSize = lpNewHeader->psize + sizeof(rtp_hdr_t);
 	int nZeroSize = DEF_MTU_SIZE - lpNewHeader->psize;
+	uint8_t  tm_tag = lpNewHeader->tm;
+	uint8_t  id_tag = lpNewHeader->id;
 	uint8_t  pt_tag = lpNewHeader->pt;
 	uint32_t new_id = lpNewHeader->seq;
+	uint16_t ex_num = lpNewHeader->noset >> 16;
 	uint32_t max_id = new_id;
 	uint32_t min_id = new_id;
 	// 出现打包错误，丢掉错误包，打印错误信息...
@@ -568,10 +604,24 @@ void CUDPMultiRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 		blog(LOG_INFO, "%s Error => RecvLen: %d, DataSize: %d, ZeroSize: %d", TM_RECV_NAME, inRecvLen, nDataSize, nZeroSize);
 		return;
 	}
-	// 音视频使用不同的打包对象和变量...
-	uint32_t & nMaxPlaySeq = (pt_tag == PT_TAG_AUDIO) ? m_nAudioMaxPlaySeq : m_nVideoMaxPlaySeq;
-	bool   &  bFirstSeqSet = (pt_tag == PT_TAG_AUDIO) ? m_bFirstAudioSeq : m_bFirstVideoSeq;
-	circlebuf & cur_circle = (pt_tag == PT_TAG_AUDIO) ? m_audio_circle : m_video_circle;
+	// 如果是学生推流者转发的数据包，需要进行特殊处理...
+	if (tm_tag == TM_TAG_STUDENT && id_tag == ID_TAG_PUSHER) {
+		// 设置为扩展音频数据包标志...
+		pt_tag = PT_TAG_EX_AUDIO;
+		// 如果扩展音频变化次数不一致，保存并重置...
+		if (m_Ex_wAudioChangeNum != ex_num) {
+			m_Ex_wAudioChangeNum = ex_num;
+			this->ResetExAudio();
+			// 重置扩展音频的播放格式...
+			if (m_lpPlaySDL != NULL) {
+				m_lpPlaySDL->ResetExAudioFormat();
+			}
+		}
+	}
+	// 音视频使用不同的打包对象和变量 => 新增学生推流端的扩展音频数据包...
+	uint32_t & nMaxPlaySeq = ((pt_tag == PT_TAG_EX_AUDIO) ? m_Ex_nAudioMaxPlaySeq : ((pt_tag == PT_TAG_AUDIO) ? m_nAudioMaxPlaySeq : m_nVideoMaxPlaySeq));
+	bool   &  bFirstSeqSet = ((pt_tag == PT_TAG_EX_AUDIO) ? m_Ex_bFirstAudioSeq : ((pt_tag == PT_TAG_AUDIO) ? m_bFirstAudioSeq : m_bFirstVideoSeq));
+	circlebuf & cur_circle = ((pt_tag == PT_TAG_EX_AUDIO) ? m_Ex_audio_circle : ((pt_tag == PT_TAG_AUDIO) ? m_audio_circle : m_video_circle));
 	// 注意：观看端后接入时，最大播放包序号不是从0开始的...
 	// 如果最大播放序列包是0，说明是第一个包，需要保存为最大播放包 => 当前包号 - 1 => 最大播放包是已删除包，当前包序号从1开始...
 	if (nMaxPlaySeq <= 0 && !bFirstSeqSet) {
@@ -585,7 +635,7 @@ void CUDPMultiRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 		//blog(LOG_INFO, "%s Supply Discard => Seq: %lu, MaxPlaySeq: %lu, Type: %d", TM_RECV_NAME, new_id, nMaxPlaySeq, pt_tag);
 		return;
 	}
-	// 打印收到的音频数据包信息 => 包括缓冲区填充量 => 每个数据包都是统一大小 => rtp_hdr_t + slice + Zero
+	// 打印收到的音视频数据包信息 => 包括缓冲区填充量 => 每个数据包都是统一大小 => rtp_hdr_t + slice + Zero
 	//blog(LOG_INFO, "%s Size: %d, Seq: %lu, TS: %lu, Type: %d, pst: %d, ped: %d, Slice: %d, ZeroSize: %d", TM_RECV_NAME, inRecvLen, lpNewHeader->seq, lpNewHeader->ts, lpNewHeader->pt, lpNewHeader->pst, lpNewHeader->ped, lpNewHeader->psize, nZeroSize);
 	// 首先，将当前包序列号从丢包队列当中删除...
 	this->doEraseLoseSeq(pt_tag, new_id);
@@ -659,12 +709,12 @@ void CUDPMultiRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 	//blog(LOG_INFO, "%s Multicast Unknown => Seq: %lu, Slice: %d, Min-Max: [%lu, %lu], Type: %d", TM_RECV_NAME, new_id, lpNewHeader->psize, min_id, max_id, pt_tag);
 }
 
-void CUDPMultiRecvThread::doSendSupplyCmd(bool bIsAudio)
+void CUDPMultiRecvThread::doSendSupplyCmd(uint8_t inPType)
 {
 	if (m_lpUdpLose == NULL)
 		return;
 	// 根据数据包类型，找到丢包集合...
-	GM_MapLose & theMapLose = bIsAudio ? m_AudioMapLose : m_VideoMapLose;
+	GM_MapLose & theMapLose = ((inPType == PT_TAG_EX_AUDIO) ? m_Ex_AudioMapLose : ((inPType == PT_TAG_AUDIO) ? m_AudioMapLose : m_VideoMapLose));
 	// 如果丢包集合队列为空，直接返回...
 	if (theMapLose.size() <= 0)
 		return;
@@ -679,7 +729,7 @@ void CUDPMultiRecvThread::doSendSupplyCmd(bool bIsAudio)
 	// 需要对网络往返延迟值进行线路选择 => 只有一条服务器线路...
 	int cur_rtt_ms = m_server_rtt_ms;
 	// 重置补报长度为0 => 重新计算需要补包的个数...
-	m_rtp_supply.suType = bIsAudio ? PT_TAG_AUDIO : PT_TAG_VIDEO;
+	m_rtp_supply.suType = inPType;
 	m_rtp_supply.suSize = 0;
 	int nCalcMaxResend = 0;
 	// 遍历丢包队列，找出需要补包的丢包序列号...
@@ -729,10 +779,11 @@ void CUDPMultiRecvThread::doSendSupplyCmd(bool bIsAudio)
 	// 修改休息状态 => 已经有发包，不能休息...
 	m_bNeedSleep = false;
 	// 打印已发送补包命令...
-	blog(LOG_INFO, "%s Multicast Supply Send => Dir: %d, Count: %d, MaxResend: %d", TM_RECV_NAME, DT_TO_SERVER, m_rtp_supply.suSize/sizeof(uint32_t), nCalcMaxResend);
+	blog(LOG_INFO, "%s Multicast Supply Send => PType: %d, Dir: %d, Count: %d, MaxResend: %d", TM_RECV_NAME,
+		 inPType, DT_TO_SERVER, m_rtp_supply.suSize/sizeof(uint32_t), nCalcMaxResend);
 }
 
-void CUDPMultiRecvThread::doParseFrame(bool bIsAudio)
+void CUDPMultiRecvThread::doParseFrame(uint8_t inPType)
 {
 	//////////////////////////////////////////////////////////////////////////////////
 	// 如果登录还没有收到服务器反馈或播放器为空，都直接返回，继续等待...
@@ -743,8 +794,8 @@ void CUDPMultiRecvThread::doParseFrame(bool bIsAudio)
 	}
 
 	// 音视频使用不同的打包对象和变量...
-	uint32_t & nMaxPlaySeq = bIsAudio ? m_nAudioMaxPlaySeq : m_nVideoMaxPlaySeq;
-	circlebuf & cur_circle = bIsAudio ? m_audio_circle : m_video_circle;
+	uint32_t & nMaxPlaySeq = ((inPType == PT_TAG_EX_AUDIO) ? m_Ex_nAudioMaxPlaySeq : ((inPType == PT_TAG_AUDIO) ? m_nAudioMaxPlaySeq : m_nVideoMaxPlaySeq));
+	circlebuf & cur_circle = ((inPType == PT_TAG_EX_AUDIO) ? m_Ex_audio_circle : ((inPType == PT_TAG_AUDIO) ? m_audio_circle : m_video_circle));
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 注意：环形队列至少要有一个数据包存在，否则，在发生丢包时，无法发现，即大号包先到，小号包后到，就会被扔掉...
@@ -788,6 +839,7 @@ void CUDPMultiRecvThread::doParseFrame(bool bIsAudio)
 	uint32_t    ts_ms = lpFrontHeader->ts;
 	uint32_t    min_seq = lpFrontHeader->seq;
 	uint32_t    cur_seq = lpFrontHeader->seq;
+	uint32_t    ex_format = lpFrontHeader->noset;
 	rtp_hdr_t * lpCurHeader = lpFrontHeader;
 	uint32_t    nConsumeSize = nPerPackSize;
 	string      strFrame;
@@ -849,9 +901,14 @@ void CUDPMultiRecvThread::doParseFrame(bool bIsAudio)
 	circlebuf_pop_front(&cur_circle, NULL, nConsumeSize);
 	// 需要对网络缓冲评估延时时间进行线路选择 => 目前只有一条服务器路线...
 	int cur_cache_ms = m_server_cache_time_ms;
-	// 将解析到的有效数据帧推入播放对象当中...
-	if (m_lpPlaySDL != NULL) {
-		m_lpPlaySDL->PushPacket(cur_cache_ms, strFrame, pt_type, is_key, ts_ms);
+	// 将解析到的有效数据帧推入播放对象当中 => 排除扩展音频类型...
+	if (m_lpPlaySDL != NULL && inPType != PT_TAG_EX_AUDIO) {
+		m_lpPlaySDL->PushPacket(cur_cache_ms, strFrame, inPType, is_key, ts_ms);
+	}
+	// 注意：当终端既是推流者又是组播接收者时，将接收到的扩展音频直接丢弃，不能进行本地播放...
+	// 将解析到的扩展音频内容，进行专门的特殊投递 => 新增左侧没有推流条件判断，当终端是组播接收者时...
+	if (m_lpPlaySDL != NULL && inPType == PT_TAG_EX_AUDIO && !App()->IsLeftPusher()) {
+		m_lpPlaySDL->PushExAudio(strFrame, ts_ms, ex_format);
 	}
 	// 打印已投递的完整数据帧信息...
 	//blog(LOG_INFO, "%s Frame => Type: %d, Key: %d, PTS: %lu, Size: %d, PlaySeq: %lu, CircleSize: %d", TM_RECV_NAME,

@@ -853,6 +853,9 @@ void CViewCamera::doPushFrame(FMS_FRAME & inFrame)
 // 把回音消除之后的AAC音频，返回给UDP发送对象当中...
 void CViewCamera::doPushAudioAEC(FMS_FRAME & inFrame)
 {
+	// 如果互斥对象无效，直接返回...
+	if (m_MutexSend == NULL)
+		return;
 	pthread_mutex_lock(&m_MutexSend);
 	// 如果UDP推流线程有效，并且，推流线程没有发生严重拥塞，继续传递数据...
 	if (m_lpUDPSendThread != NULL && !m_lpUDPSendThread->IsNeedDelete()) {
@@ -864,6 +867,10 @@ void CViewCamera::doPushAudioAEC(FMS_FRAME & inFrame)
 // 把投递到扬声器的PCM音频，放入回音消除当中...
 void CViewCamera::doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf)
 {
+	// 如果互斥对象无效，直接返回...
+	if (m_MutexAEC == NULL)
+		return;
+	// 进入互斥状态，并推送到回音消除对象...
 	pthread_mutex_lock(&m_MutexAEC);
 	if (m_lpWebrtcAEC != NULL) {
 		m_lpWebrtcAEC->PushHornPCM(lpBufData, nBufSize, nSampleRate, nChannelNum, msInSndCardBuf);

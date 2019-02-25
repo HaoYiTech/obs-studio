@@ -141,6 +141,7 @@ public:
 	CWebThread * GetWebThread() const { return m_lpWebThread; }
 	CRemoteSession * GetRemoteSession() const { return m_RemoteSession.data(); }
 
+	bool     IsLeftPusher();
 	bool     IsClassHttps() { return ((strnicmp(m_strWebClass.c_str(), "https://", strlen("https://")) == 0) ? true : false); }
 	bool     IsDebugMode() { return m_bIsDebugMode; }
 	int      GetClientType() { return kClientStudent; }
