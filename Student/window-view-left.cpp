@@ -118,6 +118,7 @@ int CViewLeft::GetNextAutoID(int nCurDBCameraID)
 // 响应从CRemoteSession发出的事件通知信号...
 void CViewLeft::onTriggerLiveStart(int nDBCameraID)
 {
+	blog(LOG_INFO, "== onTriggerLiveStart Begin => LiveID: %d ==", m_nLiveCameraID);
 	// 如果正在推流的通道编号有效，停止通道...
 	this->doCommonLiveStop(m_nLiveCameraID);
 	// 在摄像头通道集合中查找指定的通道编号...
@@ -129,12 +130,13 @@ void CViewLeft::onTriggerLiveStart(int nDBCameraID)
 	lpViewCamera->doUdpSendThreadStart();
 	m_nLiveCameraID = nDBCameraID;
 	// 打印当前新的正在推流通道编号...
-	blog(LOG_INFO, "== onTriggerLiveStart => LiveID: %d ==", m_nLiveCameraID);
+	blog(LOG_INFO, "== onTriggerLiveStart End => LiveID: %d ==", m_nLiveCameraID);
 }
 
 // 响应从CRemoteSession发出的事件通知信号...
 void CViewLeft::onTriggerLiveStop(int nDBCameraID)
 {
+	blog(LOG_INFO, "== onTriggerLiveStop Begin => LiveID: %d ==", nDBCameraID);
 	// 调用统一的停止推流通道接口...
 	this->doCommonLiveStop(nDBCameraID);
 	// 回应讲师端停止推流通道执行成功...
@@ -143,7 +145,7 @@ void CViewLeft::onTriggerLiveStop(int nDBCameraID)
 		lpRemoteSession->doSendLiveStopCmd(nDBCameraID);
 	}
 	// 打印当前正在停止推流通道编号...
-	blog(LOG_INFO, "== onTriggerLiveStop => LiveID: %d ==", nDBCameraID);
+	blog(LOG_INFO, "== onTriggerLiveStop End => LiveID: %d ==", nDBCameraID);
 }
 
 // 统一的停止正在推流通道停止命令接口函数...
@@ -176,10 +178,11 @@ void CViewLeft::doCommonLiveStop(int nDBCameraID)
 // 停止指定的推流通道 => UDP命令 => 推流退出通知...
 void CViewLeft::doUdpPusherLogout(int nDBCameraID)
 {
+	blog(LOG_INFO, "== doUdpPusherLogout Begin => StopID: %d ==", nDBCameraID);
 	// 调用统一的停止推流通道接口...
 	this->doCommonLiveStop(nDBCameraID);
 	// 打印已经停止的指定通道编号...
-	blog(LOG_INFO, "== doUdpPusherLogout => StopID: %d ==", nDBCameraID);
+	blog(LOG_INFO, "== doUdpPusherLogout End => StopID: %d ==", nDBCameraID);
 }
 
 // 处理右侧播放线程已经停止通知...
