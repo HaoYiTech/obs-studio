@@ -3,6 +3,7 @@
 #include "student-app.h"
 #include "qt-wrappers.hpp"
 #include "window-dlg-about.hpp"
+#include "..\libobs\obs-config.h"
 
 CDlgAbout::CDlgAbout(QWidget *parent)
   : QDialog (parent)
@@ -28,7 +29,7 @@ CDlgAbout::CDlgAbout(QWidget *parent)
 	else { strAuthorizeText = QTStr("About.Auth.Limited").arg(nAuthDays).arg(strAuthExpired.c_str()); }
 	m_ui.authName->setText(strAuthorizeText);
 	// 显示版本信息 => 显示编译日期和版本信息...
-	m_ui.versionName->setText(QString("V%1 - Build %2").arg(SZ_VERSION_NAME).arg(__DATE__));
+	m_ui.versionName->setText(QString("V%1 - Build %2").arg(OBS_VERSION).arg(__DATE__));
 	// 显示网站地址...
 	m_ui.webName->setText(DEF_WEB_CLASS);
 }

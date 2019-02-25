@@ -31,7 +31,6 @@ using namespace std;
 #include "rtp.h"
 #include "GMError.h"
 #include "HYCommon.h"
-#include "HYVersion.h"
 #include <util/platform.h>
 #include <util/circlebuf.h>
 

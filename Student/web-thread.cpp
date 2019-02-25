@@ -1,9 +1,10 @@
 
+#include <curl.h>
 #include "student-app.h"
 #include "web-thread.h"
 #include "StringParser.h"
 #include "SocketUtils.h"
-#include <curl.h>
+#include "..\libobs\obs-config.h"
 
 CWebThread::CWebThread()
   : m_bIsCanReConnect(false)
@@ -254,7 +255,7 @@ bool CWebThread::RegisterHaoYi()
 	StringParser::EncodeURI(strWebName.c_str(), strWebName.size(), szWebName, MAX_PATH);
 	StringParser::EncodeURI(strMainName.c_str(), strMainName.size(), szMainName, MAX_PATH);
 	sprintf(strPost, "mac_addr=%s&ip_addr=%s&name_pc=%s&name_set=%s&version=%s&node_ver=%s&node_tag=%s&node_type=%d&node_addr=%s:%d&node_proto=%s&node_name=%s&os_name=%s",
-		strMacAddr.c_str(), strIPAddr.c_str(), szDNS, szMainName, _T(SZ_VERSION_NAME), strWebVer.c_str(), strWebTag.c_str(), nWebType,
+		strMacAddr.c_str(), strIPAddr.c_str(), szDNS, szMainName, _T(OBS_VERSION), strWebVer.c_str(), strWebTag.c_str(), nWebType,
 		strOnlyAddr.c_str(), nWebPort, strWebProto.c_str(), szWebName, CStudentApp::GetServerOS());
 	// 这里需要用到 https 模式，因为，qidiweilai.com 全站都用 https 模式...
 	sprintf(strUrl, "%s/wxapi.php/Gather/verify", App()->GetWebCenter().c_str());
