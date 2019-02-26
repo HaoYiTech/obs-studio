@@ -15,6 +15,8 @@ CViewRender::CViewRender(QString & strNotice, int nFontSize, QWidget *parent, Qt
   , m_bIsDrawImage(false)
   , m_hRenderWnd(NULL)
 {
+	// 初始化扩展音频的互斥对象...
+	pthread_mutex_init_value(&m_MutexExAudio);
 	// 保存渲染窗口句柄对象...
 	m_hRenderWnd = (HWND)this->winId();
 	// 强制转换父窗口对象...
@@ -33,6 +35,8 @@ CViewRender::CViewRender(QString & strNotice, int nFontSize, QWidget *parent, Qt
 
 CViewRender::~CViewRender()
 {
+	// 销毁扩展音频的互斥对象...
+	pthread_mutex_destroy(&m_MutexExAudio);
 }
 
 void CViewRender::doUpdateNotice(const QString & strNotice, bool bIsDrawImage/* = false*/)

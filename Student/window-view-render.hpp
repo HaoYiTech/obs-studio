@@ -1,6 +1,7 @@
 #pragma once
 
 #include "qt-display.hpp"
+#include <util/threading.h>
 
 class CViewRender : public OBSQTDisplay {
 	Q_OBJECT
@@ -8,6 +9,7 @@ public:
 	CViewRender(QString & strDefNotice, int nFontSize, QWidget *parent, Qt::WindowFlags flags = 0);
 	virtual ~CViewRender();
 public:
+	pthread_mutex_t * GetMutexExAudio() { return &m_MutexExAudio; }
 	void    doUpdateNotice(const QString & strNotice, bool bIsDrawImage = false);
 	bool    IsChangeScreen() { return m_bIsChangeScreen; }
 	bool    IsDrawImage() { return m_bIsDrawImage; }
@@ -28,4 +30,5 @@ private:
 	bool               m_bIsChangeScreen;   // 正在处理全屏或还原窗口...
 	bool               m_bIsDrawImage;      // 是否正在绘制图片标志...
 	QString            m_strNoticeText;     // 显示的提示文字信息...
+	pthread_mutex_t    m_MutexExAudio;      // 扩展音频互斥对象...
 };

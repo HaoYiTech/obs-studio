@@ -1029,7 +1029,8 @@ void CAudioThread::doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, in
 }
 
 CPlaySDL::CPlaySDL(CViewRender * lpViewRender, int64_t inSysZeroNS)
-  : m_lpViewRender(lpViewRender)
+  : m_lpMutexExAudio(lpViewRender->GetMutexExAudio())
+  , m_lpViewRender(lpViewRender)
   , m_sys_zero_ns(inSysZeroNS)
   , m_bFindFirstVKey(false)
   , m_lpExAudioThread(NULL)
@@ -1042,24 +1043,21 @@ CPlaySDL::CPlaySDL(CViewRender * lpViewRender, int64_t inSysZeroNS)
   , m_ex_zero_ns(-1)
   , m_ex_format(0)
 {
+	ASSERT(m_lpMutexExAudio != NULL);
 	ASSERT( m_lpViewRender != NULL );
 	ASSERT( m_sys_zero_ns > 0 );
-	// 初始化扩展音频的互斥对象...
-	pthread_mutex_init_value(&m_MutexExAudio);
 }
 
 CPlaySDL::~CPlaySDL()
 {
 	// 释放扩展音频解码对象...
-	pthread_mutex_lock(&m_MutexExAudio);
+	pthread_mutex_lock(m_lpMutexExAudio);
 	if (m_lpExAudioThread != NULL) {
 		delete m_lpExAudioThread;
 		m_lpExAudioThread = NULL;
 	}
 	// 只是释放互斥，不要进行销毁操作...
-	pthread_mutex_unlock(&m_MutexExAudio);
-	// 不要销毁互斥对象，否则doDeleteExAudioThread()会崩溃...
-	//pthread_mutex_destroy(&m_MutexExAudio);
+	pthread_mutex_unlock(m_lpMutexExAudio);
 
 	// 释放音视频解码对象...
 	if( m_lpAudioThread != NULL ) {
@@ -1128,12 +1126,12 @@ void CPlaySDL::doDeleteExAudioThread()
 	// 注意：这里会多次重复调用，互斥必须有效...
 	//////////////////////////////////////////////
 	// 释放扩展音频解码对象，必须使用互斥保护...
-	pthread_mutex_lock(&m_MutexExAudio);
+	pthread_mutex_lock(m_lpMutexExAudio);
 	if (m_lpExAudioThread != NULL) {
 		delete m_lpExAudioThread;
 		m_lpExAudioThread = NULL;
 	}
-	pthread_mutex_unlock(&m_MutexExAudio);
+	pthread_mutex_unlock(m_lpMutexExAudio);
 	// 重置其它相关变量...
 	m_ex_start_ms = -1;
 	m_ex_format = 0;
@@ -1143,7 +1141,7 @@ void CPlaySDL::doDeleteExAudioThread()
 void CPlaySDL::PushExAudio(string & inData, uint32_t inSendTime, uint32_t inExFormat)
 {
 	// 扩展音频进入互斥保护状态...
-	pthread_mutex_lock(&m_MutexExAudio);
+	pthread_mutex_lock(m_lpMutexExAudio);
 	// 注意：只要次数或格式变化都要重置，因为数据包的序号会重置...
 	// 如果扩展音频格式发生变化 => 必须整体检测...
 	if (m_ex_format != inExFormat) {
@@ -1179,7 +1177,7 @@ void CPlaySDL::PushExAudio(string & inData, uint32_t inSendTime, uint32_t inExFo
 		m_lpExAudioThread->doFillPacket(inData, nCalcPTS, true, 0);
 	}
 	//blog(LOG_INFO, "[ExAudio] CalcPTS: %lu, ExFormat: %lu", nCalcPTS, inExFormat);
-	pthread_mutex_unlock(&m_MutexExAudio);
+	pthread_mutex_unlock(m_lpMutexExAudio);
 }
 
 void CPlaySDL::PushPacket(int zero_delay_ms, string & inData, int inTypeTag, bool bIsKeyFrame, uint32_t inSendTime)
