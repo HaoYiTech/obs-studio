@@ -639,10 +639,10 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 			m_server_cache_time_ms = m_server_rtt_ms + m_server_rtt_var_ms;
 		}
 		// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
-		//const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-		//blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, ACircle: %d, VCircle: %d, EXACircle: %d", TM_RECV_NAME,
-		//	 rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms, m_server_cache_time_ms,
-		//	 m_audio_circle.size / nPerPackSize, m_video_circle.size / nPerPackSize, m_Ex_audio_circle.size / nPerPackSize);
+		const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
+		blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, ACircle: %d, VCircle: %d, EXACircle: %d", TM_RECV_NAME,
+			 rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms, m_server_cache_time_ms,
+			 m_audio_circle.size / nPerPackSize, m_video_circle.size / nPerPackSize, m_Ex_audio_circle.size / nPerPackSize);
 		// 打印播放器底层的缓存状态信息...
 		/*if (m_lpPlaySDL != NULL) {
 			blog(LOG_INFO, "%s Recv Detect => APacket: %d, VPacket: %d, AFrame: %d, VFrame: %d", TM_RECV_NAME,
@@ -1086,6 +1086,7 @@ void CUDPRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 		pt_tag = PT_TAG_EX_AUDIO;
 		// 如果扩展音频变化次数不一致，保存并重置...
 		if (m_Ex_wAudioChangeNum != ex_num) {
+			blog(LOG_INFO, "%s ResetExAudio => CurNum: %d, NewNum: %d", TM_RECV_NAME, m_Ex_wAudioChangeNum, ex_num);
 			m_Ex_wAudioChangeNum = ex_num;
 			this->ResetExAudio();
 			// 重置扩展音频的播放格式...

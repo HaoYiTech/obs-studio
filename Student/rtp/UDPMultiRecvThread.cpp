@@ -610,6 +610,7 @@ void CUDPMultiRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 		pt_tag = PT_TAG_EX_AUDIO;
 		// 如果扩展音频变化次数不一致，保存并重置...
 		if (m_Ex_wAudioChangeNum != ex_num) {
+			blog(LOG_INFO, "%s ResetExAudio => CurNum: %d, NewNum: %d", TM_RECV_NAME, m_Ex_wAudioChangeNum, ex_num);
 			m_Ex_wAudioChangeNum = ex_num;
 			this->ResetExAudio();
 			// 重置扩展音频的播放格式...
