@@ -192,10 +192,12 @@ class GatherAction extends Action
       $map['mac_addr'] = $arrData['mac_addr'];
       $dbGather = D('gather')->where($map)->find();
       if( count($dbGather) <= 0 ) {
-        // 没有找到记录，直接创建一个新记录...
+        // 没有找到记录，直接创建一个新记录 => 默认授权30天...
         $arrData['status']  = 1;
         $arrData['created'] = date('Y-m-d H:i:s');
         $arrData['updated'] = date('Y-m-d H:i:s');
+        $arrData['expired'] = date("Y-m-d H:i:s", strtotime("+30 days"));
+        $arrData['mac_md5'] = md5($arrData['mac_addr']);
         $arrErr['gather_id'] = D('gather')->add($arrData);
         // 从数据库中再次获取新增的采集端记录...
         $condition['gather_id'] = $arrErr['gather_id'];
