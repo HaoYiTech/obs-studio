@@ -144,6 +144,7 @@ public:
 	bool     IsLeftPusher();
 	bool     IsClassHttps() { return ((strnicmp(m_strWebClass.c_str(), "https://", strlen("https://")) == 0) ? true : false); }
 	bool     IsDebugMode() { return m_bIsDebugMode; }
+	bool     IsSaveAECSample() { return m_bSaveAECSample; }
 	int      GetClientType() { return kClientStudent; }
 	string & GetWebClass() { return m_strWebClass; }
 	string & GetWebCenter() { return m_strWebCenter; }
@@ -199,6 +200,7 @@ private:
 	int                        m_nFastTimer;				// 分布式存储、中转链接检测时钟...
 	int                        m_nOnLineTimer;				// 检测在线摄像头通道列表...
 	GM_MapNodeCamera           m_MapNodeCamera;				// 监控通道配置信息(数据库CameraID）
+	bool                m_bSaveAECSample;               // 是否保存AEC样本数据（仅供调试使用）
 	int					m_nMaxCamera;					// 能够支持的最大摄像头数（默认为8个）
 	string				m_strWebVer;					// 注册是获取的网站版本
 	string				m_strWebTag;					// 注册时获取的网站标志

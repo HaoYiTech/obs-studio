@@ -665,8 +665,9 @@ void CStudentApp::doProcessCmdLine(int argc, char * argv[])
 
 CStudentApp::CStudentApp(int &argc, char **argv)
   : QApplication(argc, argv)
-  , m_lpFocusDisplay(NULL)
   , m_lpWebThread(NULL)
+  , m_lpFocusDisplay(NULL)
+  , m_bSaveAECSample(false)
   , m_bHasAudioHorn(false)
   , m_bAuthLicense(false)
   , m_bIsDebugMode(false)
@@ -871,6 +872,13 @@ bool CStudentApp::InitGlobalConfig()
 	}
 	// 从配置文件当中读取云教室网站的地址 => https://
 	m_strWebClass = config_get_string(m_globalConfig, "General", "WebClass");
+	// 查看配置文件中是否有保存AEC样本数据标志配置字段...
+	if (!config_has_user_value(m_globalConfig, "General", "SaveAECSample")) {
+		config_set_bool(m_globalConfig, "General", "SaveAECSample", false);
+		changed = true;
+	}
+	// 从全局配置文件中读取是否保存音频回音消除样本数据...
+	m_bSaveAECSample = config_get_bool(m_globalConfig, "General", "SaveAECSample");
 	// 配置有变化，存盘到global.ini配置文件当中...
 	if (changed) {
 		config_save_safe(m_globalConfig, "tmp", nullptr);

@@ -376,9 +376,12 @@ BOOL CWebrtcAEC::InitWebrtc(int nInRateIndex, int nInChannelNum, int nOutSampleR
 
 void CWebrtcAEC::doSaveAudioPCM(void * lpBufData, int nBufSize, int nAudioRate, int nAudioChannel, int nDBCameraID)
 {
+	// 如果不能进行AEC采样的存盘工作，直接返回...
+	if (!App()->IsSaveAECSample())
+		return;
 	// 注意：PCM数据必须用二进制方式打开文件...
 	char szFullPath[MAX_PATH] = { 0 };
-	sprintf(szFullPath, "F:/MP4/PCM/IPC_%d_%d_%d.pcm", nAudioRate, nAudioChannel, nDBCameraID);
+	sprintf(szFullPath, "D:/MP4/PCM/IPC_%d_%d_%d.pcm", nAudioRate, nAudioChannel, nDBCameraID);
 	FILE * lpFile = fopen(szFullPath, "ab+");
 	// 打开文件成功，开始写入音频PCM数据内容...
 	if (lpFile != NULL) {
@@ -392,9 +395,6 @@ BOOL CWebrtcAEC::PushHornPCM(void * lpBufData, int nBufSize, int nSampleRate, in
 {
 	// 如果线程已经退出，直接返回...
 	if (this->IsStopRequested())
-		return false;
-	// 如果扬声器不存在，直接返回...
-	if (!App()->GetAudioHorn())
 		return false;
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// 注意：这里不能限制扬声器投递音频数据，只要对象有效就可以投递数据...
@@ -415,8 +415,11 @@ BOOL CWebrtcAEC::PushHornPCM(void * lpBufData, int nBufSize, int nSampleRate, in
 			blog(LOG_INFO, "Error => audio_resampler_create");
 			return false;
 		}
-		// 打印第一个扬声器投递的音频数据时间戳...
-		blog(LOG_INFO, "== horn first packet: %I64d ==", os_gettime_ns() / 1000000);
+		// 打印第一个扬声器投递的音频数据时间戳 => 打印当前时刻的麦克风缓存长度...
+		blog(LOG_INFO, "== horn-aec first packet: %I64d, mic-size: %d, horn-size: %d ==", 
+			 os_gettime_ns() / 1000000, m_circle_mic.size, m_circle_horn.size);
+		// 必须在正式投递扬声器消除数据时，才进行标志设定，就能避免网络延迟对AEC的影响...
+		App()->SetAudioHorn(true);
 	}
 	uint64_t  ts_offset = 0;
 	uint32_t  output_frames = 0;
@@ -514,7 +517,7 @@ BOOL CWebrtcAEC::PushMicFrame(FMS_FRAME & inFrame)
 		// 如果是第一个数据包，需要记录PTS的0点时刻...
 		if (m_mic_aac_ms_zero < 0) {
 			m_mic_aac_ms_zero = theNewPacket.dts;
-			blog(LOG_INFO, "== mic first packet: %I64d ==", os_gettime_ns() / 1000000);
+			blog(LOG_INFO, "== mic-src first packet: %I64d ==", os_gettime_ns() / 1000000);
 		}
 		// 发起信号量变化通知，可以进行回音消除操作了...
 		((m_lpAECSem != NULL) ? os_sem_post(m_lpAECSem) : NULL);
@@ -601,12 +604,15 @@ void CWebrtcAEC::doEchoCancel()
 		m_lpEchoBufNN[i] = (short)m_pDEchoBufNN[i];
 	}
 	// 将麦克风的PCM数据进行存盘处理 => 必须用二进制方式打开文件...
-	//this->doSaveAudioPCM((void*)m_lpMicBufNN, nNeedBufBytes, m_out_sample_rate, 0, m_lpViewCamera->GetDBCameraID());
+	this->doSaveAudioPCM((void*)m_lpMicBufNN, nNeedBufBytes, m_out_sample_rate, 0, m_lpViewCamera->GetDBCameraID());
 	// 将扬声器的PCM数据进行存盘处理 => 必须用二进制方式打开文件...
-	//this->doSaveAudioPCM((void*)m_lpHornBufNN, nNeedBufBytes, m_out_sample_rate, 1, m_lpViewCamera->GetDBCameraID());
+	this->doSaveAudioPCM((void*)m_lpHornBufNN, nNeedBufBytes, m_out_sample_rate, 1, m_lpViewCamera->GetDBCameraID());
 	// 对回音消除后的数据进行存盘处理 => 必须用二进制方式打开文件...
-	//this->doSaveAudioPCM((void*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 2, m_lpViewCamera->GetDBCameraID());
-	//blog(LOG_INFO, "== mic_buf: %d, horn_buf: %d ==", m_circle_mic.size, m_circle_horn.size);
+	this->doSaveAudioPCM((void*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 2, m_lpViewCamera->GetDBCameraID());
+	// 发生错误，打印错误信息...
+	if (err_code != 0) {
+		blog(LOG_INFO, "== err: %d, mic_buf: %d, horn_buf: %d ==", err_code, m_circle_mic.size, m_circle_horn.size);
+	}
 
 	uint64_t  ts_offset = 0;
 	uint32_t  output_frames = 0;
