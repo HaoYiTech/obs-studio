@@ -113,5 +113,11 @@ class IndexAction extends Action
     $dbLogin = D('user')->where($theMap)->field('user_id,wx_nickname')->find();
     return (isset($dbLogin['user_id']) ? $dbLogin['user_id'] : 0);
   }
+  // 测试文件MD5计算值...
+  /*public function test()
+  {
+    $thePath = WK_ROOT . '/update_studio/student/bin/32bit/Student.exe';
+    echo md5_file($thePath);
+  }*/
 }
 ?>
