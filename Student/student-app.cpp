@@ -658,12 +658,41 @@ int doTestWebrtcNS()
 	return 0;
 }*/
 
+/*// 进行MD5文件的整体测试...
+#include <util/windows/WinHandle.hpp>
+#include "md5.h"
+bool doTestMd5()
+{
+	wchar_t wFullPath[MAX_PATH] = { 0 };
+	wsprintf(wFullPath, L"%s\\%s", L"../../../Release/bin/32bit/", L"Student.exe");
+	WinHandle handle = CreateFile(wFullPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
+	if (handle == INVALID_HANDLE_VALUE)
+		return false;
+	vector<BYTE> buf;
+	buf.resize(65536);
+	MD5 md5;
+	for (;;) {
+		DWORD read = 0;
+		if (!ReadFile(handle, buf.data(), (DWORD)buf.size(), &read, nullptr))
+			return false;
+		if (!read)
+			break;
+		md5.update((void *)buf.data(), read);
+	}
+	string strValue = md5.toString();
+	return 0;
+}*/
+
 int main(int argc, char *argv[])
 {
 	// 进行webrtc的aed测试...
 	//return doTestWebrtcAEC();
 	// 进行webrtc的ns测试...
 	//return doTestWebrtcNS();
+	// 进行MD5文件的整体测试...
+	//if ((argc > 1 && stricmp(argv[1], "-upload") == 0) ||
+	//	(argc > 2 && stricmp(argv[2], "-upload") == 0) )
+	//	return doTestMd5();
 
 	// 初始化网络套接字...
 	WSADATA	wsData = { 0 };
