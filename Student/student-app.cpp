@@ -518,8 +518,153 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 	return ret;
 }
 
+/*// 回音消除和降噪的公共参数...
+#define MAX_SAMPLERATE   (16000)
+#define MAX_SAMPLES_10MS ((MAX_SAMPLERATE*10)/1000)
+
+// 进行webrtc的aec测试 => float
+#include "echo_cancellation.h"
+#include "aec_core.h"
+using namespace webrtc;
+int doTestWebrtcAEC()
+{
+	int    err_code = 0;
+	void * hAEC = NULL;
+	FILE * lpMicFile = NULL;
+	FILE * lpRefFile = NULL;
+	FILE * lpAecFile = NULL;
+	short sref[MAX_SAMPLES_10MS];
+	short smic[MAX_SAMPLES_10MS];
+	short saec[MAX_SAMPLES_10MS];
+	float dref[MAX_SAMPLES_10MS];
+	float dmic[MAX_SAMPLES_10MS];
+	float daec[MAX_SAMPLES_10MS];
+	int nSampleRate = MAX_SAMPLERATE;
+	int nFrameSamples = MAX_SAMPLES_10MS;
+	char * pMicFName = "D:\\MP4\\PCM\\nibo\\444\\IPC_16000_0_73_ns_2.pcm";
+	char * pRefFName = "D:\\MP4\\PCM\\nibo\\444\\IPC_16000_1_73.pcm";
+	char * pAecFName = "D:\\MP4\\PCM\\nibo\\444\\IPC_16000_2_73_aec.pcm";
+	do {
+		hAEC = WebRtcAec_Create();
+		if (hAEC == NULL) break;
+		Aec * lpAEC = (Aec*)hAEC;
+		// 设置不确定延时，自动对齐波形 => 必须在初始化之前设置...
+		WebRtcAec_enable_delay_agnostic(lpAEC->aec, true);
+		WebRtcAec_enable_extended_filter(lpAEC->aec, true);
+		// 初始化回音消除对象失败，直接返回...
+		if (WebRtcAec_Init(hAEC, nSampleRate, nSampleRate) != 0)
+			break;
+		// 打开或创建相关PCM文件句柄...
+		lpMicFile = fopen(pMicFName, "rb");
+		lpRefFile = fopen(pRefFName, "rb");
+		lpAecFile = fopen(pAecFName, "wb");
+		if (lpMicFile == NULL || lpRefFile == NULL || lpAecFile == NULL)
+			break;
+		// 开始从PCM文件读取数据，并进行回音消除操作...
+		while (true) {
+			if (fread(smic, sizeof(short), nFrameSamples, lpMicFile) != nFrameSamples)
+				break;
+			if (fread(sref, sizeof(short), nFrameSamples, lpRefFile) != nFrameSamples)
+				break;
+			// 需要将short格式转换成float格式...
+			for (int i = 0; i < nFrameSamples; i++)	{
+				dref[i] = (float)sref[i];
+				dmic[i] = (float)smic[i];
+			}
+			float* const pfmic = &(dmic[0]);
+			const float* const* ppfmic = &pfmic;
+			float* const pfaec = &(daec[0]);
+			float* const* ppfaec = &pfaec;
+			// 注意：使用自动计算延时模式，可以将msInSndCardBuf参数设置为0...
+			// 先将扬声器数据进行远端投递，再投递麦克风数据进行回音消除 => 投递样本个数...
+			err_code = WebRtcAec_BufferFarend(hAEC, dref, nFrameSamples);
+			err_code = WebRtcAec_Process(hAEC, ppfmic, 1, ppfaec, nFrameSamples, 0, 0);
+			// 将float数据格式转换成short数据格式...
+			for (int i = 0; i < nFrameSamples; i++) {
+				saec[i] = (short)daec[i];
+			}
+			// 回音消除完毕，进行存盘操作...
+			fwrite(saec, sizeof(short), nFrameSamples, lpAecFile);
+		}
+
+	} while (false);
+	if (lpMicFile != NULL) {
+		fclose(lpMicFile);
+	}
+	if (lpRefFile != NULL) {
+		fclose(lpRefFile);
+	}
+	if (lpAecFile != NULL) {
+		fclose(lpAecFile);
+	}
+	if (hAEC != NULL) {
+		WebRtcAec_Free(hAEC);
+	}
+	return 0;
+}
+
+// 进行webrtc的ns测试 => short
+#include "noise_suppression_x.h"
+int doTestWebrtcNS()
+{
+	FILE * lpInPCM = NULL;
+	FILE * lpOutPCM = NULL;
+	NsxHandle * nsInst = NULL;
+	short sInFrame[MAX_SAMPLES_10MS];
+	short sOutFrame[MAX_SAMPLES_10MS];
+	int nSampleRate = MAX_SAMPLERATE;
+	int nFrameSamples = MAX_SAMPLES_10MS;
+	char * lpInFName = "D:\\MP4\\PCM\\IPC_16000_2_63.pcm";
+	char * lpOutFName = "D:\\MP4\\PCM\\IPC_16000_2_63_ns_2.pcm";
+	// 降噪函数，目前只能用short数据格式，不能用float数据格式...
+	do {
+		// 创建一个short格式的降噪对象...
+		if ((nsInst = WebRtcNsx_Create()) == NULL)
+			break;
+		// 初始化降噪对象，使用16k频率...
+		if (WebRtcNsx_Init(nsInst, nSampleRate) != 0)
+			break;
+		// 设定降噪程度 => 0: Mild, 1: Medium , 2: Aggressive
+		if (WebRtcNsx_set_policy(nsInst, 2) != 0)
+			break;
+		// 打开原始音频文件，带有噪声的文件...
+		if ((lpInPCM = fopen(lpInFName, "rb")) == NULL)
+			break;
+		// 创建降噪后的文件，不带噪声的文件...
+		if ((lpOutPCM = fopen(lpOutFName, "wb")) == NULL)
+			break;
+		while (true) {
+			// 读取指定长度的噪声音频文件内容 => 10ms数据长度...
+			if (fread(sInFrame, sizeof(short), nFrameSamples, lpInPCM) != nFrameSamples)
+				break;
+			short* const pInData = &(sInFrame[0]);
+			const short* const* ppInData = &pInData;
+			short* const pOutData = &(sOutFrame[0]);
+			short* const* ppOutData = &pOutData;
+			// 降噪处理，然后直接写入文件当中...
+			WebRtcNsx_Process(nsInst, ppInData, 1, ppOutData);
+			fwrite(sOutFrame, sizeof(short), nFrameSamples, lpOutPCM);
+		}
+	} while (false);
+	if (nsInst != NULL) {
+		WebRtcNsx_Free(nsInst);
+	}
+	if (lpInPCM != NULL) {
+		fclose(lpInPCM);
+	}
+	if (lpOutPCM != NULL) {
+		fclose(lpOutPCM);
+	}
+	return 0;
+}*/
+
 int main(int argc, char *argv[])
 {
+	// 进行webrtc的aed测试...
+	//return doTestWebrtcAEC();
+	// 进行webrtc的ns测试...
+	//return doTestWebrtcNS();
+
 	// 初始化网络套接字...
 	WSADATA	wsData = { 0 };
 	WORD	wsVersion = MAKEWORD(2, 2);

@@ -35,6 +35,7 @@ CWebrtcAEC::CWebrtcAEC(CViewCamera * lpViewCamera)
   , m_nWebrtcNN(0)
   , m_hAEC(NULL)
 {
+	m_lpNsxInst = NULL;
 	// 初始化麦克风和扬声器的样本转换器...
 	m_mic_resampler = NULL;
 	m_horn_resampler = NULL;
@@ -133,6 +134,11 @@ CWebrtcAEC::~CWebrtcAEC()
 	if (m_pDEchoBufNN != NULL) {
 		bfree(m_pDEchoBufNN);
 		m_pDEchoBufNN = NULL;
+	}
+	// 释放降噪模块使用的对象和空间...
+	if (m_lpNsxInst != NULL) {
+		WebRtcNsx_Free(m_lpNsxInst);
+		m_lpNsxInst = NULL;
 	}
 	// 释放麦克风回音消除音频转换器...
 	if (m_mic_resampler != nullptr) {
@@ -280,6 +286,18 @@ BOOL CWebrtcAEC::InitWebrtc(int nInRateIndex, int nInChannelNum, int nOutSampleR
 	m_pDMicBufNN = (float*)bzalloc(m_nWebrtcNN * sizeof(float));
 	m_pDHornBufNN = (float*)bzalloc(m_nWebrtcNN * sizeof(float));
 	m_pDEchoBufNN = (float*)bzalloc(m_nWebrtcNN * sizeof(float));
+
+	// 创建针对麦克风的降噪模块对象 => short格式...
+	int err_code = 0;
+	m_lpNsxInst = WebRtcNsx_Create();
+	// 初始化降噪对象，使用16k频率...
+	if (m_lpNsxInst != NULL) {
+		err_code = WebRtcNsx_Init(m_lpNsxInst, m_out_sample_rate);
+	}
+	// 设定降噪程度 => 0: Mild, 1: Medium , 2: Aggressive
+	if (m_lpNsxInst != NULL && err_code == 0) {
+		err_code = WebRtcNsx_set_policy(m_lpNsxInst, 2);
+	}
 
 	// 初始化ffmpeg...
 	av_register_all();
@@ -506,7 +524,7 @@ BOOL CWebrtcAEC::PushMicFrame(FMS_FRAME & inFrame)
 	uint64_t  ts_offset = 0;
 	uint32_t  output_frames = 0;
 	uint8_t * output_data[MAX_AV_PLANES] = { 0 };
-	// 对原始麦克风音频样本格式，转换成回音消除需要的样本格式，转换成功放入环形队列...
+	// 对原始麦克风音频样本格式，转换成回音消除需要的样本格式，转换成功放入环形队列 => AV_SAMPLE_FMT_S16 => short格式...
 	if (audio_resampler_resample(m_mic_resampler, output_data, &output_frames, &ts_offset, m_lpDecFrame->data, m_lpDecFrame->nb_samples)) {
 		// 计算格式转换之后的数据内容长度，并将转换后的数据放入组块缓存当中...
 		int cur_data_size = get_audio_size(m_echo_sample_info.format, m_echo_sample_info.speakers, output_frames);
@@ -557,12 +575,17 @@ void CWebrtcAEC::doEchoMic()
 	pthread_mutex_lock(&m_AECMutex);
 	circlebuf_pop_front(&m_circle_mic, m_lpMicBufNN, nNeedBufBytes);
 	pthread_mutex_unlock(&m_AECMutex);
+	// 对麦克风数据进行降噪处理 => short格式...
+	if (m_lpNsxInst != NULL) {
+		WebRtcNsx_Process(m_lpNsxInst, &m_lpMicBufNN, m_out_channel_num, &m_lpEchoBufNN);
+		memcpy(m_lpMicBufNN, m_lpEchoBufNN, nNeedBufBytes);
+	}
 	// 对数据进行直接转换...
 	uint64_t  ts_offset = 0;
 	uint32_t  output_frames = 0;
 	uint32_t  input_frames = m_nWebrtcNN;
 	uint8_t * output_data[MAX_AV_PLANES] = { 0 };
-	// 直接对解码后的麦克风音频样本格式，转换成AAC压缩器需要的音频样本格式，转换成功放入环形队列...
+	// 直接对解码后的麦克风音频样本格式，转换成AAC压缩器需要的音频样本格式，转换成功放入环形队列 => AV_SAMPLE_FMT_FLTP...
 	if (audio_resampler_resample(m_echo_resampler, output_data, &output_frames, &ts_offset, (const uint8_t *const *)&m_lpMicBufNN, input_frames)) {
 		// 对回音消除后的数据放入AAC压缩打包处理环形队列当中，进行下一步的压缩打包投递处理 => 注意，这里不需要用互斥对象...
 		int cur_data_size = get_audio_size(m_aac_sample_info.format, m_aac_sample_info.speakers, output_frames);
@@ -609,6 +632,13 @@ void CWebrtcAEC::doEchoCancel()
 	this->doSaveAudioPCM((void*)m_lpHornBufNN, nNeedBufBytes, m_out_sample_rate, 1, m_lpViewCamera->GetDBCameraID());
 	// 对回音消除后的数据进行存盘处理 => 必须用二进制方式打开文件...
 	this->doSaveAudioPCM((void*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 2, m_lpViewCamera->GetDBCameraID());
+	// 对回音消除后的数据进行降噪处理 => short格式...
+	if (m_lpNsxInst != NULL) {
+		WebRtcNsx_Process(m_lpNsxInst, &m_lpEchoBufNN, m_out_channel_num, &m_lpMicBufNN);
+		memcpy(m_lpEchoBufNN, m_lpMicBufNN, nNeedBufBytes);
+	}
+	// 对降噪后的回音消除数据进行存盘处理 => 必须用二进制方式打开文件...
+	this->doSaveAudioPCM((void*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 3, m_lpViewCamera->GetDBCameraID());
 	// 发生错误，打印错误信息...
 	if (err_code != 0) {
 		blog(LOG_INFO, "== err: %d, mic_buf: %d, horn_buf: %d ==", err_code, m_circle_mic.size, m_circle_horn.size);

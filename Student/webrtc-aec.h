@@ -5,6 +5,7 @@
 #include <util/threading.h>
 #include <media-io/audio-io.h>
 #include <media-io/audio-resampler.h>
+#include "noise_suppression_x.h"
 
 struct AVFrame;
 struct AVCodec;
@@ -68,7 +69,7 @@ private:
 	AVCodec         *   m_lpEncCodec;		// 压缩器...
 	AVFrame         *   m_lpEncFrame;		// 压缩结构体...
 	AVCodecContext  *   m_lpEncContext;		// 压缩器描述...
-
+	NsxHandle       *   m_lpNsxInst;        // 降噪模块句柄...
 	void            *   m_hAEC;             // 回音消除句柄...
 	os_sem_t        *   m_lpAECSem;         // 回音消除信号量
 	pthread_mutex_t     m_AECMutex;         // 回音消除互斥体

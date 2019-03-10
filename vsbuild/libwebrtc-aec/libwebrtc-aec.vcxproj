@@ -93,15 +93,38 @@
     <ClInclude Include="..\..\libwebrtc-aec\inc\unused.h" />
     <ClInclude Include="..\..\libwebrtc-aec\inc\wav_file.h" />
     <ClInclude Include="..\..\libwebrtc-aec\inc\wav_header.h" />
+    <ClInclude Include="..\..\libwebrtc-aec\lib\complex_fft_tables.h" />
+    <ClInclude Include="..\..\libwebrtc-aec\lib\spl_sqrt_floor.h" />
     <ClInclude Include="..\..\libwebrtc-aec\ns\defines.h" />
     <ClInclude Include="..\..\libwebrtc-aec\ns\fft4g.h" />
     <ClInclude Include="..\..\libwebrtc-aec\ns\noise_suppression.h" />
+    <ClInclude Include="..\..\libwebrtc-aec\ns\noise_suppression_x.h" />
+    <ClInclude Include="..\..\libwebrtc-aec\ns\nsx_core.h" />
+    <ClInclude Include="..\..\libwebrtc-aec\ns\nsx_defines.h" />
     <ClInclude Include="..\..\libwebrtc-aec\ns\ns_core.h" />
     <ClInclude Include="..\..\libwebrtc-aec\ns\windows_private.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\libwebrtc-aec\lib\complex_bit_reverse.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\lib\complex_fft.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\lib\copy_set_operations.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\lib\cross_correlation.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\lib\division_operations.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\lib\downsample_fast.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\lib\energy.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\lib\get_scaling_square.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\lib\min_max_operations.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\lib\real_fft.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\lib\spl_init.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\lib\spl_inl.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\lib\spl_sqrt.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\lib\spl_sqrt_floor.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\lib\vector_scaling_operations.c" />
     <ClCompile Include="..\..\libwebrtc-aec\ns\fft4g.c" />
     <ClCompile Include="..\..\libwebrtc-aec\ns\noise_suppression.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\ns\noise_suppression_x.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\ns\nsx_core.c" />
+    <ClCompile Include="..\..\libwebrtc-aec\ns\nsx_core_c.c" />
     <ClCompile Include="..\..\libwebrtc-aec\ns\ns_core.c" />
     <ClCompile Include="..\..\libwebrtc-aec\src\aec_core.cpp" />
     <ClCompile Include="..\..\libwebrtc-aec\src\aec_core_sse2.cpp" />
@@ -223,7 +246,7 @@
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WEBRTC_WIN;WEBRTC_APM_DEBUG_DUMP=0;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\libwebrtc-aec\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\libwebrtc-aec\inc;..\..\libwebrtc-aec\lib;..\..\libwebrtc-aec\ns;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
@@ -257,7 +280,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WEBRTC_WIN;WEBRTC_APM_DEBUG_DUMP=0;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\libwebrtc-aec\inc;..\..\libwebrtc-aec\ns;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\libwebrtc-aec\inc;..\..\libwebrtc-aec\lib;..\..\libwebrtc-aec\ns;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>None</DebugInformationFormat>
     </ClCompile>
     <Link>
