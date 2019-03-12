@@ -247,7 +247,7 @@ static inline uint32_t calc_cy(const struct obs_scene_item *item, uint32_t heigh
 }
 
 // 计算第一个0点位置的数据源临时变换矩阵...
-static inline void doCalcDrawTransform(obs_sceneitem_t * item, struct vec2 * bounds, struct matrix4 * out_transform)
+static inline void doCalcDrawTransform(obs_sceneitem_t * item, struct vec2 *pos, struct vec2 * bounds, struct matrix4 * out_transform)
 {
 	uint32_t        width = obs_source_get_width(item->source);
 	uint32_t        height = obs_source_get_height(item->source);
@@ -276,23 +276,92 @@ static inline void doCalcDrawTransform(obs_sceneitem_t * item, struct vec2 * bou
 	matrix4_scale3f(out_transform, out_transform, scale.x, scale.y, 1.0f);
 	matrix4_translate3f(out_transform, out_transform, -origin.x, -origin.y, 0.0f);
 	matrix4_rotate_aa4f(out_transform, out_transform, 0.0f, 0.0f, 1.0f, RAD(item->rot));
-	matrix4_translate3f(out_transform, out_transform, item->pos.x, item->pos.y, 0.0f);
+	matrix4_translate3f(out_transform, out_transform, pos->x, pos->y, 0.0f);
 }
 
-static inline void render_export_source(struct vec2 *bounds, obs_sceneitem_t *sceneitem)
+static inline void render_item_texture(struct obs_scene_item *item)
+{
+	gs_texture_t *tex = gs_texrender_get_texture(item->item_render);
+	gs_effect_t *effect = obs->video.default_effect;
+	enum obs_scale_type type = item->scale_filter;
+	uint32_t cx = gs_texture_get_width(tex);
+	uint32_t cy = gs_texture_get_height(tex);
+
+	if (type != OBS_SCALE_DISABLE) {
+		if (type == OBS_SCALE_POINT) {
+			gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
+			gs_effect_set_next_sampler(image, obs->video.point_sampler);
+
+		} else if (!close_float(item->output_scale.x, 1.0f, EPSILON) ||
+		           !close_float(item->output_scale.y, 1.0f, EPSILON)) {
+			gs_eparam_t *scale_param;
+
+			if (item->output_scale.x < 0.5f || item->output_scale.y < 0.5f) {
+				effect = obs->video.bilinear_lowres_effect;
+			} else if (type == OBS_SCALE_BICUBIC) {
+				effect = obs->video.bicubic_effect;
+			} else if (type == OBS_SCALE_LANCZOS) {
+				effect = obs->video.lanczos_effect;
+			}
+
+			scale_param = gs_effect_get_param_by_name(effect, "base_dimension_i");
+			if (scale_param) {
+				struct vec2 base_res_i = { 1.0f / (float)cx, 1.0f / (float)cy };
+				gs_effect_set_vec2(scale_param, &base_res_i);
+			}
+		}
+	}
+
+	while (gs_effect_loop(effect, "Draw")) {
+		obs_source_draw(tex, 0, 0, 0, 0, 0);
+	}
+}
+
+static inline void render_export_source(struct vec2 *pos, struct vec2 *bounds, obs_sceneitem_t *item)
 {
 	// 如果输入对象无效，或者，没有找到对应的数据源对象，直接返回...
-	obs_source_t * source = obs_sceneitem_get_source(sceneitem);
+	obs_source_t * source = obs_sceneitem_get_source(item);
 	if (bounds == NULL || source == NULL)
 		return;
 	// 计算数据源在绘制画布上的缩放矩阵...
 	struct matrix4 draw_transform = { 0 };
-	doCalcDrawTransform(sceneitem, bounds, &draw_transform);
+	doCalcDrawTransform(item, pos, bounds, &draw_transform);
+	// 这里解决裁剪问题 => obs-scene.c:render_item()...
+	if (item->item_render) {
+		uint32_t width = obs_source_get_width(item->source);
+		uint32_t height = obs_source_get_height(item->source);
+		uint32_t cx = calc_cx(item, width);
+		uint32_t cy = calc_cy(item, height);
+
+		if (cx && cy && gs_texrender_begin(item->item_render, cx, cy)) {
+			float cx_scale = (float)width / (float)cx;
+			float cy_scale = (float)height / (float)cy;
+			struct vec4 clear_color;
+
+			vec4_zero(&clear_color);
+			gs_clear(GS_CLEAR_COLOR, &clear_color, 0.0f, 0);
+			gs_ortho(0.0f, (float)width, 0.0f, (float)height, -100.0f, 100.0f);
+
+			gs_matrix_scale3f(cx_scale, cy_scale, 1.0f);
+			gs_matrix_translate3f(-(float)item->crop.left, -(float)item->crop.top, 0.0f);
+
+			gs_blend_state_push();
+			gs_blend_function(GS_BLEND_ONE, GS_BLEND_ZERO);
+			obs_source_video_render(item->source);
+			gs_blend_state_pop();
+			gs_texrender_end(item->item_render);
+		}
+	}
+
 	// 保存并更新变换矩阵...
 	gs_matrix_push();
 	gs_matrix_mul(&draw_transform);
 	// 将数据源渲染到设定的渲染画布上面...
-	obs_source_video_render(source);
+	if (item->item_render) {
+		render_item_texture(item);
+	} else {
+		obs_source_video_render(source);
+	}
 	// 恢复变换矩阵...
 	gs_matrix_pop();
 }
@@ -320,13 +389,29 @@ static inline void render_export_texture(struct obs_core_video *video, int cur_t
 	// 保存并初始化当前变换状态...
 	gs_blend_state_push();
 	gs_reset_blend_state();
+	// 注意：位置和界限都是临时计算...
 	// 绘制0点数据源对象，界限是整个画布...
-	struct vec2 dstBounds = { 0 };
+	struct vec2 dstPos = { 0 }, srcPos = { 0 };
+	struct vec2 dstBounds = { 0 }, srcBounds = { 0 };
 	vec2_set(&dstBounds, (float)video->base_width, (float)video->base_height);
-	render_export_source(&dstBounds, lpZeroSceneItem);
-	// 绘制浮动数据源对象，界限是场景自身...
-	obs_sceneitem_get_bounds(lpFloatSceneItem, &dstBounds);
-	render_export_source(&dstBounds, lpFloatSceneItem);
+	obs_sceneitem_get_bounds(lpZeroSceneItem, &srcBounds);
+	render_export_source(&dstPos, &dstBounds, lpZeroSceneItem);
+	// 计算0点数据源长宽拉升比例，会应用到浮动数据源当中...
+	float xScale = srcBounds.x / dstBounds.x;
+	float yScale = srcBounds.y / dstBounds.y;
+	// 注意：位置和界限都是临时计算，绘制在渲染画布，并不改变场景元素的真实数据...
+	// 绘制浮动数据源对象，界限是场景自身 => 必须是可见状态才绘制...
+	if (obs_sceneitem_visible(lpFloatSceneItem)) {
+		obs_sceneitem_get_bounds(lpFloatSceneItem, &srcBounds);
+		obs_sceneitem_get_pos(lpFloatSceneItem, &srcPos);
+		// 重新计算临时的显示位置和显示界限区域...
+		dstBounds.x = srcBounds.x / xScale;
+		dstBounds.y = srcBounds.y / yScale;
+		dstPos.x = srcPos.x / xScale;
+		dstPos.y = srcPos.y / yScale;
+		// 用临时计算的位置和界限绘制浮动数据源对象...
+		render_export_source(&dstPos, &dstBounds, lpFloatSceneItem);
+	}
 	// 恢复变换状态...
 	gs_blend_state_pop();
 	// 设定当前渲染纹理状态...
