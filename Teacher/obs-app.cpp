@@ -1462,8 +1462,14 @@ bool OBSApp::IsPortableMode()
 #define OUTPUT_AUDIO_SOURCE "pulse_output_capture"
 #endif
 
+#define DSHOW_INPUT_SOURCE    "dshow_input"
 #define INTERACT_RTP_SOURCE   "rtp_source"
 #define NOISE_SUPPRESS_FILTER "noise_suppress_filter"
+
+const char *OBSApp::DShowInputSource() const
+{
+	return DSHOW_INPUT_SOURCE;
+}
 
 const char *OBSApp::GetNSFilter() const
 {

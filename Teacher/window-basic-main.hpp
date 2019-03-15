@@ -581,8 +581,9 @@ public:
 	void SystemTray(bool firstStarted);
 
 	void OpenSavedProjectors();
-
-	void doSceneItemLayout(obs_sceneitem_t * scene_item = NULL);
+	
+	void doHideDShowAudioMixer(obs_sceneitem_t * scene_item);
+	void doSceneItemLayout(obs_sceneitem_t * scene_item);
 	void doSceneItemExchangePos(obs_sceneitem_t * select_item);
 	void doSceneItemToFirst(obs_sceneitem_t * select_item);
 	bool doCheckCanRecord();

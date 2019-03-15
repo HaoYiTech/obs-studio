@@ -188,6 +188,7 @@ public:
 
 	const char *GetNSFilter() const;
 
+	const char *DShowInputSource() const;
 	const char *InputAudioSource() const;
 	const char *OutputAudioSource() const;
 	const char *InteractRtpSource() const;

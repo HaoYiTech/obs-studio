@@ -1680,8 +1680,6 @@ void OBSBasic::DeferredLoad(const QString &file, int requeueCount)
 	m_bIsLoaded = true;
 	// 立即启动远程连接...
 	App()->doCheckRemote();
-	// 对场景资源进行位置重排...
-	this->ShutFloatSource();
 	// 为了避免弹框被强制关闭，放在这里弹出更新确认框...
 	this->TimedCheckForUpdates();
 }
@@ -3932,15 +3930,19 @@ void OBSBasic::OpenFloatSource()
 
 void OBSBasic::ShutFloatSource()
 {
-	// 遍历所有数据源，都设置成不能浮动状态...
-	auto func = [](obs_scene_t *, obs_sceneitem_t *item, void *)
+	// 遍历所有数据源，给浮动数据源在第二排待选区设定一个新位置...
+	auto func = [](obs_scene_t *, obs_sceneitem_t *item, void * data)
 	{
-		obs_sceneitem_set_floated(item, false);
+		// 如果数据源窗口处于浮动状态...
+		OBSBasic * lpBasic = (OBSBasic*)data;
+		if (obs_sceneitem_floated(item)) {
+			lpBasic->doSceneItemLayout(item);
+			obs_sceneitem_set_floated(item, false);
+		}
 		return true;
 	};
-	// 执行遍历接口，然后重排所有数据源的显示位置...
-	obs_scene_enum_items(this->GetCurrentScene(), func, nullptr);
-	this->doSceneItemLayout();
+	// 关闭浮动数据源，然后重排浮动数据源的显示位置...
+	obs_scene_enum_items(this->GetCurrentScene(), func, this);
 }
 
 void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
@@ -5621,8 +5623,7 @@ void OBSBasic::on_actionRotate180_triggered()
 	obs_scene_enum_items(GetCurrentScene(), RotateSelectedSources, &f180);
 }
 
-static bool MultiplySelectedItemScale(obs_scene_t *scene, obs_sceneitem_t *item,
-		void *param)
+static bool MultiplySelectedItemScale(obs_scene_t *scene, obs_sceneitem_t *item, void *param)
 {
 	vec2 &mul = *reinterpret_cast<vec2*>(param);
 
@@ -5646,16 +5647,14 @@ void OBSBasic::on_actionFlipHorizontal_triggered()
 {
 	vec2 scale;
 	vec2_set(&scale, -1.0f, 1.0f);
-	obs_scene_enum_items(GetCurrentScene(), MultiplySelectedItemScale,
-			&scale);
+	obs_scene_enum_items(GetCurrentScene(), MultiplySelectedItemScale, &scale);
 }
 
 void OBSBasic::on_actionFlipVertical_triggered()
 {
 	vec2 scale;
 	vec2_set(&scale, 1.0f, -1.0f);
-	obs_scene_enum_items(GetCurrentScene(), MultiplySelectedItemScale,
-			&scale);
+	obs_scene_enum_items(GetCurrentScene(), MultiplySelectedItemScale, &scale);
 }
 
 static bool CenterAlignSelectedItems(obs_scene_t *scene, obs_sceneitem_t *item,
@@ -5888,7 +5887,73 @@ static inline void setAudioMixer(obs_sceneitem_t *scene_item, const int mixerIdx
 }
 
 // 对场景资源位置进行重新排列 => 两行（1行1列，1行5列）...
-void OBSBasic::doSceneItemLayout(obs_sceneitem_t * scene_item/* = NULL*/)
+void OBSBasic::doSceneItemLayout(obs_sceneitem_t * scene_item)
+{
+	// 如果数据源无效或没有视频内容，直接返回...
+	if (scene_item == NULL)
+		return;
+	obs_source_t *source = obs_sceneitem_get_source(scene_item);
+	uint32_t flags = obs_source_get_output_flags(source);
+	// 如果场景资源，没有视频，不重排位置，直接返回...
+	if ((flags & OBS_SOURCE_VIDEO) == 0)
+		return;
+	// 场景数据资源必须包含视频内容...
+	ASSERT(flags & OBS_SOURCE_VIDEO);
+	// 获取显示系统的宽和高...
+	obs_video_info ovi = { 0 };
+	obs_get_video_info(&ovi);
+	// 计算第一个资源的宽和高...
+	ovi.base_height -= DEF_ROW_SPACE;
+	uint32_t first_width = ovi.base_width;
+	uint32_t first_height = ovi.base_height - ovi.base_height / DEF_ROW_SIZE;
+	// 计算其它资源的宽和高...
+	ovi.base_width -= (DEF_COL_SIZE - 1) * DEF_COL_SPACE;
+	uint32_t other_width = ovi.base_width / DEF_COL_SIZE;
+	uint32_t other_height = ovi.base_height / DEF_ROW_SIZE;
+	// 设置统一默认的数据源对齐参数...
+	obs_transform_info itemInfo = { 0 };
+	obs_sceneitem_get_info(scene_item, &itemInfo);
+	itemInfo.alignment = OBS_ALIGN_LEFT | OBS_ALIGN_TOP;
+	itemInfo.bounds_type = OBS_BOUNDS_SCALE_INNER;
+	itemInfo.bounds_alignment = OBS_ALIGN_CENTER;
+	// 获取0点位置的数据源对象...
+	vec2 vPos = { 0.0f, 0.0f };
+	obs_sceneitem_t * lpPosItem = OBSBasicPreview::GetItemAtPos(vPos, false);
+	// 在0点位置查找数据源，如果没有被占用，将当前数据源设定到0点位置...
+	if (lpPosItem == NULL) {
+		// 更新场景资源的显示位置信息...
+		vec2_set(&itemInfo.pos, 0.0f, 0.0f);
+		vec2_set(&itemInfo.bounds, float(first_width), float(first_height));
+		obs_sceneitem_set_info(scene_item, &itemInfo);
+		// 轨道1 => 强制第一个窗口资源的音频输出，只保留全局音频资源和第一个窗口的音频资源输出...
+		setAudioMixer(scene_item, 0, true);
+		return;
+	}
+	// 遍历第二行的位置，查找空闲位置...
+	for (int i = 0; i < DEF_COL_SIZE; ++i) {
+		uint32_t pos_x = i * (other_width + DEF_COL_SPACE);
+		uint32_t pos_y = first_height + DEF_ROW_SPACE;
+		vec2_set(&vPos, float(pos_x), float(pos_y));
+		// 如果当前位置的下面有数据源，跳过，继续找下一个...
+		if (OBSBasicPreview::GetItemAtPos(vPos, true))
+			continue;
+		// 根据当前位置查找对应的数据源 => 在位置的上面查找...
+		lpPosItem = OBSBasicPreview::GetItemAtPos(vPos, false);
+		// 当前位置没有数据源对象或等于输入数据源，调整输入数据源的位置信息...
+		if (lpPosItem == NULL || lpPosItem == scene_item) {
+			// 当前位置没有数据源，更新数据源位置信息...
+			vec2_set(&itemInfo.pos, float(pos_x), float(pos_y));
+			vec2_set(&itemInfo.bounds, float(other_width), float(other_height));
+			obs_sceneitem_set_info(scene_item, &itemInfo);
+			// 轨道1 => 屏蔽非第一个窗口资源的音频输出，只保留全局音频资源和第一个窗口的音频资源输出...
+			setAudioMixer(scene_item, 0, false);
+			return;
+		}
+	}
+}
+
+// 放弃这种思路 => 任何的修改都会重排整个数据源，这样体验会非常差...
+/*void OBSBasic::doSceneItemLayout(obs_sceneitem_t * scene_item)
 {
 	// 如果是新添加的场景资源...
 	if (scene_item != NULL) {
@@ -5955,7 +6020,7 @@ void OBSBasic::doSceneItemLayout(obs_sceneitem_t * scene_item/* = NULL*/)
 	};
 	// 遍历所有的场景资源进行位置重排...
 	obs_scene_enum_items(this->GetCurrentScene(), func, &theRtpSceneItem);
-}
+}*/
 
 // 响应鼠标双击事件 => 交换场景资源位置...
 void OBSBasic::doSceneItemExchangePos(obs_sceneitem_t * select_item)
@@ -6037,6 +6102,16 @@ void OBSBasic::doSceneItemToFirst(obs_sceneitem_t * select_item)
 	//obs_sceneitem_set_crop(select_item, &crop);
 	// 轨道1 => 强制第一个窗口资源的音频输出，只保留全局音频资源和第一个窗口的音频资源输出...
 	setAudioMixer(select_item, 0, true);
+}
+
+void OBSBasic::doHideDShowAudioMixer(obs_sceneitem_t * scene_item)
+{
+	obs_source_t * source = obs_sceneitem_get_source(scene_item);
+	const char * lpID = obs_source_get_id(source);
+	if (lpID != NULL && astrcmpi(lpID, App()->DShowInputSource()) == 0) {
+		SetSourceMixerHidden(source, true);
+		DeactivateAudioSource(source);
+	}
 }
 
 void OBSBasic::OpenMultiviewProjector()

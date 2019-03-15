@@ -59,7 +59,6 @@ private:
 	static vec2 GetMouseEventPos(QMouseEvent *event);
 	static bool DrawSelectedItem(obs_scene_t *scene, obs_sceneitem_t *item, void *param);
 
-	static OBSSceneItem GetItemAtPos(const vec2 &pos, bool selectBelow);
 	static bool SelectedAtPos(const vec2 &pos);
 
 	static void DoSelect(const vec2 &pos);
@@ -118,4 +117,5 @@ public:
 	 * byte boundary. */
 	static inline void* operator new(size_t size) {return bmalloc(size);}
 	static inline void operator delete(void* ptr) {bfree(ptr);}
+	static OBSSceneItem GetItemAtPos(const vec2 &pos, bool selectBelow);
 };
