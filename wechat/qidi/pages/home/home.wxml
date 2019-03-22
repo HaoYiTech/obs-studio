@@ -7,6 +7,30 @@
 </block>
 
 <wux-grids col="4" bordered="{{ false }}" wux-class="home-top-area">
+  <wux-grid label="课程管理"
+    data-item="navSubject"
+    bind:click="toggleGridNav"
+    wux-nav-back="fa-stack fa-lg"
+    wux-nav-circle="fa fa-circle fa-stack-2x"
+    wux-nav-inner="fa fa-wpforms fa-stack-1x fa-inverse" />
+  <wux-grid label="会员管理"
+    data-item="navMember"
+    bind:click="toggleGridNav"
+    wux-nav-back="fa-stack fa-lg"
+    wux-nav-circle="fa fa-circle fa-stack-2x"
+    wux-nav-inner="fa fa-id-card-o fa-stack-1x fa-inverse" />
+  <wux-grid label="订单管理"
+    data-item="navOrder"
+    bind:click="toggleGridNav"
+    wux-nav-back="fa-stack fa-lg"
+    wux-nav-circle="fa fa-circle fa-stack-2x"
+    wux-nav-inner="fa fa-money fa-stack-1x fa-inverse" />
+  <wux-grid label="门店管理"
+    data-item="navShop"
+    bind:click="toggleGridNav"
+    wux-nav-back="fa-stack fa-lg"
+    wux-nav-circle="fa fa-circle fa-stack-2x"
+    wux-nav-inner="fa fa-home fa-stack-1x fa-inverse" />
   <wux-grid label="课程预约"
     data-item="navPlan"
     bind:click="toggleGridNav"
@@ -38,5 +62,27 @@
     textStyles="font-size: 14px;"
     options="{{ hotTabs }}"
     activeColor="#ef473a"
+  />
+  <van-card
+    title="少儿才艺启蒙班，启发少儿音乐兴趣启发少儿音乐兴趣启发少儿音乐兴趣"
+    card-time="课时数：30"
+    card-age="年龄段：3~6岁"
+    lazy-load="{{ true }}"
+    shop-cart="{{ true }}"
+    price="200"
+    origin-price="400"
+    custom-class="van-card"
+    thumb="//img.yzcdn.cn/upload_files/2017/07/02/af5b9f44deaeb68000d7e4a711160c53.jpg"
+  />
+  <van-card
+    title="幼儿科学实验课，体验科学奇幻启发少儿科学兴趣启发少儿科学兴趣启发少儿科学兴趣"
+    card-time="课时数：30"
+    card-age="年龄段：3~6岁"
+    lazy-load="{{ true }}"
+    shop-cart="{{ true }}"
+    price="100"
+    origin-price="300"
+    custom-class="van-card"
+    thumb="//img.yzcdn.cn/upload_files/2017/07/02/af5b9f44deaeb68000d7e4a711160c53.jpg"
   />
 </view>
