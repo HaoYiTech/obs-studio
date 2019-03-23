@@ -10,11 +10,8 @@ App({
     logs.unshift(Date.now())
     wx.setStorageSync('logs', logs)*/
   },
-  doShowLoading: function() {
-    wx.showLoading({ title: '加载中' })
-  },
   globalData: {
-    m_urlPrev: 'https://qidiweilai.com/wxapi.php/',
+    m_urlPrev: 'https://www.qidiweilai.com/wxapi.php/',
     m_userInfo: null,
     m_sysInfo: null,
     m_nUserID: 0
