@@ -1,4 +1,15 @@
 
+<van-dialog id="van-dialog" />
+
+<van-dialog
+  show-cancel-button
+  show="{{ m_show_auth }}"
+  confirmButtonText="授权"
+  bind:getuserinfo="getUserInfo"
+  confirm-button-open-type="getUserInfo"
+  message="本小程序需要您的授权才能使用后续的功能，请点击授权按钮完成授权。"
+/>
+
 <view class="home-top-area">
   <van-cell
     title="房间教室"
@@ -7,6 +18,7 @@
     icon-class="home-room-icon"
   />
 </view>
+
 <!--<van-card
     title="少儿才艺启蒙班，启发少儿音乐兴趣启发少儿音乐兴趣启发少儿音乐兴趣"
     card-age="年龄段：3~6岁"
@@ -34,8 +46,11 @@
     custom-class="van-card"
     thumb="//img.yzcdn.cn/upload_files/2017/07/02/af5b9f44deaeb68000d7e4a711160c53.jpg"
   />-->
+
 <view wx:for="{{m_arrRoom}}" wx:key="unique">
   <van-card
+    id="{{item.room_id}}"
+    bind:click="onClickRoom"
     customStyle="font-size:14px;"
     title="{{item.room_name}}"
     desc="教室：{{item.room_id}}"

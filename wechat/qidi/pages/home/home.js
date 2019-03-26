@@ -1,4 +1,6 @@
 
+import Dialog from '../../vant-weapp/dialog/dialog';
+
 // 获取全局的app对象...
 const g_app = getApp()
 
@@ -7,11 +9,13 @@ Page({
    * 页面的初始数据
    */
   data: {
+    m_code: '',
     m_cur_page: 1,
     m_max_page: 1,
     m_total_num: 0,
     m_arrRoom: [],
-    m_show_more: true
+    m_show_more: true,
+    m_show_auth: false
   },
 
   /**
@@ -111,12 +115,12 @@ Page({
   // 下拉刷新事件...
   onPullDownRefresh: function () {
     // 首先，打印信息，停止刷新...
-    console.log('onPullDownRefresh')
-    wx.stopPullDownRefresh()
+    console.log('onPullDownRefresh');
+    wx.stopPullDownRefresh();
     // 重新从首页开始更新数据...
     this.data.m_arrRoom = [];
-    this.data.m_cur_page = 1
-    this.doAPIGetRoom()
+    this.data.m_cur_page = 1;
+    this.doAPIGetRoom();
   },
 
   /**
@@ -138,5 +142,117 @@ Page({
    * 用户点击右上角分享
    */
   onShareAppMessage: function () {
+  },
+
+  // 登录接口...
+  doAPILogin: function (inCode, inUserInfo, inEncrypt, inIV) {
+    // 显示导航栏|浮动加载动画...
+    wx.showLoading({ title: '加载中' });
+    wx.showNavigationBarLoading();
+    // 保存this对象...
+    var that = this
+    // 获取系统信息同步接口...
+    var theSysInfo = g_app.globalData.m_sysInfo
+    // 准备需要的参数信息 => 加入一些附加信息...
+    var thePostData = {
+      iv: inIV,
+      code: inCode,
+      encrypt: inEncrypt,
+      wx_brand: theSysInfo.brand,
+      wx_model: theSysInfo.model,
+      wx_version: theSysInfo.version,
+      wx_system: theSysInfo.system,
+      wx_platform: theSysInfo.platform,
+      wx_SDKVersion: theSysInfo.SDKVersion,
+      wx_pixelRatio: theSysInfo.pixelRatio,
+      wx_screenWidth: theSysInfo.screenWidth,
+      wx_screenHeight: theSysInfo.screenHeight,
+      wx_fontSizeSetting: theSysInfo.fontSizeSetting
+    }
+    // 构造访问接口连接地址...
+    var theUrl = g_app.globalData.m_urlPrev + 'Mini/login'
+    // 请求远程API过程...
+    wx.request({
+      url: theUrl,
+      method: 'POST',
+      data: thePostData,
+      dataType: 'x-www-form-urlencoded',
+      header: { 'content-type': 'application/x-www-form-urlencoded' },
+      success: function (res) {
+        console.log(res);
+        // 隐藏导航栏加载动画...
+        wx.hideLoading()
+        wx.hideNavigationBarLoading();
+        // 如果返回数据无效或状态不对，打印错误信息，直接返回...
+        if (res.statusCode != 200 || res.data.length <= 0) {
+          Dialog.alert({ title: '错误警告', message: '调用网站登录接口失败！' });
+          return
+        }
+        // dataType 没有设置json，需要自己转换...
+        var arrData = JSON.parse(res.data);
+        // 获取授权数据失败的处理...
+        if (arrData.err_code > 0) {
+          Dialog.alert({ title: '错误警告', message: arrData.err_msg });
+          return
+        }
+        // 获取授权数据成功，保存用户编号到全局对象...
+        g_app.globalData.m_nUserID = arrData.user_id
+        g_app.globalData.m_userInfo = inUserInfo
+        // 进行页面跳转，使用可返回的wx.navigateTo...
+        //wx.navigateTo({url: ''})
+      },
+      fail: function (res) {
+        console.log(res);
+        // 隐藏导航栏加载动画...
+        wx.hideLoading()
+        wx.hideNavigationBarLoading();
+        // 打印错误信息，显示错误警告...
+        Dialog.alert({ title: '错误警告', message: '调用网站登录接口失败！' });
+      }
+    })
+  },
+
+  // 拒绝授权|允许授权之后的回调接口...
+  getUserInfo: function(res) {
+    // 注意：拒绝授权，也要经过这个接口，没有res.detail.userInfo信息...
+    console.log(res.detail);
+    // 保存this对象...
+    var that = this
+    // 允许授权，通过网站接口获取用户编号...
+    if (res.detail.userInfo) {
+      that.doAPILogin(that.data.m_code, res.detail.userInfo, res.detail.encryptedData, res.detail.iv)
+    }
+  },
+
+  // 点击房间...
+  onClickRoom: function(event) {
+    console.log(event.currentTarget.id);
+    wx.showLoading({ title: '加载中' });
+    // 保存this对象...
+    var that = this
+    // 处理登录过程...
+    wx.login({
+      success: res => {
+        //保存code，后续使用...
+        that.setData({ m_code: res.code })
+        // 立即读取用户信息，第一次会弹授权框...
+        wx.getUserInfo({
+          lang: 'zh_CN',
+          withCredentials: true,
+          success: res => {
+            console.log(res);
+            wx.hideLoading();
+            // 获取成功，通过网站接口获取用户编号...
+            that.doAPILogin(that.data.m_code, res.userInfo, res.encryptedData, res.iv);
+          },
+          fail: res => {
+            console.log(res);
+            wx.hideLoading();
+            // 获取失败，显示授权对话框...
+            that.setData({ m_show_auth: true });
+          }
+        })
+      }
+    })
   }
 })
