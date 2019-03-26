@@ -1,5 +1,5 @@
-<view style="{{ customStyle }}" class="custom-class van-card {{ centered ? 'van-card--center' : '' }}">
-  <view class="van-card__thumb" bind:tap="onClickThumb">
+<view style="{{ customStyle }}" class="custom-class van-card {{ centered ? 'van-card--center' : '' }}" hover-class="van-card--hover" bind:tap="onTap">
+  <view class="van-card__thumb">
     <image
       wx:if="{{ thumb }}"
       src="{{ thumb }}"

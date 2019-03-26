@@ -15,7 +15,6 @@ VantComponent({
     centered: Boolean,
     lazyLoad: Boolean,
     shopCart: Boolean,
-    thumbLink: String,
     originPrice: String,
     customStyle: String,
     thumbMode: {
@@ -28,8 +27,8 @@ VantComponent({
     }
   },
   methods: {
-    onClickThumb: function onClickThumb() {
-      this.jumpLink('thumbLink');
+    onTap() {
+      this.triggerEvent('click', this.data)
     }
   }
 });

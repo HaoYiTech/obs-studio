@@ -18,6 +18,9 @@
   -webkit-justify-content:center;
   justify-content:center;
 }
+.van-card--hover{
+  background-color: #e0e0e0;
+}
 .van-card__thumb{
   position:relative;
   width:90px;
