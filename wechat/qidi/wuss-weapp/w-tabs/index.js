@@ -166,7 +166,7 @@ Component({
       } = this.data;
 
       this.setData({
-        styles: `border-bottom: 1rpx solid ${borderColor};`
+        styles: `border-bottom: 1rpx solid ${borderColor};` + `border-top: 1rpx solid ${borderColor};`
       });
     },
     _trigger(name, value) {

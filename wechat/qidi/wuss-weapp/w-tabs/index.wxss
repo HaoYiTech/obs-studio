@@ -19,7 +19,7 @@ page {
 
 .wuss-tabs-item {
   height: 100%;
-  min-height: 44px;
+  min-height: 42px;
   display: inline-block;
   text-align: center;
 }
@@ -32,7 +32,7 @@ page {
 
 .wuss-tabs-item-icon {
   display: inline-block;
-  vertical-align: -12px;
+  vertical-align: -14px;
 }
 
 .wuss-tabs-item-title.active {

@@ -17,7 +17,7 @@
 						 class="wuss-tabs-item-icon"
 						 name="{{ item.icon }}"
 						 size="{{ item.iconSize }}"
-						 color="{{ item.iconColor }}"
+						 color="{{ currentIndex === index ? activeColor : item.iconColor }}"
 						/>
 					</block>
 					<view class="wuss-tabs-item-title" style="{{ currentIndex === index ? 'color:' + activeColor + ';' : ''}} {{ item.icon ? 'margin-left: 3px;' : '' }} {{ textStyles }}">
