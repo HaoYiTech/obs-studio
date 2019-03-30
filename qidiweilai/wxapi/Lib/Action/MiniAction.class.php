@@ -268,5 +268,57 @@ class MiniAction extends Action
     // 返回json数据包...
     echo json_encode($arrErr);
   }
+  //
+  // 处理小程序获取聊天记录...
+  public function getChat()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    // 注意：这里使用的是 $_POST 数据...
+    do {
+      // 判断输入参数的有效性 => 必须包含 room_id|to_up|min_id|max_id...
+      if( !isset($_POST['room_id']) || !isset($_POST['to_up']) || !isset($_POST['min_id']) || !isset($_POST['max_id']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入的参数无效';
+        break;
+      }
+      // 修改房间编号 => 减去房间偏移号码...
+      $_POST['room_id'] = $_POST['room_id'] - LIVE_BEGIN_ID;
+      // 得到每页条数和查询方向...
+      $pagePer = C('PAGE_PER');
+      $condition['room_id'] = $_POST['room_id'];
+      $condition['chat_id'] = (($_POST['to_up'] > 0) ? array('lt', $_POST['min_id']) : array('gt', $_POST['max_id']));
+      // 获取房间对应聊天分页数据，通过视图获取数据...
+      $arrErr['items'] = D('ChatView')->where($condition)->limit($pagePer)->order('Chat.created DESC')->select();
+    } while( false );
+    // 返回json数据包...
+    echo json_encode($arrErr);
+  }
+  //
+  // 处理小程序保存聊天记录...
+  public function saveChat()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    // 注意：这里使用的是 $_POST 数据...
+    do {
+      // 判断输入参数的有效性 => 必须包含 room_id|user_id|type_id|content...
+      if( !isset($_POST['room_id']) || !isset($_POST['user_id']) || !isset($_POST['type_id']) || !isset($_POST['content']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入的参数无效';
+        break;
+      }
+      // 修改房间编号 => 减去房间偏移号码...
+      $_POST['room_id'] = $_POST['room_id'] - LIVE_BEGIN_ID;
+      // 直接创建一条聊天消息记录，返回消息编号...
+      $_POST['created'] = date('Y-m-d H:i:s');
+      $insertid = D('chat')->add($_POST);
+      $arrErr['chat_id'] = $insertid;
+    } while( false );
+    // 返回json数据包...
+    echo json_encode($arrErr);
+  }
 }
 ?>
