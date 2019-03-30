@@ -8,3 +8,11 @@ page {
   -webkit-font-smoothing: antialiased;
   font-family: 'PingFang SC', Helvetica, 'STHeiti STXihei', 'Microsoft YaHei', Tohoma, Arial, sans-serif;
 }
+
+.tag {
+  margin-right: 5px;  
+}
+
+.top-area {
+  margin-top: 15rpx;
+}

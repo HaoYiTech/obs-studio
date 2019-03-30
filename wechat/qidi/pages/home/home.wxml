@@ -10,12 +10,12 @@
   message="本小程序需要您的授权才能使用后续的功能，请点击授权按钮完成授权。"
 />
 
-<view class="home-top-area">
+<view class="top-area">
   <van-cell
     title="房间教室"
     icon="label"
     border="{{ true }}"
-    icon-class="home-room-icon"
+    icon-class="room-icon"
   />
 </view>
 
@@ -49,7 +49,7 @@
 
 <view wx:for="{{m_arrRoom}}" wx:key="unique">
   <van-card
-    id="{{item.room_id}}"
+    id="{{index}}"
     bind:click="onClickRoom"
     customStyle="font-size:14px;"
     title="{{item.room_name}}"

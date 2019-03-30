@@ -1,0 +1,15 @@
+
+@import "../../modules/chat-page/word.wxss";
+@import "../../modules/chat-input/chat-input.wxss";
+
+.room-view {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #EFEFEF;
+}
+
+.vant-load {
+  margin-top: 15px;
+  text-align: center;
+}

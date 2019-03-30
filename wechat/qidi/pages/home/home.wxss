@@ -1,10 +1,4 @@
 
-.tag {
-  margin-right: 5px;  
-}
-.home-room-icon {
+.room-icon {
   color:#ef473a;
-}
-.home-top-area {
-  margin-top: 15rpx;
 }

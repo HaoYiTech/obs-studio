@@ -1,4 +1,3 @@
-
 import Dialog from '../../vant-weapp/dialog/dialog';
 
 // 获取全局的app对象...
@@ -199,7 +198,7 @@ Page({
         g_app.globalData.m_nUserID = arrData.user_id
         g_app.globalData.m_userInfo = inUserInfo
         // 进行页面跳转，使用可返回的wx.navigateTo...
-        //wx.navigateTo({url: ''})
+        wx.navigateTo({url: '../room/room'})
       },
       fail: function (res) {
         console.log(res);
@@ -226,7 +225,15 @@ Page({
 
   // 点击房间...
   onClickRoom: function(event) {
+    // 打印房间索引编号，保存房间内容到全局变量...
     console.log(event.currentTarget.id);
+    g_app.globalData.m_curRoomItem = this.data.m_arrRoom[event.currentTarget.id]
+    // 如果用户编号和用户信息有效，直接跳转到房间聊天页面，使用可返回的wx.navigateTo...
+    if (g_app.globalData.m_nUserID > 0 && g_app.globalData.m_userInfo != null) {
+      wx.navigateTo({url: '../room/room'})
+      return;
+    }
+    // 显示加载动画过程...
     wx.showLoading({ title: '加载中' });
     // 保存this对象...
     var that = this

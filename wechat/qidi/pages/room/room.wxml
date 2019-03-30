@@ -1,0 +1,29 @@
+
+<import src="../../modules/chat-page/chat-item.wxml"/>
+<import src="../../modules/chat-input/chat-input.wxml"/>
+
+<w-tabs id="myTab"
+  bind:onChange="handleChange"
+  textStyles="font-size: 14px;"
+  options="{{ hotTabs }}"
+  activeColor="#ef473a"
+/>
+
+<scroll-view
+  scroll-y
+  class="room-view"
+  upper-threshold="20"
+  style="height:{{pageHeight}}px;"
+  scroll-top="{{scrollTopVal}}"
+  bindtap="resetInputStatus"
+  bindscrolltoupper="doScrollToUpper"
+>
+  <view class="vant-load" style="display: {{m_up_more ? 'block' : 'none'}}">
+    <van-loading size="24px" color="#666" type="spinner" />
+  </view>
+  <block wx:for="{{chatItems}}" wx:key="{{index}}">
+    <template is="chat-item" data="{{length:chatItems.length,index:index,item:item}}"/>
+  </block>
+</scroll-view>
+
+<template is="chat-input" data="{{inputObj,textMessage,showVoicePart:true}}"/>
