@@ -17,6 +17,22 @@
     word-wrap: break-word;
 }
 
+.isMyTitleStyle {
+  right: 60px;
+  color: #888;
+  font-size: 12px;
+  margin-top: -2px;
+  position: absolute;
+}
+
+.isOtherTitleStyle {
+  left: 60px;
+  color: #888;
+  font-size: 12px;
+  margin-top: -2px;
+  position: absolute;
+}
+
 .chat-list-pic-style {
     border-radius: 10rpx;
     margin-left: 5rpx;
@@ -35,5 +51,5 @@
 .chat-list-arrow-style {
     width: 11rpx;
     height: 20rpx;
-    margin-top: 25rpx
+    margin-top: 62rpx
 }

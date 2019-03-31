@@ -61,6 +61,7 @@ Page({
       chatId: 0,//消息id => chat_id
       userId: isMy ? g_app.globalData.m_nUserID : 0,
       isMy: isMy,//我发送的消息？
+      title: '', //消息标题 => 微信昵称 - 真实姓名 - 身份类型
       showTime: time.ifShowTime,//是否显示该次发送时间
       time: time.timeStr,//发送时间 如 09:15,
       timestamp: currentTimestamp,//该条数据的时间戳，一般用于排序
@@ -197,16 +198,19 @@ Page({
         that.setData({ m_up_more: false, isReadChat: false });
         // 调用接口失败...
         if (res.statusCode != 200) {
+          console.log(res.statusCode);
           return;
         }
         // dataType 没有设置json，需要自己转换...
         var arrData = JSON.parse(res.data);
         // 获取失败的处理 => 显示获取到的错误信息...
         if (arrData.err_code > 0) {
+          console.log(arrData);
           return;
         }
         // 获取到的记录数据为空时，直接关闭动画，返回...
         if (!(arrData.items instanceof Array) || (arrData.items.length <= 0)) {
+          console.log('== no chat item ==');
           return;
         }
         // 获取到的数据不为空，更新界面 => 数组要倒序读取...
@@ -222,6 +226,7 @@ Page({
           objItem.chatId = item.chat_id;
           objItem.userId = item.user_id;
           objItem.headUrl = item.wx_headurl;
+          objItem.title = item.wx_nickname;
           // 将新对象放入列表，更新最新时间戳...
           that.data.chatItems.push(objItem);
           that._latestTImestamp = objItem.timestamp;
