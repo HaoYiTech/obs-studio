@@ -1,6 +1,7 @@
 
 <import src="../../modules/chat-page/chat-item.wxml"/>
 <import src="../../modules/chat-input/chat-input.wxml"/>
+<import src="../../modules/chat-page/chat-item-head.wxml"/>
 
 <w-tabs id="myTab"
   bind:onChange="handleChange"
@@ -9,21 +10,46 @@
   activeColor="#ef473a"
 />
 
-<scroll-view
-  scroll-y
-  class="room-view"
-  upper-threshold="20"
-  style="height:{{pageHeight}}px;"
-  scroll-top="{{scrollTopVal}}"
-  bindtap="resetInputStatus"
-  bindscrolltoupper="doScrollToUpper"
->
-  <view class="vant-load" style="display: {{m_up_more ? 'block' : 'none'}}">
-    <van-loading size="24px" color="#666" type="spinner" />
-  </view>
-  <block wx:for="{{chatItems}}" wx:key="{{index}}">
-    <template is="chat-item" data="{{length:chatItems.length,index:index,item:item}}"/>
-  </block>
-</scroll-view>
+<view style="display:{{m_nTabIndex === 0 ? 'block':'none'}};">
+  <scroll-view
+    scroll-y
+    class="room-view"
+    upper-threshold="20"
+    style="height:{{pageHeight}}px;"
+    scroll-top="{{scrollTopVal}}"
+    bindtap="resetInputStatus"
+    bindscrolltoupper="doScrollToUpper"
+  >
+    <view class="vant-load" style="display: {{isChatMore ? 'block' : 'none'}}">
+      <van-loading size="24px" color="#666" type="spinner" />
+    </view>
+    <block wx:for="{{chatItems}}" wx:key="{{index}}">
+      <template is="chat-item" data="{{length:chatItems.length,index:index,item:item}}"/>
+    </block>
+  </scroll-view>
+  <template is="chat-input" data="{{inputObj,textMessage,showVoicePart:true}}"/>
+</view>
 
-<template is="chat-input" data="{{inputObj,textMessage,showVoicePart:true}}"/>
+<view style="display:{{m_nTabIndex > 0 ? 'block':'none'}};">
+  <scroll-view
+    scroll-y
+    class="room-view"
+    upper-threshold="20"
+    style="height:{{pageHeight}}px;"
+    scroll-top="{{scrollTopVal}}"
+    bindscrolltoupper="doScrollToUpper"
+  >
+    <view class="vant-load" style="display: {{isUserMore ? 'block' : 'none'}}">
+      <van-loading size="24px" color="#666" type="spinner" />
+    </view>
+    <block wx:for="{{userItems}}" wx:key="{{index}}">
+      <view class="chat-item-style">
+        <template is="chat-item-head" data="{{headUrl:item.wx_headurl,unread:0}}"/>
+        <view class="chat-item-content-super-style">
+          <view class="chat-item-name-style">{{userType[item.user_type]}} - {{item.wx_nickname}}</view>
+        </view>
+      </view>
+      <view class="list-divide-line" style="width: 79.5%;margin-left: 20.5%"/>
+    </block>
+  </scroll-view>
+</view>

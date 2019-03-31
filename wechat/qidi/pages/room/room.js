@@ -11,13 +11,18 @@ Page({
   data: {
     m_RoomData: null,    // 当前房间信息
     m_nTabIndex: 0,      // 标签索引编号
-    m_min_id: 0,         // 最小聊天编号
-    m_max_id: 0,         // 最大聊天编号
-    m_up_more: false,    // 向上正在加载
     m_inter_chat: -1,    // 定时器初始化
+    min_chat_id: 0,      // 最小聊天编号
+    max_chat_id: 0,      // 最大聊天编号
+    cur_user_page: 1,    // 当前用户页码
+    max_user_page: 1,    // 最大用户页码
+    totle_user_num: 0,   // 记录用户总数
+    isChatMore: false,   // 向上正在加载
+    isUserMore: false,   // 用户正在加载
     isReadChat: false,   // 正在读取聊天
     isAndroid: true,
     chatItems: [],
+    userItems: [],
     hotTabs: [
       {
         text: '聊天内容',
@@ -31,13 +36,31 @@ Page({
         iconSize: '36rpx',
         iconColor: '#666',
       }
-    ]
+    ],
+    userType: ['家长','助教','讲师','店长','门店老板','运营维护','管理员'],
   },
 
   // 点击标签栏切换事件...
   handleChange(event) {
-    console.log(event.detail.value)
-    this.data.m_nTabIndex = event.detail.value
+    // 更新显示视图，根据Tab切换编号...
+    this.setData({m_nTabIndex: event.detail.value});
+    // 如果是聊天内容切换，重置定时器...
+    if (event.detail.value === 0) {
+      var that = this;
+      clearInterval(that.data.m_inter_chat);
+      that.data.m_inter_chat = setInterval(function () {
+        that.doAPIGetChat(false);
+      }, 5000);
+    }
+    // 如果是查看用户列表，需要重新更新用户数据...
+    if (event.detail.value === 1) {
+      clearInterval(this.data.m_inter_chat);
+      this.data.m_inter_chat = -1;
+      this.data.userItems = [];
+      this.data.cur_user_page = 1;
+      this.data.max_user_page = 1;
+      this.doAPIGetUser();
+    }
   },
 
   // 创建简化聊天内容对象 => 用于网络传输...
@@ -164,7 +187,68 @@ Page({
   // 滚动视图滚动到顶部 => 向上翻页操作...
   doScrollToUpper(e) {
     // 进行具体的向上翻页操作...
-    this.doAPIGetChat(true);
+    if (this.data.m_nTabIndex === 0) {
+      this.doAPIGetChat(true);
+    } else if (this.data.m_nTabIndex === 1) {
+      // 在线参与用户列表，通过翻页的方式进行数据查询...
+      if (this.data.cur_user_page < this.data.max_user_page) {
+        this.data.cur_user_page += 1;
+        this.doAPIGetUser();
+      }
+    }
+  },
+
+  // 读取参与聊天用户列表...
+  doAPIGetUser: function() {
+    // 显示加载更多动画条...
+    this.setData({ isUserMore: true });
+    // 保存this对象...
+    var that = this
+    // 准备需要的参数信息...
+    var thePostData = {
+      'cur_page': that.data.cur_user_page,
+      'room_id': that.data.m_RoomData.room_id,
+    }
+    // 构造请求的API连接地址...
+    var theUrl = g_app.globalData.m_urlPrev + 'Mini/getChatUser'
+    // 请求远程API过程...
+    wx.request({
+      url: theUrl,
+      method: 'POST',
+      data: thePostData,
+      dataType: 'x-www-form-urlencoded',
+      header: { 'content-type': 'application/x-www-form-urlencoded' },
+      success: function (res) {
+        // 调用成功，关闭加载动画...
+        that.setData({ isUserMore: false });
+        // 调用接口失败...
+        if (res.statusCode != 200) {
+          console.log(res.statusCode);
+          return;
+        }
+        // dataType 没有设置json，需要自己转换...
+        var arrData = JSON.parse(res.data);
+        // 获取失败的处理 => 显示获取到的错误信息...
+        if (arrData.err_code > 0) {
+          console.log(arrData);
+          return;
+        }
+        // 保存获取到的记录总数和总页数...
+        that.data.max_user_page = arrData.max_page;
+        that.data.totle_user_num = arrData.total_num;
+        // 获取到的记录数据为空时，直接关闭动画，返回...
+        if (!(arrData.items instanceof Array) || (arrData.items.length <= 0)) {
+          console.log('== no user item ==');
+          return;
+        }
+        // 直接追加用户记录，并将用户数据显示到界面上去...
+        that.data.userItems = that.data.userItems.concat(arrData.items);
+        that.setData({ userItems: that.data.userItems });
+      },
+      fail: function (res) {
+        that.setData({ isUserMore: false });
+      }
+    })
   },
 
   // 读取并加载聊天数据内容...
@@ -172,18 +256,18 @@ Page({
     // 如果正在执行读取命令，直接返回...
     if (this.data.isReadChat) return;
     // 显示加载更多动画条 => 向上和向下都需要设置状态...
-    this.setData({ m_up_more: toUp, isReadChat: true });
+    this.setData({ isChatMore: toUp, isReadChat: true });
     // 保存this对象...
     var that = this
     // 准备需要的参数信息...
     var thePostData = {
       'to_up': toUp ? 1 : 0,
-      'min_id': that.data.m_min_id,
-      'max_id': that.data.m_max_id,
+      'min_id': that.data.min_chat_id,
+      'max_id': that.data.max_chat_id,
       'room_id': that.data.m_RoomData.room_id,
     }
      // 构造请求的API连接地址...
-    var theUrl = g_app.globalData.m_urlPrev + 'Mini/getChat'
+    var theUrl = g_app.globalData.m_urlPrev + 'Mini/getChatList'
     // 请求远程API过程...
     wx.request({
       url: theUrl,
@@ -195,7 +279,7 @@ Page({
         // 隐藏加载动画...
         wx.hideLoading()
         // 只要调用接口成功，就关闭加载动画...
-        that.setData({ m_up_more: false, isReadChat: false });
+        that.setData({ isChatMore: false, isReadChat: false });
         // 调用接口失败...
         if (res.statusCode != 200) {
           console.log(res.statusCode);
@@ -226,7 +310,7 @@ Page({
           objItem.chatId = item.chat_id;
           objItem.userId = item.user_id;
           objItem.headUrl = item.wx_headurl;
-          objItem.title = item.wx_nickname;
+          objItem.title = item.wx_nickname + ' - ' + that.data.userType[item.user_type];
           // 将新对象放入列表，更新最新时间戳...
           that.data.chatItems.push(objItem);
           that._latestTImestamp = objItem.timestamp;
@@ -240,16 +324,16 @@ Page({
         // 再用编号排序，更新最小编号和最大编号 => 如果编号混乱会丢记录 => 编号大的时间戳小(混乱对记录)...
         that.data.chatItems.sort(UI._sortMsgListByChatID);
         if (that.data.chatItems.length > 0) {
-          that.data.m_min_id = Number(that.data.chatItems[0].chatId);
-          that.data.m_max_id = Number(that.data.chatItems[that.data.chatItems.length - 1].chatId);
-          console.log(that.data.m_min_id, that.data.m_max_id, that.data.chatItems.length);
+          that.data.min_chat_id = Number(that.data.chatItems[0].chatId);
+          that.data.max_chat_id = Number(that.data.chatItems[that.data.chatItems.length - 1].chatId);
+          console.log(that.data.min_chat_id, that.data.max_chat_id, that.data.chatItems.length);
         }
       },
       fail: function (res) {
         // 隐藏加载动画...
         wx.hideLoading()
         // 隐藏正在加载动画...
-        that.setData({ m_up_more: false, isReadChat: false });
+        that.setData({ isChatMore: false, isReadChat: false });
       }
     })
   },

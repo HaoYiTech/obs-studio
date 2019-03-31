@@ -1,6 +1,7 @@
 
 @import "../../modules/chat-page/word.wxss";
 @import "../../modules/chat-input/chat-input.wxss";
+@import "../../modules/chat-page/chat-item-head.wxss";
 
 .room-view {
   width: 100%;
