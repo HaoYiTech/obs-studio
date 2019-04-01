@@ -10,7 +10,7 @@
   background-color: #EFEFEF;
 }
 .room-prompt {
-  height: 80%;
+  height: 100%;
   padding-bottom: 0;
 }
 .vant-load {
