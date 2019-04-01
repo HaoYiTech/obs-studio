@@ -261,9 +261,13 @@ class MiniAction extends Action
         $dbUser['update_time'] = date('Y-m-d H:i:s');
         $insertid = D('user')->add($dbUser);
         $dbUser['user_id'] = $insertid;
+        // 设定默认的用户类型|真实姓名...
+        $dbUser['user_type'] = kParentUser;
       }
-      // 返回得到的用户编号...
+      // 返回得到的用户编号|用户类型|真实姓名...
       $arrErr['user_id'] = $dbUser['user_id'];
+      $arrErr['user_type'] = $dbUser['user_type'];
+      $arrErr['real_name'] = $dbUser['real_name'];
      }while( false );
     // 返回json数据包...
     echo json_encode($arrErr);
