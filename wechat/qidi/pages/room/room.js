@@ -55,11 +55,12 @@ Page({
     // 如果是查看用户列表，需要重新更新用户数据...
     if (event.detail.value === 1) {
       clearInterval(this.data.m_inter_chat);
+      wx.showLoading({ title: '加载中' });
       this.data.m_inter_chat = -1;
       this.data.userItems = [];
       this.data.cur_user_page = 1;
       this.data.max_user_page = 1;
-      this.doAPIGetUser();
+      this.doAPIGetUser(false);
     }
   },
 
@@ -193,15 +194,15 @@ Page({
       // 在线参与用户列表，通过翻页的方式进行数据查询...
       if (this.data.cur_user_page < this.data.max_user_page) {
         this.data.cur_user_page += 1;
-        this.doAPIGetUser();
+        this.doAPIGetUser(true);
       }
     }
   },
 
   // 读取参与聊天用户列表...
-  doAPIGetUser: function() {
+  doAPIGetUser: function(toUp) {
     // 显示加载更多动画条...
-    this.setData({ isUserMore: true });
+    this.setData({ isUserMore: toUp });
     // 保存this对象...
     var that = this
     // 准备需要的参数信息...
@@ -220,6 +221,7 @@ Page({
       header: { 'content-type': 'application/x-www-form-urlencoded' },
       success: function (res) {
         // 调用成功，关闭加载动画...
+        wx.hideLoading();
         that.setData({ isUserMore: false });
         // 调用接口失败...
         if (res.statusCode != 200) {
@@ -246,6 +248,7 @@ Page({
         that.setData({ userItems: that.data.userItems });
       },
       fail: function (res) {
+        wx.hideLoading();
         that.setData({ isUserMore: false });
       }
     })
