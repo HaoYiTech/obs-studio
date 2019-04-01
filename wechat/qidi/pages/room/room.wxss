@@ -9,7 +9,10 @@
   flex-direction: column;
   background-color: #EFEFEF;
 }
-
+.room-prompt {
+  height: 80%;
+  padding-bottom: 0;
+}
 .vant-load {
   margin-top: 15px;
   text-align: center;

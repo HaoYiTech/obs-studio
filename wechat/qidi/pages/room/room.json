@@ -1,6 +1,7 @@
 {
   "enablePullDownRefresh": false,
   "usingComponents": {
+    "wux-prompt": "../../wux-weapp/prompt/index",
     "van-loading": "../../vant-weapp/loading/index",
     "van-icon": "../../vant-weapp/icon/index",
     "w-tabs": "../../wuss-weapp/w-tabs/index"

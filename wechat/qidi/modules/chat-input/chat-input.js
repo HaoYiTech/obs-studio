@@ -4,10 +4,9 @@ let windowHeight, windowWidth;
 // let voice$position = {toLeft: 0, toBottom: 0};
 let singleVoiceTimeCount = 0;
 let maxVoiceTime = 60, minVoiceTime = 1, startTimeDown = 54;
-let timer;
-let sendVoiceCbOk, sendVoiceCbError, startVoiceRecordCbOk, tabbarHeigth = 0, extraButtonClickEvent, canUsePress = false,
-    voiceFormat;
-let cancelLineYPosition = 0;
+let sendVoiceCbOk, sendVoiceCbError, startVoiceRecordCbOk, tabbarHeigth = 0;
+let extraButtonClickEvent, canUsePress = false, voiceFormat;
+let timer, cancelLineYPosition = 0;
 let status = {
     START: 1,
     SUCCESS: 2,
@@ -84,10 +83,10 @@ function setVoiceRecordStatusListener(cb) {
 
 function initChangeInputWayEvent() {
     _page.changeInputWayEvent = function () {
-        _page.setData({
+        /*_page.setData({
             'inputObj.inputStatus': _page.data.inputObj.inputStatus === 'text' ? 'voice' : 'text',
             'inputObj.extraObj.chatInputShowExtra': false
-        });
+        });*/
     }
 }
 
@@ -118,9 +117,9 @@ function initExtraData(extra$arr) {
         'inputObj.extraObj.chatInputExtraArr': extra$arr
     });
     _page.chatInputExtraClickEvent = function () {
-        _page.setData({
-            'inputObj.extraObj.chatInputShowExtra': !_page.data.inputObj.extraObj.chatInputShowExtra
-        });
+        //_page.setData({
+        //  'inputObj.extraObj.chatInputShowExtra': !_page.data.inputObj.extraObj.chatInputShowExtra
+        //});
         extraButtonClickEvent && extraButtonClickEvent(!_page.data.inputObj.extraObj.chatInputShowExtra);
     };
 }

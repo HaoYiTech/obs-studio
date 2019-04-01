@@ -23,6 +23,9 @@
     <view class="vant-load" style="display: {{isChatMore ? 'block' : 'none'}}">
       <van-loading size="24px" color="#666" type="spinner" />
     </view>
+    <view class="room-prompt" hidden="{{ chatItems.length > 0 }}">
+      <wux-prompt visible="{{ chatItems.length <= 0 }}" title="没有聊天记录" />
+    </view>
     <block wx:for="{{chatItems}}" wx:key="{{index}}">
       <template is="chat-item" data="{{length:chatItems.length,index:index,item:item}}"/>
     </block>
@@ -41,6 +44,9 @@
   >
     <view class="vant-load" style="display: {{isUserMore ? 'block' : 'none'}}">
       <van-loading size="24px" color="#666" type="spinner" />
+    </view>
+    <view class="room-prompt" hidden="{{ userItems.length > 0 }}">
+      <wux-prompt visible="{{ userItems.length <= 0 }}" title="没有在线用户" />
     </view>
     <block wx:for="{{userItems}}" wx:key="{{index}}">
       <view class="chat-item-style">
