@@ -12,7 +12,7 @@
 
 <view style="display:{{m_nTabIndex === 0 ? 'block':'none'}};">
   <scroll-view
-    scroll-y
+    scroll-y="true"
     class="room-view"
     upper-threshold="20"
     style="height:{{pageHeight}}px;"
@@ -35,7 +35,7 @@
 
 <view style="display:{{m_nTabIndex > 0 ? 'block':'none'}};">
   <scroll-view
-    scroll-y
+    scroll-y="true"
     class="room-view"
     upper-threshold="20"
     style="height:{{pageHeight}}px;"

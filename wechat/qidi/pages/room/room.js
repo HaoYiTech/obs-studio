@@ -81,17 +81,18 @@ Page({
     if (!content) return;
     const currentTimestamp = (typeof timestamp === 'string') ? Date.parse(timestamp) : Date.now();
     const time = dealChatTime(currentTimestamp, this._latestTImestamp);
+    let userInfo = g_app.globalData.m_userInfo;
     let obj = {
       chatId: 0,//消息id => chat_id
       userId: isMy ? g_app.globalData.m_nUserID : 0,
-      isMy: isMy,//我发送的消息？
-      title: '', //消息标题 => 微信昵称 - 真实姓名 - 身份类型
+      isMy: isMy,//我发送的消息？ 消息标题 => 微信昵称 - 真实姓名 - 身份类型
+      title: isMy ? userInfo.nickName + ' - ' + this.data.userType[userInfo.userType] : '',
       showTime: time.ifShowTime,//是否显示该次发送时间
       time: time.timeStr,//发送时间 如 09:15,
       timestamp: currentTimestamp,//该条数据的时间戳，一般用于排序
       type: type,//内容的类型，目前有这几种类型： text/voice/image/custom | 文本/语音/图片/自定义
       content: content,// 显示的内容，根据不同的类型，在这里填充不同的信息。
-      headUrl: g_app.globalData.m_userInfo.avatarUrl,//显示的头像，自己或好友的。
+      headUrl: userInfo.avatarUrl,//显示的头像，自己或好友的。
       sendStatus: 'success',//发送状态，目前有这几种状态：sending/success/failed | 发送中/发送成功/发送失败
       voiceDuration: duration,//语音时长 单位秒
       isPlaying: false,//语音是否正在播放
@@ -147,7 +148,7 @@ Page({
         objItem.timestamp = Date.now();
         objItem.chatId = arrData.chat_id;
         // 保存为当前最大的聊天编号...
-        that.data.m_max_id = Number(arrData.chat_id);
+        that.data.max_chat_id = Number(arrData.chat_id);
         // 更新系统里最新的聊天时间，调用回调接口...
         that._latestTImestamp = objItem.timestamp;
         success && success(objItem);

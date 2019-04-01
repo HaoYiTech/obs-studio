@@ -194,9 +194,11 @@ Page({
           Dialog.alert({ title: '错误警告', message: arrData.err_msg });
           return
         }
-        // 获取授权数据成功，保存用户编号到全局对象...
+        // 获取授权数据成功，保存用户编号|用户类型|真实姓名...
         g_app.globalData.m_nUserID = arrData.user_id
         g_app.globalData.m_userInfo = inUserInfo
+        g_app.globalData.m_userInfo.userType = arrData.user_type
+        g_app.globalData.m_userInfo.realName = arrData.real_name
         // 进行页面跳转，使用可返回的wx.navigateTo...
         wx.navigateTo({url: '../room/room'})
       },
