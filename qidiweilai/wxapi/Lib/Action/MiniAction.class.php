@@ -268,6 +268,13 @@ class MiniAction extends Action
       $arrErr['user_id'] = $dbUser['user_id'];
       $arrErr['user_type'] = $dbUser['user_type'];
       $arrErr['real_name'] = $dbUser['real_name'];
+      // 根据用户编号查找与该用户绑定的房间视图信息...
+      $myQuery['teacher_id'] = $dbUser['user_id'];
+      $arrErr['bind_room'] = D('RoomView')->where($myQuery)->find();
+      // 如果查找到的结果有效，需要对房间号码进行偏移设置...
+      if( isset($arrErr['bind_room']['room_id']) ) {
+        $arrErr['bind_room']['room_id'] += LIVE_BEGIN_ID;
+      }
      }while( false );
     // 返回json数据包...
     echo json_encode($arrErr);
