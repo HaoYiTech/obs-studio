@@ -1,0 +1,14 @@
+
+<van-dialog id="van-dialog" />
+
+<block wx:if="{{m_show_auth}}">
+  <wux-result
+      icon="{{ icon }}"
+      title="{{ m_title }}"
+      label="{{ m_label }}"
+      buttons="{{ buttons }}"
+      extra="Copyright © 2019 启迪未来"
+      fixed="true"
+      bind:getuserinfo="getUserInfo"
+  />
+</block>

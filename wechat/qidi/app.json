@@ -2,6 +2,7 @@
   "pages":[
     "pages/home/home",
     "pages/room/room",
+    "pages/bind/bind",
     "pages/person/person"
   ],
   "window":{

@@ -14,13 +14,16 @@ Page({
     m_total_num: 0,
     m_arrRoom: [],
     m_show_more: true,
-    m_show_auth: false
+    m_show_auth: false,
+    m_load_type: null
   },
 
   /**
    * 生命周期函数--监听页面加载
    */
   onLoad: function (options) {
+    // 保存加载类型，页面加载完毕之后再跳转验证...
+    this.data.m_load_type = options.type;
     // 显示加载动画，做了双层动画加载处理...
     wx.showLoading({ title: '加载中' });
     // 调用接口，获取房间列表...
@@ -89,8 +92,16 @@ Page({
    * 生命周期函数--监听页面初次渲染完成
    */
   onReady: function () {
+    // 页面初次渲染完毕...
     console.log('onReady')
     wx.hideLoading()
+    // 如果附加参数有效，并且是来自扫码绑定，需要进一步跳转验证...
+    let theAppData = g_app.globalData;
+    if (this.data.m_load_type === 'bind' && theAppData.m_nUserID != null && 
+      theAppData.m_curRoomItem != null && theAppData.m_userInfo != null) {
+      // 如果房间对象|用户编号|用户信息，都有效，进行跳转...
+      wx.navigateTo({ url: '../room/room' });
+    }
   },
 
   /**
