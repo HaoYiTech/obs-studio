@@ -350,7 +350,7 @@ Page({
     this._latestTImestamp = 0;
     // 用全局房间信息设置页面标题栏，保存标签索引号...
     this.data.m_RoomData = g_app.globalData.m_curRoomItem
-    wx.setNavigationBarTitle({ title: this.data.m_RoomData.room_name})
+    wx.setNavigationBarTitle({title: this.data.m_RoomData.room_name + ' - ' + this.data.m_RoomData.room_id})
     this.data.m_nTabIndex = this.selectComponent('#myTab').properties.currentIndex
     // 创建相关聊天对象...
     this.UI = new UI(this);
