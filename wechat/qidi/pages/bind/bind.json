@@ -2,7 +2,7 @@
   "navigationBarTitleText": "扫码登录",
   "enablePullDownRefresh": false,
   "usingComponents": {
-    "van-dialog": "../../vant-weapp/dialog/index",
+    "i-load-more": "../../view-weapp/load-more/index",
     "wux-result": "../../wux-weapp/result/index"
   }
 }

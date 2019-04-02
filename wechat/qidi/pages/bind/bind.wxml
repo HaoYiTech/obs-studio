@@ -1,6 +1,4 @@
 
-<van-dialog id="van-dialog" />
-
 <block wx:if="{{m_show_auth}}">
   <wux-result
       icon="{{ icon }}"
@@ -11,4 +9,9 @@
       fixed="true"
       bind:getuserinfo="getUserInfo"
   />
+</block>
+<block wx:else>
+  <view style="margin-top:120px;">
+    <i-load-more loading="{{!m_show_auth}}" tip="正在加载..." />
+  </view>
 </block>

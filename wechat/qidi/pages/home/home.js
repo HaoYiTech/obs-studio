@@ -94,8 +94,9 @@ Page({
   onReady: function () {
     // 页面初次渲染完毕...
     console.log('onReady')
-    wx.hideLoading()
-    wx.hideNavigationBarLoading();
+    //wx.hideLoading()
+    //wx.hideNavigationBarLoading();
+    // 注意：可能比doAPIGetRoom到达更快，故不能先关闭加载动画...
     // 如果附加参数有效，并且是来自扫码绑定，需要进一步跳转验证...
     let theAppData = g_app.globalData;
     if (this.data.m_load_type === 'bind' && theAppData.m_nUserID != null && 

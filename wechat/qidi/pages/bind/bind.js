@@ -33,11 +33,12 @@ Page({
     // 直接保存扫码返回的场景参数...
     let theAppData = g_app.globalData;
     theAppData.m_scanType = options.scene;
+    // 注意：这里进行了屏蔽，只要扫码完成，就需要完成全部验证过程，不要简化...
     // 如果用户编号和用户信息有效，直接跳转到房间聊天页面，使用不可返回的wx.reLaunch...
-    if (theAppData.m_nUserID > 0 && theAppData.m_userInfo != null && theAppData.m_curRoomItem != null) {
-      wx.reLaunch({ url: '../home/home?type=bind' })
-      return;
-    }
+    //if (theAppData.m_nUserID > 0 && theAppData.m_userInfo != null && theAppData.m_curRoomItem != null) {
+    //  wx.reLaunch({ url: '../home/home?type=bind' })
+    //  return;
+    //}
     // 用户编号|用户信息|房间信息，只要无效，开始弹框授权...
     wx.showLoading({ title: '加载中' });
     // 保存this对象...
