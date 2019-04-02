@@ -36,6 +36,7 @@ Page({
         iconColor: '#666',
       }
     ],
+    emptyIcon: '../../images/empty.png',
     userType: ['家长','助教','讲师','店长','门店老板','运营维护','管理员'],
   },
 
