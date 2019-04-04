@@ -360,9 +360,10 @@ Page({
     this.UI = new UI(this);
     this.msgManager = new MsgManager(this);
     // 设置聊天滚动显示窗口的高度，加载数据放到最后...
+    // 注意：这里需要减去Tab导航栏的高度，避免问题...
     var sysInfo = g_app.globalData.m_sysInfo;
     this.setData({
-      pageHeight: sysInfo.windowHeight,
+      pageHeight: sysInfo.windowHeight - 44,
       isAndroid: sysInfo.system.indexOf("Android") !== -1,
     });
     // 初始化聊天输入对象...
