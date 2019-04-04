@@ -341,6 +341,10 @@ class MiniAction extends Action
       $condition['chat_id'] = (($_POST['to_up'] > 0) ? array('lt', $_POST['min_id']) : array('gt', $_POST['max_id']));
       // 获取房间对应聊天分页数据，通过视图获取数据...
       $arrErr['items'] = D('ChatView')->where($condition)->limit($pagePer)->order('Chat.created DESC')->select();
+      // 需要对聊天表情进行转义处理...
+      foreach($arrErr['items'] as &$dbItem) {
+        $dbItem['content'] = userTextDecode($dbItem['content']);
+      }
     } while( false );
     // 返回json数据包...
     echo json_encode($arrErr);
@@ -360,6 +364,8 @@ class MiniAction extends Action
         $arrErr['err_msg'] = '输入的参数无效';
         break;
       }
+      // 需要对聊天表情进行转义处理，否则无法存入数据库...
+      $_POST['content'] = userTextEncode($_POST['content']);
       // 修改房间编号 => 减去房间偏移号码...
       $_POST['room_id'] = $_POST['room_id'] - LIVE_BEGIN_ID;
       // 直接创建一条聊天消息记录，返回消息编号...
