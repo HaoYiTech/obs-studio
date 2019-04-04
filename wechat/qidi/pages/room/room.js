@@ -310,6 +310,8 @@ Page({
             isMy: item.user_id === g_app.globalData.m_nUserID,
             duration: 0, timestamp: item.created,
           });
+          // 如果创建对象失败...
+          if (!objItem) continue;
           // 用数据库内容更新到显示记录...
           objItem.chatId = item.chat_id;
           objItem.userId = item.user_id;
