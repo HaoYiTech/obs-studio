@@ -4,6 +4,10 @@ const BIND_SCAN = 1
 const BIND_SAVE = 2
 const BIND_CANCEL = 3
 
+// 定义终端类型...
+const kClientStudent = 2
+const kClientTeacher = 3
+
 // 获取全局的app对象...
 const g_app = getApp()
 
@@ -83,7 +87,7 @@ Page({
     let arrData = options.scene.split('_');
     // 判断场景值 => 必须是数组，必须是3个字段...
     if (!(arrData instanceof Array) || (arrData.length != 3) ||
-         (arrData[0] != 'teacher' && arrData[0] != 'student')) {
+      (arrData[0] != kClientStudent && arrData[0] != kClientTeacher)) {
       // 场景值格式不正确，需要重新扫描...
       this.setData({
         m_show_auth: true,
@@ -96,9 +100,9 @@ Page({
     }
     // 将解析的场景值进行分别存储...
     let theAppData = g_app.globalData;
-    theAppData.m_scanType = arrData[0];
-    theAppData.m_scanSockFD = arrData[1];
-    theAppData.m_scanTimeID = arrData[2];
+    theAppData.m_scanType = parseInt(arrData[0]);
+    theAppData.m_scanSockFD = parseInt(arrData[1]);
+    theAppData.m_scanTimeID = parseInt(arrData[2]);
     // 注意：这里进行了屏蔽，只要扫码完成，就需要完成全部验证过程，不要简化...
     // 如果用户编号和用户信息有效，直接跳转到房间聊天页面，使用不可返回的wx.reLaunch...
     //if (theAppData.m_nUserID > 0 && theAppData.m_userInfo != null && theAppData.m_curRoomItem != null) {
@@ -207,7 +211,7 @@ Page({
         g_app.globalData.m_userInfo.userType = arrData.user_type
         g_app.globalData.m_userInfo.realName = arrData.real_name
         // 如果是讲师端扫描，用户类型必须是讲师，绑定房间必须有效...
-        if (g_app.globalData.m_scanType === 'teacher') {
+        if (g_app.globalData.m_scanType === kClientTeacher) {
           // 如果用户类型不是讲师，需要弹框警告...
           if (parseInt(arrData.user_type) != 2) {
             that.doBindError("错误警告", "讲师端软件，只有讲师身份的用户才能使用，请联系经销商，获取讲师身份授权！");
@@ -243,6 +247,7 @@ Page({
     var that = this
     // 准备需要的参数信息...
     var thePostData = {
+      'client_type': g_app.globalData.m_scanType,
       'tcp_socket': g_app.globalData.m_scanSockFD,
       'tcp_time': g_app.globalData.m_scanTimeID,
       'user_id': g_app.globalData.m_nUserID,
@@ -277,13 +282,17 @@ Page({
         // 注意：这里必须使用reLaunch，redirectTo不起作用...
         if (inSubCmd == BIND_SAVE) {
           // 如果点了 确认登录 直接跳转到带参数首页页面...
-          wx.reLaunch({ url: '../home/home?type=bind' })
+          if (g_app.globalData.m_scanType === kClientTeacher) {
+            wx.reLaunch({ url: '../home/home?type=bind' })
+          } else {
+            wx.reLaunch({ url: '../home/home' })
+          }
         } else if (inSubCmd == BIND_CANCEL) {
           // 如果点了 取消 直接跳转到无参数首页页面...
           that.doBindError("您已取消此次登录", "您可再次扫描登录，或关闭窗口！")
         } else if (inSubCmd == BIND_SCAN) {
           // 显示扫码授权成功界面，需要用户点击确定登录或取消 => 需要计算终端类型...
-          let strType = ((g_app.globalData.m_scanType === 'teacher') ? '讲师端' : '学生端');
+          let strType = ((g_app.globalData.m_scanType === kClientTeacher) ? '讲师端' : '学生端');
           that.setData({
             m_show_auth: true,
             m_btnClick: 'doClickAuth',
