@@ -22,17 +22,83 @@ Page({
       text: '点击授权',
       openType: 'getUserInfo',
     }],
+    btnScan: [{
+      type: 'balanced',
+      block: true,
+      text: '重新扫描',
+      openType: '',
+    }],
+    btnAuths: [{
+      type: 'balanced',
+      outline: false,
+      block: true,
+      text: '确认登录',
+    }, {
+      type: 'stable',
+      outline: true,
+      block: true,
+      text: '取消',
+    }],
     m_code: '',
+    m_btnClick: '',
     m_show_auth: false,
   },
 
+  // 点击确认登录或取消...
+  doClickAuth: function(e) {
+    console.log(e);
+    const { index } = e.detail;
+    // 确认或取消，发送不同的命令...
+    if (index === 0) {
+      this.doAPIBindMini(BIND_SAVE);
+    } else if (index === 1) {
+      this.doAPIBindMini(BIND_CANCEL);
+    }
+  },
+
+  // 用户点击重新扫描按钮...
+  doClickScan: function () {
+    wx.scanCode({
+      onlyFromCamera: true,
+      success: (res) => {
+        // 打印扫描结果...
+        console.log(res)
+        // 如果路径有效，直接跳转到相关页面 => path 已确定会带参数...
+        if (typeof res.path != 'undefined' && res.path.length > 0) {
+          res.path = '../../' + res.path
+          wx.redirectTo({ url: res.path })
+        }
+      },
+      fail: (res) => {
+        console.log(res)
+      }
+    })
+  },
   /**
    * 生命周期函数--监听页面加载
    */
   onLoad: function (options) {
-    // 直接保存扫码返回的场景参数...
+    console.log(options);
+    // 解析二维码场景值 => type_socket_rand
+    let arrData = options.scene.split('_');
+    // 判断场景值 => 必须是数组，必须是3个字段...
+    if (!(arrData instanceof Array) || (arrData.length != 3) ||
+         (arrData[0] != 'teacher' && arrData[0] != 'student')) {
+      // 场景值格式不正确，需要重新扫描...
+      this.setData({
+        m_show_auth: true,
+        m_title: "扫码登录失败",
+        m_label: "您扫描的二维码格式不正确，请确认后重新扫描！",
+        m_btnClick: 'doClickScan',
+        buttons: this.data.btnScan,
+      });
+      return;
+    }
+    // 将解析的场景值进行分别存储...
     let theAppData = g_app.globalData;
-    theAppData.m_scanType = options.scene;
+    theAppData.m_scanType = arrData[0];
+    theAppData.m_scanSockFD = arrData[1];
+    theAppData.m_scanTimeID = arrData[2];
     // 注意：这里进行了屏蔽，只要扫码完成，就需要完成全部验证过程，不要简化...
     // 如果用户编号和用户信息有效，直接跳转到房间聊天页面，使用不可返回的wx.reLaunch...
     //if (theAppData.m_nUserID > 0 && theAppData.m_userInfo != null && theAppData.m_curRoomItem != null) {
@@ -124,14 +190,14 @@ Page({
         wx.hideNavigationBarLoading();
         // 如果返回数据无效或状态不对，打印错误信息，直接返回...
         if (res.statusCode != 200 || res.data.length <= 0) {
-          that.setData({ m_show_auth: true, m_title: '错误警告', m_label: '调用网站登录接口失败！' });
+          that.doBindError("错误警告", "调用网站登录接口失败！")
           return
         }
         // dataType 没有设置json，需要自己转换...
         var arrData = JSON.parse(res.data);
         // 获取授权数据失败的处理...
         if (arrData.err_code > 0) {
-          that.setData({ m_show_auth: true, m_title: '错误警告', m_label: arrData.err_msg });
+          that.doBindError("错误警告", arrData.err_msg)
           return
         }
         // 获取授权数据成功，保存用户编号|用户类型|真实姓名...
@@ -140,8 +206,21 @@ Page({
         g_app.globalData.m_curRoomItem = arrData.bind_room
         g_app.globalData.m_userInfo.userType = arrData.user_type
         g_app.globalData.m_userInfo.realName = arrData.real_name
-        // 注意：这里必须使用reLaunch，redirectTo不起作用...
-        wx.reLaunch({ url: '../home/home?type=bind' })
+        // 如果是讲师端扫描，用户类型必须是讲师，绑定房间必须有效...
+        if (g_app.globalData.m_scanType === 'teacher') {
+          // 如果用户类型不是讲师，需要弹框警告...
+          if (parseInt(arrData.user_type) != 2) {
+            that.doBindError("错误警告", "讲师端软件，只有讲师身份的用户才能使用，请联系经销商，获取讲师身份授权！");
+            return;
+          }
+          // 如果讲师没有绑定房间，需要弹框警告...
+          if (!(arrData.bind_room instanceof Object)) {
+            that.doBindError("错误警告", "您已是讲师身份，但没有分配房间号码，请联系经销商，获取讲师专属房间号码！");
+            return;
+          }
+        }
+        // 向对应终端发送扫码成功子命令...
+        that.doAPIBindMini(BIND_SCAN);
       },
       fail: function (res) {
         console.log(res);
@@ -149,11 +228,93 @@ Page({
         wx.hideLoading()
         wx.hideNavigationBarLoading();
         // 打印错误信息，显示错误警告...
-        that.setData({ m_show_auth: true, m_title: '错误警告', m_label: '调用网站登录接口失败！' });
+        that.doBindError("错误警告", "调用网站登录接口失败！")
       }
     })
   },
 
+  // 转发绑定子命令到对应的终端对象...
+  doAPIBindMini: function (inSubCmd) {
+    // 获取到的用户信息有效，弹出等待框...
+    wx.showLoading({ title: '加载中' })
+    wx.showNavigationBarLoading()
+    // 保存this对象...
+    var strError = ''
+    var that = this
+    // 准备需要的参数信息...
+    var thePostData = {
+      'tcp_socket': g_app.globalData.m_scanSockFD,
+      'tcp_time': g_app.globalData.m_scanTimeID,
+      'user_id': g_app.globalData.m_nUserID,
+      'bind_cmd': inSubCmd
+    }
+    // 构造访问接口连接地址 => 通过PHP转发给中心 => 中心再转发给终端...
+    var theUrl = g_app.globalData.m_urlPrev + 'Mini/bindLogin'
+    // 请求远程API过程...
+    wx.request({
+      url: theUrl,
+      method: 'POST',
+      data: thePostData,
+      dataType: 'x-www-form-urlencoded',
+      header: { 'content-type': 'application/x-www-form-urlencoded' },
+      success: function (res) {
+        wx.hideLoading();
+        wx.hideNavigationBarLoading();
+        // 调用接口失败 => 直接返回
+        if (res.statusCode != 200) {
+          strError = '发送命令失败，错误码：' + res.statusCode
+          that.doBindError("中转命令发送失败", strError)
+          return
+        }
+        // dataType 没有设置json，需要自己转换...
+        var arrData = JSON.parse(res.data);
+        // 汇报反馈失败的处理 => 直接返回...
+        if (arrData.err_code > 0) {
+          strError = arrData.err_msg + ' 错误码：' + arrData.err_code
+          that.doBindError("中转命令发送失败", strError)
+          return
+        }
+        // 注意：这里必须使用reLaunch，redirectTo不起作用...
+        if (inSubCmd == BIND_SAVE) {
+          // 如果点了 确认登录 直接跳转到带参数首页页面...
+          wx.reLaunch({ url: '../home/home?type=bind' })
+        } else if (inSubCmd == BIND_CANCEL) {
+          // 如果点了 取消 直接跳转到无参数首页页面...
+          that.doBindError("您已取消此次登录", "您可再次扫描登录，或关闭窗口！")
+        } else if (inSubCmd == BIND_SCAN) {
+          // 显示扫码授权成功界面，需要用户点击确定登录或取消 => 需要计算终端类型...
+          let strType = ((g_app.globalData.m_scanType === 'teacher') ? '讲师端' : '学生端');
+          that.setData({
+            m_show_auth: true,
+            m_btnClick: 'doClickAuth',
+            m_title: "扫描授权成功",
+            m_label: "请点击确认登录按钮，完成 " + strType + " 授权登录。",
+            buttons: that.data.btnAuths,
+            'icon.color': '#33cd5f',
+            'icon.type': 'success',
+          });
+        }
+      },
+      fail: function (res) {
+        wx.hideLoading();
+        wx.hideNavigationBarLoading();
+        // 打印错误信息，显示错误警告...
+        that.doBindError("错误警告", "调用网站通知接口失败！")
+      }
+    })
+  },
+  // 显示绑定错误时的页面信息...
+  doBindError: function(inTitle, inError) {
+    this.setData({
+      m_show_auth: true,
+      m_title: inTitle,
+      m_label: inError,
+      m_btnClick: 'doClickScan',
+      buttons: this.data.btnScan,
+      'icon.color': '#ef473a',
+      'icon.type': 'warn',
+    });
+  },
   /**
    * 生命周期函数--监听页面初次渲染完成
    */

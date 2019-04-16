@@ -34,7 +34,6 @@ Page({
   doAPIGetRoom: function () {
     // 显示导航栏|浮动加载动画...
     wx.showLoading({ title: '加载中' });
-    wx.showNavigationBarLoading();
     // 保存this对象...
     var that = this
     // 准备需要的参数信息...
@@ -52,8 +51,7 @@ Page({
       header: { 'content-type': 'application/x-www-form-urlencoded' },
       success: function (res) {
         // 隐藏导航栏加载动画...
-        wx.hideLoading()
-        wx.hideNavigationBarLoading();
+        wx.hideLoading();
         // 调用接口失败...
         if (res.statusCode != 200) {
           that.setData({ m_show_more: false, m_no_more: '获取房间记录失败' })
@@ -83,7 +81,6 @@ Page({
       fail: function (res) {
         // 隐藏导航栏加载动画...
         wx.hideLoading()
-        wx.hideNavigationBarLoading();
         that.setData({ m_show_more: false, m_no_more: '获取房间记录失败' })
       }
     })
@@ -160,7 +157,6 @@ Page({
   doAPILogin: function (inCode, inUserInfo, inEncrypt, inIV) {
     // 显示导航栏|浮动加载动画...
     wx.showLoading({ title: '加载中' });
-    wx.showNavigationBarLoading();
     // 保存this对象...
     var that = this
     // 获取系统信息同步接口...
@@ -193,8 +189,7 @@ Page({
       success: function (res) {
         console.log(res);
         // 隐藏导航栏加载动画...
-        wx.hideLoading()
-        wx.hideNavigationBarLoading();
+        wx.hideLoading();
         // 如果返回数据无效或状态不对，打印错误信息，直接返回...
         if (res.statusCode != 200 || res.data.length <= 0) {
           Dialog.alert({ title: '错误警告', message: '调用网站登录接口失败！' });
@@ -218,8 +213,7 @@ Page({
       fail: function (res) {
         console.log(res);
         // 隐藏导航栏加载动画...
-        wx.hideLoading()
-        wx.hideNavigationBarLoading();
+        wx.hideLoading();
         // 打印错误信息，显示错误警告...
         Dialog.alert({ title: '错误警告', message: '调用网站登录接口失败！' });
       }

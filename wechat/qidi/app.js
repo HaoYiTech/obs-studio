@@ -13,6 +13,8 @@ App({
   globalData: {
     m_urlPrev: 'https://www.qidiweilai.com/wxapi.php/',
     m_curRoomItem: null,
+    m_scanSockFD: null,
+    m_scanTimeID: null,
     m_scanType: null,
     m_userInfo: null,
     m_sysInfo: null,

@@ -7,6 +7,7 @@
       buttons="{{ buttons }}"
       extra="Copyright © 2019 启迪未来"
       fixed="true"
+      bind:click="{{m_btnClick}}"
       bind:getuserinfo="getUserInfo"
   />
 </block>
