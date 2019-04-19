@@ -43,7 +43,7 @@
 					"id": 0,
 					"name": "扫码登录",
 					"pathName": "pages/bind/bind",
-					"query": "scene=teacher_7_73",
+					"query": "scene=3_7_12",
 					"scene": null
 				}
 			]

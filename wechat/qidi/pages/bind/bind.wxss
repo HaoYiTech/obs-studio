@@ -2,3 +2,15 @@
 page {
   background-color: #fff;
 }
+
+.room-area {
+  height: 15rpx;
+  background: #eee;
+}
+.room-icon {
+  color:#ef473a;
+}
+.room-card {
+  font-size: 14px !important;
+  border-bottom: 1px solid #eee;
+}

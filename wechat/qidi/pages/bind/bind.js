@@ -1,4 +1,6 @@
 
+import Dialog from '../../vant-weapp/dialog/dialog';
+
 // 定义绑定登录子命令...
 const BIND_SCAN = 1
 const BIND_SAVE = 2
@@ -32,7 +34,7 @@ Page({
       text: '重新扫描',
       openType: '',
     }],
-    btnAuths: [{
+    /*btnAuths: [{
       type: 'balanced',
       outline: false,
       block: true,
@@ -42,14 +44,19 @@ Page({
       outline: true,
       block: true,
       text: '取消',
-    }],
+    }],*/
     m_code: '',
     m_btnClick: '',
     m_show_auth: false,
+    m_show_more: true,
+    m_cur_page: 1,
+    m_max_page: 1,
+    m_total_num: 0,
+    m_arrRoom: [],
   },
 
   // 点击确认登录或取消...
-  doClickAuth: function(e) {
+  /*doClickAuth: function(e) {
     console.log(e);
     const { index } = e.detail;
     // 确认或取消，发送不同的命令...
@@ -58,7 +65,7 @@ Page({
     } else if (index === 1) {
       this.doAPIBindMini(BIND_CANCEL);
     }
-  },
+  },*/
 
   // 用户点击重新扫描按钮...
   doClickScan: function () {
@@ -207,21 +214,21 @@ Page({
         // 获取授权数据成功，保存用户编号|用户类型|真实姓名...
         g_app.globalData.m_nUserID = arrData.user_id
         g_app.globalData.m_userInfo = inUserInfo
-        g_app.globalData.m_curRoomItem = arrData.bind_room
         g_app.globalData.m_userInfo.userType = arrData.user_type
         g_app.globalData.m_userInfo.realName = arrData.real_name
         // 如果是讲师端扫描，用户类型必须是讲师，绑定房间必须有效...
         if (g_app.globalData.m_scanType === kClientTeacher) {
-          // 如果用户类型不是讲师，需要弹框警告...
-          if (parseInt(arrData.user_type) != 2) {
+          // 如果用户身份低于讲师类型，需要弹框警告...
+          if (parseInt(arrData.user_type) < 2) {
             that.doBindError("错误警告", "讲师端软件，只有讲师身份的用户才能使用，请联系经销商，获取讲师身份授权！");
             return;
           }
+          // 注意：修改为选择房间，不是绑定房间...
           // 如果讲师没有绑定房间，需要弹框警告...
-          if (!(arrData.bind_room instanceof Object)) {
-            that.doBindError("错误警告", "您已是讲师身份，但没有分配房间号码，请联系经销商，获取讲师专属房间号码！");
-            return;
-          }
+          //if (!(arrData.bind_room instanceof Object)) {
+          //  that.doBindError("错误警告", "您已是讲师身份，但没有分配房间号码，请联系经销商，获取讲师专属房间号码！");
+          //  return;
+          //}
         }
         // 向对应终端发送扫码成功子命令...
         that.doAPIBindMini(BIND_SCAN);
@@ -238,7 +245,7 @@ Page({
   },
 
   // 转发绑定子命令到对应的终端对象...
-  doAPIBindMini: function (inSubCmd) {
+  doAPIBindMini: function (inSubCmd, inRoomID = 0) {
     // 获取到的用户信息有效，弹出等待框...
     wx.showLoading({ title: '加载中' })
     wx.showNavigationBarLoading()
@@ -251,7 +258,8 @@ Page({
       'tcp_socket': g_app.globalData.m_scanSockFD,
       'tcp_time': g_app.globalData.m_scanTimeID,
       'user_id': g_app.globalData.m_nUserID,
-      'bind_cmd': inSubCmd
+      'bind_cmd': inSubCmd,
+      'room_id': inRoomID
     }
     // 构造访问接口连接地址 => 通过PHP转发给中心 => 中心再转发给终端...
     var theUrl = g_app.globalData.m_urlPrev + 'Mini/bindLogin'
@@ -266,33 +274,32 @@ Page({
         wx.hideLoading();
         wx.hideNavigationBarLoading();
         // 调用接口失败 => 直接返回
+        let strTitle = "中转命令发送失败";
         if (res.statusCode != 200) {
-          strError = '发送命令失败，错误码：' + res.statusCode
-          that.doBindError("中转命令发送失败", strError)
+          strError = '发送命令失败，错误码：' + res.statusCode;
+          that.doBindError(strTitle, strError, (inSubCmd == BIND_SAVE));
           return
         }
         // dataType 没有设置json，需要自己转换...
         var arrData = JSON.parse(res.data);
         // 汇报反馈失败的处理 => 直接返回...
         if (arrData.err_code > 0) {
-          strError = arrData.err_msg + ' 错误码：' + arrData.err_code
-          that.doBindError("中转命令发送失败", strError)
+          strError = arrData.err_msg + ' 错误码：' + arrData.err_code;
+          that.doBindError(strTitle, strError, (inSubCmd == BIND_SAVE));
           return
         }
         // 注意：这里必须使用reLaunch，redirectTo不起作用...
         if (inSubCmd == BIND_SAVE) {
-          // 如果点了 确认登录 直接跳转到带参数首页页面...
-          if (g_app.globalData.m_scanType === kClientTeacher) {
-            wx.reLaunch({ url: '../home/home?type=bind' })
-          } else {
-            wx.reLaunch({ url: '../home/home' })
-          }
+          wx.reLaunch({ url: '../home/home?type=bind' })
         } else if (inSubCmd == BIND_CANCEL) {
           // 如果点了 取消 直接跳转到无参数首页页面...
           that.doBindError("您已取消此次登录", "您可再次扫描登录，或关闭窗口！")
         } else if (inSubCmd == BIND_SCAN) {
+          // 扫码授权成功之后，显示房间列表...
+          that.setData({ m_show_auth: 2 });
+          that.doAPIGetRoom();
           // 显示扫码授权成功界面，需要用户点击确定登录或取消 => 需要计算终端类型...
-          let strType = ((g_app.globalData.m_scanType === kClientTeacher) ? '讲师端' : '学生端');
+          /*let strType = ((g_app.globalData.m_scanType === kClientTeacher) ? '讲师端' : '学生端');
           that.setData({
             m_show_auth: true,
             m_btnClick: 'doClickAuth',
@@ -301,7 +308,7 @@ Page({
             buttons: that.data.btnAuths,
             'icon.color': '#33cd5f',
             'icon.type': 'success',
-          });
+          });*/
         }
       },
       fail: function (res) {
@@ -312,18 +319,114 @@ Page({
       }
     })
   },
+
   // 显示绑定错误时的页面信息...
-  doBindError: function(inTitle, inError) {
-    this.setData({
-      m_show_auth: true,
-      m_title: inTitle,
-      m_label: inError,
-      m_btnClick: 'doClickScan',
-      buttons: this.data.btnScan,
-      'icon.color': '#ef473a',
-      'icon.type': 'warn',
+  doBindError: function (inTitle, inError, inShowDlg = false) {
+    if (inShowDlg) {
+      Dialog.alert({ title: inTitle, message: inError });
+    } else {
+      this.setData({
+        m_show_auth: true,
+        m_title: inTitle,
+        m_label: inError,
+        m_btnClick: 'doClickScan',
+        buttons: this.data.btnScan,
+        'icon.color': '#ef473a',
+        'icon.type': 'warn',
+      });
+    }
+  },
+
+  // 获取房间列表...
+  doAPIGetRoom: function () {
+    // 显示导航栏|浮动加载动画...
+    wx.showLoading({ title: '加载中' });
+    // 保存this对象...
+    var that = this
+    // 准备需要的参数信息...
+    var thePostData = {
+      'cur_page': that.data.m_cur_page
+    }
+    // 构造访问接口连接地址...
+    var theUrl = g_app.globalData.m_urlPrev + 'Mini/getRoom'
+    // 请求远程API过程...
+    wx.request({
+      url: theUrl,
+      method: 'POST',
+      data: thePostData,
+      dataType: 'x-www-form-urlencoded',
+      header: { 'content-type': 'application/x-www-form-urlencoded' },
+      success: function (res) {
+        // 隐藏导航栏加载动画...
+        wx.hideLoading();
+        // 调用接口失败...
+        if (res.statusCode != 200) {
+          that.setData({ m_show_more: false, m_no_more: '获取房间记录失败' })
+          return
+        }
+        // dataType 没有设置json，需要自己转换...
+        var arrData = JSON.parse(res.data);
+        // 获取失败的处理 => 显示获取到的错误信息...
+        if (arrData.err_code > 0) {
+          that.setData({ m_show_more: false, m_no_more: arrData.err_msg })
+          return
+        }
+        // 获取到的记录数据不为空时才进行记录合并处理 => concat 不会改动原数据
+        if ((arrData.room instanceof Array) && (arrData.room.length > 0)) {
+          that.data.m_arrRoom = that.data.m_arrRoom.concat(arrData.room)
+        }
+        // 保存获取到的记录总数和总页数...
+        that.data.m_total_num = arrData.total_num
+        that.data.m_max_page = arrData.max_page
+        // 将数据显示到模版界面上去，并且显示加载更多页面...
+        that.setData({ m_arrRoom: that.data.m_arrRoom })
+        // 如果到达最大页数，关闭加载更多信息...
+        if (that.data.m_cur_page >= that.data.m_max_page) {
+          that.setData({ m_show_more: false, m_no_more: '没有更多内容了' })
+        }
+      },
+      fail: function (res) {
+        // 隐藏导航栏加载动画...
+        wx.hideLoading()
+        that.setData({ m_show_more: false, m_no_more: '获取房间记录失败' })
+      }
+    })
+  },
+
+  // 点击房间...
+  onClickRoom: function (event) {
+    // 保存临时对象...
+    let that = this;
+    let objCurRoom = that.data.m_arrRoom[event.currentTarget.id];
+    // 弹框确认是否要选择当前房间进行登录...
+    Dialog.confirm({
+      confirmButtonText: "登录",
+      title: "房间教室：" + objCurRoom.room_id,
+      message: "确实要登录当前选中的房间教室？"
+    }).then(() => {
+      // 保存房间，然后通知中心服务器登录完成...
+      g_app.globalData.m_curRoomItem = objCurRoom;
+      this.doAPIBindMini(BIND_SAVE, objCurRoom.room_id);
+    }).catch(() => {
+      console.log("Dialog - Cancel");
     });
   },
+
+  /**
+   * 页面上拉触底事件的处理函数
+   */
+  onReachBottom: function () {
+    console.log('onReachBottom')
+    // 如果到达最大页数，关闭加载更多信息...
+    if (this.data.m_cur_page >= this.data.m_max_page) {
+      this.setData({ m_show_more: false, m_no_more: '没有更多内容了' })
+      return
+    }
+    // 没有达到最大页数，累加当前页码，请求更多数据...
+    this.data.m_cur_page += 1
+    this.doAPIGetRoom()
+  },
+
   /**
    * 生命周期函数--监听页面初次渲染完成
    */
@@ -352,12 +455,6 @@ Page({
    * 页面相关事件处理函数--监听用户下拉动作
    */
   onPullDownRefresh: function () {
-  },
-
-  /**
-   * 页面上拉触底事件的处理函数
-   */
-  onReachBottom: function () {
   },
 
   /**
