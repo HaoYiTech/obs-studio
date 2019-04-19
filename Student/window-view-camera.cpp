@@ -225,11 +225,16 @@ void CViewCamera::onReplyFinished(QNetworkReply *reply)
 	CCmdItem * lpCmdItem = m_deqCmd.front();
 	if (lpCmdItem->GetNetReply() != reply)
 		return;
+	CMD_ISAPI nCurCmd = lpCmdItem->GetCmdISAPI();
 	// 注意：需要在全部执行完毕之后，才删除队列元素...
 	do {
 		// 如果发生网络错误，打印错误信息，跳出循环...
 		if (reply->error() != QNetworkReply::NoError) {
 			blog(LOG_INFO, "QT error => %d, %s", reply->error(), reply->errorString().toStdString().c_str());
+			// 如果是能力查询，需要终止对能力查询的周期调用功能...
+			if (nCurCmd == kIMAGE_CAPABILITY || nCurCmd == kPTZ_CAPABILITY) {
+				m_bIsLoginISAPI = true;
+			}
 			break;
 		}
 		// 读取完整的网络请求返回的内容数据包...
@@ -239,6 +244,11 @@ void CViewCamera::onReplyFinished(QNetworkReply *reply)
 		// 打印获取的网络数据内容和状态码...
 		blog(LOG_INFO, "QT Status Code => %d", nStatusCode);
 		blog(LOG_DEBUG,"QT Reply Data => %s", strData.c_str());
+		// 如果状态码不是有效的，并且是能力查询，需要终止对能力查询的周期调用功能...
+		if ((nStatusCode != 200) && (nCurCmd == kIMAGE_CAPABILITY || nCurCmd == kPTZ_CAPABILITY)) {
+			m_bIsLoginISAPI = true;
+			break;
+		}
 		// 分发命令，并解析获取到的数据，不同的命令，解析的方式不同...
 		this->doParseResult(lpCmdItem, strData);
 	} while (false);
@@ -950,6 +960,9 @@ bool CViewCamera::doCameraStop()
 	m_nRecvKbps = 0;
 	m_dwTimeOutMS = 0;
 	m_nCurRecvByte = 0;
+	// 必须删除播放对象...
+	this->doDeletePlayer();
+	m_bIsPreviewShow = false;
 	// 这里必须更新状态，处于离线状态，必须强制更新...
 	this->update();
 	return true;
