@@ -8,9 +8,13 @@
 #include <QPainter>
 #include <QBitmap>
 #include <QMovie>
+#include <time.h>
 
 CLoginMini::CLoginMini(QWidget *parent)
   : QDialog(parent)
+  , m_nDBUserID(-1)
+  , m_nDBRoomID(-1)
+  , m_uTcpTimeID(0)
   , m_lpMovieGif(NULL)
   , m_lpLoadBack(NULL)
   , m_nOnLineTimer(-1)
@@ -83,6 +87,9 @@ void CLoginMini::paintEvent(QPaintEvent *event)
 
 void CLoginMini::initWindow()
 {
+	// 更新扫码状态栏...
+	m_strScan.clear();
+	ui->iconScan->hide();
 	// FramelessWindowHint属性设置窗口去除边框;
 	// WindowMinimizeButtonHint 属性设置在窗口最小化时，点击任务栏窗口可以显示出原窗口;
 	//Qt::WindowFlags flag = this->windowFlags();
@@ -128,6 +135,9 @@ void CLoginMini::doWebGetCenterAddr()
 	}
 	// 显示加载动画...
 	m_lpLoadBack->show();
+	// 更新扫码状态栏...
+	m_strScan.clear();
+	ui->iconScan->hide();
 	// 删除中心连接检测时钟对象...
 	if (m_nCenterTimer != -1) {
 		this->killTimer(m_nCenterTimer);
@@ -164,10 +174,6 @@ void CLoginMini::doWebGetMiniToken()
 	QString strRequestURL = QString("%1%2").arg(strWebCenter.c_str()).arg("/wxapi.php/Mini/getToken");
 	theQTNetRequest.setUrl(QUrl(strRequestURL));
 	lpNetReply = m_objNetManager.get(theQTNetRequest);
-	//QString strContentVal = QString("gather_id=%1&miniName=%2").arg(5).arg("device");
-	//theQTNetRequest.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/x-www-form-urlencoded"));
-	//theQTNetRequest.setUrl(QUrl(strRequestURL));
-	//lpNetReply = m_objNetManager.post(theQTNetRequest, strContentVal.toUtf8());
 	// 更新显示界面内容...
 	this->update();
 }
@@ -185,18 +191,176 @@ void CLoginMini::doWebGetMiniQRCode()
 	m_eMiniState = kMiniQRCode;
 	QNetworkReply * lpNetReply = NULL;
 	QNetworkRequest theQTNetRequest;
+	// 二维码场景值增加随机数功能...
+	//srand((unsigned int)time(NULL));
 	// 准备需要的汇报数据 => POST数据包...
 	Json::Value itemData;
 	itemData["width"] = kQRCodeWidth;
 	itemData["page"] = m_strMiniPath.c_str();
-	itemData["scene"] = QString("teacher_%1").arg(m_nTcpSocketFD).toStdString();
-	QString strContentVal = QString("%1").arg(itemData.toStyledString().c_str());
+	// 二维码场景值 => 用户类型 + 套接字 + 时间标识 => 总长度不超过32字节...
+	itemData["scene"] = QString("%1_%2_%3").arg(App()->GetClientType()).arg(m_nTcpSocketFD).arg(m_uTcpTimeID).toStdString();
 	QString strRequestURL = QString("https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=%1").arg(m_strMiniToken.c_str());
+	QString strContentVal = QString("%1").arg(itemData.toStyledString().c_str());
 	theQTNetRequest.setUrl(QUrl(strRequestURL));
 	theQTNetRequest.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/x-www-form-urlencoded"));
 	lpNetReply = m_objNetManager.post(theQTNetRequest, strContentVal.toUtf8());
 	// 更新显示界面内容...
 	this->update();
+}
+
+// 修改状态，获取绑定登录用户的详细信息...
+void CLoginMini::doWebGetMiniUserInfo()
+{
+	// 显示动画，修改状态...
+	ui->iconScan->hide();
+	m_lpLoadBack->show();
+	m_eMiniState = kMiniUserInfo;
+	m_strScan = QStringLiteral("正在获取已登录用户信息...");
+	ui->titleScan->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+	// 构造网络访问地址，发起网络请求...
+	QNetworkReply * lpNetReply = NULL;
+	QNetworkRequest theQTNetRequest;
+	string & strWebCenter = App()->GetWebCenter();
+	QString strContentVal = QString("user_id=%1&room_id=%2").arg(m_nDBUserID).arg(m_nDBRoomID);
+	QString strRequestURL = QString("%1%2").arg(strWebCenter.c_str()).arg("/wxapi.php/Mini/getLoginUser");
+	theQTNetRequest.setUrl(QUrl(strRequestURL));
+	theQTNetRequest.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/x-www-form-urlencoded"));
+	lpNetReply = m_objNetManager.post(theQTNetRequest, strContentVal.toUtf8());
+	// 更新显示界面内容...
+	this->update();
+}
+
+void CLoginMini::onProcMiniUserInfo(QNetworkReply *reply)
+{
+	Json::Value value;
+	bool bIsError = false;
+	ASSERT(m_eMiniState == kMiniUserInfo);
+	QByteArray & theByteArray = reply->readAll();
+	string & strData = theByteArray.toStdString();
+	blog(LOG_DEBUG, "QT Reply Data => %s", strData.c_str());
+	do {
+		// 解析json数据包失败，设置标志跳出...
+		if (!this->parseJson(strData, value, false)) {
+			m_strScan = m_strQRNotice;
+			m_strQRNotice.clear();
+			bIsError = true;
+			break;
+		}
+		// 判断是否获取到了正确的用户和房间信息...
+		if (!value.isMember("user") || !value.isMember("room")) {
+			m_strScan = QStringLiteral("错误提示：无法从服务器获取用户或房间详情。");
+			bIsError = true;
+			break;
+		}
+		// 判断获取到的用户信息是否有效...
+		int nDBUserID = atoi(OBSApp::getJsonString(value["user"]["user_id"]).c_str());
+		int nUserType = atoi(OBSApp::getJsonString(value["user"]["user_type"]).c_str());
+		ASSERT(nDBUserID == m_nDBUserID);
+		// 身份类型必须大于等于讲师身份...
+		if ( nUserType < 2 ) {
+			m_strScan = QStringLiteral("错误提示：登录用户低于讲师身份，无法使用讲师端软件。");
+			bIsError = true;
+			break;
+		}
+	} while (false);
+	// 发生错误，关闭动画，显示图标|信息，文字左对齐...
+	if (bIsError) {
+		m_lpLoadBack->hide(); ui->iconScan->show();
+		ui->titleScan->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+		QString strStyle = QString("background-image: url(:/mini/images/mini/scan.png);background-repeat: no-repeat;margin-left: 25px;margin-top: -87px;");
+		ui->iconScan->setStyleSheet(strStyle);
+		this->update();
+		return;
+	}
+	// 一切正常，开始登录指定的房间...
+	this->doWebGetMiniLoginRoom();
+}
+
+// 正式登录指定房间 => 获取节点服务器信息...
+void CLoginMini::doWebGetMiniLoginRoom()
+{
+	// 显示动画，修改状态...
+	ui->iconScan->hide();
+	m_lpLoadBack->show();
+	m_eMiniState = kMiniLoginRoom;
+	m_strScan = QStringLiteral("正在登录已选择的房间...");
+	ui->titleScan->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+	// 构造网络访问地址，发起网络请求...
+	QNetworkReply * lpNetReply = NULL;
+	QNetworkRequest theQTNetRequest;
+	string & strWebCenter = App()->GetWebCenter();
+	QString strContentVal = QString("room_id=%1&type_id=%2&debug_mode=%3").arg(m_nDBRoomID).arg(App()->GetClientType()).arg(App()->IsDebugMode());
+	QString strRequestURL = QString("%1%2").arg(strWebCenter.c_str()).arg("/wxapi.php/Gather/loginLiveRoom");
+	theQTNetRequest.setUrl(QUrl(strRequestURL));
+	theQTNetRequest.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/x-www-form-urlencoded"));
+	lpNetReply = m_objNetManager.post(theQTNetRequest, strContentVal.toUtf8());
+	// 更新显示界面内容...
+	this->update();
+}
+
+void CLoginMini::onProcMiniLoginRoom(QNetworkReply *reply)
+{
+	Json::Value value;
+	bool bIsError = false;
+	ASSERT(m_eMiniState == kMiniLoginRoom);
+	QByteArray & theByteArray = reply->readAll();
+	string & strData = theByteArray.toStdString();
+	blog(LOG_DEBUG, "QT Reply Data => %s", strData.c_str());
+	do {
+		// 解析json数据包失败，设置标志跳出...
+		if (!this->parseJson(strData, value, false)) {
+			m_strScan = m_strQRNotice;
+			m_strQRNotice.clear();
+			bIsError = true;
+			break;
+		}
+		// 继续解析获取到的存储服务器地址和端口...
+		string strTrackerAddr = OBSApp::getJsonString(value["tracker_addr"]);
+		string strTrackerPort = OBSApp::getJsonString(value["tracker_port"]);
+		// 继续解析获取到的远程中转服务器地址和端口...
+		string strRemoteAddr = OBSApp::getJsonString(value["remote_addr"]);
+		string strRemotePort = OBSApp::getJsonString(value["remote_port"]);
+		// 继续解析获取到的udp服务器地址和端口...
+		string strUdpAddr = OBSApp::getJsonString(value["udp_addr"]);
+		string strUdpPort = OBSApp::getJsonString(value["udp_port"]);
+		// 继续解析获取到的房间里的讲师和学生数量...
+		string strTeacherCount = OBSApp::getJsonString(value["teacher"]);
+		string strStudentCount = OBSApp::getJsonString(value["student"]);
+		if (strTrackerAddr.size() <= 0 || strTrackerPort.size() <= 0 || strRemoteAddr.size() <= 0 || strRemotePort.size() <= 0 ||
+			strUdpAddr.size() <= 0 || strUdpPort.size() <= 0 || strTeacherCount.size() <= 0 || strStudentCount.size() <= 0 ) {
+			m_strScan = QTStr("Teacher.Room.Json");
+			bIsError = true;
+			break;
+		}
+		// 计算并判断房间里的讲师数量，大于0，不能登录...
+		int nTeacherCount = atoi(strTeacherCount.c_str());
+		int nStudentCount = atoi(strStudentCount.c_str());
+		if (nTeacherCount > 0) {
+			m_strScan = QTStr("Teacher.Room.Login");
+			bIsError = true;
+			break;
+		}
+		// 获取到直播的分解数据，并将直播地址保存到 => obs-teacher/global.ini...
+		config_set_int(App()->GlobalConfig(), "General", "LiveRoomID", m_nDBRoomID);
+		// 将获取到的相关地址信息存放到全局对象当中...
+		App()->SetTrackerAddr(strTrackerAddr);
+		App()->SetTrackerPort(atoi(strTrackerPort.c_str()));
+		App()->SetRemoteAddr(strRemoteAddr);
+		App()->SetRemotePort(atoi(strRemotePort.c_str()));
+		App()->SetUdpAddr(strUdpAddr);
+		App()->SetUdpPort(atoi(strUdpPort.c_str()));
+	} while (false);
+	// 发生错误，关闭动画，显示图标|信息，文字左对齐...
+	if (bIsError) {
+		m_lpLoadBack->hide(); ui->iconScan->show();
+		ui->titleScan->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+		QString strStyle = QString("background-image: url(:/mini/images/mini/scan.png);background-repeat: no-repeat;margin-left: 25px;margin-top: -87px;");
+		ui->iconScan->setStyleSheet(strStyle);
+		this->update();
+		return;
+	}
+	// 进行页面跳转，关闭小程序登录窗口...
+	emit this->doTriggerMiniSuccess();
 }
 
 void CLoginMini::onReplyFinished(QNetworkReply *reply)
@@ -217,6 +381,8 @@ void CLoginMini::onReplyFinished(QNetworkReply *reply)
 	case kCenterAddr: this->onProcCenterAddr(reply); break;
 	case kMiniToken:  this->onProcMiniToken(reply); break;
 	case kMiniQRCode: this->onProcMiniQRCode(reply); break;
+	case kMiniUserInfo: this->onProcMiniUserInfo(reply); break;
+	case kMiniLoginRoom: this->onProcMiniLoginRoom(reply); break;
 	}
 }
 
@@ -250,6 +416,7 @@ void CLoginMini::doTcpConnCenterAddr()
 	m_CenterSession->InitSession(m_strCenterTcpAddr.c_str(), m_nCenterTcpPort);
 	// 注册相关的事件反馈函数 => 通过信号槽消息绑定...
 	this->connect(m_CenterSession, SIGNAL(doTriggerTcpConnect()), this, SLOT(onTriggerTcpConnect()));
+	this->connect(m_CenterSession, SIGNAL(doTriggerBindMini(int, int, int)), this, SLOT(onTriggerBindMini(int, int, int)));
 	// 开启一个定时重建检测时钟 => 每隔5秒执行一次...
 	m_nCenterTimer = this->startTimer(5 * 1000);
 	// 更新显示界面内容...
@@ -276,10 +443,48 @@ void CLoginMini::onTriggerTcpConnect()
 	ASSERT(m_eMiniState == kCenterConn);
 	// 将中心会话在服务器上的套接字编号进行保存...
 	m_nTcpSocketFD = m_CenterSession->GetTcpSocketFD();
+	m_uTcpTimeID = m_CenterSession->GetTcpTimeID();
 	// 每隔30秒检测一次，讲师端在中心服务器上在线汇报通知...
 	m_nOnLineTimer = this->startTimer(30 * 1000);
 	// 发起获取小程序Token值的网络命令...
 	this->doWebGetMiniToken();
+}
+
+// 响应中心会话反馈的小程序绑定登录信号槽事件通知...
+void CLoginMini::onTriggerBindMini(int nUserID, int nBindCmd, int nRoomID)
+{
+	// 如果当前状态不是二维码显示状态，直接返回...
+	if (m_eMiniState != kMiniQRCode)
+		return;
+	// 根据绑定子命令显示不同的信息或图片状态...
+	if (nBindCmd == kScanCmd) {
+		m_strScan = QStringLiteral("扫描成功，请在微信中选择要进入的教室，完成授权登录。");
+		QString strStyle = QString("background-image: url(:/mini/images/mini/scan.png);background-repeat: no-repeat;margin-left: 25px;margin-top: -46px;");
+		ui->iconScan->setStyleSheet(strStyle);
+		ui->iconScan->show();
+		this->update();
+	} else if (nBindCmd == kCancelCmd) {
+		m_strScan = QStringLiteral("您已取消此次登录，您可再次扫描登录，或关闭窗口。");
+		QString strStyle = QString("background-image: url(:/mini/images/mini/scan.png);background-repeat: no-repeat;margin-left: 25px;margin-top: -87px;");
+		ui->iconScan->setStyleSheet(strStyle);
+		ui->iconScan->show();
+		this->update();
+	} else if (nBindCmd == kSaveCmd) {
+		// 如果用户编号|房间编号无效，显示错误信息...
+		if (nUserID <= 0 || nRoomID <= 0) {
+			m_strScan = QStringLiteral("用户编号或房间编号无效，请确认后重新用微信扫描登录。");
+			QString strStyle = QString("background-image: url(:/mini/images/mini/scan.png);background-repeat: no-repeat;margin-left: 25px;margin-top: -87px;");
+			ui->iconScan->setStyleSheet(strStyle);
+			ui->iconScan->show();
+			this->update();
+			return;
+		}
+		// 保存用户编号|房间编号...
+		m_nDBUserID = nUserID;
+		m_nDBRoomID = nRoomID;
+		// 获取登录用户的详细信息...
+		this->doWebGetMiniUserInfo();
+	}
 }
 
 void CLoginMini::timerEvent(QTimerEvent *inEvent)
@@ -336,7 +541,7 @@ void CLoginMini::onProcMiniQRCode(QNetworkReply *reply)
 	QByteArray & theByteArray = reply->readAll();
 	// 从网路数据直接构造二维码的图片信息|设定默认扫码信息...
 	if (m_QPixQRCode.loadFromData(theByteArray)) {
-		m_strScan = QStringLiteral("请用微信扫码登录");
+		m_strScan = QStringLiteral("请使用微信扫描二维码登录");
 		m_strQRNotice.clear();
 		this->update();
 		return;

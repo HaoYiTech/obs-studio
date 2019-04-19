@@ -14,6 +14,7 @@ public:
 	CFastSession();
 	virtual ~CFastSession();
 public:
+	int  GetErrCode() { return m_nErrorCode; }
 	bool IsConnected() { return m_bIsConnected; }
 	bool InitSession(const char * lpszAddr, int nPort);
 protected:
@@ -25,6 +26,7 @@ protected slots:
 	virtual void onBytesWritten(qint64 nBytes) = 0;
 	virtual void onError(QAbstractSocket::SocketError nError) = 0;
 protected:
+	int              m_nErrorCode;              // 错误号码...
 	bool             m_bIsConnected;			// 是否已连接标志...
 	QTcpSocket   *   m_TCPSocket;				// TCP套接字...
 	std::string      m_strAddress;				// 链接地址...
@@ -126,4 +128,35 @@ private:
 	bool        m_bCanReBuild;			// 能否进行重建标志...
 	int         m_nInitDBCameraID;		// 初始默认通道编号...
 	int         m_nInitSceneitemID;		// 初始默认场景编号...
+};
+
+// 与中心服务器交互的会话对象...
+class CCenterSession : public CFastSession {
+	Q_OBJECT
+public:
+	CCenterSession();
+	virtual ~CCenterSession();
+public:
+	uint32_t  GetTcpTimeID() { return m_uCenterTcpTimeID; }
+	int       GetTcpSocketFD() { return m_nCenterTcpSocketFD; }
+	bool      doSendOnLineCmd();
+signals:
+	void doTriggerTcpConnect();
+	void doTriggerBindMini(int nUserID, int nBindCmd, int nRoomID);
+protected slots:
+	void onConnected() override;
+	void onReadyRead() override;
+	void onDisConnected() override;
+	void onBytesWritten(qint64 nBytes) override;
+	void onError(QAbstractSocket::SocketError nError) override;
+private:
+	bool doSendCommonCmd(int nCmdID, const char * lpJsonPtr = NULL, int nJsonSize = 0);
+	bool doParseJson(const char * lpData, int nSize, Json::Value & outValue);
+	bool doCmdTeacherLogin(const char * lpData, int nSize);
+	bool doCmdTeacherOnLine(const char * lpData, int nSize);
+	bool doCmdPHPBindMini(const char * lpData, int nSize);
+	bool SendData(const char * lpDataPtr, int nDataSize);
+private:
+	int         m_nCenterTcpSocketFD;		// 中心映射的套接字...
+	uint32_t    m_uCenterTcpTimeID;         // 中心关联的时间戳...
 };

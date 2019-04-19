@@ -45,7 +45,7 @@ public:
 		const char *disambiguation, int n) const override;
 };
 
-class LoginWindow;
+class CLoginMini;
 class QListWidget;
 class CRemoteSession;
 class CTrackerSession;
@@ -55,10 +55,10 @@ class OBSApp : public QApplication {
 private:
 	std::string                    m_strTrackerAddr;           // FDFS-Tracker的IP地址...
 	int                            m_nTrackerPort;             // FDFS-Tracker的端口地址...
-	std::string                    m_strRemoteAddr;            // 远程中转服务器的IP地址...
-	int                            m_nRemotePort;              // 远程中转服务器的端口地址...
-	std::string                    m_strUdpAddr;               // 远程UDP服务器的IP地址...
-	int                            m_nUdpPort;                 // 远程UDP服务器的端口地址...
+	std::string                    m_strRemoteAddr;            // 远程UDPServer的TCP地址...
+	int                            m_nRemotePort;              // 远程UDPServer的TCP端口...
+	std::string                    m_strUdpAddr;               // 远程UDPServer的UDP地址...
+	int                            m_nUdpPort;                 // 远程UDPServer的UDP端口...
 	std::string                    m_strRoomID;                // 登录的房间号...
 	std::string                    m_strMacAddr;               // 本机MAC地址...
 	std::string                    m_strIPAddr;                // 本机IP地址...
@@ -74,11 +74,11 @@ private:
 	ConfigFile                     globalConfig;
 	TextLookup                     textLookup;
 	OBSContext                     obsContext;
-	QPointer<OBSMainWindow>        mainWindow;
-	QPointer<LoginWindow>          loginWindow;
-	QPointer<CTrackerSession>      m_TrackerSession;
-	QPointer<CStorageSession>      m_StorageSession;
-	QPointer<CRemoteSession>       m_RemoteSession;
+	QPointer<OBSMainWindow>        mainWindow;                 // 主窗口对象
+	QPointer<CLoginMini>           m_LoginMini;                // 小程序登录窗口
+	QPointer<CTrackerSession>      m_TrackerSession;           // For Tracker-Server
+	QPointer<CStorageSession>      m_StorageSession;           // For Storage-Server
+	QPointer<CRemoteSession>       m_RemoteSession;            // For UDP-Server
 
 	profiler_name_store_t          *profilerNameStore = nullptr;
 
@@ -125,7 +125,7 @@ public:
 public:
 	static string getJsonString(Json::Value & inValue);
 public slots:
-	void doLoginSuccess(string & strRoomID);
+	void onTriggerMiniSuccess();
 public:
 	OBSApp(int &argc, char **argv, profiler_name_store_t *store);
 	~OBSApp();

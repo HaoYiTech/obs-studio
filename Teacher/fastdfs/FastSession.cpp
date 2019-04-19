@@ -59,6 +59,7 @@ const char * get_command_name(int inCmd)
 	case kCmd_PHP_GetAllClient:     return "PHP_GetAllClient";
 	case kCmd_PHP_GetRoomList:      return "PHP_GetRoomList";
 	case kCmd_PHP_GetPlayerList:    return "PHP_GetPlayerList";
+	case kCmd_PHP_Bind_Mini:        return "PHP_Bind_Mini";
 	}
 	return "unknown";
 }
@@ -66,6 +67,7 @@ const char * get_command_name(int inCmd)
 CFastSession::CFastSession()
   : m_bIsConnected(false)
   , m_TCPSocket(NULL)
+  , m_nErrorCode(-1)
   , m_nPort(0)
 {
 }
@@ -233,6 +235,7 @@ void CTrackerSession::onError(QAbstractSocket::SocketError nError)
 {
 	// 发生错误，设置未连接标志...
 	m_bIsConnected = false;
+	m_nErrorCode = nError;
 }
 
 CStorageSession::CStorageSession()
@@ -391,7 +394,7 @@ void CStorageSession::onDisConnected()
 {
 	m_bCanReBuild = true;
 	m_bIsConnected = false;
-	blog(LOG_INFO, "onDisConnected");
+	blog(LOG_INFO, "[CStorageSession] - onDisConnected");
 }
 
 void CStorageSession::onBytesWritten(qint64 nBytes)
@@ -440,9 +443,10 @@ bool CStorageSession::SendNextPacket(int64_t inLastBytes)
 
 void CStorageSession::onError(QAbstractSocket::SocketError nError)
 {
+	m_nErrorCode = nError;
 	m_bCanReBuild = true;
 	m_bIsConnected = false;
-	blog(LOG_INFO, "onError: %d", nError);
+	blog(LOG_INFO, "[CStorageSession] - onError: %d", nError);
 }
 
 CRemoteSession::CRemoteSession(int nDBCameraID, int nSceneItemID)
@@ -602,7 +606,7 @@ void CRemoteSession::onDisConnected()
 {
 	m_bCanReBuild = true;
 	m_bIsConnected = false;
-	blog(LOG_INFO, "onDisConnected");
+	blog(LOG_INFO, "[RemoteSession] - onDisConnected");
 }
 
 void CRemoteSession::onBytesWritten(qint64 nBytes)
@@ -611,9 +615,10 @@ void CRemoteSession::onBytesWritten(qint64 nBytes)
 
 void CRemoteSession::onError(QAbstractSocket::SocketError nError)
 {
+	m_nErrorCode = nError;
 	m_bCanReBuild = true;
 	m_bIsConnected = false;
-	blog(LOG_INFO, "onError: %d", nError);
+	blog(LOG_INFO, "[RemoteSession] - onError: %d", nError);
 }
 
 // 通过中转服务器向学生端发送停止通道推流工作...
@@ -742,6 +747,168 @@ bool CRemoteSession::doSendCommonCmd(int nCmdID, const char * lpJsonPtr/* = NULL
 
 // 统一的发送接口...
 bool CRemoteSession::SendData(const char * lpDataPtr, int nDataSize)
+{
+	int nReturn = m_TCPSocket->write(lpDataPtr, nDataSize);
+	return ((nReturn > 0) ? true : false);
+}
+
+CCenterSession::CCenterSession()
+{
+	m_nCenterTcpSocketFD = -1;
+	m_uCenterTcpTimeID = 0;
+}
+
+CCenterSession::~CCenterSession()
+{
+	blog(LOG_INFO, "[~CCenterSession] - Exit");
+}
+
+void CCenterSession::onConnected()
+{
+	// 设置链接成功标志...
+	m_bIsConnected = true;
+	// 链接成功，立即发送登录命令 => 返回tcp_socket...
+	this->doSendCommonCmd(kCmd_Teacher_Login);
+}
+
+void CCenterSession::onReadyRead()
+{
+	// 从网络层读取所有的缓冲区，并将缓冲区连接起来...
+	QByteArray theBuffer = m_TCPSocket->readAll();
+	m_strRecv.append(theBuffer.toStdString());
+	// 这里网络数据会发生粘滞现象，因此，需要循环执行...
+	while (m_strRecv.size() > 0) {
+		// 得到的数据长度不够，直接返回，等待新数据...
+		int nCmdLength = sizeof(Cmd_Header);
+		if (m_strRecv.size() < nCmdLength)
+			return;
+		ASSERT(m_strRecv.size() >= nCmdLength);
+		Cmd_Header * lpCmdHeader = (Cmd_Header*)m_strRecv.c_str();
+		const char * lpDataPtr = m_strRecv.c_str() + sizeof(Cmd_Header);
+		int nDataSize = m_strRecv.size() - sizeof(Cmd_Header);
+		// 已获取的数据长度不够，直接返回，等待新数据...
+		if (nDataSize < lpCmdHeader->m_pkg_len)
+			return;
+		ASSERT(nDataSize >= lpCmdHeader->m_pkg_len);
+		// 打印远程控制会话对象接收到的TCP网络命令信息...
+		blog(LOG_INFO, "[CenterSession] Command-Recv: %s", get_command_name(lpCmdHeader->m_cmd));
+		// 开始处理中转服务器发来的命令...
+		bool bResult = false;
+		switch (lpCmdHeader->m_cmd)
+		{
+		case kCmd_Teacher_Login:     bResult = this->doCmdTeacherLogin(lpDataPtr, lpCmdHeader->m_pkg_len); break;
+		case kCmd_Teacher_OnLine:    bResult = this->doCmdTeacherOnLine(lpDataPtr, lpCmdHeader->m_pkg_len); break;
+		case kCmd_PHP_Bind_Mini:     bResult = this->doCmdPHPBindMini(lpDataPtr, lpCmdHeader->m_pkg_len); break;
+		}
+		// 删除已经处理完毕的数据 => Header + pkg_len...
+		m_strRecv.erase(0, lpCmdHeader->m_pkg_len + sizeof(Cmd_Header));
+		// 如果还有数据，则继续解析命令...
+	}
+}
+
+bool CCenterSession::doCmdPHPBindMini(const char * lpData, int nSize)
+{
+	Json::Value value;
+	// 进行Json数据包的内容解析...
+	if (!this->doParseJson(lpData, nSize, value)) {
+		blog(LOG_INFO, "CCenterSession::doParseJson Error!");
+		return false;
+	}
+	// 获取绑定命令的子命令 => 1(Scan),2(Save),3(Cancel)
+	int nUserID = atoi(OBSApp::getJsonString(value["user_id"]).c_str());
+	int nRoomID = atoi(OBSApp::getJsonString(value["room_id"]).c_str());
+	int nBindCmd = atoi(OBSApp::getJsonString(value["bind_cmd"]).c_str());
+	blog(LOG_INFO, "[CenterSession] doCmdPHPBindMini => user_id: %d, bind_cmd: %d, room_id: %d", nUserID, nBindCmd, nRoomID);
+	// 向外层通知小程序通过PHP转发反馈的扫描绑定登录命令...
+	emit this->doTriggerBindMini(nUserID, nBindCmd, nRoomID);
+	return true;
+}
+
+bool CCenterSession::doCmdTeacherLogin(const char * lpData, int nSize)
+{
+	Json::Value value;
+	// 进行Json数据包的内容解析...
+	if (!this->doParseJson(lpData, nSize, value)) {
+		blog(LOG_INFO, "CCenterSession::doParseJson Error!");
+		return false;
+	}
+	// 获取远程连接在服务器端的TCP套接字，并打印出来...
+	m_nCenterTcpSocketFD = atoi(OBSApp::getJsonString(value["tcp_socket"]).c_str());
+	m_uCenterTcpTimeID = (uint32_t)atoi(OBSApp::getJsonString(value["tcp_time"]).c_str());
+	blog(LOG_INFO, "[CenterSession] doCmdTeacherLogin => tcp_socket: %d, tcp_time: %lu", m_nCenterTcpSocketFD, m_uCenterTcpTimeID);
+	// 向外层通知获取tcp_socket状态成功...
+	emit this->doTriggerTcpConnect();
+	return true;
+}
+
+bool CCenterSession::doCmdTeacherOnLine(const char * lpData, int nSize)
+{
+	return true;
+}
+
+bool CCenterSession::doParseJson(const char * lpData, int nSize, Json::Value & outValue)
+{
+	if (nSize <= 0 || lpData == NULL)
+		return false;
+	string strUTF8Data;
+	Json::Reader reader;
+	strUTF8Data.assign(lpData, nSize);
+	return reader.parse(strUTF8Data, outValue);
+}
+
+void CCenterSession::onDisConnected()
+{
+	m_bIsConnected = false;
+	emit this->doTriggerTcpConnect();
+	blog(LOG_INFO, "[CCenterSession] - onDisConnected");
+}
+
+void CCenterSession::onBytesWritten(qint64 nBytes)
+{
+}
+
+void CCenterSession::onError(QAbstractSocket::SocketError nError)
+{
+	m_nErrorCode = nError;
+	m_bIsConnected = false;
+	emit this->doTriggerTcpConnect();
+	blog(LOG_INFO, "[CCenterSession] - onError: %d", nError);
+}
+
+// 每隔30秒发送在线命令包...
+bool CCenterSession::doSendOnLineCmd()
+{
+	// 没有处于链接状态，直接返回...
+	if (!m_bIsConnected)
+		return false;
+	ASSERT(m_bIsConnected);
+	// 调用统一的接口进行命令数据的发送操作...
+	return this->doSendCommonCmd(kCmd_Teacher_OnLine);
+}
+
+// 通用的命令发送接口...
+bool CCenterSession::doSendCommonCmd(int nCmdID, const char * lpJsonPtr/* = NULL*/, int nJsonSize/* = 0*/)
+{
+	// 打印远程控制会话对象发送的TCP网络命令信息...
+	blog(LOG_INFO, "[CenterSession] Command-Send: %s", get_command_name(nCmdID));
+	// 组合命令包头 => 数据长度 | 终端类型 | 命令编号
+	string     strBuffer;
+	Cmd_Header theHeader = { 0 };
+	theHeader.m_pkg_len = ((lpJsonPtr != NULL) ? nJsonSize : 0);
+	theHeader.m_type = App()->GetClientType();
+	theHeader.m_cmd = nCmdID;
+	// 追加命令包头和命令数据包内容...
+	strBuffer.append((char*)&theHeader, sizeof(theHeader));
+	// 如果传入的数据内容有效，才进行数据的填充...
+	if (lpJsonPtr != NULL && nJsonSize > 0) {
+		strBuffer.append(lpJsonPtr, nJsonSize);
+	}
+	// 调用统一的发送接口...
+	return this->SendData(strBuffer.c_str(), strBuffer.size());
+}
+
+// 统一的发送接口...
+bool CCenterSession::SendData(const char * lpDataPtr, int nDataSize)
 {
 	int nReturn = m_TCPSocket->write(lpDataPtr, nDataSize);
 	return ((nReturn > 0) ? true : false);

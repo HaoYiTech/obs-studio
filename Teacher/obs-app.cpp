@@ -20,7 +20,7 @@
 
 #include "qt-wrappers.hpp"
 #include "obs-app.hpp"
-#include "window-login-main.h"
+#include "window-login-mini.h"
 #include "window-basic-main.hpp"
 //#include "window-basic-settings.hpp"
 //#include "window-license-agreement.hpp"
@@ -805,6 +805,7 @@ OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
 	m_nRtpTCPSockFD = 0;
 	m_nOnLineTimer = -1;
 	m_nFastTimer = -1;
+	m_LoginMini = NULL;
 	m_RemoteSession = NULL;
 	m_TrackerSession = NULL;
 	m_StorageSession = NULL;
@@ -1118,14 +1119,40 @@ void OBSApp::doLogoutEvent()
 void OBSApp::doLoginInit()
 {
 	// 创建登录窗口，显示登录窗口...
-	loginWindow = new LoginWindow();
-	loginWindow->show();
+	//loginWindow = new LoginWindow();
+	//loginWindow->show();
 	// 建立登录窗口与应用对象的信号槽关联函数...
-	connect(loginWindow, SIGNAL(loginSuccess(string&)), this, SLOT(doLoginSuccess(string&)));
+	//connect(loginWindow, SIGNAL(loginSuccess(string&)), this, SLOT(doLoginSuccess(string&)));
+
+	// 创建小程序二维码登录窗口...
+	m_LoginMini = new CLoginMini();
+	m_LoginMini->show();
+	// 建立登录窗口与应用对象的信号槽关联函数...
+	connect(m_LoginMini, SIGNAL(doTriggerMiniSuccess()), this, SLOT(onTriggerMiniSuccess()));
 }
 //
+// 处理小程序登录成功之后的信号槽事件...
+void OBSApp::onTriggerMiniSuccess()
+{
+	// 保存登录房间号...
+	int nDBRoomID = m_LoginMini->GetDBRoomID();
+	m_strRoomID = QString("%1").arg(nDBRoomID).toStdString();
+	// 先关闭登录窗口...
+	m_LoginMini->close();
+	// 创建主窗口 => 失败返回...
+	if (!this->OBSInit()) return;
+	// 将房间号保存到obs核心对象...
+	obs_set_room_id(nDBRoomID);
+	// 开启一个定时上传检测时钟 => 每隔5秒执行一次...
+	m_nFastTimer = this->startTimer(5 * 1000);
+	// 每隔30秒检测一次，讲师端在中转服务器上在线汇报通知...
+	m_nOnLineTimer = this->startTimer(30 * 1000);
+	// 已经获取到了远程中转服务器地址，可以立即连接...
+	this->doCheckRemote();
+}
+
 // 处理登录成功之后的信号槽事件...
-void OBSApp::doLoginSuccess(string & strRoomID)
+/*void OBSApp::doLoginSuccess(string & strRoomID)
 {
 	// 保存登录房间号...
 	m_strRoomID = strRoomID;
@@ -1137,11 +1164,12 @@ void OBSApp::doLoginSuccess(string & strRoomID)
 	obs_set_room_id(atoi(strRoomID.c_str()));
 	// 开启一个定时上传检测时钟 => 每隔5秒执行一次...
 	m_nFastTimer = this->startTimer(5 * 1000);
-	// 每隔30秒检测一次，学生端在中转服务器上在线汇报通知...
+	// 每隔30秒检测一次，讲师端在中转服务器上在线汇报通知...
 	m_nOnLineTimer = this->startTimer(30 * 1000);
 	// 已经获取到了远程中转服务器地址，可以立即连接...
 	this->doCheckRemote();
-}
+}*/
+
 //
 // 时钟定时执行过程...
 void OBSApp::timerEvent(QTimerEvent *inEvent)
@@ -1157,9 +1185,9 @@ void OBSApp::timerEvent(QTimerEvent *inEvent)
 // 发送在线检测命令包...
 void OBSApp::doCheckOnLine()
 {
-	if (m_RemoteSession == NULL)
-		return;
-	m_RemoteSession->doSendOnLineCmd();
+	if (m_RemoteSession != NULL) {
+		m_RemoteSession->doSendOnLineCmd();
+	}
 }
 //
 // 检测是否需要进行数据上传...
@@ -2357,6 +2385,7 @@ int main(int argc, char *argv[])
 	bmem_init();
 
 #ifdef _WIN32
+	obs_init_win32_crash_handler();
 	SetErrorMode(SEM_FAILCRITICALERRORS);
 	load_debug_privilege();
 	base_set_crash_handler(main_crash_handler, nullptr);
