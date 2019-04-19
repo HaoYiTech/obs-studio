@@ -26,7 +26,7 @@
 #include <atlconv.h>
 #include "SDL2/SDL.h"
 
-#include "window-login-main.h"
+#include "window-login-mini.h"
 #include "window-view-camera.hpp"
 #include "window-view-teacher.hpp"
 
@@ -868,7 +868,7 @@ CStudentApp::CStudentApp(int &argc, char **argv)
 {
 	m_nFastTimer = -1;
 	m_nOnLineTimer = -1;
-	m_loginWindow = NULL;
+	m_LoginMini = NULL;
 	m_RemoteSession = NULL;
 	m_studentWindow = NULL;
 	// 设置默认的音频播放、输出采样率，输出声道数...
@@ -1074,19 +1074,26 @@ bool CStudentApp::InitGlobalConfigDefaults()
 void CStudentApp::doLoginInit()
 {
 	// 创建登录窗口，显示登录窗口...
-	m_loginWindow = new LoginWindow();
-	m_loginWindow->show();
+	//m_RoomWindow = new LoginWindow();
+	//m_RoomWindow->show();
 	// 建立登录窗口与应用对象的信号槽关联函数...
-	connect(m_loginWindow, SIGNAL(loginSuccess(string&)), this, SLOT(doLoginSuccess(string&)));
+	//connect(m_RoomWindow, SIGNAL(doTriggerLoginSuccess(string&)), this, SLOT(onTriggerLoginSuccess(string&)));
+
+	// 创建小程序二维码登录窗口...
+	m_LoginMini = new CLoginMini();
+	m_LoginMini->show();
+	// 建立登录窗口与应用对象的信号槽关联函数...
+	connect(m_LoginMini, SIGNAL(doTriggerMiniSuccess()), this, SLOT(onTriggerMiniSuccess()));
 }
 
-// 处理登录成功之后的信号槽事件...
-void CStudentApp::doLoginSuccess(string & strRoomID)
+// 处理小程序登录成功之后的信号槽事件...
+void CStudentApp::onTriggerMiniSuccess()
 {
 	// 保存登录房间号...
-	m_strRoomID = strRoomID;
-	// 先关闭登录窗口...
-	m_loginWindow->close();
+	int nDBRoomID = m_LoginMini->GetDBRoomID();
+	m_strRoomID = QString("%1").arg(nDBRoomID).toStdString();
+	// 先关闭小程序登录窗口...
+	m_LoginMini->close();
 	// 创建并打开主窗口界面...
 	setQuitOnLastWindowClosed(false);
 	m_studentWindow = new StudentWindow();
@@ -1102,6 +1109,29 @@ void CStudentApp::doLoginSuccess(string & strRoomID)
 	theErr = m_lpWebThread->InitThread();
 	((theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL);
 }
+
+// 处理房间登录成功之后的信号槽事件...
+/*void CStudentApp::onTriggerLoginSuccess(string & strRoomID)
+{
+	// 保存登录房间号...
+	m_strRoomID = strRoomID;
+	// 关闭房间登录窗口...
+	m_RoomWindow->close();
+	// 创建并打开主窗口界面...
+	setQuitOnLastWindowClosed(false);
+	m_studentWindow = new StudentWindow();
+	m_studentWindow->setAttribute(Qt::WA_DeleteOnClose, true);
+	this->connect(m_studentWindow, SIGNAL(destroyed()), this, SLOT(quit()));
+	m_studentWindow->InitWindow();
+	// 建立信号槽关联函数 => 便于辅助线程进行事件通知...
+	this->connect(this, SIGNAL(msgFromWebThread(int, int, int)), m_studentWindow, SLOT(doWebThreadMsg(int, int, int)));
+	this->connect(this, SIGNAL(doEnableCamera(OBSQTDisplay*)), m_studentWindow->GetViewLeft(), SLOT(doEnableCamera(OBSQTDisplay*)));
+	// 创建并启动一个网站交互线程...
+	GM_Error theErr = GM_NoErr;
+	m_lpWebThread = new CWebThread();
+	theErr = m_lpWebThread->InitThread();
+	((theErr != GM_NoErr) ? MsgLogGM(theErr) : NULL);
+}*/
 
 // 登录成功获取终端配置之后，立即连接中转服务器...
 void CStudentApp::onWebLoadResource()

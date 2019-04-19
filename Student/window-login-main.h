@@ -57,7 +57,7 @@ public:
     LoginWindow(QWidget *parent = NULL);
     ~LoginWindow();
 signals:
-	void loginSuccess(string & strRoomID);
+	void doTriggerLoginSuccess(string & strRoomID);
 	void doTriggerRoomList(int nRoomPage);
 public:
 	int  GetRoomBeginID() { return m_nBeginID; }

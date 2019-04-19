@@ -37,7 +37,7 @@ public:
 };
 
 class CRemoteSession;
-class LoginWindow;
+class CLoginMini;
 class CWebThread;
 class CStudentApp : public QApplication {
 	Q_OBJECT
@@ -69,7 +69,7 @@ public:
 	static string UTF8_ANSI(const char * lpUValue);
 	static string ANSI_UTF8(const char * lpSValue);
 public slots:
-	void doLoginSuccess(string & strRoomID);
+	void onTriggerMiniSuccess();
 public:
 	bool     GetAudioHorn() { return m_bHasAudioHorn; }
 	void     SetAudioHorn(bool bHasAudioHorn) { m_bHasAudioHorn = bHasAudioHorn; }
@@ -184,12 +184,12 @@ private:
 	bool	InitMacIPAddr();
 private:
 	std::deque<obs_frontend_translate_ui_cb> translatorHooks;
-	QPointer<CRemoteSession>   m_RemoteSession;
-	QPointer<StudentWindow>    m_studentWindow;
-	QPointer<LoginWindow>      m_loginWindow;
-	ConfigFile                 m_globalConfig;
-	TextLookup                 m_textLookup;
-	OBSQTDisplay      *        m_lpFocusDisplay;
+	QPointer<CRemoteSession>   m_RemoteSession;             // For UDP-Server
+	QPointer<StudentWindow>    m_studentWindow;             // 主窗口对象
+	QPointer<CLoginMini>       m_LoginMini;                 // 小程序登录窗口
+	ConfigFile                 m_globalConfig;              // 全局配置对象...
+	TextLookup                 m_textLookup;                // 文字翻译对象...
+	OBSQTDisplay      *        m_lpFocusDisplay;            // 焦点窗口对象...
 	CWebThread        *        m_lpWebThread;				// 网站相关线程...
 	ROLE_TYPE                  m_nRoleType;                 // 终端角色类型...
 	string                     m_strRoomID;					// 登录的房间号...

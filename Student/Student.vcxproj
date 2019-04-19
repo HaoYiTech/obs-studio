@@ -196,6 +196,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="window-dlg-setsys.cpp" />
     <ClCompile Include="window-login-base.cpp" />
     <ClCompile Include="window-login-main.cpp" />
+    <ClCompile Include="window-login-mini.cpp" />
     <ClCompile Include="window-login-title.cpp" />
     <ClCompile Include="window-student-main.cpp" />
     <ClCompile Include="window-view-camera.cpp" />
@@ -209,6 +210,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <QtUic Include="forms\DlgAbout.ui" />
     <QtUic Include="forms\DlgPush.ui" />
     <QtUic Include="forms\DlgSetSys.ui" />
+    <QtUic Include="forms\LoginMini.ui" />
     <QtUic Include="forms\LoginWindow.ui" />
     <QtUic Include="forms\OBSUpdate.ui" />
     <QtUic Include="forms\PTZWindow.ui" />
@@ -271,6 +273,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="GeneratedFiles\ui_DlgSetSys.h" />
     <ClInclude Include="GeneratedFiles\ui_PTZWindow.h" />
     <ClInclude Include="play-thread.h" />
+    <QtMoc Include="window-login-mini.h">
+      <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.;.\rtp;.\json;.\curl;.\fastdfs;.\common;.\win-update;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName);.\obs-frontend-api;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\deps\libff;E:\obs-studio\deps\blake2\src;E:\obs-studio\vsbuild\config;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork;$(QTDIR)\mkspecs\win32-msvc2015;.\..\librtsp\liveMedia\include;.\..\librtsp\groupsock\include;.\..\librtsp\UsageEnvironment\include;.\..\librtsp\BasicUsageEnvironment\include;.\..\libwebrtc-aec\inc;.\..\libwebrtc-aec\ns</IncludePath>
+      <Define Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">WIN32;_WINDOWS;NDEBUG;DL_OPENGL=libobs-opengl.dll;DL_D3D9= -DDL_D3D11=libobs-d3d11.dll -DUNICODE -D_UNICODE -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_WARNINGS -DHAVE_OBSCONFIG_H -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -DQT_NO_DEBUG -D%(PreprocessorDefinitions)  -I. -I.\rtp -I.\json -I.\curl -I.\fastdfs -I.\common -I.\win-update -I.\GeneratedFiles -I.\GeneratedFiles\$(ConfigurationName) -I.\obs-frontend-api -IE:\obs-deps\win32\include -IE:\obs-studio\libobs -IE:\obs-studio\deps\libff -IE:\obs-studio\deps\blake2\src -IE:\obs-studio\vsbuild\config -IE:\obs-studio\deps\jansson\src -IE:\obs-studio\vsbuild\deps\jansson\include -I$(QTDIR)\include -I$(QTDIR)\include\QtCore -I$(QTDIR)\include\QtGui -I$(QTDIR)\include\QtANGLE -I$(QTDIR)\include\QtWidgets -I$(QTDIR)\include\QtNetwork -I$(QTDIR)\mkspecs\win32-msvc2015 -I.\..\librtsp\liveMedia\include -I.\..\librtsp\groupsock\include -I.\..\librtsp\UsageEnvironment\include -I.\..\librtsp\BasicUsageEnvironment\include -I.\..\libwebrtc-aec\inc -I.\..\libwebrtc-aec\ns</Define>
+    </QtMoc>
     <QtMoc Include="window-view-ptz.h">
       <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.;.\rtp;.\json;.\curl;.\fastdfs;.\common;.\win-update;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName)\.;.\obs-frontend-api;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\deps\libff;E:\obs-studio\deps\blake2\src;E:\obs-studio\vsbuild\config;E:\obs-studio\deps\jansson\src;E:\obs-studio\vsbuild\deps\jansson\include;$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork;$(QTDIR)\mkspecs\win32-msvc2015;.\..\librtsp\liveMedia\include;.\..\librtsp\groupsock\include;.\..\librtsp\UsageEnvironment\include;.\..\librtsp\BasicUsageEnvironment\include;.\..\libwebrtc-aec\inc;.\..\libwebrtc-aec\ns</IncludePath>
       <Define Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;_UNICODE</Define>

@@ -44,7 +44,7 @@ enum {
 	kCmd_Student_OnLine		  = 2,
 	kCmd_Teacher_Login		  = 3,
 	kCmd_Teacher_OnLine		  = 4,
-	kCmd_UDP_Logout			  = 5,
+	kCmd_UDP_Logout			    = 5,
 	kCmd_Camera_PullStart     = 6,
 	kCmd_Camera_PullStop      = 7,
 	kCmd_Camera_OnLineList    = 8,
@@ -62,6 +62,7 @@ enum {
 	kCmd_PHP_GetAllClient     = 20,
 	kCmd_PHP_GetRoomList      = 21,
 	kCmd_PHP_GetPlayerList    = 22,
+	kCmd_PHP_Bind_Mini        = 23,
 };
 
 // define IPC ISAPI command...
