@@ -54,6 +54,11 @@ define('ERR_OK',                      0);
 define('ERR_NO_ROOM',             10001);
 define('ERR_NO_SERVER',           10002);
 define('ERR_MODE_MATCH',          10003);
+define('ERR_NO_PARAM',            10004);
+define('ERR_NO_TERMINAL',         10005);
+define('ERR_TYPE_MATCH',          10006);
+define('ERR_TIME_MATCH',          10007);
+define('ERR_HAS_TEACHER',         10008);
 
 // 定义UDP服务器可以执行的命令列表...
 define('kCmd_Student_Login',          1);
@@ -78,6 +83,7 @@ define('kCmd_PHP_GetAllServer',      19);
 define('kCmd_PHP_GetAllClient',      20);
 define('kCmd_PHP_GetRoomList',       21);
 define('kCmd_PHP_GetPlayerList',     22);
+define('kCmd_PHP_Bind_Mini',         23);
 
 //////////////////////////////////////////////////////
 // 定义一组通用的公用函数列表...
@@ -227,6 +233,11 @@ function getTransmitErrMsg($inErrCode)
     case ERR_NO_ROOM:     $strErrMsg = '没有房间号。'; break;
     case ERR_NO_SERVER:   $strErrMsg = '没有在线的直播服务器。'; break;
     case ERR_MODE_MATCH:  $strErrMsg = '终端运行模式与直播服务器运行模式不匹配。'; break;
+    case ERR_NO_PARAM:    $strErrMsg = '参数错误或无效。'; break;
+    case ERR_NO_TERMINAL: $strErrMsg = '没有找到指定的终端对象。'; break;
+    case ERR_TYPE_MATCH:  $strErrMsg = '终端类型不匹配。'; break;
+    case ERR_TIME_MATCH:  $strErrMsg = '时间戳标识不匹配。'; break;
+    case ERR_HAS_TEACHER: $strErrMsg = '同一个教室，只能登录一个讲师端，请选择其它教室登录。'; break;
     default:              $strErrMsg = '未知错误，请确认中心服务器版本。'; break;
   }
   return $strErrMsg;

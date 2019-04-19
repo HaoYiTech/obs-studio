@@ -552,21 +552,6 @@ class GatherAction extends Action
     }
   }
   //
-  // 节点站 => 获取UDPCenter的地址和端口 => UDPServer调用的接口...
-  /*public function getUDPCenter()
-  {
-    // 获取系统配置信息...
-    $dbSys = D('system')->find();
-    // 准备返回数据结构...
-    $arrErr['err_code'] = false;
-    $arrErr['err_msg'] = "OK";
-    // 填充UDPCenter的地址和端口...
-    $arrErr['udpcenter_addr'] = $dbSys['udpcenter_addr'];
-    $arrErr['udpcenter_port'] = $dbSys['udpcenter_port'];
-    // 直接反馈查询结果...
-    echo json_encode($arrErr);   
-  }*/
-  //
   // 节点站 => 处理教师端上传保存...
   public function liveFDFS()
   {

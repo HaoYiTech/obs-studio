@@ -122,6 +122,21 @@ class MiniAction extends Action
     echo json_encode($arrErr);
   }
   //
+  // 获取UDPCenter的TCP地址和端口...
+  public function getUDPCenter()
+  {
+    // 获取系统配置信息...
+    $dbSys = D('system')->find();
+    // 准备返回数据结构...
+    $arrErr['err_code'] = false;
+    $arrErr['err_msg'] = "OK";
+    // 填充UDPCenter的地址和端口...
+    $arrErr['udpcenter_addr'] = $dbSys['udpcenter_addr'];
+    $arrErr['udpcenter_port'] = $dbSys['udpcenter_port'];
+    // 直接反馈查询结果...
+    echo json_encode($arrErr);   
+  }
+  //
   // 获取房间列表 => 分页显示...
   public function getRoom()
   {
@@ -268,13 +283,16 @@ class MiniAction extends Action
       $arrErr['user_id'] = $dbUser['user_id'];
       $arrErr['user_type'] = $dbUser['user_type'];
       $arrErr['real_name'] = $dbUser['real_name'];
-      // 根据用户编号查找与该用户绑定的房间视图信息...
+      //////////////////////////////////////////////////////
+      // 注意：修改为选择房间，而不是绑定房间，简化流程...
+      //////////////////////////////////////////////////////
+      /*// 根据用户编号查找与该用户绑定的房间视图信息...
       $myQuery['teacher_id'] = $dbUser['user_id'];
       $arrErr['bind_room'] = D('RoomView')->where($myQuery)->find();
       // 如果查找到的结果有效，需要对房间号码进行偏移设置...
       if( isset($arrErr['bind_room']['room_id']) ) {
         $arrErr['bind_room']['room_id'] += LIVE_BEGIN_ID;
-      }
+      }*/
      }while( false );
     // 返回json数据包...
     echo json_encode($arrErr);
@@ -375,6 +393,104 @@ class MiniAction extends Action
     } while( false );
     // 返回json数据包...
     echo json_encode($arrErr);
+  }
+  //
+  // 处理终端发起的获取登录用户详情的命令接口...
+  public function getLoginUser()
+  {
+    // 准备返回结果状态...
+    $arrErr['err_code'] = false;
+    $arrErr['err_msg'] = 'ok';
+    // 注意：这里使用的是 $_POST 数据...
+    do {
+      // 判断输入的参数是否有效...
+      if( !isset($_POST['user_id']) || !isset($_POST['room_id'])) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入参数无效！';
+        break;
+      }
+      // 首先，查找用户，如果没有找到，返回错误...
+      $condition['user_id'] = $_POST['user_id'];
+      $dbUser = D('user')->where($condition)->find();
+      if( !isset($dbUser['user_id']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '无法找到指定的用户记录！';
+        break;
+      }
+      // 保存用户记录到集合当中...
+      $arrErr['user'] = $dbUser;
+      // 修改房间编号 => 减去房间偏移号码...
+      $myQuery['room_id'] = $_POST['room_id'] - LIVE_BEGIN_ID;
+      $dbRoom = D('RoomView')->where($myQuery)->find();
+      if( !isset($dbRoom['room_id']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '无法找到指定的房间记录！';
+        break;
+      }
+      // 保存房间记录到集合当中...
+      $arrErr['room'] = $dbRoom;
+    } while ( false );
+    // 返回json编码数据包...
+    echo json_encode($arrErr);
+  }
+  //
+  // 转发绑定登录状态命令给讲师端|学生端...
+  public function bindLogin()
+  {
+    // 准备返回结果状态...
+    $arrErr['err_code'] = false;
+    $arrErr['err_msg'] = 'ok';
+    // 注意：这里使用的是 $_POST 数据...
+    do {
+      // 判断输入的参数是否有效...
+      if( !isset($_POST['client_type']) || !isset($_POST['bind_cmd']) || !isset($_POST['user_id']) ||
+          !isset($_POST['tcp_socket']) || !isset($_POST['tcp_time']) || !isset($_POST['room_id'])) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入参数无效！';
+        break;
+      }
+      // 向中心服务器转发小程序绑定登录这个中转命令...
+      $dbResult = $this->doTrasmitCmdToCenter(kCmd_PHP_Bind_Mini, $_POST);
+      // 如果获取连接中转服务器失败...
+      if( $dbResult['err_code'] > 0 ) {
+        $arrErr['err_code'] = $dbResult['err_code'];
+        $arrErr['err_msg'] = $dbResult['err_msg'];
+        break;
+      }
+    } while( false );
+    // 返回json编码数据包...
+    echo json_encode($arrErr);
+  }
+  //
+  // 统一的中心服务器命令接口...
+  private function doTrasmitCmdToCenter($inCmd, &$dbParam)
+  {
+    // 读取系统配置数据库记录...
+    $dbSys = D('system')->find();
+    // 通过php扩展插件连接中转服务器 => 性能高...
+    $transmit = transmit_connect_server($dbSys['udpcenter_addr'], $dbSys['udpcenter_port']);
+    // 链接中心服务器失败，直接返回...
+    if( !$transmit ) {
+      $arrData['err_code'] = true;
+      $arrData['err_msg'] = '无法连接中心服务器。';
+      return $arrData;
+    }
+    // 调用php扩展插件的中转接口带上参数...
+    $saveJson = json_encode($dbParam);
+    $json_data = transmit_command(kClientPHP, $inCmd, $transmit, $saveJson);
+    // 关闭中转服务器链接...
+    transmit_disconnect_server($transmit);
+    // 获取的JSON数据有效，转成数组，直接返回...
+    $arrData = json_decode($json_data, true);
+    if( !$arrData ) {
+      $arrData['err_code'] = true;
+      $arrData['err_msg'] = '从中心服务器获取数据失败。';
+      return $arrData;
+    }
+    // 通过错误码，获得错误信息...
+    $arrData['err_msg'] = getTransmitErrMsg($arrData['err_code']);
+    // 将整个数组返回...
+    return $arrData;
   }
 }
 ?>
