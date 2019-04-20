@@ -133,7 +133,7 @@ Page({
             console.log(res);
             wx.hideLoading();
             // 获取成功，通过网站接口获取用户编号...
-            that.doAPILogin(that.data.m_code, res.userInfo, res.encryptedData, res.iv);
+            g_app.doAPILogin(that, that.data.m_code, res.userInfo, res.encryptedData, res.iv);
           },
           fail: res => {
             console.log(res);
@@ -157,91 +157,27 @@ Page({
     var that = this
     // 允许授权，通过网站接口获取用户编号...
     if (res.detail.userInfo) {
-      that.doAPILogin(that.data.m_code, res.detail.userInfo, res.detail.encryptedData, res.detail.iv)
+      g_app.doAPILogin(that, that.data.m_code, res.detail.userInfo, res.detail.encryptedData, res.detail.iv)
     }
   },
-  // 登录接口...
-  doAPILogin: function (inCode, inUserInfo, inEncrypt, inIV) {
-    // 显示导航栏|浮动加载动画...
-    wx.showLoading({ title: '加载中' });
-    wx.showNavigationBarLoading();
-    // 保存this对象...
-    var that = this
-    // 获取系统信息同步接口...
-    var theSysInfo = g_app.globalData.m_sysInfo
-    // 准备需要的参数信息 => 加入一些附加信息...
-    var thePostData = {
-      iv: inIV,
-      code: inCode,
-      encrypt: inEncrypt,
-      wx_brand: theSysInfo.brand,
-      wx_model: theSysInfo.model,
-      wx_version: theSysInfo.version,
-      wx_system: theSysInfo.system,
-      wx_platform: theSysInfo.platform,
-      wx_SDKVersion: theSysInfo.SDKVersion,
-      wx_pixelRatio: theSysInfo.pixelRatio,
-      wx_screenWidth: theSysInfo.screenWidth,
-      wx_screenHeight: theSysInfo.screenHeight,
-      wx_fontSizeSetting: theSysInfo.fontSizeSetting
-    }
-    // 构造访问接口连接地址...
-    var theUrl = g_app.globalData.m_urlPrev + 'Mini/login'
-    // 请求远程API过程...
-    wx.request({
-      url: theUrl,
-      method: 'POST',
-      data: thePostData,
-      dataType: 'x-www-form-urlencoded',
-      header: { 'content-type': 'application/x-www-form-urlencoded' },
-      success: function (res) {
-        console.log(res);
-        // 隐藏导航栏加载动画...
-        wx.hideLoading()
-        wx.hideNavigationBarLoading();
-        // 如果返回数据无效或状态不对，打印错误信息，直接返回...
-        if (res.statusCode != 200 || res.data.length <= 0) {
-          that.doBindError("错误警告", "调用网站登录接口失败！")
-          return
-        }
-        // dataType 没有设置json，需要自己转换...
-        var arrData = JSON.parse(res.data);
-        // 获取授权数据失败的处理...
-        if (arrData.err_code > 0) {
-          that.doBindError("错误警告", arrData.err_msg)
-          return
-        }
-        // 获取授权数据成功，保存用户编号|用户类型|真实姓名...
-        g_app.globalData.m_nUserID = arrData.user_id
-        g_app.globalData.m_userInfo = inUserInfo
-        g_app.globalData.m_userInfo.userType = arrData.user_type
-        g_app.globalData.m_userInfo.realName = arrData.real_name
-        // 如果是讲师端扫描，用户类型必须是讲师，绑定房间必须有效...
-        if (g_app.globalData.m_scanType === kClientTeacher) {
-          // 如果用户身份低于讲师类型，需要弹框警告...
-          if (parseInt(arrData.user_type) < 2) {
-            that.doBindError("错误警告", "讲师端软件，只有讲师身份的用户才能使用，请联系经销商，获取讲师身份授权！");
-            return;
-          }
-          // 注意：修改为选择房间，不是绑定房间...
-          // 如果讲师没有绑定房间，需要弹框警告...
-          //if (!(arrData.bind_room instanceof Object)) {
-          //  that.doBindError("错误警告", "您已是讲师身份，但没有分配房间号码，请联系经销商，获取讲师专属房间号码！");
-          //  return;
-          //}
-        }
-        // 向对应终端发送扫码成功子命令...
-        that.doAPIBindMini(BIND_SCAN);
-      },
-      fail: function (res) {
-        console.log(res);
-        // 隐藏导航栏加载动画...
-        wx.hideLoading()
-        wx.hideNavigationBarLoading();
-        // 打印错误信息，显示错误警告...
-        that.doBindError("错误警告", "调用网站登录接口失败！")
+
+  // 响应登录错误接口...
+  onLoginError: function (inTitle, inMessage) {
+    this.doBindError(inTitle, inMessage);
+  },
+
+  // 响应登录正确接口...
+  onLoginSuccess: function () {
+    // 如果是讲师端扫描，用户类型必须是讲师，绑定房间必须有效...
+    if (g_app.globalData.m_scanType === kClientTeacher) {
+      // 如果用户身份低于讲师类型，需要弹框警告...
+      if (parseInt(g_app.globalData.m_userInfo.userType) < 2) {
+        this.doBindError("错误警告", "讲师端软件，只有讲师身份的用户才能使用，请联系经销商，获取讲师身份授权！");
+        return;
       }
-    })
+    }
+    // 向对应终端发送扫码成功子命令...
+    this.doAPIBindMini(BIND_SCAN);
   },
 
   // 转发绑定子命令到对应的终端对象...

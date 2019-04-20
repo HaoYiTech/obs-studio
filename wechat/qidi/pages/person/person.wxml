@@ -1,88 +1,49 @@
-<!--pages/home/home.wxml-->
 
-<block wx:if="{{ showLoading }}">
-  <view class="home-load">
-    <view class="fa fa-cog fa-spin fa-2x"></view>
+<van-dialog id="van-dialog" />
+
+<view class="feed-back" style="background: {{m_bgColor}}">
+<block wx:if="{{m_show_auth == 0}}">
+  <view style="margin-top:120px;">
+    <i-load-more loading="true" tip="正在加载..." />
   </view>
 </block>
-
-<wux-grids col="4" bordered="{{ false }}" wux-class="home-top-area">
-  <wux-grid label="课程管理"
-    data-item="navSubject"
-    bind:click="toggleGridNav"
-    wux-nav-back="fa-stack fa-lg"
-    wux-nav-circle="fa fa-circle fa-stack-2x"
-    wux-nav-inner="fa fa-wpforms fa-stack-1x fa-inverse" />
-  <wux-grid label="会员管理"
-    data-item="navMember"
-    bind:click="toggleGridNav"
-    wux-nav-back="fa-stack fa-lg"
-    wux-nav-circle="fa fa-circle fa-stack-2x"
-    wux-nav-inner="fa fa-id-card-o fa-stack-1x fa-inverse" />
-  <wux-grid label="订单管理"
-    data-item="navOrder"
-    bind:click="toggleGridNav"
-    wux-nav-back="fa-stack fa-lg"
-    wux-nav-circle="fa fa-circle fa-stack-2x"
-    wux-nav-inner="fa fa-money fa-stack-1x fa-inverse" />
-  <wux-grid label="门店管理"
-    data-item="navShop"
-    bind:click="toggleGridNav"
-    wux-nav-back="fa-stack fa-lg"
-    wux-nav-circle="fa fa-circle fa-stack-2x"
-    wux-nav-inner="fa fa-home fa-stack-1x fa-inverse" />
-  <wux-grid label="课程预约"
-    data-item="navPlan"
-    bind:click="toggleGridNav"
-    wux-nav-back="fa-stack fa-lg"
-    wux-nav-circle="fa fa-circle fa-stack-2x"
-    wux-nav-inner="fa fa-calendar-check-o fa-stack-1x fa-inverse" />
-  <wux-grid label="课时查询"
-    data-item="navQuery"
-    bind:click="toggleGridNav"
-    wux-nav-back="fa-stack fa-lg"
-    wux-nav-circle="fa fa-circle fa-stack-2x"
-    wux-nav-inner="fa fa-search fa-stack-1x fa-inverse" />
-  <wux-grid label="考级报名"
-    data-item="navSign"
-    bind:click="toggleGridNav"
-    wux-nav-back="fa-stack fa-lg"
-    wux-nav-circle="fa fa-circle fa-stack-2x"
-    wux-nav-inner="fa fa-file-text-o fa-stack-1x fa-inverse" />
-  <wux-grid label="宝宝风采"
-    data-item="navBaby"
-    bind:click="toggleGridNav"
-    wux-nav-back="fa-stack fa-lg"
-    wux-nav-circle="fa fa-circle fa-stack-2x"
-    wux-nav-inner="fa fa-user-o fa-stack-1x fa-inverse" />
-</wux-grids>
-
-<view class="home-top-area">
-  <w-tabs bind:onChange="handleChange"
-    textStyles="font-size: 14px;"
-    options="{{ hotTabs }}"
-    activeColor="#ef473a"
+<block wx:elif="{{m_show_auth == 1}}">
+  <wux-result
+      fixed="true"
+      title="授权失败"
+      icon="{{ icon }}"
+      buttons="{{ buttons }}"
+      bind:getuserinfo="getUserInfo"
+      extra="Copyright © 2019 启迪未来"
+      label="本小程序需要您的授权，请点击授权按钮完成授权。"
   />
-  <van-card
-    title="少儿才艺启蒙班，启发少儿音乐兴趣启发少儿音乐兴趣启发少儿音乐兴趣"
-    card-time="课时数：30"
-    card-age="年龄段：3~6岁"
-    lazy-load="{{ true }}"
-    shop-cart="{{ true }}"
-    price="200"
-    origin-price="400"
-    custom-class="van-card"
-    thumb="//img.yzcdn.cn/upload_files/2017/07/02/af5b9f44deaeb68000d7e4a711160c53.jpg"
-  />
-  <van-card
-    title="幼儿科学实验课，体验科学奇幻启发少儿科学兴趣启发少儿科学兴趣启发少儿科学兴趣"
-    card-time="课时数：30"
-    card-age="年龄段：3~6岁"
-    lazy-load="{{ true }}"
-    shop-cart="{{ true }}"
-    price="100"
-    origin-price="300"
-    custom-class="van-card"
-    thumb="//img.yzcdn.cn/upload_files/2017/07/02/af5b9f44deaeb68000d7e4a711160c53.jpg"
-  />
+</block>
+<block wx:elif="{{m_show_auth == 2}}">
+  <view class="feed-head">
+    <image mode="aspectFill" lazy-load="true" src="{{m_userInfo.avatarUrl}}" />
+    <view class="feed-name">{{m_userInfo.nickName}}</view>
+  </view>
+  <view class="feed-container">
+    <van-cell custom-class="feed-cell" title="推荐给朋友" size="large"
+      icon-class="icon-green" icon="gift-o" is-link border="{{false}}">
+      <button slot="extra" open-type="share" class="feed-share" />
+    </van-cell>
+    <van-cell custom-class="feed-cell" title="意见反馈" size="large"
+      icon-class="icon-blue" icon="question-o" is-link border="{{false}}">
+      <contact-button slot="extra" type="default-light" />
+      <contact-button slot="extra" type="default-light" />
+      <contact-button slot="extra" type="default-light" />
+      <contact-button slot="extra" type="default-light" />
+      <contact-button slot="extra" type="default-light" />
+      <contact-button slot="extra" type="default-light" />
+      <contact-button slot="extra" type="default-light" />
+      <contact-button slot="extra" type="default-light" />
+      <contact-button slot="extra" type="default-light" />
+      <contact-button slot="extra" type="default-light" />
+    </van-cell>
+    <van-cell custom-class="feed-cell" title="关于我们" size="large"
+     icon-class="icon-red" icon="like-o" is-link border="{{false}}"
+     url="/pages/about/about" />
+  </view>
+</block>
 </view>

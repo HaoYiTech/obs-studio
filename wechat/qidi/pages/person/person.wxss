@@ -1,15 +1,54 @@
-/* pages/home/home.wxss */
 
-@import '../../style/font-awesome.wxss';
-
-.home-load {
-  display: flex;
-  color: #0099e9;
-  padding: 280rpx 0;
-  align-items: center;
-  flex-direction: column;
-  justify-content: space-between;
+page {
+  background-color: #eee;
 }
-.home-top-area {
-  margin-top: 15rpx;
+.feed-back {
+  min-width: 100%;
+  min-height: 100%;
+  position: absolute;
+}
+.feed-head {
+  font-size: 32rpx;
+  text-align: center;
+  margin: 80rpx auto 40rpx;
+}
+.feed-head image {
+  vertical-align: middle;
+  display: inline-block;
+  border-radius: 100%;
+  margin-bottom: 20rpx;
+  border: none;
+  width: 160rpx;
+  height: 160rpx;
+}
+.feed-name {
+  color: #666;
+}
+.feed-container {
+  padding: 15px 15px;
+}
+.feed-cell {
+  margin-bottom: 20rpx;
+  border: 1px solid #eee;
+}
+.icon-red {
+  font-size: 20px !important;
+  color: tomato;
+}
+.icon-blue {
+  font-size: 20px !important;
+  color: deepskyblue;
+}
+.icon-green {
+  font-size: 20px !important;
+  color: forestgreen;
+}
+.feed-share {
+  opacity: 0;
+  width:100%;
+  height: 100%;
+  z-index: 9999;
+  position: absolute;
+  left: 0px;
+  top: 0px;
 }

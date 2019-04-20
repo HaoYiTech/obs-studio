@@ -3,6 +3,7 @@
     "pages/home/home",
     "pages/room/room",
     "pages/bind/bind",
+    "pages/about/about",
     "pages/person/person"
   ],
   "window":{

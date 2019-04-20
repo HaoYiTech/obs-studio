@@ -28,6 +28,8 @@
     <block wx:if="{{ value || value === 0 }}">{{ value }}</block>
     <slot wx:else />
   </view>
+  
+  <slot name="extra" />
 
   <van-icon
     wx:if="{{ isLink }}"
@@ -37,5 +39,4 @@
   />
   <slot wx:else name="right-icon" />
 
-  <slot name="extra" />
 </view>
