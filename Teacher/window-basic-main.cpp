@@ -6066,8 +6066,13 @@ void OBSBasic::doSceneItemExchangePos(obs_sceneitem_t * select_item)
 	obs_sceneitem_get_info(lpFirstSceneItem, &firstInfo);
 	ASSERT(firstInfo.pos.x <= 0.0f && firstInfo.pos.y <= 0.0f);
 	// 将当前选中资源的坐标信息与第一个资源的坐标信息进行交换...
-	obs_sceneitem_set_info(lpFirstSceneItem, &selectInfo);
-	obs_sceneitem_set_info(select_item, &firstInfo);
+	obs_sceneitem_set_pos(lpFirstSceneItem, &selectInfo.pos);
+	obs_sceneitem_set_bounds(lpFirstSceneItem, &selectInfo.bounds);
+	obs_sceneitem_set_pos(select_item, &firstInfo.pos);
+	obs_sceneitem_set_bounds(select_item, &firstInfo.bounds);
+	// 注意：不能交换全部信息，只交换坐标位置和图像高宽...
+	//obs_sceneitem_set_info(lpFirstSceneItem, &selectInfo);
+	//obs_sceneitem_set_info(select_item, &firstInfo);
 	// 轨道1 => 屏蔽旧的第一个窗口音频输出...
 	setAudioMixer(lpFirstSceneItem, 0, false);
 	// 轨道1 => 强制新的第一个窗口音频输出...
