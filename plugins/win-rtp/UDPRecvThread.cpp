@@ -619,10 +619,12 @@ void CUDPRecvThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 			m_server_cache_time_ms = m_server_rtt_ms + m_server_rtt_var_ms;
 		}
 		// ´òÓ¡Ì½²â½á¹û => Ì½²âÐòºÅ | ÍøÂçÑÓÊ±(ºÁÃë)...
+		int nADFrame = ((m_lpPlaySDL != NULL) ? m_lpPlaySDL->GetAFrameSize() : 0);
+		int nVDFrame = ((m_lpPlaySDL != NULL) ? m_lpPlaySDL->GetVFrameSize() : 0);
 		const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-		blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, ACircle: %d, VCircle: %d", TM_RECV_NAME,
+		blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms, cache_time: %d ms, ACircle: %d:%d, VCircle: %d:%d", TM_RECV_NAME,
 			 rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms, m_server_cache_time_ms,
-			 m_audio_circle.size / nPerPackSize, m_video_circle.size / nPerPackSize);
+			 m_audio_circle.size / nPerPackSize, nADFrame, m_video_circle.size / nPerPackSize, nVDFrame);
 		// ´òÓ¡²¥·ÅÆ÷µ×²ãµÄ»º´æ×´Ì¬ÐÅÏ¢...
 		/*if (m_lpPlaySDL != NULL) {
 			blog(LOG_INFO, "%s Recv Detect => APacket: %d, VPacket: %d, AFrame: %d, VFrame: %d", TM_RECV_NAME,

@@ -829,22 +829,25 @@ void CPlaySDL::PushPacket(int zero_delay_ms, string & inData, int inTypeTag, boo
 	enum AVPixelFormat nSrcFormat = inSrcFormat;
 	int nSrcWidth = pSrcFrame->width;
 	int nSrcHeight = pSrcFrame->height;
+	// 注意：长宽必须是4的整数倍，否则sws_scale崩溃...
+	int nDstWidth = nSrcWidth / 4 * 4;
+	int nDstHeight = nSrcHeight / 4 * 4;
 	// 不管什么格式，都需要进行像素格式的转换...
 	AVFrame * pDestFrame = av_frame_alloc();
-	int nDestBufSize = avpicture_get_size(nDestFormat, nSrcWidth, nSrcHeight);
+	int nDestBufSize = avpicture_get_size(nDestFormat, nDstWidth, nDstHeight);
 	uint8_t * pDestOutBuf = (uint8_t *)av_malloc(nDestBufSize);
-	avpicture_fill((AVPicture *)pDestFrame, pDestOutBuf, nDestFormat, nSrcWidth, nSrcHeight);
+	avpicture_fill((AVPicture *)pDestFrame, pDestOutBuf, nDestFormat, nDstWidth, nDstHeight);
 
 	// 注意：这里不用libyuv的原因是，使用sws更简单，不用根据不同像素格式调用不同接口...
 	// ffmpeg自带的sws_scale转换也是没有问题的，之前有问题是由于sws_getContext的输入源需要格式AVPixelFormat，写成了video_format，造成的格式错位问题...
 	// 注意：目的像素格式不能为AV_PIX_FMT_YUVJ420P，会提示警告信息，但并不影响格式转换，因此，还是使用不会警告的AV_PIX_FMT_YUV420P格式...
-	struct SwsContext * img_convert_ctx = sws_getContext(nSrcWidth, nSrcHeight, nSrcFormat, nSrcWidth, nSrcHeight, nDestFormat, SWS_BICUBIC, NULL, NULL, NULL);
+	struct SwsContext * img_convert_ctx = sws_getContext(nSrcWidth, nSrcHeight, nSrcFormat, nDstWidth, nDstHeight, nDestFormat, SWS_BICUBIC, NULL, NULL, NULL);
 	int nReturn = sws_scale(img_convert_ctx, (const uint8_t* const*)pSrcFrame->data, pSrcFrame->linesize, 0, nSrcHeight, pDestFrame->data, pDestFrame->linesize);
 	sws_freeContext(img_convert_ctx);
 
 	// 设置转换后的数据帧内容...
-	pDestFrame->width = nSrcWidth;
-	pDestFrame->height = nSrcHeight;
+	pDestFrame->width = nDstWidth;
+	pDestFrame->height = nDstHeight;
 	pDestFrame->format = nDestFormat;
 
 	// 将转换后的 YUV 数据存盘成 jpg 文件...
@@ -862,8 +865,8 @@ void CPlaySDL::PushPacket(int zero_delay_ms, string & inData, int inTypeTag, boo
 			break;
 		// 准备数据结构需要的参数...
 		pOutCodecCtx->bit_rate = 200000;
-		pOutCodecCtx->width = nSrcWidth;
-		pOutCodecCtx->height = nSrcHeight;
+		pOutCodecCtx->width = nDstWidth;
+		pOutCodecCtx->height = nDstHeight;
 		// 注意：没有使用适配方式，适配出来格式有可能不是YUVJ420P，造成压缩器崩溃，因为传递的数据已经固定成YUV420P...
 		// 注意：输入像素是YUV420P格式，压缩器像素是YUVJ420P格式...
 		pOutCodecCtx->pix_fmt = AV_PIX_FMT_YUVJ420P; //avcodec_find_best_pix_fmt_of_list(pOutAVCodec->pix_fmts, (AVPixelFormat)-1, 1, 0);
