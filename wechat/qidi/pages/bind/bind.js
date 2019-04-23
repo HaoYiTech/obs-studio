@@ -30,9 +30,14 @@ Page({
     }],
     btnScan: [{
       type: 'balanced',
+      outline: false,
       block: true,
       text: '重新扫描',
-      openType: '',
+    },{
+      type: 'stable',
+      outline: true,
+      block: true,
+      text: '取消',
     }],
     /*btnAuths: [{
       type: 'balanced',
@@ -67,8 +72,15 @@ Page({
     }
   },*/
 
-  // 用户点击重新扫描按钮...
-  doClickScan: function () {
+  // 用户点击重新扫描或取消...
+  doClickScan: function (inEvent) {
+    // const { index } = inEvent.detail;
+    // 用户点击取消按钮 => 返回首页...
+    if (inEvent.detail.index === 1) {
+      wx.reLaunch({ url: '../home/home' });
+      return;
+    }
+    // 点击重新扫描...
     wx.scanCode({
       onlyFromCamera: true,
       success: (res) => {
@@ -139,10 +151,11 @@ Page({
             console.log(res);
             wx.hideLoading();
             // 获取失败，显示授权对话框...
-            that.setData({ 
+            that.setData({
               m_show_auth: true,
               m_title: "授权失败",
-              m_label: "本小程序需要您的授权，请点击授权按钮完成授权。"
+              m_label: "本小程序需要您的授权，请点击授权按钮完成授权。",
+              buttons: that.data.buttons
             });
           }
         })

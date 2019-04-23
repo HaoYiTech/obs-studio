@@ -32,7 +32,7 @@ Page({
     let theAppData = g_app.globalData;
     // 如果用户编号和用户信息都是有效的，直接显示正常页面...
     if (theAppData.m_nUserID > 0 && theAppData.m_userInfo != null) {
-      this.setData({ m_show_auth: 2 });
+      this.onLoginSuccess();
       return;
     }
     // 开始登录过程，加载动画...
@@ -120,7 +120,6 @@ Page({
    * 页面相关事件处理函数--监听用户下拉动作
    */
   onPullDownRefresh: function () {
-
   },
 
   /**
