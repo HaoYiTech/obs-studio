@@ -115,7 +115,7 @@ void CLoginMini::initWindow()
 	QRect rcRect = this->rect();
 	QRect rcSize = m_lpMovieGif->frameRect();
 	int nXPos = (rcRect.width() - rcSize.width()) / 2;
-	int nYPos = (rcRect.height() - rcSize.height()) / 2 - ui->btnClose->height() * 2 + 5;
+	int nYPos = (rcRect.height() - rcSize.height()) / 2 - ui->btnClose->height() * 2 - 10;
 	m_lpLoadBack->move(nXPos, nYPos);
 	// 关联点击最小化按钮|关闭按钮的信号槽事件...
 	connect(ui->btnMin, SIGNAL(clicked()), this, SLOT(onButtonMinClicked()));
