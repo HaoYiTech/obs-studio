@@ -28,7 +28,7 @@
    <string>Teacher</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="obs.qrc">
+   <iconset resource="Student.qrc">
     <normaloff>:/res/HaoYi.ico</normaloff>:/res/HaoYi.ico</iconset>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
@@ -340,7 +340,7 @@
   </layout>
  </widget>
  <resources>
-  <include location="obs.qrc"/>
+  <include location="Student.qrc"/>
  </resources>
  <connections/>
 </ui>
