@@ -151,6 +151,7 @@ void CLoginMini::doWebGetCenterAddr()
 	// 修改获取中心服务器TCP地址状态...
 	m_eMiniState = kCenterAddr;
 	m_strQRNotice = QStringLiteral("正在获取中心服务器地址...");
+	ui->titleScan->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 	// 构造凭证访问地址，发起网络请求...
 	QNetworkReply * lpNetReply = NULL;
 	QNetworkRequest theQTNetRequest;
@@ -454,8 +455,8 @@ void CLoginMini::onTriggerTcpConnect()
 void CLoginMini::onTriggerBindMini(int nUserID, int nBindCmd, int nRoomID)
 {
 	// 如果当前状态不是二维码显示状态，直接返回...
-	if (m_eMiniState != kMiniQRCode)
-		return;
+	//if (m_eMiniState != kMiniQRCode)
+	//	return;
 	// 根据绑定子命令显示不同的信息或图片状态...
 	if (nBindCmd == kScanCmd) {
 		m_strScan = QStringLiteral("扫描成功，请在微信中选择要进入的教室，完成授权登录。");
@@ -572,7 +573,7 @@ bool CLoginMini::parseJson(string & inData, Json::Value & outValue, bool bIsWeiX
 	if (outValue[lpszCode].asBool()) {
 		string & strMsg = OBSApp::getJsonString(outValue[lpszMsg]);
 		string & strCode = OBSApp::getJsonString(outValue[lpszCode]);
-		m_strQRNotice = QString("%1, %2").arg(strCode.c_str()).arg(strMsg.c_str());
+		m_strQRNotice = QString("%1%2, %3").arg(QStringLiteral("错误号：")).arg(strCode.c_str()).arg(strMsg.c_str());
 		return false;
 	}
 	return true;
