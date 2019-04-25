@@ -476,7 +476,7 @@ class GatherAction extends Action
       $dbResult = $this->getUdpServerFromUdpCenter($dbSys['udpcenter_addr'], $dbSys['udpcenter_port'], $dbParam);
       // 如果获取连接中转服务器失败...
       if( $dbResult['err_code'] > 0 ) {
-        $arrErr['err_code'] = true;
+        $arrErr['err_code'] = $dbResult['err_code'];
         $arrErr['err_msg'] = $dbResult['err_msg'];
         break;
       }
