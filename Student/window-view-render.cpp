@@ -63,7 +63,12 @@ void CViewRender::paintEvent(QPaintEvent *event)
 	// 设置信息栏文字颜色...
 	painter.setPen(QPen(NOTICE_TEXT_COLOR));
 	// 自动居中显示文字...
-	painter.drawText(this->rect(), Qt::AlignCenter, m_strNoticeText);
+	QTextOption txtOption(Qt::AlignCenter);
+	txtOption.setWrapMode(QTextOption::WrapAnywhere);
+	// 调整文字显示区域...
+	QRect rcRect = this->rect();
+	rcRect.adjust(50, 0, -100, 0);
+	painter.drawText(rcRect, m_strNoticeText, txtOption);
 }
 
 // 重置窗口的矩形区域 => 相对父窗口的矩形坐标...

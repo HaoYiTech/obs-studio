@@ -704,8 +704,10 @@ void CViewCamera::doUdpSendThreadStart()
 		return;
 	}
 	// 如果推流线程已经创建了，直接返回...
-	if (m_lpUDPSendThread != NULL)
+	if (m_lpUDPSendThread != NULL) {
+		blog(LOG_INFO, "onTriggerUdpSendThread => OK, CameraState: %d", m_nCameraState);
 		return;
+	}
 	ASSERT(m_lpUDPSendThread == NULL);
 	// 重建回音消除对象 => 通道必须在线...
 	this->ReBuildWebrtcAEC();

@@ -8,7 +8,7 @@ using namespace std;
 
 class CViewCamera;
 // 注意：这里的摄像头窗口是按照降序排列...
-typedef	map<int, CViewCamera*, greater<int>> GM_MapCamera;
+typedef	map<int, CViewCamera*, greater<int>> GM_MapCamera; // DBCameraID => CViewCamera*
 
 class CViewLeft : public OBSQTDisplay {
 	Q_OBJECT

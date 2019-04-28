@@ -22,7 +22,7 @@ CViewTeacher::CViewTeacher(QWidget *parent, Qt::WindowFlags flags)
   , m_lpViewRender(NULL)
 {
 	// 创建渲染窗口对象...
-	QString strNotice = QTStr("Render.Window.DefaultNotice");
+	QString strNotice = QTStr("Render.Window.TeacherNotice");
 	m_lpViewRender = new CViewRender(strNotice, NOTICE_FONT_HEIGHT, this);
 	// 设置标题栏基础文字信息...
 	QString strRole = App()->GetRoleString();
@@ -99,7 +99,7 @@ void CViewTeacher::onTriggerUdpRecvThread(bool bIsUDPTeacherOnLine)
 			m_lpUDPRecvThread = NULL;
 		}
 		// 更新渲染界面窗口显示信息 => 恢复成默认提示信息...
-		m_lpViewRender->doUpdateNotice(QTStr("Render.Window.DefaultNotice"));
+		m_lpViewRender->doUpdateNotice(QTStr("Render.Window.TeacherNotice"));
 	}
 }
 
