@@ -209,69 +209,6 @@ void CLoginMini::doWebGetMiniQRCode()
 	this->update();
 }
 
-// 修改状态，获取绑定登录用户的详细信息...
-void CLoginMini::doWebGetMiniUserInfo()
-{
-	// 显示动画，修改状态...
-	ui->iconScan->hide();
-	m_lpLoadBack->show();
-	m_eMiniState = kMiniUserInfo;
-	m_strScan = QStringLiteral("正在获取已登录用户信息...");
-	ui->titleScan->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
-	// 构造网络访问地址，发起网络请求...
-	QNetworkReply * lpNetReply = NULL;
-	QNetworkRequest theQTNetRequest;
-	string & strWebCenter = App()->GetWebCenter();
-	QString strContentVal = QString("user_id=%1&room_id=%2").arg(m_nDBUserID).arg(m_nDBRoomID);
-	QString strRequestURL = QString("%1%2").arg(strWebCenter.c_str()).arg("/wxapi.php/Mini/getLoginUser");
-	theQTNetRequest.setUrl(QUrl(strRequestURL));
-	theQTNetRequest.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/x-www-form-urlencoded"));
-	lpNetReply = m_objNetManager.post(theQTNetRequest, strContentVal.toUtf8());
-	// 更新显示界面内容...
-	this->update();
-}
-
-void CLoginMini::onProcMiniUserInfo(QNetworkReply *reply)
-{
-	Json::Value value;
-	bool bIsError = false;
-	ASSERT(m_eMiniState == kMiniUserInfo);
-	QByteArray & theByteArray = reply->readAll();
-	string & strData = theByteArray.toStdString();
-	blog(LOG_DEBUG, "QT Reply Data => %s", strData.c_str());
-	do {
-		// 解析json数据包失败，设置标志跳出...
-		if (!this->parseJson(strData, value, false)) {
-			m_strScan = m_strQRNotice;
-			m_strQRNotice.clear();
-			bIsError = true;
-			break;
-		}
-		// 判断是否获取到了正确的用户和房间信息...
-		if (!value.isMember("user") || !value.isMember("room")) {
-			m_strScan = QStringLiteral("错误提示：无法从服务器获取用户或房间详情。");
-			bIsError = true;
-			break;
-		}
-		// 判断获取到的用户信息是否有效...
-		int nDBUserID = atoi(CStudentApp::getJsonString(value["user"]["user_id"]).c_str());
-		int nUserType = atoi(CStudentApp::getJsonString(value["user"]["user_type"]).c_str());
-		ASSERT(nDBUserID == m_nDBUserID);
-		// 因为是学生端，无需检测用户身份类型...
-	} while (false);
-	// 发生错误，关闭动画，显示图标|信息，文字左对齐...
-	if (bIsError) {
-		m_lpLoadBack->hide(); ui->iconScan->show();
-		ui->titleScan->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-		QString strStyle = QString("background-image: url(:/mini/images/mini/scan.png);background-repeat: no-repeat;margin-left: 25px;margin-top: -87px;");
-		ui->iconScan->setStyleSheet(strStyle);
-		this->update();
-		return;
-	}
-	// 一切正常，开始登录指定的房间...
-	this->doWebGetMiniLoginRoom();
-}
-
 // 正式登录指定房间 => 获取节点服务器信息...
 void CLoginMini::doWebGetMiniLoginRoom()
 {
@@ -341,6 +278,69 @@ void CLoginMini::onProcMiniLoginRoom(QNetworkReply *reply)
 		App()->SetRemotePort(atoi(strRemotePort.c_str()));
 		App()->SetUdpAddr(strUdpAddr);
 		App()->SetUdpPort(atoi(strUdpPort.c_str()));
+	} while (false);
+	// 发生错误，关闭动画，显示图标|信息，文字左对齐...
+	if (bIsError) {
+		m_lpLoadBack->hide(); ui->iconScan->show();
+		ui->titleScan->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+		QString strStyle = QString("background-image: url(:/mini/images/mini/scan.png);background-repeat: no-repeat;margin-left: 25px;margin-top: -87px;");
+		ui->iconScan->setStyleSheet(strStyle);
+		this->update();
+		return;
+	}
+	// 获取登录用户的详细信息...
+	this->doWebGetMiniUserInfo();
+}
+
+// 修改状态，获取绑定登录用户的详细信息...
+void CLoginMini::doWebGetMiniUserInfo()
+{
+	// 显示动画，修改状态...
+	ui->iconScan->hide();
+	m_lpLoadBack->show();
+	m_eMiniState = kMiniUserInfo;
+	m_strScan = QStringLiteral("正在获取已登录用户信息...");
+	ui->titleScan->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+	// 构造网络访问地址，发起网络请求...
+	QNetworkReply * lpNetReply = NULL;
+	QNetworkRequest theQTNetRequest;
+	string & strWebCenter = App()->GetWebCenter();
+	QString strContentVal = QString("user_id=%1&room_id=%2&type_id=%3").arg(m_nDBUserID).arg(m_nDBRoomID).arg(App()->GetClientType());
+	QString strRequestURL = QString("%1%2").arg(strWebCenter.c_str()).arg("/wxapi.php/Mini/getLoginUser");
+	theQTNetRequest.setUrl(QUrl(strRequestURL));
+	theQTNetRequest.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/x-www-form-urlencoded"));
+	lpNetReply = m_objNetManager.post(theQTNetRequest, strContentVal.toUtf8());
+	// 更新显示界面内容...
+	this->update();
+}
+
+void CLoginMini::onProcMiniUserInfo(QNetworkReply *reply)
+{
+	Json::Value value;
+	bool bIsError = false;
+	ASSERT(m_eMiniState == kMiniUserInfo);
+	QByteArray & theByteArray = reply->readAll();
+	string & strData = theByteArray.toStdString();
+	blog(LOG_DEBUG, "QT Reply Data => %s", strData.c_str());
+	do {
+		// 解析json数据包失败，设置标志跳出...
+		if (!this->parseJson(strData, value, false)) {
+			m_strScan = m_strQRNotice;
+			m_strQRNotice.clear();
+			bIsError = true;
+			break;
+		}
+		// 判断是否获取到了正确的用户和房间信息...
+		if (!value.isMember("user") || !value.isMember("room")) {
+			m_strScan = QStringLiteral("错误提示：无法从服务器获取用户或房间详情。");
+			bIsError = true;
+			break;
+		}
+		// 判断获取到的用户信息是否有效...
+		int nDBUserID = atoi(CStudentApp::getJsonString(value["user"]["user_id"]).c_str());
+		int nUserType = atoi(CStudentApp::getJsonString(value["user"]["user_type"]).c_str());
+		ASSERT(nDBUserID == m_nDBUserID);
+		// 因为是学生端，无需检测用户身份类型...
 	} while (false);
 	// 发生错误，关闭动画，显示图标|信息，文字左对齐...
 	if (bIsError) {
@@ -474,8 +474,8 @@ void CLoginMini::onTriggerBindMini(int nUserID, int nBindCmd, int nRoomID)
 		// 保存用户编号|房间编号...
 		m_nDBUserID = nUserID;
 		m_nDBRoomID = nRoomID;
-		// 获取登录用户的详细信息...
-		this->doWebGetMiniUserInfo();
+		// 一切正常，开始登录指定的房间...
+		this->doWebGetMiniLoginRoom();
 	}
 }
 
