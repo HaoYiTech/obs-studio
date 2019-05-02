@@ -493,11 +493,12 @@ class GatherAction extends Action
       // 获取当前指定通道上的讲师端和学生端在线数量...
       $arrErr['teacher'] = strval($dbResult['teacher']);
       $arrErr['student'] = strval($dbResult['student']);
+      // 注意：房间状态不要通过数据库，直接通过udpserver获取...
       // 如果是讲师端登录，修改房间在线状态...
-      if( $nClientType == kClientTeacher ) {
+      /*if( $nClientType == kClientTeacher ) {
         $dbRoom['status'] = 1;
         D('room')->save($dbRoom);
-      }
+      }*/
     } while( false );
     // 直接反馈最终验证的结果...
     echo json_encode($arrErr);
@@ -532,9 +533,9 @@ class GatherAction extends Action
     // 将整个数组返回...
     return $arrData;
   }
-  //
+  // 注意：废弃这个接口，房间状态不要通过数据库，直接通过udpserver获取...
   // 节点站 => 处理学生端或老师端退出事件...
-  public function logoutLiveRoom()
+  /*public function logoutLiveRoom()
   {
     // 判断输入的云教室号码是否有效...
     if( !isset($_POST['room_id']) || !isset($_POST['type_id']) )
@@ -550,7 +551,7 @@ class GatherAction extends Action
       // 直接进行数据库操作...
       D('room')->save($dbSave);
     }
-  }
+  }*/
   //
   // 节点站 => 处理教师端上传保存...
   public function liveFDFS()

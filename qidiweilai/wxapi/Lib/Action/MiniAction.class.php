@@ -429,6 +429,16 @@ class MiniAction extends Action
       }
       // 保存房间记录到集合当中...
       $arrErr['room'] = $dbRoom;
+      // 验证发送的终端类型是否正确...
+      $nClientType = intval($_POST['type_id']);
+      // 如果是讲师端登录，创建新的流量统计记录...
+      if( $nClientType == kClientTeacher ) {
+        $dbFlow['room_id'] = $dbRoom['room_id'];
+        $dbFlow['user_id'] = $dbUser['user_id'];
+        $dbFlow['created'] = date('Y-m-d H:i:s');
+        $dbFlow['updated'] = date('Y-m-d H:i:s');
+        $arrErr['flow_id'] = D('flow')->add($dbFlow);
+      }
     } while ( false );
     // 返回json编码数据包...
     echo json_encode($arrErr);
@@ -449,8 +459,10 @@ class MiniAction extends Action
         $arrErr['err_msg'] = '输入参数无效！';
         break;
       }
+      // 读取系统配置数据库记录...
+      $dbSys = D('system')->find();
       // 向中心服务器转发小程序绑定登录这个中转命令...
-      $dbResult = $this->doTrasmitCmdToCenter(kCmd_PHP_Bind_Mini, $_POST);
+      $dbResult = $this->doTrasmitCmdToServer($dbSys['udpcenter_addr'], $dbSys['udpcenter_port'], kCmd_PHP_Bind_Mini, $_POST);
       // 如果获取连接中转服务器失败...
       if( $dbResult['err_code'] > 0 ) {
         $arrErr['err_code'] = $dbResult['err_code'];
@@ -462,13 +474,52 @@ class MiniAction extends Action
     echo json_encode($arrErr);
   }
   //
-  // 统一的中心服务器命令接口...
-  private function doTrasmitCmdToCenter($inCmd, &$dbParam)
+  // 讲师端发起的计算房间流量统计的命令...
+  public function roomFlow()
   {
-    // 读取系统配置数据库记录...
-    $dbSys = D('system')->find();
+    // 准备返回结果状态...
+    $arrErr['err_code'] = false;
+    $arrErr['err_msg'] = 'ok';
+    // 注意：这里使用的是 $_POST 数据...
+    do {
+      // 判断输入的参数是否有效...
+      if (!isset($_POST['remote_addr']) || !isset($_POST['remote_port']) || !isset($_POST['user_id']) ||
+          !isset($_POST['room_id']) || !isset($_POST['flow_id'])) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入参数无效！';
+        break;
+      }
+      // 向udpserver获取指定房间的流量统计命令...
+      $dbParam['room_id'] = $_POST['room_id'];
+      $dbParam['flow_id'] = $_POST['flow_id'];
+      $dbResult = $this->doTrasmitCmdToServer($_POST['remote_addr'], $_POST['remote_port'], kCmd_PHP_GetRoomFlow, $dbParam);
+      // 如果获取连接中转服务器失败...
+      if( $dbResult['err_code'] > 0 ) {
+        $arrErr['err_code'] = $dbResult['err_code'];
+        $arrErr['err_msg'] = $dbResult['err_msg'];
+        break;
+      }
+      // 将获取到的流量信息直接更新到流量表当中 => 房间编号需要减去偏移值...
+      $dbFlow['room_id'] = $_POST['room_id'] - LIVE_BEGIN_ID;
+      $dbFlow['flow_id'] = $_POST['flow_id'];
+      $dbFlow['user_id'] = $_POST['user_id'];
+      $dbFlow['up_flow'] = $dbResult['up_flow'];
+      $dbFlow['down_flow'] = $dbResult['down_flow'];
+      $dbFlow['updated'] = date('Y-m-d H:i:s');
+      D('flow')->save($dbFlow);
+      // 将获取到的流量信息直接存入返回记录当中...
+      $arrErr['up_flow'] = $dbResult['up_flow'];
+      $arrErr['down_flow'] = $dbResult['down_flow'];
+    } while( false );
+    // 返回json编码数据包...
+    echo json_encode($arrErr);
+  }
+  //
+  // 统一的核心服务器命令接口...
+  private function doTrasmitCmdToServer($inServerAddr, $inServerPort, $inCmd, &$dbParam)
+  {
     // 通过php扩展插件连接中转服务器 => 性能高...
-    $transmit = transmit_connect_server($dbSys['udpcenter_addr'], $dbSys['udpcenter_port']);
+    $transmit = transmit_connect_server($inServerAddr, $inServerPort);
     // 链接中心服务器失败，直接返回...
     if( !$transmit ) {
       $arrData['err_code'] = true;

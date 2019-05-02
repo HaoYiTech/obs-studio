@@ -30,10 +30,12 @@
 #include "getopt.h"
 
 #include <fstream>
-#include <curl/curl.h>
 #include <jansson.h>
+#include <curl/curl.h>
 
 #include <QtCore/qfile.h>
+#include <QNetworkRequest>
+#include <QNetworkReply>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -805,6 +807,9 @@ OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
 	m_nRtpTCPSockFD = 0;
 	m_nOnLineTimer = -1;
 	m_nFastTimer = -1;
+	m_nFlowTimer = -1;
+	m_nDBUserID = 0;
+	m_nDBFlowID = 0;
 	m_LoginMini = NULL;
 	m_RemoteSession = NULL;
 	m_TrackerSession = NULL;
@@ -1080,12 +1085,23 @@ void OBSApp::doLogoutEvent()
 		delete m_StorageSession;
 		m_StorageSession = NULL;
 	}
-	// 获取云教室号码的配置对象...
-	const char * lpLiveRoomID = config_get_string(this->GlobalConfig(), "General", "LiveRoomID");
+	// 注意：废弃这个接口，房间状态不要通过数据库，直接通过udpserver获取...
+	/*const char * lpLiveRoomID = config_get_string(this->GlobalConfig(), "General", "LiveRoomID");
 	if (lpLiveRoomID == NULL)
 		return;
+	// 构造网络访问地址，发起网络请求...
+	QNetworkReply * lpNetReply = NULL;
+	QNetworkRequest theQTNetRequest;
+	string & strWebClass = App()->GetWebClass();
+	QString strContentVal = QString("room_id=%1&type_id=%2").arg(QString(lpLiveRoomID)).arg(this->GetClientType());
+	QString strRequestURL = QString("%1%2").arg(strWebClass.c_str()).arg("/wxapi.php/Gather/logoutLiveRoom");
+	theQTNetRequest.setUrl(QUrl(strRequestURL));
+	theQTNetRequest.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/x-www-form-urlencoded"));
+	lpNetReply = m_objNetManager.post(theQTNetRequest, strContentVal.toUtf8());*/
+	// 注意：这里使用curl的原因是需要阻塞式，m_objNetManager是异步，还没执行完毕就退出了...
+	// 注意：废弃这个接口，房间状态不要通过数据库，直接通过udpserver获取...
 	// 准备登出需要的云教室号码缓冲区...
-	char  szUrl[MAX_PATH] = { 0 };
+	/*char  szUrl[MAX_PATH] = { 0 };
 	char  szPost[MAX_PATH] = { 0 };
 	sprintf(szUrl, "%s/wxapi.php/Gather/logoutLiveRoom", m_strWebClass.c_str());
 	sprintf(szPost, "room_id=%s&type_id=%d", lpLiveRoomID, this->GetClientType());
@@ -1112,7 +1128,7 @@ void OBSApp::doLogoutEvent()
 	// 释放资源...
 	if (curl != NULL) {
 		curl_easy_cleanup(curl);
-	}
+	}*/
 }
 //
 // 创建并初始化登录窗口...
@@ -1129,6 +1145,8 @@ void OBSApp::doLoginInit()
 	m_LoginMini->show();
 	// 建立登录窗口与应用对象的信号槽关联函数...
 	connect(m_LoginMini, SIGNAL(doTriggerMiniSuccess()), this, SLOT(onTriggerMiniSuccess()));
+	// 关联网络信号槽反馈结果事件...
+	connect(&m_objNetManager, SIGNAL(finished(QNetworkReply *)), this, SLOT(onReplyFinished(QNetworkReply *)));
 }
 //
 // 处理小程序登录成功之后的信号槽事件...
@@ -1136,6 +1154,7 @@ void OBSApp::onTriggerMiniSuccess()
 {
 	// 保存登录房间号...
 	int nDBRoomID = m_LoginMini->GetDBRoomID();
+	m_nDBUserID = m_LoginMini->GetDBUserID();
 	m_strRoomID = QString("%1").arg(nDBRoomID).toStdString();
 	// 先关闭登录窗口...
 	m_LoginMini->close();
@@ -1145,6 +1164,8 @@ void OBSApp::onTriggerMiniSuccess()
 	obs_set_room_id(nDBRoomID);
 	// 开启一个定时上传检测时钟 => 每隔5秒执行一次...
 	m_nFastTimer = this->startTimer(5 * 1000);
+	// 每隔15秒检测一次，从服务器获取流量统计并存入数据库...
+	m_nFlowTimer = this->startTimer(15 * 1000);
 	// 每隔30秒检测一次，讲师端在中转服务器上在线汇报通知...
 	m_nOnLineTimer = this->startTimer(30 * 1000);
 	// 已经获取到了远程中转服务器地址，可以立即连接...
@@ -1170,6 +1191,17 @@ void OBSApp::onTriggerMiniSuccess()
 	this->doCheckRemote();
 }*/
 
+void OBSApp::onReplyFinished(QNetworkReply *reply)
+{
+	// 如果发生网络错误，打印错误信息，跳出循环...
+	if (reply->error() != QNetworkReply::NoError) {
+		blog(LOG_INFO, "QT error => %d, %s", reply->error(), reply->errorString().toStdString().c_str());
+		return;
+	}
+	QByteArray & theByteArray = reply->readAll();
+	string & strData = theByteArray.toStdString();
+	blog(LOG_DEBUG, "QT Reply Data => %s", strData.c_str());
+}
 //
 // 时钟定时执行过程...
 void OBSApp::timerEvent(QTimerEvent *inEvent)
@@ -1179,6 +1211,8 @@ void OBSApp::timerEvent(QTimerEvent *inEvent)
 		this->doCheckFDFS();
 	} else if(nTimerID == m_nOnLineTimer) {
 		this->doCheckOnLine();
+	} else if (nTimerID == m_nFlowTimer) {
+		this->doCheckRoomFlow();
 	}
 }
 //
@@ -1405,10 +1439,43 @@ bool OBSApp::doFindOneFile(char * inPath, int inSize, const char * inExtend)
 	return true;
 }
 //
+// 通过Web转发统计已登录房间流量...
+void OBSApp::doCheckRoomFlow()
+{
+	if (m_strRoomID.size() <= 0 || m_nDBUserID <= 0 || m_nDBFlowID <= 0 || m_strRemoteAddr.size() <= 0)
+		return;
+	QNetworkReply * lpNetReply = NULL;
+	QNetworkRequest theQTNetRequest;
+	string & strWebClass = App()->GetWebClass();
+	QString strContentVal = QString("user_id=%1&room_id=%2&flow_id=%3&remote_addr=%4&remote_port=%5")
+		.arg(m_nDBUserID).arg(m_strRoomID.c_str()).arg(m_nDBFlowID)
+		.arg(m_strRemoteAddr.c_str()).arg(m_nRemotePort);
+	QString strRequestURL = QString("%1%2").arg(strWebClass.c_str()).arg("/wxapi.php/Mini/roomFlow");
+	theQTNetRequest.setUrl(QUrl(strRequestURL));
+	theQTNetRequest.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/x-www-form-urlencoded"));
+	lpNetReply = m_objNetManager.post(theQTNetRequest, strContentVal.toUtf8());
+}
+//
 // 向网站汇报上传文件结果...
 void OBSApp::doWebSaveFDFS(char * lpFileName, char * lpPathFDFS, int64_t llFileSize)
 {
 	char szExt[32] = { 0 };
+	char szDriver[32] = { 0 };
+	char szDir[MAX_PATH] = { 0 };
+	char szSrcName[MAX_PATH] = { 0 };
+	// 分离获取到的文件全路径的组成部分...
+	_splitpath(lpFileName, szDriver, szDir, szSrcName, szExt);
+	// 构造网络访问地址，发起网络请求...
+	QNetworkReply * lpNetReply = NULL;
+	QNetworkRequest theQTNetRequest;
+	string & strWebClass = App()->GetWebClass();
+	QString strContentVal = QString("ext=%1&file_src=%2&file_fdfs=%3&file_size=%4").arg(QString(szExt)).arg(QString(szSrcName)).arg(QString(lpPathFDFS)).arg(llFileSize);
+	QString strRequestURL = QString("%1%2").arg(strWebClass.c_str()).arg("/wxapi.php/Gather/liveFDFS");
+	theQTNetRequest.setUrl(QUrl(strRequestURL));
+	theQTNetRequest.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/x-www-form-urlencoded"));
+	lpNetReply = m_objNetManager.post(theQTNetRequest, strContentVal.toUtf8());
+	// 已经废弃掉的调用curl的代码...
+	/*char szExt[32] = { 0 };
 	char szDriver[32] = { 0 };
 	char szDir[MAX_PATH] = { 0 };
 	char szSrcName[MAX_PATH] = { 0 };
@@ -1441,7 +1508,7 @@ void OBSApp::doWebSaveFDFS(char * lpFileName, char * lpPathFDFS, int64_t llFileS
 	// 释放资源...
 	if (curl != NULL) {
 		curl_easy_cleanup(curl);
-	}
+	}*/
 }
 
 string OBSApp::GetVersionString() const

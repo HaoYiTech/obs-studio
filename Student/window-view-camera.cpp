@@ -811,11 +811,12 @@ void CViewCamera::onTriggerReadyToRecvFrame()
 	if (lpRemoteSession != NULL) {
 		lpRemoteSession->doSendStartCameraCmd(m_nDBCameraID);
 	}
+	// 注意：废弃这个接口，通道状态直接通过udpserver存取...
 	// 调用接口通知服务器 => 修改通道状态 => 重建成功之后再发送命令...
-	CWebThread * lpWebThread = App()->GetWebThread();
+	/*CWebThread * lpWebThread = App()->GetWebThread();
 	if (lpWebThread != NULL) {
 		lpWebThread->doWebStatCamera(m_nDBCameraID, kCameraOnLine);
-	}
+	}*/
 	// 设置通道状态为已连接在线状态...
 	m_nCameraState = kCameraOnLine;
 }
@@ -930,11 +931,12 @@ bool CViewCamera::doCameraStop()
 		if (lpRemoteSession != NULL) {
 			lpRemoteSession->doSendStopCameraCmd(m_nDBCameraID);
 		}
+		// 注意：废弃这个接口，通道状态直接通过udpserver存取...
 		// 调用接口通知服务器 => 修改通道状态...
-		CWebThread * lpWebThread = App()->GetWebThread();
+		/*CWebThread * lpWebThread = App()->GetWebThread();
 		if (lpWebThread != NULL) {
 			lpWebThread->doWebStatCamera(m_nDBCameraID, kCameraOffLine);
-		}
+		}*/
 	}
 	// 删除UDP推流线程 => 数据使用者...
 	pthread_mutex_lock(&m_MutexSend);

@@ -60,6 +60,7 @@ const char * get_command_name(int inCmd)
 	case kCmd_PHP_GetRoomList:      return "PHP_GetRoomList";
 	case kCmd_PHP_GetPlayerList:    return "PHP_GetPlayerList";
 	case kCmd_PHP_Bind_Mini:        return "PHP_Bind_Mini";
+	case kCmd_PHP_GetRoomFlow:      return "PHP_GetRoomFlow";
 	}
 	return "unknown";
 }
@@ -709,11 +710,13 @@ bool CRemoteSession::SendLoginCmd(int nDBCameraID, int nSceneItemID)
 	// 组合Login命令需要的JSON数据包...
 	char szDataBuf[32] = { 0 };
 	string strJson;	Json::Value root;
-	// 填充摄像头编号|场景资源编号...
+	// 填充摄像头编号|场景资源编号|流量编号...
 	sprintf(szDataBuf, "%d", nDBCameraID);
 	root["camera_id"] = szDataBuf;
 	sprintf(szDataBuf, "%d", nSceneItemID);
 	root["sitem_id"] = szDataBuf;
+	sprintf(szDataBuf, "%d", App()->GetDBFlowID());
+	root["flow_id"] = szDataBuf;
 	// 填充mac地址|ip地址|房间编号|机器名称...
 	root["mac_addr"] = App()->GetLocalMacAddr();
 	root["ip_addr"] = App()->GetLocalIPAddr();

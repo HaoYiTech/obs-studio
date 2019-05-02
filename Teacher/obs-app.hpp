@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <QNetworkAccessManager>
 #include <QApplication>
 #include <QTranslator>
 #include <QPointer>
@@ -65,9 +66,12 @@ private:
 	std::string                    m_strWebCenter;             // 访问中心网站地址...
 	std::string                    m_strWebClass;              // 访问云教室网站地址...
 	int                            m_nFastTimer;               // 分布式存储、中转链接检测时钟...
+	int                            m_nFlowTimer;               // 流量统计检测时钟...
 	int                            m_nOnLineTimer;             // 中转服务器在线检测时钟...
 	int                            m_nRtpTCPSockFD;            // CRemoteSession在服务器端的套接字号码...
 	int                            m_nRtpDBCameraID;           // 当前正在观看的互动教室的摄像头编号...
+	int                            m_nDBFlowID;                // 从服务器获取到的流量统计数据库编号...
+	int                            m_nDBUserID;                // 已登录用户的数据库编号...
 	bool                           m_bIsDebugMode;             // 是否是调试模式 => 挂载到调试服务器...
 	std::string                    locale;
 	std::string	                   theme;
@@ -79,6 +83,7 @@ private:
 	QPointer<CTrackerSession>      m_TrackerSession;           // For Tracker-Server
 	QPointer<CStorageSession>      m_StorageSession;           // For Storage-Server
 	QPointer<CRemoteSession>       m_RemoteSession;            // For UDP-Server
+	QNetworkAccessManager          m_objNetManager;            // QT 网络管理对象...
 
 	profiler_name_store_t          *profilerNameStore = nullptr;
 
@@ -113,7 +118,9 @@ public:
 	int		 GetUdpPort() { return m_nUdpPort; }
 	int      GetRtpTCPSockFD() { return m_nRtpTCPSockFD; }
 	int      GetRtpDBCameraID() { return m_nRtpDBCameraID; }
+	int      GetDBFlowID() { return m_nDBFlowID; }
 
+	void     SetDBFlowID(int nDBFlowID) { m_nDBFlowID = nDBFlowID; }
 	void     SetRtpDBCameraID(int nDBCameraID) { m_nRtpDBCameraID = nDBCameraID; }
 	void     SetRtpTCPSockFD(int nTCPSockFD) { m_nRtpTCPSockFD = nTCPSockFD; }
 	void	 SetUdpAddr(const string & strAddr) { m_strUdpAddr = strAddr; }
@@ -126,6 +133,7 @@ public:
 	static string getJsonString(Json::Value & inValue);
 public slots:
 	void onTriggerMiniSuccess();
+	void onReplyFinished(QNetworkReply *reply);
 public:
 	OBSApp(int &argc, char **argv, profiler_name_store_t *store);
 	~OBSApp();
@@ -147,6 +155,7 @@ public:
 	void doCheckRemote();
 	void doCheckFDFS();
 	void doCheckOnLine();
+	void doCheckRoomFlow();
 	void doCheckRtpSource();
 	bool doFindOneFile(char * inPath, int inSize, const char * inExtend);
 	void doWebSaveFDFS(char * lpFileName, char * lpPathFDFS, int64_t llFileSize);
