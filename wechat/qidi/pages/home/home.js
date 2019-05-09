@@ -9,10 +9,10 @@ Page({
    */
   data: {
     m_code: '',
+    m_arrRoom: [],
     m_cur_page: 1,
     m_max_page: 1,
     m_total_num: 0,
-    m_arrRoom: [],
     m_show_more: true,
     m_show_auth: false,
     m_load_type: null

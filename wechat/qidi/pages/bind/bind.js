@@ -181,10 +181,11 @@ Page({
 
   // 响应登录正确接口...
   onLoginSuccess: function () {
+    let theAppData = g_app.globalData;
     // 如果是讲师端扫描，用户类型必须是讲师，绑定房间必须有效...
-    if (g_app.globalData.m_scanType === kClientTeacher) {
+    if (theAppData.m_scanType === kClientTeacher) {
       // 如果用户身份低于讲师类型，需要弹框警告...
-      if (parseInt(g_app.globalData.m_userInfo.userType) < 2) {
+      if (parseInt(theAppData.m_userInfo.userType) < theAppData.m_userTypeID.kTeacherUser) {
         this.doBindError("错误警告", "讲师端软件，只有讲师身份的用户才能使用，请联系经销商，获取讲师身份授权！");
         return;
       }
