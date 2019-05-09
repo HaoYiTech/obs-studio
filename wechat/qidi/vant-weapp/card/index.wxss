@@ -56,3 +56,9 @@
   left: 3px;
   top: 3px;
 }
+.van-card__arrow {
+  position: absolute;
+  color: #999;
+  right: 25px;
+  top: 45%;
+}

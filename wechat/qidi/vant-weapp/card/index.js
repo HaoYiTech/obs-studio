@@ -15,6 +15,7 @@ VantComponent({
     centered: Boolean,
     lazyLoad: Boolean,
     shopCart: Boolean,
+    showArrow: Boolean,
     originPrice: String,
     customStyle: String,
     thumbMode: {

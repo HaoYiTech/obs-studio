@@ -47,4 +47,9 @@
   <view class="van-card__footer">
     <slot name="footer" />
   </view>
+
+  <view wx:if="{{ showArrow }}" class="van-card__arrow">
+    <van-icon name="arrow" />
+  </view>
+
 </view>
