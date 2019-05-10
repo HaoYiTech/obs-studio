@@ -23,7 +23,17 @@
     <image mode="aspectFill" lazy-load="true" src="{{m_userInfo.avatarUrl}}" />
     <view class="feed-name">{{m_userInfo.nickName}}</view>
   </view>
-  <view class="feed-container">
+  <wux-grids col="4" bordered="{{ false }}" wux-class="feed-top-area">
+    <block wx:for="{{ m_grids }}" wx:for-item="grid" wx:key="index">
+      <wux-grid label="{{ grid.label }}"
+        data-item="{{ grid.data }}"
+        bind:click="toggleGridNav"
+        wux-nav-back="fa-stack fa-lg"
+        wux-nav-circle="fa fa-circle fa-stack-2x"
+        wux-nav-inner="fa {{ grid.icon }} fa-stack-1x fa-inverse" />
+    </block>
+  </wux-grids>
+  <view class="feed-top-area">
     <van-cell custom-class="feed-cell" title="推荐给朋友" size="large"
       icon-class="icon-green" icon="gift-o" is-link border="{{false}}">
       <button slot="extra" open-type="share" class="feed-share" />

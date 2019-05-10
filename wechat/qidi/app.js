@@ -12,14 +12,21 @@ App({
   },
   // 全局存储...
   globalData: {
+    m_urlSite: 'https://www.qidiweilai.com/',
     m_urlPrev: 'https://www.qidiweilai.com/wxapi.php/',
+    m_curSelectItem: null,
     m_curRoomItem: null,
     m_scanSockFD: null,
     m_scanTimeID: null,
     m_scanType: null,
     m_userInfo: null,
     m_sysInfo: null,
-    m_nUserID: 0
+    m_nUserID: 0,
+    m_userTypeID: {
+      kParentUser: 0, kAssistUser: 1, kTeacherUser: 2,
+      kShopMasterUser: 3, kShopOwnerUser: 4, kMaintainUser: 5, kAdministerUser: 6
+    },
+    m_userTypeName: ['家长', '助教', '讲师', '店长', '门店老板', '运营维护', '管理员']
   },
   // 登录接口...
   doAPILogin: function (inPage, inCode, inUserInfo, inEncrypt, inIV) {

@@ -1,0 +1,7 @@
+
+.feed-shop {
+  line-height: 30px !important;
+}
+.feed-left-icon {
+  height: 30px !important;
+}

@@ -3,8 +3,10 @@
     "pages/home/home",
     "pages/room/room",
     "pages/bind/bind",
+    "pages/shop/shop",
     "pages/about/about",
-    "pages/person/person"
+    "pages/person/person",
+    "pages/shopItem/shopItem"
   ],
   "window":{
     "navigationBarBackgroundColor": "#fff",

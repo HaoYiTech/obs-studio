@@ -1,0 +1,40 @@
+
+  <van-notify id="van-notify" />
+  <van-dialog id="van-dialog" />
+
+  <van-cell-group custom-class="feed-item">
+    <van-field
+      name="shopName"
+      label="门店名称"
+      value="{{ m_shopName }}"
+      placeholder="请输入门店名称"
+      bind:change="onNameChange"
+      clearable required
+    />
+    <van-field
+      label="门店地址"
+      value="{{ m_shopAddr }}"
+      placeholder="请输入门店地址"
+      bind:change="onAddrChange"
+      clearable required
+    />
+    <van-cell title="门店地区" required is-link>
+      <picker slot="extra" mode="region" class="addr-picker"
+    	  value="{{ m_arrArea }}" bindchange="onAreaChange">
+        <view>{{ m_curArea }}</view>
+      </picker>
+    </van-cell>
+    <van-cell title="门店店长" required is-link>
+      <picker slot="extra" mode="selector" class="addr-picker" range="{{ m_arrMaster }}" 
+        value="{{ m_curMasterIndex }}" range-key="wx_nickname" bindchange="onMasterChange">
+        <view>{{ m_curMasterName }}</view>
+      </picker>
+    </van-cell>
+    <view class="addr-footer">
+      <van-button size="small" type="primary"
+      plain class="addr-right" bind:click="doBtnCancel"> 取 消 </van-button>
+      <van-button size="small" type="primary" 
+      class="addr-right" bind:click="doBtnSave">{{ m_bEdit ? ' 保 存 ' : ' 添 加 ' }}</van-button>
+      <van-button wx:if="{{ m_bEdit }}" size="small" type="danger" bind:click="doBtnDel"> 删 除 </van-button>
+    </view>
+  </van-cell-group>

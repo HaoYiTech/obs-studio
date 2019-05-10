@@ -20,6 +20,57 @@ Page({
       text: '点击授权',
       openType: 'getUserInfo',
     }],
+    m_UserGrids: [{
+      label: '我的帐号',
+      data: 'navAccount',
+      icon: 'fa-user-o',
+    }, {
+      label: '我的订单',
+      data: 'navOrder',
+      icon: 'fa-money',
+    }, {
+      label: '课时查询',
+      data: 'navQuery',
+      icon: 'fa-search',
+    }, {
+      label: '宝宝风采',
+      data: 'navBaby',
+      icon: 'fa-child',
+    }],
+    m_ShopGrids: [{
+      label: '我的帐号',
+      data: 'navAccount',
+      icon: 'fa-user-o',
+    }, {
+      label: '支付管理',
+      data: 'navOrder',
+      icon: 'fa-money',
+    }, {
+      label: '会员管理',
+      data: 'navMember',
+      icon: 'fa-id-card-o',
+    }, {
+      label: '门店管理',
+      data: 'navShop',
+      icon: 'fa-home',
+    }],
+    m_AdminGrids: [{
+      label: '我的帐号',
+      data: 'navAccount',
+      icon: 'fa-user-o',
+    }, {
+      label: '支付管理',
+      data: 'navOrder',
+      icon: 'fa-money',
+    }, {
+      label: '会员管理',
+      data: 'navMember',
+      icon: 'fa-id-card-o',
+    }, {
+      label: '门店管理',
+      data: 'navShop',
+      icon: 'fa-home',
+    }],
     m_code: '',
     m_bgColor: '#fff',
     m_show_auth: false,
@@ -81,11 +132,34 @@ Page({
 
   // 响应登录正确接口...
   onLoginSuccess: function() {
+    let theAppData = g_app.globalData;
+    let theGrids = this.data.m_UserGrids;
+    let theTypeID = theAppData.m_userTypeID;
+    let theUserType = parseInt(theAppData.m_userInfo.userType);
+    switch(theUserType) {
+      case theTypeID.kParentUser:
+      case theTypeID.kTeacherUser: theGrids = this.data.m_UserGrids; break;
+      case theTypeID.kAssistUser:
+      case theTypeID.kShopMasterUser:
+      case theTypeID.kShopOwnerUser: theGrids = this.data.m_ShopGrids; break;
+      case theTypeID.kMaintainUser:
+      case theTypeID.kAdministerUser: theGrids = this.data.m_AdminGrids; break;
+    }
     this.setData({ 
       m_show_auth: 2, 
       m_bgColor: '#eee',
-      m_userInfo: g_app.globalData.m_userInfo
+      m_grids: theGrids,
+      m_userInfo: theAppData.m_userInfo,
     });
+  },
+
+  // 点击导航栏事件...
+  toggleGridNav: function(event) {
+    let navItem = event.currentTarget.dataset['item'];
+    if (navItem === 'navShop') {
+      wx.navigateTo({ url: '../shop/shop' });
+    }
+    console.log(navItem);
   },
 
   /**
