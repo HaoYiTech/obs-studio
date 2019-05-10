@@ -28,7 +28,7 @@ define('SEX_TYPE', "return array('无', '男', '女');");
 define('kParentUser',        0);    // 家长
 define('kAssistUser',        1);    // 助教
 define('kTeacherUser',       2);    // 讲师
-define('kShopKeeperUser',    3);    // 店长
+define('kShopMasterUser',    3);    // 店长
 define('kShopOwnerUser',     4);    // 门店老板
 define('kMaintainUser',      5);    // 运营维护
 define('kAdministerUser',    6);    // 系统管理员

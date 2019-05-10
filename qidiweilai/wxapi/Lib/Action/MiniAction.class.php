@@ -89,7 +89,7 @@ class MiniAction extends Action
   }
   //
   // 获取小程序的access_token的值...
-  public function getToken()
+  public function getToken($useEcho = true)
   {
     // 准备返回信息...
     $arrErr['err_code'] = 0;
@@ -119,7 +119,12 @@ class MiniAction extends Action
       $arrErr['mini_path'] = 'pages/bind/bind';
     } while( false );
     // 返回json数据包...
-    echo json_encode($arrErr);
+    if ($useEcho) {
+      echo json_encode($arrErr);
+      return;
+    }
+    // 返回普通数据...
+    return $arrErr;
   }
   //
   // 获取UDPCenter的TCP地址和端口...
@@ -543,5 +548,134 @@ class MiniAction extends Action
     // 将整个数组返回...
     return $arrData;
   }
+  //
+  // 获取门店列表接口...
+  public function getShop()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    // 注意：这里使用的是 $_POST 数据...
+    do {
+      // 判断输入的参数是否有效...
+      if( !isset($_POST['cur_page']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入参数无效！';
+        break;
+      }
+      // 得到每页条数...
+      $pagePer = C('PAGE_PER');
+      $pageCur = $_POST['cur_page'];  // 当前页码...
+      $pageLimit = (($pageCur-1)*$pagePer).','.$pagePer; // 读取范围...
+      // 获取记录总数和总页数...
+      $totalNum = D('shop')->count();
+      $max_page = intval($totalNum / $pagePer);
+      // 判断是否是整数倍的页码...
+      $max_page += (($totalNum % $pagePer) ? 1 : 0);
+      // 填充需要返回的信息...
+      $arrErr['total_num'] = $totalNum;
+      $arrErr['max_page'] = $max_page;
+      $arrErr['cur_page'] = $pageCur;
+      // 获取门店分页数据，通过视图获取数据，并查找所有空闲的店长列表...
+      $arrErr['shop'] = D('ShopView')->limit($pageLimit)->order('Shop.created DESC')->select();
+    } while ( false );
+    // 返回json编码数据包...
+    echo json_encode($arrErr);
+  }
+  //
+  // 删除门店记录的接口...
+  public function delShop()
+  {
+    $condition['shop_id'] = $_POST['shop_id'];
+    D('shop')->where($condition)->delete();
+    unlink($_POST['qrcode']);
+  }
+  //
+  // 更新门店记录的接口...
+  public function saveShop()
+  {
+    D('shop')->save($_POST);
+  }
+  //
+  // 新建门店记录的接口...
+  public function addShop()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    // 保存到临时对象...
+    $dbShop = $_POST;
+    $dbShop['created'] = date('Y-m-d H:i:s');
+    $dbShop['shop_id'] = D('shop')->add($dbShop);
+    // 将新创建的数据库记录返回给小程序...
+    $arrErr['shop'] = $dbShop;
+    do {
+      // 获取小程序码的token值...
+      $arrToken = $this->getToken(false);
+      if ($arrToken['err_code'] > 0) {
+        $arrErr['err_code'] = $arrToken['err_code'];
+        $arrErr['err_msg'] = $arrToken['err_msg'];
+        break;
+      }
+      // 通过小程序码再获取小程序二维码，然后存入数据库...
+      $strQRUrl = sprintf("https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=%s", $arrToken['access_token']);
+      $itemData["scene"] = "shop_" . $dbShop['shop_id'];
+      $itemData["page"] = "pages/home/home";
+      $itemData["width"] = 280;
+      // 直接通过设定参数获取小程序码...
+      $result = http_post($strQRUrl, json_encode($itemData));
+      // 获取小程序码失败的情况...
+      if( !$result ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '获取小程序码失败';
+        break;
+      }
+      // 将小程序码写入指定的上传目录当中，并将图片地址写入数据库...
+      $strImgPath = sprintf("%s/upload/%s.jpg", APP_PATH, $itemData["scene"]);
+      file_put_contents($strImgPath, $result);
+      $dbShop['qrcode'] = $strImgPath;
+      $arrErr['shop'] = $dbShop;
+      D('shop')->save($dbShop);
+    } while( false );
+    // 返回json编码数据包...
+    echo json_encode($arrErr);
+  }
+  //
+  // 得到所有的可用的店长列表 => 没有被占用的自由店长列表...
+  public function getMasterFree()
+  {
+    $curMasterID = (isset($_GET['master_id']) ? intval($_GET['master_id']) : 0);
+    $arrFree = $this->findMasterFree($curMasterID);
+    echo json_encode($arrFree);
+  }
+  //
+  // 查找空闲的店长列表...
+  private function findMasterFree($inCurMasterID)
+  {
+    // 找到所有 user_type > kTeacherUser 的用户，这些用户都可以成为店长...
+    $condition['user_type'] = array('gt', kTeacherUser);
+    $arrMaster = D('user')->where($condition)->field('user_id,wx_nickname')->select();
+    // 找到所有有店长的门店列表，然后排除对应的用户...
+    $arrShop = D('shop')->where('master_id > 0')->field('shop_id,master_id')->select();
+    // 找到没有被占用的自由店长列表...
+    $arrFree = array();
+		foreach($arrMaster as &$dbItem) {
+      $bFreeFlag = true;
+      if( $inCurMasterID != $dbItem['user_id'] ) {
+        foreach($arrShop as &$dbShop) {
+          if( $dbItem['user_id'] == $dbShop['master_id'] ) {
+            $bFreeFlag = false;
+            break;
+          }
+        }
+      }
+      // 如果在门店中没有找到对应的店长，则是自由店长...
+      if( $bFreeFlag ) {
+        array_push($arrFree, $dbItem);
+      }
+    }
+    // 返回找到的数组...
+    return $arrFree;
+  }  
 }
 ?>
