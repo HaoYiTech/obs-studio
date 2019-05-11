@@ -158,6 +158,8 @@ Page({
     let navItem = event.currentTarget.dataset['item'];
     if (navItem === 'navShop') {
       wx.navigateTo({ url: '../shop/shop' });
+    } else if (navItem === 'navMember') {
+      wx.navigateTo({ url: '../member/member' });
     }
     console.log(navItem);
   },

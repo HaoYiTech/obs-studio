@@ -23,10 +23,10 @@
     <slot wx:else name="title" />
 
     <view wx:if="{{ desc }}" class="van-card__desc van-multi-ellipsis--l1 desc-class">{{ desc }}</view>
-    <slot wx:else name="desc" />
+    <slot name="desc" />
 
-    <view wx:if="{{ cardTime }}" class="van-ellipsis van-card__desc van-card__top">{{ cardTime }}</view>
-    <view wx:if="{{ cardAge }}" class="van-ellipsis van-card__desc">{{ cardAge }}</view>
+    <view wx:if="{{ cardTime }}" class="van-ellipsis van-card__desc van-card__top time-class">{{ cardTime }}</view>
+    <view wx:if="{{ cardAge }}" class="van-ellipsis van-card__desc age-class">{{ cardAge }}</view>
 
     <slot name="tags" />
 

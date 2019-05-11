@@ -1,7 +1,7 @@
 import { link } from '../mixins/link';
 import { VantComponent } from '../common/component';
 VantComponent({
-  classes: ['num-class', 'desc-class', 'thumb-class', 'title-class', 'price-class', 'origin-price-class'],
+  classes: ['num-class', 'desc-class', 'time-class', 'age-class', 'thumb-class', 'title-class', 'price-class', 'origin-price-class'],
   mixins: [link],
   props: {
     tag: String,

@@ -6,6 +6,7 @@
     "pages/shop/shop",
     "pages/about/about",
     "pages/person/person",
+    "pages/member/member",
     "pages/shopItem/shopItem"
   ],
   "window":{
