@@ -549,6 +549,52 @@ class MiniAction extends Action
     return $arrData;
   }
   //
+  // 获取会员用户列表接口...
+  public function getUser()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    // 注意：这里使用的是 $_POST 数据...
+    do {
+      // 判断输入的参数是否有效...
+      if( !isset($_POST['cur_page']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入参数无效！';
+        break;
+      }
+      // 获取查询内容，并设定是否是查询状态...
+      $strSearch = (isset($_POST['search']) ? $_POST['search'] : '');
+      $bIsSearch = (strlen($strSearch) > 0 ? true : false);
+      // 得到每页条数...
+      $pagePer = C('PAGE_PER');
+      $pageCur = $_POST['cur_page'];  // 当前页码...
+      $pageLimit = (($pageCur-1)*$pagePer).','.$pagePer; // 读取范围...
+      // 如果是查询状态，需要配置查询参数...
+      if ( $bIsSearch ) {
+        $arrWhere['_string'] = "(wx_nickname like '%$strSearch%')";
+        $totalNum = D('UserView')->where($arrWhere)->count();
+      } else {
+        $totalNum = D('UserView')->count();
+      }
+      $max_page = intval($totalNum / $pagePer);
+      // 判断是否是整数倍的页码...
+      $max_page += (($totalNum % $pagePer) ? 1 : 0);
+      // 填充需要返回的信息...
+      $arrErr['total_num'] = $totalNum;
+      $arrErr['max_page'] = $max_page;
+      $arrErr['cur_page'] = $pageCur;
+      // 获取会员用户分页数据，通过视图获取数据...
+      if ( $bIsSearch ) {
+        $arrErr['user'] = D('UserView')->where($arrWhere)->limit($pageLimit)->order('User.shop_id DESC, User.create_time DESC')->select();
+      } else {
+        $arrErr['user'] = D('UserView')->limit($pageLimit)->order('User.shop_id DESC, User.create_time DESC')->select();
+      }
+    } while ( false );
+    // 返回json编码数据包...
+    echo json_encode($arrErr);
+  }
+  //
   // 获取门店列表接口...
   public function getShop()
   {
