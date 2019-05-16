@@ -4,10 +4,13 @@
     "pages/room/room",
     "pages/bind/bind",
     "pages/shop/shop",
+    "pages/child/child",
     "pages/about/about",
+    "pages/parent/parent",
     "pages/person/person",
     "pages/member/member",
-    "pages/shopItem/shopItem"
+    "pages/shopItem/shopItem",
+    "pages/userItem/userItem"
   ],
   "window":{
     "navigationBarBackgroundColor": "#fff",

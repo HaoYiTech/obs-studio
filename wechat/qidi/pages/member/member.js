@@ -20,15 +20,23 @@ Page({
   // 搜索框发生变化...
   onChange: function (event) {
     this.setData({ 
-      m_str_query: event.detail,
       m_arrUser: [], m_cur_page: 1, 
       m_max_page: 1, m_total_num: 0, 
+      m_str_query: event.detail.replace(/'/g, ""),
       m_show_more: true, m_no_more: '正在加载...' });
     this.doAPIGetUser();
   },
 
   // 点击搜索按钮的操作...
-  onSearch: function (event) {
+  //onSearch: function (event) {
+  //},
+
+  // 点击某个用户的操作...
+  doShowUser: function (event) {
+    let theItem = event.currentTarget.dataset['item'];
+    theItem.indexID = event.currentTarget.id;
+    g_app.globalData.m_curSelectItem = theItem;
+    wx.navigateTo({ url: '../userItem/userItem' });
   },
 
   /**

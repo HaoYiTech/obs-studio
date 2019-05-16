@@ -3,7 +3,7 @@
   custom-class="feed-search"
   placeholder="请输入搜索关键词"
   bind:change="onChange"
-  bind:search="onSearch"
+  value="{{ m_str_query }}"
 />
 
 <view class="feed-contain">
@@ -13,16 +13,16 @@
       data-item="{{ item }}"
       bind:click="doShowUser"
       custom-class="feed-card"
-      title="{{ item.wx_nickname }} - {{ m_userTypeName[item.user_type] }}"
+      title="{{item.child_name ? item.child_name : ''}} - {{item.child_nick ? item.child_nick : ''}} - {{item.real_name ? item.real_name : ''}} - {{item.wx_nickname}} - {{m_userTypeName[item.user_type]}}"
       desc-class="feed-desc"
-      desc="剩余：{{ item.lesson_num }} 课时"
+      desc="剩余：{{ item.lesson_num }} 课时，"
       card-time="地区：{{item.wx_country}} / {{item.wx_province}} / {{item.wx_city}}"
       card-age="门店：{{ item.shop_name ? item.shop_name : '无' }}"
       lazy-load="{{ true }}"
       shop-cart="{{ false }}"
       show-arrow="{{ true }}"
       thumb="{{ item.wx_headurl }}">
-      <view slot="desc" class="feed-sign-no">，今日：未签到</view>
+      <view slot="desc" class="feed-sign-no">今日：未签到</view>
     </van-card>
   </block>
 </view>

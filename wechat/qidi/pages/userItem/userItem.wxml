@@ -1,0 +1,32 @@
+
+<view class="top-area">
+  <van-cell custom-class="feed-cell" title="家长信息" size="large" is-link border="{{ false }}"
+    value="{{ m_curUser.real_name ? m_curUser.real_name : '未填写' }} - {{ m_curUser.wx_nickname }}"
+    icon-class="icon-blue" icon="manager-o" url="/pages/parent/parent" />
+  <van-cell custom-class="feed-cell" title="宝宝信息" size="large" is-link border="{{ false }}"
+    value="{{ m_curUser.child_name ? m_curUser.child_name : '未填写' }} - {{ m_curUser.child_nick ? m_curUser.child_nick : '未填写' }}
+    icon-class="icon-blue" icon="smile-o" url="/pages/child/child" />
+</view>
+
+<view class="top-area">
+  <van-cell custom-class="feed-cell" title="立即签到" size="large" is-link border="{{ false }}"
+    icon-class="icon-red" icon="sign" value="{{ m_curUser.lesson_num }}" />
+  <van-cell custom-class="feed-cell" title="发送红包" size="large" is-link border="{{ false }}"
+    icon-class="icon-red" icon="point-gift-o" value=""
+    url="/pages/listRed/listRed" />
+  <van-cell custom-class="feed-cell" title="购课提醒" size="large" is-link border="{{ false }}"
+    icon-class="icon-red" icon="paid" value=""
+    url="/pages/listWarn/listWarn" />
+</view>
+
+<view class="top-area">
+  <van-cell custom-class="feed-cell" title="消费记录" size="large" is-link border="{{ false }}"
+    icon-class="icon-green" icon="label-o" value="" 
+    url="/pages/listSign/listSign" />
+  <van-cell custom-class="feed-cell" title="支付记录" size="large" is-link border="{{ false }}"
+    icon-class="icon-green" icon="gold-coin-o" value="" 
+    url="/pages/listPay/listPay" />
+  <van-cell custom-class="feed-cell" title="宝宝风采" size="large" is-link border="{{ false }}"
+    icon-class="icon-green" icon="award-o" value="" 
+    url="/pages/listGrow/listGrow" />
+</view>

@@ -4,7 +4,6 @@
 
   <van-cell-group custom-class="feed-item">
     <van-field
-      name="shopName"
       label="门店名称"
       value="{{ m_shopName }}"
       placeholder="请输入门店名称"

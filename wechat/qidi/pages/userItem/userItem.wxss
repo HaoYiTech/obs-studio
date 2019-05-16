@@ -1,0 +1,16 @@
+
+.feed-cell {
+  border-bottom: 1px solid #eee;
+}
+.icon-red {
+  font-size: 20px !important;
+  color: tomato;
+}
+.icon-blue {
+  font-size: 20px !important;
+  color: deepskyblue;
+}
+.icon-green {
+  font-size: 20px !important;
+  color: forestgreen;
+}
