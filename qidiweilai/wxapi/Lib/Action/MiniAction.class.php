@@ -572,7 +572,8 @@ class MiniAction extends Action
       $pageLimit = (($pageCur-1)*$pagePer).','.$pagePer; // 读取范围...
       // 如果是查询状态，需要配置查询参数...
       if ( $bIsSearch ) {
-        $arrWhere['_string'] = "(wx_nickname like '%$strSearch%')";
+        $arrWhere['_string']  = "(wx_nickname like '%$strSearch%') OR (real_name like '%$strSearch%') OR ";
+        $arrWhere['_string'] .= "(child_name like '%$strSearch%') OR (child_nick like '%$strSearch%')";
         $totalNum = D('UserView')->where($arrWhere)->count();
       } else {
         $totalNum = D('UserView')->count();
@@ -723,5 +724,33 @@ class MiniAction extends Action
     // 返回找到的数组...
     return $arrFree;
   }  
+  //
+  // 更新用户记录的接口...
+  public function saveUser()
+  {
+    D('user')->save($_POST);
+  }
+  //
+  // 更新宝宝信息的接口...
+  public function saveChild()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    // 保存到临时对象...
+    $dbChild = $_POST;
+    if(isset($dbChild['child_id']) && $dbChild['child_id'] > 0) {
+      D('child')->save($dbChild);
+    } else {
+      unset($dbChild['child_id']);
+      $dbChild['child_id'] = D('child')->add($dbChild);
+      $dbUser['user_id'] = $dbChild['user_id'];
+      $dbUser['child_id'] = $dbChild['child_id'];
+      D('user')->save($dbUser);
+    }
+    // 返回child_id编号，json编码数据包...
+    $arrErr['child_id'] = $dbChild['child_id'];
+    echo json_encode($arrErr);
+  }
 }
 ?>
