@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- 上述3个meta标签*必须*放在最前面，任何其他内容都*必须*跟随其后！ -->
+  <title>{{$my_system.web_title}} - 微信登录</title>
+  <!-- layui css and javascript -->
+  <link href="/wxapi/public/layui/css/layui.css" rel="stylesheet" media="all">
+  <script src="/wxapi/public/layui/layui.js"></script>  
+</head>
+
+<style>
+body {
+  overflow: hidden;
+  text-align: center;
+  background-color: #007acc;
+  /*background-color: #f2f5e9;*/
+}
+#wechat-login {
+  margin-top: 20px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.footer {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  color: #666;
+  height: auto;
+  padding: 20px 0;
+  line-height: 22px;
+  text-align: center;
+  position: fixed;
+}
+.footer a {
+  padding: 0 5px;
+}
+</style>
+
+<body>
+
+<!-- 登录二维码 -->
+<div id="wechat-login"></div>
+
+<!--底部导航栏-->
+<div class="footer">
+<include file = "Common:foot" />
+</div>
+
+<script src="https://res.wx.qq.com/connect/zh_CN/htmledition/js/wxLogin.js"></script>
+
+<script>
+
+// 处理 layui 过程...
+layui.use(['layer','form'], function(){
+  // 弹出加载框，获取jquery对象...
+  var $ = layui.jquery;
+  var index = layer.load(0, {offset:['290px','48.5%']});
+  // 创建微信对象层...
+  var objWx = new WxLogin({
+    id: 'wechat-login',
+    appid: '{{$my_appid}}',
+    scope: '{{$my_scope}}',
+    state: '{{$my_state}}',
+    redirect_uri: '{{$my_redirect_uri}}',
+  });
+  // 设置frame的高宽...
+  $('iframe').width(400);
+  $('iframe').height(400);
+  // 微信会创建一个frame，注册加载完毕事件...
+  $('iframe').load(function(){
+    layer.closeAll('loading');
+  });
+  // 如果3秒后都没加载完毕，直接关闭...
+  setTimeout(function(){
+    layer.closeAll('loading');
+  }, 3000);
+
+});
+
+// 供外部调用...
+/*function doHideScroll() {
+  var $ = layui.jquery;
+  $('body').css('overflow', 'hidden');
+  $('#wechat-login').css('margin-top', '20px');
+}*/
+
+</script>
+
+</body>
+</html>
