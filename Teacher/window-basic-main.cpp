@@ -4006,7 +4006,8 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 		//popup.addAction(ui->actionLockPreview);
 		//popup.addMenu(ui->scalingMenu);
 
-		previewProjector = new QMenu(QTStr("PreviewProjector"));
+		// 屏蔽 预览投影菜单，避免与数据源混淆 => 2019.05.20 by jackey...
+		/*previewProjector = new QMenu(QTStr("PreviewProjector"));
 		AddProjectorMenuMonitors(previewProjector, this,
 				SLOT(OpenPreviewProjector()));
 		popup.addMenu(previewProjector);
@@ -4015,6 +4016,16 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 				QTStr("PreviewWindow"),
 				this, SLOT(OpenPreviewWindow()));
 		popup.addAction(previewWindow);
+		popup.addSeparator();*/
+	}
+
+	// 添加投影|预览菜单...
+	if (item != NULL) {
+		sourceProjector = new QMenu(QTStr("SourceProjector"));
+		AddProjectorMenuMonitors(sourceProjector, this, SLOT(OpenSourceProjector()));
+		QAction *sourceWindow = popup.addAction(QTStr("SourceWindow"), this, SLOT(OpenSourceWindow()));
+		popup.addMenu(sourceProjector);
+		popup.addAction(sourceWindow);
 		popup.addSeparator();
 	}
 
@@ -4049,16 +4060,6 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 		popup.addMenu(ui->orderMenu);
 		popup.addMenu(ui->transformMenu);
 
-		sourceProjector = new QMenu(QTStr("SourceProjector"));
-		AddProjectorMenuMonitors(sourceProjector, this,
-				SLOT(OpenSourceProjector()));
-
-		QAction *sourceWindow = popup.addAction(
-				QTStr("SourceWindow"),
-				this, SLOT(OpenSourceWindow()));
-		popup.addAction(sourceWindow);
-		popup.addSeparator();
-
 		if (hasAudio) {
 			QAction *actionHideMixer = popup.addAction(
 					QTStr("HideMixer"),
@@ -4073,10 +4074,6 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 		}
 
 		popup.addMenu(AddScaleFilteringMenu(sceneItem));
-		popup.addSeparator();
-
-		popup.addMenu(sourceProjector);
-		popup.addAction(sourceWindow);
 		popup.addSeparator();
 
 		// 屏蔽 交互 菜单...
@@ -5831,39 +5828,6 @@ OBSProjector *OBSBasic::OpenProjector(obs_source_t *source, int monitor,
 	return projector;
 }
 
-void OBSBasic::OpenStudioProgramProjector()
-{
-	int monitor = sender()->property("monitor").toInt();
-	OpenProjector(nullptr, monitor, nullptr, ProjectorType::StudioProgram);
-}
-
-void OBSBasic::OpenPreviewProjector()
-{
-	int monitor = sender()->property("monitor").toInt();
-	OpenProjector(nullptr, monitor, nullptr, ProjectorType::Preview);
-}
-
-void OBSBasic::OpenSourceProjector()
-{
-	int monitor = sender()->property("monitor").toInt();
-	OBSSceneItem item = GetCurrentSceneItem();
-	if (!item)
-		return;
-
-	OpenProjector(obs_sceneitem_get_source(item), monitor, nullptr,
-			ProjectorType::Source);
-}
-
-/*void OBSBasic::OpenSourceMonitor()
-{
-	int monitor = 0;
-	OBSSceneItem item = this->GetCurrentSceneItem();
-	if (!item)
-		return;
-	OpenProjector(obs_sceneitem_get_source(item), monitor, nullptr,
-		ProjectorType::Source);
-}*/
-
 // mixerIdx => 指的是轨道编号，0~5总共有6个音频轨道，通过32位整型数字的比特位来记录是否进行混音标志...
 static inline void setAudioMixer(obs_sceneitem_t *scene_item, const int mixerIdx, bool enabled)
 {
@@ -6117,6 +6081,26 @@ void OBSBasic::doHideDShowAudioMixer(obs_sceneitem_t * scene_item)
 		SetSourceMixerHidden(source, true);
 		DeactivateAudioSource(source);
 	}
+}
+
+void OBSBasic::OpenStudioProgramProjector()
+{
+	int monitor = sender()->property("monitor").toInt();
+	OpenProjector(nullptr, monitor, nullptr, ProjectorType::StudioProgram);
+}
+
+void OBSBasic::OpenPreviewProjector()
+{
+	int monitor = sender()->property("monitor").toInt();
+	OpenProjector(nullptr, monitor, nullptr, ProjectorType::Preview);
+}
+
+void OBSBasic::OpenSourceProjector()
+{
+	int monitor = sender()->property("monitor").toInt();
+	OBSSceneItem item = this->GetCurrentSceneItem();
+	if (!item) return;
+	OpenProjector(obs_sceneitem_get_source(item), monitor, nullptr, ProjectorType::Source);
 }
 
 void OBSBasic::OpenMultiviewProjector()
