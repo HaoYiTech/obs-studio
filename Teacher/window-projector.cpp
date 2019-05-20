@@ -37,6 +37,7 @@ OBSProjector::OBSProjector(QWidget *widget, obs_source_t *source_, int monitor,
 	} else {
 		setWindowFlags(Qt::FramelessWindowHint |
 				Qt::X11BypassWindowManagerHint);
+		setWindowIcon(QIcon(":/res/images/obs.png"));
 	}
 
 	setAttribute(Qt::WA_DeleteOnClose, true);
