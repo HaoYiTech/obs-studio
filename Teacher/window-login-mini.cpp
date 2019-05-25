@@ -582,7 +582,7 @@ bool CLoginMini::parseJson(string & inData, Json::Value & outValue, bool bIsWeiX
 	if (outValue[lpszCode].asBool()) {
 		string & strMsg = OBSApp::getJsonString(outValue[lpszMsg]);
 		string & strCode = OBSApp::getJsonString(outValue[lpszCode]);
-		m_strQRNotice = QString("%1%2, %3").arg(QStringLiteral("´íÎóºÅ£º")).arg(strCode.c_str()).arg(strMsg.c_str());
+		m_strQRNotice = QString("%1(%2)").arg(strMsg.c_str()).arg(strCode.c_str());
 		return false;
 	}
 	return true;

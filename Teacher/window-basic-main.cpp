@@ -1069,8 +1069,7 @@ bool OBSBasic::InitBasicConfigDefaults()
 	if (config_has_user_value(basicConfig, "AdvOut", "RecTrackIndex") &&
 	    !config_has_user_value(basicConfig, "AdvOut", "RecTracks")) {
 
-		uint64_t track = config_get_uint(basicConfig, "AdvOut",
-				"RecTrackIndex");
+		uint64_t track = config_get_uint(basicConfig, "AdvOut",	"RecTrackIndex");
 		track = 1ULL << (track - 1);
 		config_set_uint(basicConfig, "AdvOut", "RecTracks", track);
 		config_remove_value(basicConfig, "AdvOut", "RecTrackIndex");
@@ -1106,7 +1105,8 @@ bool OBSBasic::InitBasicConfigDefaults()
 	config_set_default_string(basicConfig, "AdvOut", "RecFilePath", GetDefaultVideoSavePath().c_str());
 	config_set_default_string(basicConfig, "AdvOut", "RecFormat", "flv");
 	config_set_default_bool  (basicConfig, "AdvOut", "RecUseRescale", false);
-	config_set_default_uint  (basicConfig, "AdvOut", "RecTracks", (1<<0));
+	config_set_default_bool  (basicConfig, "AdvOut", "RecFileNameWithoutSpace", true); //录像文件名不包含空格
+	config_set_default_uint  (basicConfig, "AdvOut", "RecTracks", (2<<0)); //录像用轨道2
 	config_set_default_string(basicConfig, "AdvOut", "RecEncoder", "none");
 
 	config_set_default_bool  (basicConfig, "AdvOut", "FFOutputToFile", true);
@@ -5889,8 +5889,9 @@ void OBSBasic::doSceneItemLayout(obs_sceneitem_t * scene_item)
 		vec2_set(&itemInfo.pos, 0.0f, 0.0f);
 		vec2_set(&itemInfo.bounds, float(first_width), float(first_height));
 		obs_sceneitem_set_info(scene_item, &itemInfo);
-		// 轨道1 => 强制第一个窗口资源的音频输出，只保留全局音频资源和第一个窗口的音频资源输出...
+		// 轨道1|轨道2 => 强制第一个窗口资源的音频输出，只保留全局音频资源和第一个窗口的音频资源输出...
 		setAudioMixer(scene_item, 0, true);
+		setAudioMixer(scene_item, 1, true);
 		return;
 	}
 	// 遍历第二行的位置，查找空闲位置...
@@ -5909,8 +5910,9 @@ void OBSBasic::doSceneItemLayout(obs_sceneitem_t * scene_item)
 			vec2_set(&itemInfo.pos, float(pos_x), float(pos_y));
 			vec2_set(&itemInfo.bounds, float(other_width), float(other_height));
 			obs_sceneitem_set_info(scene_item, &itemInfo);
-			// 轨道1 => 屏蔽非第一个窗口资源的音频输出，只保留全局音频资源和第一个窗口的音频资源输出...
+			// 轨道1|轨道2 => 屏蔽非第一个窗口资源的音频输出，只保留全局音频资源和第一个窗口的音频资源输出...
 			setAudioMixer(scene_item, 0, false);
+			setAudioMixer(scene_item, 1, false);
 			return;
 		}
 	}
@@ -6037,10 +6039,12 @@ void OBSBasic::doSceneItemExchangePos(obs_sceneitem_t * select_item)
 	// 注意：不能交换全部信息，只交换坐标位置和图像高宽...
 	//obs_sceneitem_set_info(lpFirstSceneItem, &selectInfo);
 	//obs_sceneitem_set_info(select_item, &firstInfo);
-	// 轨道1 => 屏蔽旧的第一个窗口音频输出...
+	// 轨道1|轨道2 => 屏蔽旧的第一个窗口音频输出...
 	setAudioMixer(lpFirstSceneItem, 0, false);
-	// 轨道1 => 强制新的第一个窗口音频输出...
+	setAudioMixer(lpFirstSceneItem, 1, false);
+	// 轨道1|轨道2 => 强制新的第一个窗口音频输出...
 	setAudioMixer(select_item, 0, true);
+	setAudioMixer(select_item, 1, true);
 }
 
 // 将当前场景资源设置为第一个显示资源，重新计算显示坐标...
@@ -6069,8 +6073,9 @@ void OBSBasic::doSceneItemToFirst(obs_sceneitem_t * select_item)
 	// 设置场景资源的裁剪区域 => 不要重置裁剪区...
 	//obs_sceneitem_crop crop = { 0 };
 	//obs_sceneitem_set_crop(select_item, &crop);
-	// 轨道1 => 强制第一个窗口资源的音频输出，只保留全局音频资源和第一个窗口的音频资源输出...
+	// 轨道1|轨道2 => 强制第一个窗口资源的音频输出，只保留全局音频资源和第一个窗口的音频资源输出...
 	setAudioMixer(select_item, 0, true);
+	setAudioMixer(select_item, 1, true);
 }
 
 void OBSBasic::doHideDShowAudioMixer(obs_sceneitem_t * scene_item)
