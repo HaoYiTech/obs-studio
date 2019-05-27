@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QNetworkAccessManager>
 #include <QApplication>
 #include <QTranslator>
 #include <QPointer>
@@ -70,7 +71,11 @@ public:
 	static string ANSI_UTF8(const char * lpSValue);
 public slots:
 	void onTriggerMiniSuccess();
+	void onReplyFinished(QNetworkReply *reply);
 public:
+	void     doAddDownFlowByte(int nDownSize) { m_nDownFlowByte += nDownSize; }
+	void     doAddUpFlowByte(int nUpSize) { m_nUpFlowByte += nUpSize; }
+
 	bool     GetAudioHorn() { return m_bHasAudioHorn; }
 	void     SetAudioHorn(bool bHasAudioHorn) { m_bHasAudioHorn = bHasAudioHorn; }
 
@@ -96,6 +101,8 @@ public:
 	int      GetDBHaoYiNodeID() { return m_nDBHaoYiNodeID; }
 	int      GetDBHaoYiGatherID() { return m_nDBHaoYiGatherID; }
 	int      GetRtpTCPSockFD() { return m_nRtpTCPSockFD; }
+	int      GetFlowTeacherID() { return m_nFlowTeacherID; }
+	int      GetDBFlowID() { return m_nDBFlowID; }
 	ROLE_TYPE GetRoleType() { return m_nRoleType; }
 	QString  GetRoleString();
 
@@ -104,6 +111,8 @@ public:
 	int      GetAudioSampleRate() { return m_nAudioOutSampleRate; }
 	int      GetAudioBitrateAAC() { return m_nAudioOutBitrateAAC; }
 
+	void     SetDBFlowID(int nDBFlowID) { m_nDBFlowID = nDBFlowID; }
+	void     SetFlowTeacherID(int nFlowTeacherID) { m_nFlowTeacherID = nFlowTeacherID; }
 	void     SetMultiIPSendAddr(const string & strIPSend) { m_strMultiIPSendAddr = strIPSend; }
 	void     SetRoleType(ROLE_TYPE inType) { m_nRoleType = inType; }
 	void     SetRtpTCPSockFD(int nTCPSockFD) { m_nRtpTCPSockFD = nTCPSockFD; }
@@ -175,6 +184,7 @@ protected:
 	void	doCheckFDFS();
 	void	doCheckRemote();
 	void	doCheckOnLine();
+	void    doCheckRoomFlow();
 	void	timerEvent(QTimerEvent * inEvent) override;
 	bool    notify(QObject * inObject, QEvent * inEvent) override;
 private:
@@ -187,6 +197,7 @@ private:
 	QPointer<CRemoteSession>   m_RemoteSession;             // For UDP-Server
 	QPointer<StudentWindow>    m_studentWindow;             // 主窗口对象
 	QPointer<CLoginMini>       m_LoginMini;                 // 小程序登录窗口
+	QNetworkAccessManager      m_objNetManager;             // QT 网络管理对象...
 	ConfigFile                 m_globalConfig;              // 全局配置对象...
 	TextLookup                 m_textLookup;                // 文字翻译对象...
 	OBSQTDisplay      *        m_lpFocusDisplay;            // 焦点窗口对象...
@@ -198,6 +209,7 @@ private:
 	string                     m_strWebCenter;              // 访问中心网站地址...
 	string                     m_strWebClass;				// 访问云教室网站地址...
 	int                        m_nFastTimer;				// 分布式存储、中转链接检测时钟...
+	int                        m_nFlowTimer;                // 流量统计检测时钟...
 	int                        m_nOnLineTimer;				// 检测在线摄像头通道列表...
 	GM_MapNodeCamera           m_MapNodeCamera;				// 监控通道配置信息(数据库CameraID）
 	bool                m_bSaveAECSample;               // 是否保存AEC样本数据（仅供调试使用）
@@ -222,12 +234,17 @@ private:
 	int					m_nAuthDays;					// 中心服务器反馈的剩余授权天数...
 	string				m_strMainName;					// 主窗口标题名称...
 	int				    m_nSnapVal;						// 通道截图间隔(1~10分钟)
+	int                 m_nDBFlowID;                    // 从服务器获取到的流量统计数据库编号...
+	int                 m_nDBUserID;                    // 已登录用户的数据库编号...
 	int                 m_nRtpTCPSockFD;                // CRemoteSession在服务器端的套接字号码...
+	int                 m_nFlowTeacherID;               // 与讲师端关联的流量记录编号...
 	int                 m_nAudioOutSampleRate;          // 音频播放、压缩输出采样率 
 	int                 m_nAudioOutChannelNum;          // 音频播放、压缩输出声道数
 	int                 m_nAudioOutBitrateAAC;          // 回音消除后AAC压缩输出码流
 	bool                m_bHasAudioHorn;                // 扬声器是否已经开启标志
 	bool                m_bIsDebugMode;                 // 是否是调试模式 => 挂载到调试服务器...
+	uint64_t            m_nDownFlowByte;                // 学生端下行流量...
+	uint64_t            m_nUpFlowByte;                  // 学生端上行流量...
 };
 
 inline CStudentApp *App() { return static_cast<CStudentApp*>(qApp); }

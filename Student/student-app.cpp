@@ -11,6 +11,8 @@
 #include <jansson.h>
 
 #include <QGuiApplication>
+#include <QNetworkRequest>
+#include <QNetworkReply>
 #include <QScreen>
 
 #include "qt-wrappers.hpp"
@@ -845,7 +847,12 @@ CStudentApp::CStudentApp(int &argc, char **argv)
   , m_bHasAudioHorn(false)
   , m_bAuthLicense(false)
   , m_bIsDebugMode(false)
+  , m_nDBUserID(0)
+  , m_nDBFlowID(0)
+  , m_nUpFlowByte(0)
+  , m_nDownFlowByte(0)
   , m_nRtpTCPSockFD(0)
+  , m_nFlowTeacherID(0)
   , m_nRoleType(kRoleWanRecv)
   , m_nMaxCamera(DEF_MAX_CAMERA)
   , m_strWebCenter(DEF_WEB_CENTER)
@@ -866,6 +873,7 @@ CStudentApp::CStudentApp(int &argc, char **argv)
   , m_nAuthDays(0)
   , m_nSnapVal(2)
 {
+	m_nFlowTimer = -1;
 	m_nFastTimer = -1;
 	m_nOnLineTimer = -1;
 	m_LoginMini = NULL;
@@ -1084,6 +1092,8 @@ void CStudentApp::doLoginInit()
 	m_LoginMini->show();
 	// 建立登录窗口与应用对象的信号槽关联函数...
 	connect(m_LoginMini, SIGNAL(doTriggerMiniSuccess()), this, SLOT(onTriggerMiniSuccess()));
+	// 关联网络信号槽反馈结果事件...
+	connect(&m_objNetManager, SIGNAL(finished(QNetworkReply *)), this, SLOT(onReplyFinished(QNetworkReply *)));
 }
 
 // 处理小程序登录成功之后的信号槽事件...
@@ -1091,6 +1101,7 @@ void CStudentApp::onTriggerMiniSuccess()
 {
 	// 保存登录房间号...
 	int nDBRoomID = m_LoginMini->GetDBRoomID();
+	m_nDBUserID = m_LoginMini->GetDBUserID();
 	m_strRoomID = QString("%1").arg(nDBRoomID).toStdString();
 	// 先关闭小程序登录窗口...
 	m_LoginMini->close();
@@ -1140,6 +1151,8 @@ void CStudentApp::onWebLoadResource()
 	this->doCheckRemote();
 	// 开启一个定时检测时钟 => 每隔5秒执行一次...
 	m_nFastTimer = this->startTimer(5 * 1000);
+	// 每隔15秒检测一次，从服务器获取流量统计并存入数据库...
+	m_nFlowTimer = this->startTimer(15 * 1000);
 	// 每隔30秒检测一次，学生端在中转服务器上在线通道列表...
 	m_nOnLineTimer = this->startTimer(30 * 1000);
 }
@@ -1158,6 +1171,8 @@ void CStudentApp::timerEvent(QTimerEvent *inEvent)
 		this->doCheckFDFS();
 	} else if (nTimerID == m_nOnLineTimer) {
 		this->doCheckOnLine();
+	} else if (nTimerID == m_nFlowTimer) {
+		this->doCheckRoomFlow();
 	}
 }
 
@@ -1213,6 +1228,36 @@ void CStudentApp::doCheckRemote()
 		connect(m_RemoteSession, SIGNAL(doTriggerRecvThread(bool)), lpViewTeacher, SLOT(onTriggerUdpRecvThread(bool)));
 		connect(m_RemoteSession, SIGNAL(doTriggerDeleteExAudioThread()), lpViewTeacher, SLOT(onTriggerDeleteExAudioThread()));
 	}
+}
+
+// 通过Web转发统计已登录房间流量...
+void CStudentApp::doCheckRoomFlow()
+{
+	if (m_nDBGatherID <= 0 || m_nDBUserID <= 0 || m_nDBFlowID <= 0 )
+		return;
+	QNetworkReply * lpNetReply = NULL;
+	QNetworkRequest theQTNetRequest;
+	string & strWebClass = App()->GetWebClass();
+	int nUpFlowMB = m_nUpFlowByte / 1000 / 1000;
+	int nDownFlowMB = m_nDownFlowByte / 1000 / 1000;
+	QString strContentVal = QString("flow_id=%1&gather_id=%2&flow_teacher=%3&up_flow=%4&down_flow=%5")
+		.arg(m_nDBFlowID).arg(m_nDBGatherID).arg(m_nFlowTeacherID).arg(nUpFlowMB).arg(nDownFlowMB);
+	QString strRequestURL = QString("%1%2").arg(strWebClass.c_str()).arg("/wxapi.php/Mini/gatherFlow");
+	theQTNetRequest.setUrl(QUrl(strRequestURL));
+	theQTNetRequest.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/x-www-form-urlencoded"));
+	lpNetReply = m_objNetManager.post(theQTNetRequest, strContentVal.toUtf8());
+}
+
+void CStudentApp::onReplyFinished(QNetworkReply *reply)
+{
+	// 如果发生网络错误，打印错误信息，跳出循环...
+	if (reply->error() != QNetworkReply::NoError) {
+		blog(LOG_INFO, "QT error => %d, %s", reply->error(), reply->errorString().toStdString().c_str());
+		return;
+	}
+	QByteArray & theByteArray = reply->readAll();
+	string & strData = theByteArray.toStdString();
+	blog(LOG_DEBUG, "QT Reply Data => %s", strData.c_str());
 }
 
 // 返回左侧是否处于正在推流状态...

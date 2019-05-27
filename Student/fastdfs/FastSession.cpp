@@ -596,6 +596,11 @@ bool CRemoteSession::doCmdStudentLogin(const char * lpData, int nSize)
 	int  nTCPSocketFD = atoi(CStudentApp::getJsonString(value["tcp_socket"]).c_str());
 	bool bIsTCPTeacherOnLine = atoi(CStudentApp::getJsonString(value["tcp_teacher"]).c_str());
 	bool bIsUDPTeacherOnLine = atoi(CStudentApp::getJsonString(value["udp_teacher"]).c_str());
+	int  nFlowTeacherID = atoi(CStudentApp::getJsonString(value["flow_teacher"]).c_str());
+	// 保存关联的讲师流量记录编号...
+	if (App()->GetFlowTeacherID() != nFlowTeacherID) {
+		App()->SetFlowTeacherID(nFlowTeacherID);
+	}
 	// 将获取的TCP套接字更新到系统变量当中 => 在创建UDP连接时会用到...
 	if (App()->GetRtpTCPSockFD() != nTCPSocketFD) {
 		App()->SetRtpTCPSockFD(nTCPSocketFD);

@@ -341,6 +341,15 @@ void CLoginMini::onProcMiniUserInfo(QNetworkReply *reply)
 		int nUserType = atoi(CStudentApp::getJsonString(value["user"]["user_type"]).c_str());
 		ASSERT(nDBUserID == m_nDBUserID);
 		// 因为是学生端，无需检测用户身份类型...
+		// 判断是否获取到了有效的流量统计记录字段...
+		int nDBFlowID = (value.isMember("flow_id") ? atoi(CStudentApp::getJsonString(value["flow_id"]).c_str()) : 0);
+		if (!value.isMember("flow_id") || nDBFlowID <= 0) {
+			m_strScan = QStringLiteral("错误提示：无法从服务器获取流量统计记录编号。");
+			bIsError = true;
+			break;
+		}
+		// 保存流量记录到全局变量当中...
+		App()->SetDBFlowID(nDBFlowID);
 	} while (false);
 	// 发生错误，关闭动画，显示图标|信息，文字左对齐...
 	if (bIsError) {

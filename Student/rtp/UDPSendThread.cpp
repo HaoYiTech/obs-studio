@@ -367,6 +367,8 @@ void CUDPSendThread::doCalcAVBitRate()
 		return;
 	// 保存总的持续时间 => 毫秒数...
 	m_total_time_ms = cur_total_ms;
+	// 统计初略的上传总字节数...
+	App()->doAddUpFlowByte(m_total_output_bytes);
 	// 根据音视频当前输入输出的总字节数，计算输入输出平均码率...
 	m_audio_input_kbps = (m_audio_input_bytes * 8 / (m_total_time_ms / rate_tick_ms)) / 1024;
 	m_video_input_kbps = (m_video_input_bytes * 8 / (m_total_time_ms / rate_tick_ms)) / 1024;
@@ -884,6 +886,9 @@ void CUDPSendThread::doRecvPacket()
 		blog(LOG_INFO, "[Send-Error] Max => %lu, Addr => %lu:%d, Size => %lu", nMaxSize, outRemoteAddr, outRemotePort, outRecvLen);
 		return;
 	}
+
+	// 累加下行字节总数...
+	App()->doAddDownFlowByte(outRecvLen);
 
 	// 对环形队列相关资源进行互斥保护...
 	pthread_mutex_lock(&m_Mutex);
