@@ -573,7 +573,7 @@ bool CLoginMini::parseJson(string & inData, Json::Value & outValue, bool bIsWeiX
 	if (outValue[lpszCode].asBool()) {
 		string & strMsg = CStudentApp::getJsonString(outValue[lpszMsg]);
 		string & strCode = CStudentApp::getJsonString(outValue[lpszCode]);
-		m_strQRNotice = QString("%1(%2)").arg(strMsg.c_str()).arg(strCode.c_str());
+		m_strQRNotice = QString("%1").arg(strMsg.c_str());
 		return false;
 	}
 	return true;
