@@ -409,7 +409,7 @@ class MiniAction extends Action
     // 注意：这里使用的是 $_POST 数据...
     do {
       // 判断输入的参数是否有效...
-      if( !isset($_POST['user_id']) || !isset($_POST['room_id'])) {
+      if( !isset($_POST['user_id']) || !isset($_POST['room_id']) || !isset($_POST['type_id']) ) {
         $arrErr['err_code'] = true;
         $arrErr['err_msg'] = '输入参数无效！';
         break;
@@ -434,16 +434,13 @@ class MiniAction extends Action
       }
       // 保存房间记录到集合当中...
       $arrErr['room'] = $dbRoom;
-      // 验证发送的终端类型是否正确...
-      $nClientType = intval($_POST['type_id']);
-      // 如果是讲师端登录，创建新的流量统计记录...
-      if( $nClientType == kClientTeacher ) {
-        $dbFlow['room_id'] = $dbRoom['room_id'];
-        $dbFlow['user_id'] = $dbUser['user_id'];
-        $dbFlow['created'] = date('Y-m-d H:i:s');
-        $dbFlow['updated'] = date('Y-m-d H:i:s');
-        $arrErr['flow_id'] = D('flow')->add($dbFlow);
-      }
+      // 讲师端|学生端都要创建新的流量统计记录...
+      $dbFlow['type_id'] = $_POST['type_id'];
+      $dbFlow['room_id'] = $dbRoom['room_id'];
+      $dbFlow['user_id'] = $dbUser['user_id'];
+      $dbFlow['created'] = date('Y-m-d H:i:s');
+      $dbFlow['updated'] = date('Y-m-d H:i:s');
+      $arrErr['flow_id'] = D('flow')->add($dbFlow);
     } while ( false );
     // 返回json编码数据包...
     echo json_encode($arrErr);
@@ -479,6 +476,44 @@ class MiniAction extends Action
     echo json_encode($arrErr);
   }
   //
+  // 学生端发起的计算自己流量统计的命令...
+  public function gatherFlow()
+  {
+    // 准备返回结果状态...
+    $arrErr['err_code'] = false;
+    $arrErr['err_msg'] = 'ok';
+    // 注意：这里使用的是 $_POST 数据...
+    do {
+      // 判断输入的参数是否有效...
+      if (!isset($_POST['flow_id']) || !isset($_POST['gather_id'])) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入参数无效！';
+        break;
+      }
+      // 先查找流量记录，没有直接返回...
+      $condition['flow_id'] = $_POST['flow_id'];
+      $dbFind = D('flow')->where($condition)->find();
+      if( !isset($dbFind['flow_id']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '没有找到流量记录！';
+        break;
+      }
+      // 更新数据库流量记录...
+      $dbFlow['flow_id'] = $_POST['flow_id'];
+      $dbFlow['gather_id'] = $_POST['gather_id'];
+      $dbFlow['up_flow'] = (isset($_POST['up_flow']) ? $_POST['up_flow'] : 0);
+      $dbFlow['down_flow'] = (isset($_POST['down_flow']) ? $_POST['down_flow'] : 0);
+      $dbFlow['flow_teacher'] = (isset($_POST['flow_teacher']) ? $_POST['flow_teacher'] : 0);
+      $dbFlow['updated'] = date('Y-m-d H:i:s');
+      // 只存放更大的流量记录 => 避免流量异常时的错误记录...
+      $dbFlow['up_flow'] = max($dbFlow['up_flow'], $dbFind['up_flow']);
+      $dbFlow['down_flow'] = max($dbFlow['down_flow'], $dbFind['down_flow']);
+      D('flow')->save($dbFlow);
+    } while ( false );
+    // 返回json编码数据包...
+    echo json_encode($arrErr);
+  }
+  //
   // 讲师端发起的计算房间流量统计的命令...
   public function roomFlow()
   {
@@ -494,6 +529,14 @@ class MiniAction extends Action
         $arrErr['err_msg'] = '输入参数无效！';
         break;
       }
+      // 先查找流量记录，没有直接返回...
+      $condition['flow_id'] = $_POST['flow_id'];
+      $dbFind = D('flow')->where($condition)->find();
+      if( !isset($dbFind['flow_id']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '没有找到流量记录！';
+        break;
+      }
       // 向udpserver获取指定房间的流量统计命令...
       $dbParam['room_id'] = $_POST['room_id'];
       $dbParam['flow_id'] = $_POST['flow_id'];
@@ -504,6 +547,9 @@ class MiniAction extends Action
         $arrErr['err_msg'] = $dbResult['err_msg'];
         break;
       }
+      // 只存放更大的流量记录 => 避免流量异常时的错误记录...
+      $dbResult['up_flow'] = max($dbResult['up_flow'], $dbFind['up_flow']);
+      $dbResult['down_flow'] = max($dbResult['down_flow'], $dbFind['down_flow']);
       // 将获取到的流量信息直接更新到流量表当中 => 房间编号需要减去偏移值...
       $dbFlow['room_id'] = $_POST['room_id'] - LIVE_BEGIN_ID;
       $dbFlow['flow_id'] = $_POST['flow_id'];
