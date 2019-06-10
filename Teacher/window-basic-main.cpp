@@ -3896,8 +3896,7 @@ void OBSBasic::OpenWindowPTZ()
 		m_PTZWindow = new CPTZWindow(this);
 	}
 	// 注意：远程云台控制，只管发命令，不用处理反馈结果...
-	// 显示云台控制窗口，获取观看的摄像头编号，并更新状态...
-	m_PTZWindow->doUpdatePTZ(App()->GetRtpDBCameraID());
+	// 显示云台控制窗口，点击鼠标时已经更新摄像头编号...
 	m_PTZWindow->show();
 }
 
@@ -4183,6 +4182,15 @@ QMenu *OBSBasic::CreateAddSourcePopupMenu()
 		if ((caps & OBS_SOURCE_CAP_DISABLED) != 0)
 			continue;
 
+#ifdef _WIN32
+		const char *text_source_id = "text_gdiplus";
+#else
+		const char *text_source_id = "text_ft2_source";
+#endif
+		// 去掉 文本(GDI+) 的菜单添加入口...
+		if (astrcmpi(type, text_source_id) == 0)
+			continue;
+		// 添加相关数据源的菜单入口...
 		if ((caps & OBS_SOURCE_DEPRECATED) == 0) {
 			addSource(popup, type, name);
 		} else {
@@ -4865,6 +4873,18 @@ void OBSBasic::StreamingStop(int code, QString last_error)
 	}
 }
 
+void OBSBasic::doUpdatePTZ(int nDBCameraID)
+{
+	// 创建云台控制窗口...
+	if (m_PTZWindow == NULL) {
+		m_PTZWindow = new CPTZWindow(this);
+	}
+	// 更新摄像头编号到云台控制窗口对象当中...
+	if (nDBCameraID > 0 && m_PTZWindow != NULL) {
+		m_PTZWindow->doUpdatePTZ(nDBCameraID);
+	}
+}
+
 bool OBSBasic::doCheckCanRecord()
 {
 	for (int i = 0; i < ui->sources->count(); i++) {
@@ -5134,48 +5154,39 @@ void OBSBasic::on_statsButton_clicked()
 }
 
 // 响应服务器发送的rtp_source重建事件通知...
-void OBSBasic::onTriggerRtpSource(int nSceneItemID, int nDBCameraID, bool bIsCameraOnLine)
+void OBSBasic::onTriggerRtpSource(int nDBCameraID, bool bIsCameraOnLine)
 {
-	// 场景编号无效，直接返回...
-	if (nSceneItemID <= 0)
-		return;
-	// 通过场景编号查找场景对应的资源...
-	obs_source_t * lpFindSource = NULL;
+	// 通过摄像头编号查找场景对应的数据源...
 	for (int i = 0; i < ui->sources->count(); i++) {
 		QListWidgetItem * lpListItem = ui->sources->item(i);
 		OBSSceneItem theSceneItem = this->GetSceneItem(lpListItem);
-		int nCurSceneID = (int)obs_sceneitem_get_id(theSceneItem);
-		// 当前场景编号与输入场景编号一致 => 找到资源跳出循环...
-		if (nCurSceneID == nSceneItemID) {
-			lpFindSource = obs_sceneitem_get_source(theSceneItem);
-			break;
+		obs_source_t * lpFindSource = obs_sceneitem_get_source(theSceneItem);
+		obs_data_t * lpSettings = obs_source_get_settings(lpFindSource);
+		// 场景配置无效，继续寻找...
+		if (lpSettings == NULL)
+			continue;
+		// 摄像头编号和场景配置不一致，需要释放引用计数器，继续寻找...
+		if (nDBCameraID != obs_data_get_int(lpSettings, "camera_id")) {
+			obs_data_release(lpSettings);
+			continue;
 		}
+		// 如果云台窗口有效，需要更新...
+		this->doUpdatePTZ(nDBCameraID);
+		// 将rtp_source需要的参数写入配置结构当中...
+		int nRoomID = atoi(App()->GetRoomIDStr().c_str());
+		obs_data_set_int(lpSettings, "room_id", nRoomID);
+		obs_data_set_int(lpSettings, "camera_id", nDBCameraID);
+		obs_data_set_bool(lpSettings, "udp_camera", bIsCameraOnLine);
+		obs_data_set_int(lpSettings, "udp_port", App()->GetUdpPort());
+		obs_data_set_int(lpSettings, "tcp_socket", App()->GetRtpTCPSockFD());
+		obs_data_set_string(lpSettings, "udp_addr", App()->GetUdpAddr().c_str());
+		// 将新的资源配置应用到当前rtp_source资源对象当中...
+		obs_source_update(lpFindSource, lpSettings);
+		// 注意：这里必须手动进行引用计数减少，否则，会造成内存泄漏...
+		obs_data_release(lpSettings);
+		// 跳出查找循环...
+		break;
 	}
-	// 如果最终没有找到需要的资源，直接返回...
-	if (lpFindSource == NULL)
-		return;
-	// 注意：这里的接口会增加引用计数，使用完毕之后要减少引用计数...
-	obs_data_t * lpSettings = obs_source_get_settings(lpFindSource);
-	if (lpSettings == NULL)
-		return;
-	// 如果云台窗口有效，需要更新...
-	if (m_PTZWindow != NULL) {
-		m_PTZWindow->doUpdatePTZ(nDBCameraID);
-	}
-	// 更新正在观看的互动教室的摄像头编号...
-	App()->SetRtpDBCameraID(nDBCameraID);
-	// 将rtp_source需要的参数写入配置结构当中...
-	int nRoomID = atoi(App()->GetRoomIDStr().c_str());
-	obs_data_set_int(lpSettings, "room_id", nRoomID);
-	obs_data_set_int(lpSettings, "camera_id", nDBCameraID);
-	obs_data_set_bool(lpSettings, "udp_camera", bIsCameraOnLine);
-	obs_data_set_int(lpSettings, "udp_port", App()->GetUdpPort());
-	obs_data_set_int(lpSettings, "tcp_socket", App()->GetRtpTCPSockFD());
-	obs_data_set_string(lpSettings, "udp_addr", App()->GetUdpAddr().c_str());
-	// 将新的资源配置应用到当前rtp_source资源对象当中...
-	obs_source_update(lpFindSource, lpSettings);
-	// 注意：这里必须手动进行引用计数减少，否则，会造成内存泄漏...
-	obs_data_release(lpSettings);
 }
 
 // 响应服务器发送的当前房间在线的摄像头列表事件通知...
@@ -5192,6 +5203,8 @@ void OBSBasic::onTriggerCameraLiveStop(int nDBCameraID)
 	if (properties == NULL) return;
 	OBSPropertiesView * lpView = properties->GetPropView();
 	((lpView != NULL) ? lpView->onTriggerCameraLiveStop(nDBCameraID) : NULL);
+	// 响应完毕之后，关闭属性配置窗口...
+	properties->doRtpStopClose();
 }
 
 // 响应服务器发送的UDP连接对象被删除的事件通知...
@@ -5838,6 +5851,11 @@ static inline void setAudioMixer(obs_sceneitem_t *scene_item, const int mixerIdx
 	// 没有音频属性，或资源为空，直接返回...
 	if (mixers <= 0 || source == NULL)
 		return;
+	// 如果是第一个轨道，需要将混音标志存入配置，wasapi-output.c当中会用到...
+	obs_data_t * lpSettings = obs_source_get_settings(source);
+	obs_data_set_bool(lpSettings, "focus_mix", enabled);
+	obs_data_release(lpSettings);
+
 	// 注意：如果是互动教室资源、第一个轨道、投递数据，三个条件都满足，就进行强制屏蔽...
 	bool bIsRtpSource = ((astrcmpi(obs_source_get_id(source), App()->InteractRtpSource()) == 0) ? true : false);
 	if (bIsRtpSource && enabled && (mixerIdx == 0)) {
@@ -5892,13 +5910,16 @@ void OBSBasic::doSceneItemLayout(obs_sceneitem_t * scene_item)
 		// 轨道1|轨道2 => 强制第一个窗口资源的音频输出，只保留全局音频资源和第一个窗口的音频资源输出...
 		setAudioMixer(scene_item, 0, true);
 		setAudioMixer(scene_item, 1, true);
+		// 向服务器发送当前摄像头推流编号的命令...
+		this->doSendCameraPusherID(scene_item);
 		return;
 	}
 	// 遍历第二行的位置，查找空闲位置...
 	for (int i = 0; i < DEF_COL_SIZE; ++i) {
 		uint32_t pos_x = i * (other_width + DEF_COL_SPACE);
 		uint32_t pos_y = first_height + DEF_ROW_SPACE;
-		vec2_set(&vPos, float(pos_x), float(pos_y));
+		// 在新窗口顶点稍微偏移的上下位置是否已有窗口存在...
+		vec2_set(&vPos, float(pos_x+5), float(pos_y+5));
 		// 如果当前位置的下面有数据源，跳过，继续找下一个...
 		if (OBSBasicPreview::GetItemAtPos(vPos, true))
 			continue;
@@ -6076,6 +6097,24 @@ void OBSBasic::doSceneItemToFirst(obs_sceneitem_t * select_item)
 	// 轨道1|轨道2 => 强制第一个窗口资源的音频输出，只保留全局音频资源和第一个窗口的音频资源输出...
 	setAudioMixer(select_item, 0, true);
 	setAudioMixer(select_item, 1, true);
+}
+
+void OBSBasic::doSendCameraPusherID(obs_sceneitem_t * select_item)
+{
+	int nDBCameraID = 0;
+	obs_source_t * lpSource = obs_sceneitem_get_source(select_item);
+	const char * lpSrcID = obs_source_get_id(lpSource);
+	// 获取当前数据源的摄像头编号配置信息，注意释放配置...
+	if (astrcmpi(lpSrcID, App()->InteractRtpSource()) == 0) {
+		obs_data_t * lpSettings = obs_source_get_settings(lpSource);
+		nDBCameraID = obs_data_get_int(lpSettings, "camera_id");
+		obs_data_release(lpSettings);
+	}
+	// 交互学生端摄像头编号发生变化，向服务器发送更新命令...
+	if (m_nDBCameraPusherID != nDBCameraID) {
+		App()->doSendCameraPusherIDCmd(nDBCameraID);
+		m_nDBCameraPusherID = nDBCameraID;
+	}
 }
 
 void OBSBasic::doHideDShowAudioMixer(obs_sceneitem_t * scene_item)

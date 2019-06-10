@@ -85,6 +85,7 @@ define('kCmd_PHP_GetRoomList',       21);
 define('kCmd_PHP_GetPlayerList',     22);
 define('kCmd_PHP_Bind_Mini',         23);
 define('kCmd_PHP_GetRoomFlow',       24);
+define('kCmd_Camera_PusherID',       25);
 
 //////////////////////////////////////////////////////
 // 定义一组通用的公用函数列表...

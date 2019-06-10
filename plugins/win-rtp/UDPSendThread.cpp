@@ -535,7 +535,7 @@ void CUDPSendThread::doSendDetectCmd()
 	pthread_mutex_lock(&m_Mutex);
 	// 遍历环形队列，删除所有超过n秒的缓存数据包 => 不管是否是关键帧或完整包，只是为补包而存在...
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketBuffer[nPerPackSize] = {0};
+	char szPacketBuffer[nPerPackSize] = {0};
 	uint32_t    cur_send_seq = m_nVideoCurSendSeq;
 	circlebuf & cur_circle = m_video_circle;
 	rtp_hdr_t * lpCurHeader = NULL;
@@ -586,7 +586,7 @@ void CUDPSendThread::doEarseAudioByPTS(uint32_t inTimeStamp)
 	if (m_audio_circle.size <= 0)
 		return;
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketBuffer[nPerPackSize] = { 0 };
+	char szPacketBuffer[nPerPackSize] = { 0 };
 	uint32_t    cur_send_seq = m_nAudioCurSendSeq;
 	circlebuf & cur_circle = m_audio_circle;
 	rtp_hdr_t * lpCurHeader = NULL;
@@ -646,7 +646,7 @@ void CUDPSendThread::doSendLosePacket(bool bIsAudio)
 		// 所以，一定要用接口读取完整的数据包之后，再进行操作；如果用指针，一旦发生回还，就会错误...
 		/////////////////////////////////////////////////////////////////////////////////////////////////
 		const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-		static char szPacketBuffer[nPerPackSize] = {0};
+		char szPacketBuffer[nPerPackSize] = {0};
 		circlebuf_peek_front(&cur_circle, szPacketBuffer, nPerPackSize);
 		lpFrontHeader = (rtp_hdr_t*)szPacketBuffer;
 		// 如果要补充的数据包序号比最小序号还要小 => 没有找到，直接返回...
@@ -727,7 +727,7 @@ void CUDPSendThread::doSendPacket(bool bIsAudio)
 		// 所以，一定要用接口读取完整的数据包之后，再进行操作；如果用指针，一旦发生回还，就会错误...
 		/////////////////////////////////////////////////////////////////////////////////////////////////
 		const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-		static char szPacketBuffer[nPerPackSize] = {0};
+		char szPacketBuffer[nPerPackSize] = {0};
 		circlebuf_peek_front(&cur_circle, szPacketBuffer, nPerPackSize);
 		// 计算环形队列中最前面数据包的头指针 => 最小序号...
 		lpFrontHeader = (rtp_hdr_t*)szPacketBuffer;
@@ -973,7 +973,7 @@ void CUDPSendThread::doProcMaxConSeq(bool bIsAudio, uint32_t inMaxConSeq)
 	// 所以，一定要用接口读取完整的数据包之后，再进行操作；如果用指针，一旦发生回还，就会错误...
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketBuffer[nPerPackSize] = {0};
+	char szPacketBuffer[nPerPackSize] = {0};
 	circlebuf_peek_front(&cur_circle, szPacketBuffer, nPerPackSize);
 	lpFrontHeader = (rtp_hdr_t*)szPacketBuffer;
 	// 如果要删除的数据包序号比最小序号还要小 => 数据已经删除了，直接返回...

@@ -31,6 +31,8 @@ void CPTZWindow::doUpdatePTZ(int nDBCameraID)
 		.arg(QTStr("PTZ.Window.TitleContent"))
 		.arg(QStringLiteral("ID: "))
 		.arg(nDBCameraID));
+	// 更新界面显示...
+	this->update();
 }
 
 void CPTZWindow::doUpdateImageFlip(string & inFlipVal)

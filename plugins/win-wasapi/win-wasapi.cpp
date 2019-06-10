@@ -14,6 +14,7 @@
 #include "media-io/audio-resampler.h"
 #include "media-io/audio-io.h"
 #include "echo_cancellation.h"
+#include "noise_suppression_x.h"
 #include "aec_core.h"
 
 using namespace webrtc;
@@ -76,6 +77,7 @@ class WASAPISource {
 
 	pthread_mutex_t             m_AECMutex;           // 回音消除互斥体
 	void                  *     m_hAEC;               // 回音消除句柄...
+	NsxHandle             *     m_lpNsxInst;          // 降噪模块句柄...
 
 	//speaker_layout            speakers;
 	//audio_format              format;
@@ -86,7 +88,6 @@ class WASAPISource {
 
 	void doEchoMic(UINT64 ts, uint8_t * lpFrameData, uint32_t nFrameSize);
 	void doEchoCancel(UINT64 ts);
-	bool doFindRtpAudio();
 
 	bool ProcessCaptureData();
 
@@ -129,6 +130,7 @@ WASAPISource::WASAPISource(obs_data_t *settings, obs_source_t *source_,	bool inp
 	, m_pDMicBufNN    (nullptr)
 	, m_pDHornBufNN   (nullptr)
 	, m_pDEchoBufNN   (nullptr)
+	, m_lpNsxInst     (nullptr)
 	, m_hAEC          (nullptr)
 {
 	UpdateSettings(settings);
@@ -235,6 +237,19 @@ inline void WASAPISource::InitWebrtcAEC()
 	}
 	// 打印webrtc的回音消除初始化完成...
 	blog(LOG_INFO, "== InitWebrtcAEC OK ==");
+	// 创建针对麦克风的降噪模块对象 => short格式...
+	int err_code = 0;
+	m_lpNsxInst = WebRtcNsx_Create();
+	// 初始化降噪对象，使用16k频率...
+	if (m_lpNsxInst != NULL) {
+		err_code = WebRtcNsx_Init(m_lpNsxInst, m_out_sample_rate);
+	}
+	// 设定降噪程度 => 0: Mild, 1: Medium , 2: Aggressive
+	if (m_lpNsxInst != NULL && err_code == 0) {
+		err_code = WebRtcNsx_set_policy(m_lpNsxInst, 2);
+	}
+	// 打印创建麦克风降噪模块对象的结果...
+	blog(LOG_INFO, "== Create NSX Code(%d) ==", err_code);
 }
 
 inline void WASAPISource::UnInitWebrtcAEC()
@@ -281,6 +296,11 @@ inline void WASAPISource::UnInitWebrtcAEC()
 	if (m_pDEchoBufNN != NULL) {
 		bfree(m_pDEchoBufNN);
 		m_pDEchoBufNN = NULL;
+	}
+	// 释放降噪模块使用的对象和空间...
+	if (m_lpNsxInst != NULL) {
+		WebRtcNsx_Free(m_lpNsxInst);
+		m_lpNsxInst = NULL;
 	}
 	// 释放回音消除互斥对象...
 	pthread_mutex_destroy(&m_AECMutex);
@@ -590,7 +610,7 @@ DWORD WINAPI WASAPISource::ReconnectThread(LPVOID param)
 	}
 }*/
 
-bool WASAPISource::doFindRtpAudio()
+/*bool WASAPISource::doFindRtpAudio()
 {
 	// 遍历所有数据源，查找互动教室的音频状态...
 	auto cbFind = [](void *data, obs_source_t *source)
@@ -608,7 +628,10 @@ bool WASAPISource::doFindRtpAudio()
 			return false;
 		}
 		// 如果互动教室数据源拉流线程已启动，返回true，否则返回false，然后终止查找...
-		*lpHasRtpAudio = *(bool*)obs_source_get_type_data(source);
+		obs_data_t * lpSettings = obs_source_get_settings(source);
+		*lpHasRtpAudio = obs_data_get_bool(lpSettings, "recv_thread");
+		// 注意：obs_source_get_settings 会增加引用计数...
+		obs_data_release(lpSettings);
 		return false;
 	};
 	// 遍历资源查找互动教室...
@@ -616,7 +639,7 @@ bool WASAPISource::doFindRtpAudio()
 	obs_enum_sources(cbFind, &bHasRtpAudio);
 	// 返回互动教室是否有效...
 	return bHasRtpAudio;
-}
+}*/
 
 bool WASAPISource::ProcessCaptureData()
 {
@@ -652,16 +675,13 @@ bool WASAPISource::ProcessCaptureData()
 			return false;
 		}
 
-		// 遍历资源查找互动教室是否有效...
-		bool bHasRtpAudio = this->doFindRtpAudio();
-		
 		// 将麦克风数据统一转换...
 		uint64_t  ts_offset = 0;
 		uint32_t  output_frames = 0;
 		uint8_t * output_data[MAX_AV_PLANES] = { 0 };
 		// 对原始麦克风音频样本格式，转换成回音消除需要的样本格式...
 		if (audio_resampler_resample(m_mic_resampler, output_data, &output_frames, &ts_offset, (const uint8_t *const *)&buffer, frames)) {
-			if (bHasRtpAudio) {
+			if (m_horn_resampler != nullptr) {
 				// 有扬声器数据，放入环形队列，进行回音消除处理，需要得到字节数才能放入环形队列...
 				int cur_data_size = get_audio_size(m_echo_sample_info.format, m_echo_sample_info.speakers, output_frames);
 				circlebuf_push_back(&m_circle_mic, output_data[0], cur_data_size);
@@ -673,6 +693,7 @@ bool WASAPISource::ProcessCaptureData()
 				this->doEchoMic(ts, output_data[0], output_frames);
 			}
 		}
+
 		// 释放硬件的捕捉过程...
 		capture->ReleaseBuffer(frames);
 	}
@@ -743,17 +764,26 @@ void WASAPISource::doEchoCancel(UINT64 ts)
 				m_lpEchoBufNN[i] = (short)m_pDEchoBufNN[i];
 			}
 			// 将扬声器的PCM数据进行存盘处理 => 必须用二进制方式打开文件...
-			//doSaveAudioPCM((uint8_t*)m_lpHornBufNN, nNeedBufBytes, m_out_sample_rate, 1);
+			//doSaveAudioPCM((uint8_t*)m_lpHornBufNN, nNeedBufBytes, m_out_sample_rate, 0);
 		} else {
 			// 扬声器数据不够，把麦克风样本数据直接当成回音消除后的样本数据...
 			memcpy(m_lpEchoBufNN, m_lpMicBufNN, nNeedBufBytes);
 		}
 		// 对麦克风原始数据进行存盘处理 => 必须用二进制方式打开文件...
-		//doSaveAudioPCM((uint8_t*)m_lpMicBufNN, nNeedBufBytes, m_out_sample_rate, 0);
+		//doSaveAudioPCM((uint8_t*)m_lpMicBufNN, nNeedBufBytes, m_out_sample_rate, 1);
 		// 对回音消除后的数据进行存盘处理 => 必须用二进制方式打开文件...
 		//doSaveAudioPCM((uint8_t*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 2);
-		//blog(LOG_INFO, "== mic_buf: %d, horn_buf: %d ==", m_circle_mic.size, m_circle_horn.size);
-
+		// 对回音消除后的数据进行降噪处理 => short格式...
+		if (m_lpNsxInst != NULL) {
+			WebRtcNsx_Process(m_lpNsxInst, &m_lpEchoBufNN, m_out_channel_num, &m_lpMicBufNN);
+			memcpy(m_lpEchoBufNN, m_lpMicBufNN, nNeedBufBytes);
+		}
+		// 对降噪后的回音消除数据进行存盘处理 => 必须用二进制方式打开文件...
+		//doSaveAudioPCM((uint8_t*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 3);
+		// 发生错误，打印错误信息...
+		if (err_code != 0) {
+			blog(LOG_INFO, "== err: %d, mic_buf: %d, horn_buf: %d ==", err_code, m_circle_mic.size, m_circle_horn.size);
+		}
 		// 构造回音消除之后的音频数据...
 		obs_source_audio data = {};
 		data.data[0] = (uint8_t*)m_lpEchoBufNN;
@@ -776,7 +806,7 @@ obs_audio_data * WASAPISource::AudioEchoCancelFilter(obs_audio_data *audio)
 	// 如果捕捉设备还没有初始化完毕，不能进行回音消除数据填充...
 	if (m_mic_resampler == nullptr)
 		return NULL;
-	// 注意：实际传递的结构是 obs_source_audio，详见 wasapi-output.c::doEnumSources()
+	// 注意：实际传递的结构是 obs_source_audio，详见 wasapi-output.c::mix_monitor()
 	obs_source_audio * lpSourceAudio = (obs_source_audio*)audio;
 	// 如果扬声器的转换对象为空，需要进行转换器的生成...
 	if (m_horn_resampler == nullptr) {
@@ -789,6 +819,7 @@ obs_audio_data * WASAPISource::AudioEchoCancelFilter(obs_audio_data *audio)
 	uint64_t  ts_offset = 0;
 	uint32_t  output_frames = 0;
 	uint8_t * output_data[MAX_AV_PLANES] = { 0 };
+	//doSaveAudioPCM((uint8_t*)lpSourceAudio->data[0], lpSourceAudio->speakers*lpSourceAudio->frames*sizeof(float), lpSourceAudio->samples_per_sec, 1);
 	// 对输入的原始音频样本格式进行统一的格式转换，转换成功，放入环形队列...
 	if (audio_resampler_resample(m_horn_resampler, output_data, &output_frames, &ts_offset, lpSourceAudio->data, lpSourceAudio->frames)) {
 		// 注意：这里需要进行互斥保护，是多线程数据访问...
@@ -796,6 +827,7 @@ obs_audio_data * WASAPISource::AudioEchoCancelFilter(obs_audio_data *audio)
 		int cur_data_size = get_audio_size(m_echo_sample_info.format, m_echo_sample_info.speakers, output_frames);
 		circlebuf_push_back(&m_circle_horn, output_data[0], cur_data_size);
 		pthread_mutex_unlock(&m_AECMutex);
+		//doSaveAudioPCM(output_data[0], cur_data_size, m_echo_sample_info.samples_per_sec, 2);
 	}
 	// 可以返回空指针...
 	return audio;

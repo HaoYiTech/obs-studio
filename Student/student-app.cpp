@@ -1257,14 +1257,14 @@ void CStudentApp::onReplyFinished(QNetworkReply *reply)
 	}
 	QByteArray & theByteArray = reply->readAll();
 	string & strData = theByteArray.toStdString();
-	blog(LOG_DEBUG, "QT Reply Data => %s", strData.c_str());
+	//blog(LOG_DEBUG, "QT Reply Data => %s", strData.c_str());
 }
 
 // 返回左侧是否处于正在推流状态...
 bool CStudentApp::IsLeftPusher()
 {
 	CViewLeft * lpViewLeft = m_studentWindow->GetViewLeft();
-	return ((lpViewLeft->GetLiveCameraID() <= 0) ? false : true);
+	return lpViewLeft->IsLeftPusher();
 }
 
 void CStudentApp::doCheckOnLine()

@@ -165,25 +165,42 @@ void OBSBasicProperties::UpdateProperties(void *data, calldata_t *)
 			"ReloadProperties");
 }
 
+void OBSBasicProperties::doRtpStopClose()
+{
+	// 如果相关的视图无效或不是rtp数据源，直接返回...
+	if (view == nullptr || !view->IsUseRtpSource())
+		return;
+	// 设定标志，关闭窗口...
+	acceptClicked = true;
+	this->close();
+	// 配置发生变化，更新配置...
+	if (view->DeferUpdate()) {
+		view->UpdateSettings();
+	}
+}
+
 void OBSBasicProperties::on_buttonBox_clicked(QAbstractButton *button)
 {
 	QDialogButtonBox::ButtonRole val = buttonBox->buttonRole(button);
 
 	if (val == QDialogButtonBox::AcceptRole) {
+		// 验证选中的rtp数据源是否有效...
+		if (!view->doCheckRtpSource())
+			return;
+		// 设定标志，关闭窗口...
 		acceptClicked = true;
 		this->close();
-		
-		if( view->DeferUpdate() ) {
+		// 配置发生变化，更新配置...
+		if (view->DeferUpdate()) {
 			view->UpdateSettings();
 		}
-
 	} else if (val == QDialogButtonBox::RejectRole) {
-		obs_data_t *settings = obs_source_get_settings(source);
-		obs_data_clear(settings);
-		obs_data_release(settings);
-
+		// 如果就是rtp资源，点击取消，不要清理配置，否则会出问题...
 		// 如果不是rtp资源，点击取消，需要对配置进行还原更新处理...
 		if (!view->IsUseRtpSource()) {
+			obs_data_t *settings = obs_source_get_settings(source);
+			obs_data_clear(settings);
+			obs_data_release(settings);
 			if (view->DeferUpdate()) {
 				obs_data_apply(settings, oldSettings);
 			} else {
@@ -192,15 +209,13 @@ void OBSBasicProperties::on_buttonBox_clicked(QAbstractButton *button)
 		}
 		// 关闭窗口...
 		this->close();
-
 	} else if (val == QDialogButtonBox::ResetRole) {
 		obs_data_t *settings = obs_source_get_settings(source);
 		obs_data_clear(settings);
 		obs_data_release(settings);
-
-		if (!view->DeferUpdate())
+		if (!view->DeferUpdate()) {
 			obs_source_update(source, nullptr);
-
+		}
 		view->RefreshProperties();
 	}
 }

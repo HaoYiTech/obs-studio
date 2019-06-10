@@ -17,6 +17,7 @@
     <file>images/tray_active.png</file>
     <file>images/locked_mask.png</file>
     <file>images/unlocked_mask.png</file>
+    <file>images/camera_on.png</file>
     <file>images/camera.png</file>
     <file>../HaoYi.ico</file>
   </qresource>

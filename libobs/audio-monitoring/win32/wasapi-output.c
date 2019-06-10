@@ -136,6 +136,20 @@ static bool process_audio_delay(struct audio_monitor *monitor,
 	return false;
 }
 
+
+/*static void doSaveAudioPCM(uint8_t * lpBufData, int nBufSize, int nAudioRate, int nAudioChannel)
+{
+	// 注意：PCM数据必须用二进制方式打开文件...
+	char szFullPath[MAX_PATH] = { 0 };
+	sprintf(szFullPath, "F:/MP4/PCM/horn_%d_%d_short.pcm", nAudioRate, nAudioChannel);
+	FILE * lpFile = fopen(szFullPath, "ab+");
+	// 打开文件成功，开始写入音频PCM数据内容...
+	if (lpFile != NULL) {
+		fwrite(lpBufData, nBufSize, 1, lpFile);
+		fclose(lpFile);
+	}
+}*/
+
 // 注意：不要用obs_enum_sources，互斥data.sources_mutex会跟rtp-source发生互锁...
 void doPushEchoDataToMic(struct obs_source_audio * lpObsAudio)
 {
@@ -146,9 +160,8 @@ void doPushEchoDataToMic(struct obs_source_audio * lpObsAudio)
 
 	source = data->first_audio_source;
 	while (source) {
-		const char *id = obs_source_get_id(source);
 		// 如果找到数据源是麦克风输入对象，投递数据，退出...
-		if (astrcmpi(id, "wasapi_input_capture") == 0) {
+		if (astrcmpi(obs_source_get_id(source), "wasapi_input_capture") == 0) {
 			// 如果找到的数据源是麦克风输入对象，查看投递接口是否有效，有效进行数据投递...
 			if (source->context.data && source->info.filter_audio) {
 				source->info.filter_audio(source->context.data, (struct obs_audio_data*)lpObsAudio);
@@ -158,7 +171,6 @@ void doPushEchoDataToMic(struct obs_source_audio * lpObsAudio)
 		// 继续寻找麦克风数据源对象...
 		source = (struct obs_source*)source->next_audio_source;
 	}
-
 	pthread_mutex_unlock(&data->audio_sources_mutex);
 }
 
@@ -207,6 +219,14 @@ static void on_audio_playback(void *param, obs_source_t *source,
 		goto unlock;
 	}
 
+	// 判断当前数据源是否是rtp互动教室数据源对象，获取数据源的焦点配置状态...
+	bool bIsRtpSource = ((astrcmpi(source->info.id, "rtp_source") == 0) ? true : false);
+	obs_data_t * lpSettings = obs_source_get_settings(source);
+	bool bIsFocusMix = obs_data_get_bool(lpSettings, "focus_mix");
+	obs_data_release(lpSettings);
+	// 如果是互动教室数据源并且不是焦点，需要强制为静音状态...
+	muted = ((bIsRtpSource && !bIsFocusMix) ? true : muted);
+
 	if (!muted) {
 		/* apply volume */
 		if (!close_float(vol, 1.0f, EPSILON)) {
@@ -216,11 +236,14 @@ static void on_audio_playback(void *param, obs_source_t *source,
 			while (cur < end)
 				*(cur++) *= vol;
 		}
+
 		// 将转换后的音频数据投递到监视器(扬声器)的缓冲区当中...
 		memcpy(output, resample_data[0], resample_frames * monitor->channels * sizeof(float));
-		// 注意：目前采用折中方案，多路监视音频需要进行混音之后才能进行回音消除...
-		// 只投递互动教室的音频回放数据进行回音消除，其它音频不进行回音消除...
-		if (astrcmpi(source->info.id, "rtp_source") == 0) {
+
+		// 注意：目前采用折中方案，多路监视音频需要进行混音之后才能进行回音消除 => 反复测试回音消除效果不好...
+		// 只投递处于焦点的互动教室的音频回放数据进行回音消除，其它音频不进行回音消除...
+		// setAudioMixer => 屏蔽了不是焦点状态的互动教室的音频的本地回放...
+		if (bIsRtpSource && bIsFocusMix) {
 			// 构造需要投递给麦克风数据源的结构体 => 样本总是float格式...
 			struct obs_source_audio theEchoData = { 0 };
 			theEchoData.data[0] = resample_data[0];

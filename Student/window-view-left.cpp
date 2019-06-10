@@ -15,7 +15,6 @@
 CViewLeft::CViewLeft(QWidget *parent, Qt::WindowFlags flags)
   : OBSQTDisplay(parent, flags)
   , m_bCanAutoLink(true)
-  , m_nLiveCameraID(-1)
   , m_nCurAutoID(-1)
   , m_nAutoTimer(-1)
   , m_nFocusID(-1)
@@ -118,9 +117,7 @@ int CViewLeft::GetNextAutoID(int nCurDBCameraID)
 // 响应从CRemoteSession发出的事件通知信号...
 void CViewLeft::onTriggerLiveStart(int nDBCameraID)
 {
-	blog(LOG_INFO, "== onTriggerLiveStart Begin => LiveID: %d ==", m_nLiveCameraID);
-	// 如果正在推流的通道编号有效，停止通道...
-	this->doCommonLiveStop(m_nLiveCameraID);
+	blog(LOG_INFO, "== onTriggerLiveStart Begin => LiveID: %d ==", nDBCameraID);
 	// 在摄像头通道集合中查找指定的通道编号...
 	GM_MapCamera::iterator itorItem = m_MapCamera.find(nDBCameraID);
 	if (itorItem == m_MapCamera.end())
@@ -128,9 +125,8 @@ void CViewLeft::onTriggerLiveStart(int nDBCameraID)
 	// 执行摄像头通道的开启推流线程...
 	CViewCamera * lpViewCamera = itorItem->second;
 	lpViewCamera->doUdpSendThreadStart();
-	m_nLiveCameraID = nDBCameraID;
 	// 打印当前新的正在推流通道编号...
-	blog(LOG_INFO, "== onTriggerLiveStart End => LiveID: %d ==", m_nLiveCameraID);
+	blog(LOG_INFO, "== onTriggerLiveStart End => LiveID: %d ==", nDBCameraID);
 }
 
 // 响应从CRemoteSession发出的事件通知信号...
@@ -151,26 +147,13 @@ void CViewLeft::onTriggerLiveStop(int nDBCameraID)
 // 统一的停止正在推流通道停止命令接口函数...
 void CViewLeft::doCommonLiveStop(int nDBCameraID)
 {
-	// 如果正在推流通道已经无效，直接返回...
-	if (m_nLiveCameraID <= 0 || nDBCameraID <= 0 )
-		return;
-	// 如果通道编号与正在推流通道不一致，打印信息，然后返回...
-	if (m_nLiveCameraID != nDBCameraID) {
-		blog(LOG_INFO, "== doCommonLiveStop => Error, LiveID: %d, StopID: %d ==", m_nLiveCameraID, nDBCameraID);
-		return;
-	}
-	ASSERT(m_nLiveCameraID == nDBCameraID);
 	// 如果没有找到正在推流的对象，重置推流通道编号，返回...
 	GM_MapCamera::iterator itorItem = m_MapCamera.find(nDBCameraID);
-	if (itorItem == m_MapCamera.end()) {
-		m_nLiveCameraID = -1;
+	if (itorItem == m_MapCamera.end())
 		return;
-	}
 	// 找到了正在推流的对象，发起停止命令...
 	CViewCamera * lpViewCamera = itorItem->second;
 	lpViewCamera->doUdpSendThreadStop();
-	// 重置正在推流编号...
-	m_nLiveCameraID = -1;
 	// 打印已经停止的指定通道编号...
 	blog(LOG_INFO, "== doCommonLiveStop => StopID: %d ==", nDBCameraID);
 }
@@ -188,35 +171,62 @@ void CViewLeft::doUdpPusherLogout(int nDBCameraID)
 // 处理右侧播放线程已经停止通知...
 void CViewLeft::onUdpRecvThreadStop()
 {
-	/*GM_MapCamera::iterator itorItem;
+	GM_MapCamera::iterator itorItem;
 	CViewCamera * lpViewCamera = NULL;
 	// 遍历所有的通道，告知右侧播放线程已经停止，需要重建预览画面的SDL对象...
 	for (itorItem = m_MapCamera.begin(); itorItem != m_MapCamera.end(); ++itorItem) {
 		lpViewCamera = itorItem->second;
-		if (lpViewCamera == NULL) continue;
+		if (lpViewCamera == NULL)
+			continue;
 		lpViewCamera->onUdpRecvThreadStop();
-	}*/
+	}
 	//////////////////////////////////////////////////////
 	// 注意：如果是非SDL播放，可能才有下面的方法...
 	//////////////////////////////////////////////////////
 	// 查找正在推流的通道对象，没找到直接返回...
-	GM_MapCamera::iterator itorItem = m_MapCamera.find(m_nLiveCameraID);
+	/*GM_MapCamera::iterator itorItem = m_MapCamera.find(m_nLiveCameraID);
 	if (itorItem == m_MapCamera.end())
 		return;
 	// 通知正在推流的通道，右侧播放线程已经停止...
 	CViewCamera * lpViewCamera = itorItem->second;
-	lpViewCamera->onUdpRecvThreadStop();
+	lpViewCamera->onUdpRecvThreadStop();*/
 }
 
 // 向正在推流的通道投递扬声器的音频数据内容...
 void CViewLeft::doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf)
 {
-	GM_MapCamera::iterator itorItem = m_MapCamera.find(m_nLiveCameraID);
+	GM_MapCamera::iterator itorItem;
+	CViewCamera * lpViewCamera = NULL;
+	// 遍历所有的通道，将扬声器的音频数据与麦克风数据进行回音消除...
+	for (itorItem = m_MapCamera.begin(); itorItem != m_MapCamera.end(); ++itorItem) {
+		lpViewCamera = itorItem->second;
+		if (lpViewCamera == NULL)
+			continue;
+		lpViewCamera->doEchoCancel(lpBufData, nBufSize, nSampleRate, nChannelNum, msInSndCardBuf);
+	}
+
+	/*GM_MapCamera::iterator itorItem = m_MapCamera.find(m_nLiveCameraID);
 	if (itorItem == m_MapCamera.end())
 		return;
 	// 通知正在推流的通道，扬声器的音频数据到达...
 	CViewCamera * lpViewCamera = itorItem->second;
-	lpViewCamera->doEchoCancel(lpBufData, nBufSize, nSampleRate, nChannelNum, msInSndCardBuf);
+	lpViewCamera->doEchoCancel(lpBufData, nBufSize, nSampleRate, nChannelNum, msInSndCardBuf);*/
+}
+
+bool CViewLeft::IsLeftPusher()
+{
+	GM_MapCamera::iterator itorItem;
+	CViewCamera * lpViewCamera = NULL;
+	for (itorItem = m_MapCamera.begin(); itorItem != m_MapCamera.end(); ++itorItem) {
+		lpViewCamera = itorItem->second;
+		if (lpViewCamera == NULL)
+			continue;
+		// 只要有一个通道在推流，返回正确...
+		if (lpViewCamera->IsCameraPusher())
+			return true;
+		ASSERT(!lpViewCamera->IsCameraPusher());
+	}
+	return false;
 }
 
 void CViewLeft::paintEvent(QPaintEvent *event)

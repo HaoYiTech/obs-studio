@@ -66,6 +66,13 @@ OBSProjector::OBSProjector(QWidget *widget, obs_source_t *source_, int monitor,
 		setCursor(QCursor(empty));
 	}
 
+	// 判断是否是rtp数据源的资源投影模式，尝试特殊处理...
+	const char * lpSrcID = obs_source_get_id(source);
+	bool bIsRtpSource = ((astrcmpi(lpSrcID, App()->InteractRtpSource()) == 0) ? true : false);
+	if (!this->isWindow && bIsRtpSource && this->type == ProjectorType::Source) {
+		this->InitRtpSource();
+	}
+
 	if (type == ProjectorType::Multiview) {
 		obs_enter_graphics();
 		gs_render_start(true);
@@ -173,7 +180,7 @@ static OBSSource CreateLabel(const char *name, size_t h)
 	obs_data_set_string(font, "face", "Monospace");
 #endif
 	obs_data_set_int(font, "flags", 1); // Bold text
-	obs_data_set_int(font, "size", int(h / 9.81));
+	obs_data_set_int(font, "size", int(h)); //int(h / 9.81));
 
 	obs_data_set_obj(settings, "font", font);
 	obs_data_set_string(settings, "text", text.c_str());
@@ -185,10 +192,8 @@ static OBSSource CreateLabel(const char *name, size_t h)
 	const char *text_source_id = "text_ft2_source";
 #endif
 
-	OBSSource txtSource = obs_source_create_private(text_source_id, name,
-			settings);
+	OBSSource txtSource = obs_source_create_private(text_source_id, name, settings);
 	obs_source_release(txtSource);
-
 	obs_data_release(font);
 	obs_data_release(settings);
 
@@ -587,6 +592,133 @@ void OBSProjector::OBSRenderMultiview(void *data, uint32_t cx, uint32_t cy)
 	gs_projection_pop();
 }
 
+void OBSProjector::InitRtpSource()
+{
+	this->m_nRtpSourceCount = 0;
+	OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	auto funcSize = [](obs_scene_t *, obs_sceneitem_t *item, void *param) {
+		OBSProjector * lpProjector = reinterpret_cast<OBSProjector*>(param);
+		obs_source_t *source = obs_sceneitem_get_source(item);
+		uint32_t flags = obs_source_get_output_flags(source);
+		int64_t nSceneID = obs_sceneitem_get_id(item);
+		// 如果没有视频数据源标志，继续寻找...
+		if ((flags & OBS_SOURCE_VIDEO) == 0)
+			return true;
+		// 如果不是rtp_source标记，继续寻找...
+		const char * lpSrcID = obs_source_get_id(source);
+		if (astrcmpi(lpSrcID, App()->InteractRtpSource()) != 0)
+			return true;
+		// 这里不能直接调用 CreateLabel() 会发生互锁问题...
+		obs_data_t * lpSettings = obs_source_get_settings(source);
+		lpProjector->m_MapLabel[nSceneID] = obs_data_get_string(lpSettings, "camera_name");
+		obs_data_release(lpSettings);
+		// 累加数据源计数器，直接使用投影对象...
+		lpProjector->m_nRtpSourceCount += 1;
+		return true;
+	};
+	// 遍历所有有效的数据源个数，如果没有rtp_source数据源，返回失败...
+	obs_scene_enum_items(main->GetCurrentScene(), funcSize, this);
+	// 如果rtp数据源有效，需要新建标题栏名称数据源集合...
+	for (GM_MapLabel::iterator itorItem = m_MapLabel.begin(); itorItem != m_MapLabel.end(); ++itorItem) {
+		m_MapSource[itorItem->first] = CreateLabel(itorItem->second, m_nLabelFontSize);
+	}
+}
+
+bool OBSProjector::RenderRtpSource(uint32_t cx, uint32_t cy)
+{
+	// 计算需要的行、列数字...
+	OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	int nCol = ceil(sqrt(this->m_nRtpSourceCount * 1.0f));
+	int nRow = nCol;
+	// 如果是两个数据源 => 1行2列...
+	if (this->m_nRtpSourceCount == 2) {
+		nCol = 2; nRow = 1;
+	}
+	// 计算每个数据源显示的高度和宽度...
+	struct ItemInfo {
+		int nWindowRow;
+		int nWindowCol;
+		int nWindowCX;
+		int nWindowCY;
+		int nWindowInx;
+		OBSProjector * lpProjector;
+	} info = { nRow, nCol, (cx-1)/nCol-1, (cy-1)/nRow-1, 0, this };
+	auto funcDraw = [](obs_scene_t *, obs_sceneitem_t *item, void *param) {
+		ItemInfo * lpQInfo = reinterpret_cast<ItemInfo*>(param);
+		obs_source_t *source = obs_sceneitem_get_source(item);
+		uint32_t flags = obs_source_get_output_flags(source);
+		int64_t nSceneID = obs_sceneitem_get_id(item);
+		// 如果没有视频数据源标志，继续寻找...
+		if ((flags & OBS_SOURCE_VIDEO) == 0)
+			return true;
+		// 如果不是rtp_source标记，继续寻找...
+		const char * lpSrcID = obs_source_get_id(source);
+		if (astrcmpi(lpSrcID, App()->InteractRtpSource()) != 0)
+			return true;
+		// 获取当前有效数据源的长度和宽度的像素值...
+		uint32_t targetCX = std::max(obs_source_get_width(source), 1u);
+		uint32_t targetCY = std::max(obs_source_get_height(source), 1u);
+		int      newCX, newCY, x, y;
+		float    scale;
+		// 计算数据源绘制区域的顶点坐标和缩放比例大小...
+		GetScaleAndCenterPos(targetCX, targetCY, lpQInfo->nWindowCX, lpQInfo->nWindowCY, x, y, scale);
+		newCX = int(scale * float(targetCX));
+		newCY = int(scale * float(targetCY));
+		// 根据当前的计数器与行列，重新计算顶点坐标...
+		x += (lpQInfo->nWindowInx % lpQInfo->nWindowCol) * lpQInfo->nWindowCX; //+((lpQInfo->nWindowInx % lpQInfo->nWindowCol) > 0 ? 2 : 0);
+		y += (lpQInfo->nWindowInx / lpQInfo->nWindowCol) * lpQInfo->nWindowCY; //+((lpQInfo->nWindowInx / lpQInfo->nWindowCol) > 0 ? 2 : 0);
+		// 对当前数据源进行视图绘制工作...
+		gs_ortho(0.0f, float(targetCX), 0.0f, float(targetCY), -100.0f, 100.0f);
+		gs_set_viewport(x, y, newCX, newCY);
+		obs_source_video_render(source);
+		// 累加有效数据源的计数器...
+		lpQInfo->nWindowInx += 1;
+		// 绘制矩形框 => 需要根据缩放变量重新计算矩形的宽度和高度...
+		/*gs_effect_t  *solid = obs_get_base_effect(OBS_EFFECT_SOLID);
+		gs_eparam_t  *color = gs_effect_get_param_by_name(solid, "color");
+		auto drawBox = [solid, color](float cx, float cy, uint32_t colorVal) {
+			gs_effect_set_color(color, colorVal);
+			while (gs_effect_loop(solid, "Solid")) {
+				gs_draw_sprite(nullptr, 0, (uint32_t)cx, (uint32_t)cy);
+			}
+		};
+		newCX = int(float(lpQInfo->nWindowCX) / scale);
+		newCY = int(float(30) / scale);
+		drawBox(newCX, newCY, 0xD91F1F1F)*/
+		// 查找对应的标题栏数据源，直接对标题数据源进行渲染绘制...
+		int nFontSize = lpQInfo->lpProjector->m_nLabelFontSize;
+		GM_MapSource & theMapSource = lpQInfo->lpProjector->m_MapSource;
+		GM_MapSource::iterator itorItem = theMapSource.find(nSceneID);
+		if (itorItem != theMapSource.end()) {
+			obs_source * label = itorItem->second;
+			obs_data_t * lpSettings = obs_source_get_settings(label);
+			obs_data_t * lpFont = obs_data_get_obj(lpSettings, "font");
+			// 设置显示偏移位置信息，计算新字体大小 => 使用窗口缩放比例...
+			gs_set_viewport(x + 10, y + 10, newCX, newCY);
+			int newFontSize = int(float(nFontSize) / scale);
+			// 如果新字体与旧字体大小不一致，需要更新数据源...
+			if (newFontSize != obs_data_get_int(lpFont, "size")) {
+				obs_data_set_int(lpFont, "size", newFontSize);
+				obs_source_update(label, lpSettings);
+			}
+			// 释放引用计数并渲染数据源...
+			obs_data_release(lpFont);
+			obs_data_release(lpSettings);
+			obs_source_video_render(label);
+		}
+		return true;
+	};
+	// 保护当前视图和投影...
+	gs_viewport_push();
+	gs_projection_push();
+	// 遍历所有有效的数据源个数，执行数据源渲染操作...
+	obs_scene_enum_items(main->GetCurrentScene(), funcDraw, &info);
+	// 恢复当前视图和投影...
+	gs_projection_pop();
+	gs_viewport_pop();
+	return true;
+}
+
 void OBSProjector::OBSRender(void *data, uint32_t cx, uint32_t cy)
 {
 	OBSProjector *window = reinterpret_cast<OBSProjector*>(data);
@@ -597,10 +729,16 @@ void OBSProjector::OBSRender(void *data, uint32_t cx, uint32_t cy)
 	OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
 	OBSSource source = window->source;
 
+	// 判断是否是rtp数据源的资源投影模式，尝试特殊处理...
+	if (window->m_nRtpSourceCount > 0) {
+		window->RenderRtpSource(cx, cy);
+		return;
+	}
+
 	uint32_t targetCX;
 	uint32_t targetCY;
-	int      x, y;
 	int      newCX, newCY;
+	int      x, y;
 	float    scale;
 
 	if (source) {
@@ -623,10 +761,8 @@ void OBSProjector::OBSRender(void *data, uint32_t cx, uint32_t cy)
 	gs_ortho(0.0f, float(targetCX), 0.0f, float(targetCY), -100.0f, 100.0f);
 	gs_set_viewport(x, y, newCX, newCY);
 
-	if (window->type == ProjectorType::Preview &&
-	    main->IsPreviewProgramMode()) {
+	if (window->type == ProjectorType::Preview && main->IsPreviewProgramMode()) {
 		OBSSource curSource = main->GetCurrentSceneSource();
-
 		if (source != curSource) {
 			obs_source_dec_showing(source);
 			obs_source_inc_showing(curSource);
@@ -822,8 +958,8 @@ void OBSProjector::UpdateMultiview()
 
 	int curIdx = 0;
 
-	multiviewLabels[0] = CreateLabel(Str("StudioMode.Preview"), h / 2);
-	multiviewLabels[1] = CreateLabel(Str("StudioMode.Program"), h / 2);
+	multiviewLabels[0] = CreateLabel(Str("StudioMode.Preview"), h / (2 * 9.81));
+	multiviewLabels[1] = CreateLabel(Str("StudioMode.Program"), h / (2 * 9.81));
 
 	for (size_t i = 0; i < scenes.sources.num && curIdx < 8; i++) {
 		obs_source_t *src = scenes.sources.array[i];
@@ -842,7 +978,7 @@ void OBSProjector::UpdateMultiview()
 		name += " - ";
 		name += obs_source_get_name(src);
 
-		multiviewLabels[curIdx + 2] = CreateLabel(name.c_str(), h / 3);
+		multiviewLabels[curIdx + 2] = CreateLabel(name.c_str(), h / (3 * 9.81));
 
 		curIdx++;
 	}

@@ -59,6 +59,7 @@ public:
 	~OBSBasicProperties();
 public:
 	void Init();
+	void doRtpStopClose();
 	OBSPropertiesView * GetPropView() { return view; }
 protected:
 	virtual void closeEvent(QCloseEvent *event) override;

@@ -7,9 +7,6 @@ struct win_rtp_source {
 	CUDPRecvThread * recvThread;
 };
 
-// 拉流线程是否有效标志...
-bool g_HasRecvThread = false;
-
 static const char *rtp_source_getname(void *unused)
 {
 	UNUSED_PARAMETER(unused);
@@ -34,12 +31,12 @@ static void doCameraOnLine(void *data, obs_data_t *settings)
 		// 将画面绘制过程设置为非活动状态，等待新的画面到达...
 		obs_source_output_video(lpRtpSource->source, NULL);
 	}
-	// 设置拉流线程未创建标志...
-	g_HasRecvThread = false;
+	// 设置拉流线程未创建标志 => 多个rtp，必须用配置方式...
+	obs_data_set_bool(settings, "recv_thread", false);
 	// 房间号必须有效、摄像头编号必须有效、摄像头必须在线、套接字必须有效、地址必须有效...
 	if (nDBRoomID <= 0 || nDBCameraID <= 0 || nTCPSockFD <= 0 || lpUdpAddr == NULL || nUdpPort <= 0) {
 		blog(LOG_INFO, "%s rtp_source_update => OnLine, HasRecv: %d, RoomID: %d, CameraID: %d, TCPSock: %d, %s:%d",
-			TM_RECV_NAME, g_HasRecvThread, nDBRoomID, nDBCameraID, nTCPSockFD, lpUdpAddr, nUdpPort);
+			TM_RECV_NAME, false, nDBRoomID, nDBCameraID, nTCPSockFD, lpUdpAddr, nUdpPort);
 		return;
 	}
 	// 使用验证过的有效参数，重建拉流对象，并初始化，将接收线程对象保存到数据源管理器当中...
@@ -48,11 +45,11 @@ static void doCameraOnLine(void *data, obs_data_t *settings)
 	// 让播放层不要对数据帧进行缓存，直接最快播放 => 这个很重要，可以有效降低播放延时...
 	obs_source_set_async_unbuffered(lpRtpSource->source, true);
 	//obs_source_set_async_decoupled(lpRtpSource->source, true);
-	// 设置拉流线程已创建标志...
-	g_HasRecvThread = true;
+	// 设置拉流线程未创建标志 => 多个rtp，必须用配置方式...
+	obs_data_set_bool(settings, "recv_thread", true);
 	// 打印成功创建接收线程信息 => 将所有传入的参数打印出来...
 	blog(LOG_INFO, "%s rtp_source_update => OnLine, HasRecv: %d, RoomID: %d, CameraID: %d, TCPSock: %d, %s:%d",
-		TM_RECV_NAME, g_HasRecvThread, nDBRoomID, nDBCameraID, nTCPSockFD, lpUdpAddr, nUdpPort);
+		TM_RECV_NAME, true, nDBRoomID, nDBCameraID, nTCPSockFD, lpUdpAddr, nUdpPort);
 }
 
 // 处理摄像头通道下线通知...
@@ -70,13 +67,13 @@ static void doCameraOffLine(void *data, obs_data_t *settings)
 	do {
 		// 如果是摄像头通道下线通知 => 拉流对象为空，直接返回...
 		if (lpRtpSource->recvThread == NULL) {
-			g_HasRecvThread = false;
+			obs_data_set_bool(settings, "recv_thread", false);
 			break;
 		}
 		ASSERT(lpRtpSource->recvThread != NULL);
 		// 如果拉流对象不为空，但通道编号不一致，不能删除，直接返回...
 		if (lpRtpSource->recvThread->GetDBCameraID() != nDBCameraID) {
-			g_HasRecvThread = true;
+			obs_data_set_bool(settings, "recv_thread", true);
 			break;
 		}
 		// 如果拉流对象不为空，通道编号一致，删除拉流对象...
@@ -84,12 +81,13 @@ static void doCameraOffLine(void *data, obs_data_t *settings)
 		lpRtpSource->recvThread = NULL;
 		// 将画面绘制过程设置为非活动状态，等待新的画面到达...
 		obs_source_output_video(lpRtpSource->source, NULL);
-		// 设置拉流线程未创建标志...
-		g_HasRecvThread = false;
+		// 设置拉流线程未创建标志 => 多个rtp，必须用配置方式...
+		obs_data_set_bool(settings, "recv_thread", false);
 	} while (false);
 	// 打印成功删除拉流线程信息 => 将所有传入的参数打印出来...
+	bool bHasRecvThread = obs_data_get_bool(settings, "recv_thread");
 	blog(LOG_INFO, "%s rtp_source_update => OffLine, HasRecv: %d, RoomID: %d, CameraID: %d, TCPSock: %d, %s:%d",
-		TM_RECV_NAME, g_HasRecvThread, nDBRoomID, nDBCameraID, nTCPSockFD, lpUdpAddr, nUdpPort);
+		TM_RECV_NAME, bHasRecvThread, nDBRoomID, nDBCameraID, nTCPSockFD, lpUdpAddr, nUdpPort);
 }
 
 // 处理rtp_source资源配置发生变化的事件通知...
@@ -106,10 +104,10 @@ static void *rtp_source_create(obs_data_t *settings, obs_source_t *source)
 {
 	// 创建rtp数据源变量管理对象...
 	win_rtp_source * lpRtpSource = (win_rtp_source*)bzalloc(sizeof(struct win_rtp_source));
+	// 设置拉流线程未创建标志 => 多个rtp，必须用配置方式...
+	obs_data_set_bool(settings, "recv_thread", false);
 	// 将传递过来的obs资源对象保存起来...
 	lpRtpSource->source = source;
-	// 设置拉流线程未创建标志...
-	g_HasRecvThread = false;
 	// 返回资源变量管理对象...
 	return lpRtpSource;
 }
@@ -122,8 +120,6 @@ static void rtp_source_destroy(void *data)
 		delete lpRtpSource->recvThread;
 		lpRtpSource->recvThread = NULL;
 	}
-	// 设置拉流线程未创建标志...
-	g_HasRecvThread = false;
 	// 释放rtp资源管理器...
 	bfree(lpRtpSource);
 }
@@ -145,19 +141,24 @@ static void rtp_source_tick(void *data, float seconds)
 {
 	// 接收线程如果无效，直接返回...
 	win_rtp_source * lpRtpSource = (win_rtp_source*)data;
-	// 设置拉流线程未创建标志...
-	if (lpRtpSource->recvThread == NULL) {
-		g_HasRecvThread = false;
-		return;
-	}
-	// 如果已经发生登录超时，删除接收线程...
-	if( lpRtpSource->recvThread->IsLoginTimeout() ) {
-		delete lpRtpSource->recvThread;
-		lpRtpSource->recvThread = NULL;
-		// 设置拉流线程未创建标志...
-		g_HasRecvThread = false;
-		return;
-	}
+	obs_data_t * lpSettings = obs_source_get_settings(lpRtpSource->source);
+	do {
+		// 设置拉流线程未创建标志 => 多个rtp，必须用配置方式...
+		if (lpRtpSource->recvThread == NULL) {
+			obs_data_set_bool(lpSettings, "recv_thread", false);
+			break;
+		}
+		// 如果已经发生登录超时，删除接收线程...
+		if (lpRtpSource->recvThread->IsLoginTimeout()) {
+			delete lpRtpSource->recvThread;
+			lpRtpSource->recvThread = NULL;
+			// 设置拉流线程未创建标志 => 多个rtp，必须用配置方式...
+			obs_data_set_bool(lpSettings, "recv_thread", false);
+			break;
+		}
+	} while (false);
+	// 注意：这里必须手动进行引用计数减少，否则，会造成内存泄漏 => obs_source_get_settings 会增加引用计数...
+	obs_data_release(lpSettings);
 }
 
 static void rtp_source_activate(void *data)
@@ -183,6 +184,5 @@ void RegisterWinRtpSource()
 	rtp_source.activate        = rtp_source_activate;
 	rtp_source.deactivate      = rtp_source_deactivate;
 	rtp_source.video_tick      = rtp_source_tick;
-	rtp_source.type_data       = (void*)&g_HasRecvThread;
 	obs_register_source(&rtp_source);
 }

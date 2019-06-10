@@ -37,9 +37,9 @@ bool OBSBasicSourceSelect::EnumSources(void *data, obs_source_t *source)
 		window->ui->sourceList->addItem(QT_UTF8(name));
 	}
 	// 如果数据源是rtp_source资源 => 设置标志...
-	if (astrcmpi(id, App()->InteractRtpSource()) == 0) {
-		window->m_bHasRtpSource = true;
-	}
+	//if (astrcmpi(id, App()->InteractRtpSource()) == 0) {
+	//	window->m_bHasRtpSource = true;
+	//}
 	// 如果数据源是麦克风数据源 => 设置标志...
 	if (astrcmpi(id, App()->InputAudioSource()) == 0) {
 		window->m_bHasMicSource = true;
@@ -212,13 +212,15 @@ void OBSBasicSourceSelect::on_buttonBox_accepted()
 
 	// 当前新添加的资源是否是 => rtp_source => 互动教室...
 	bool bIsNewRtpSource = ((astrcmpi(id, App()->InteractRtpSource()) == 0) ? true : false);
+
+	// 从 1.2.0 开始，允许创建多个互动教室的学生画面，下面的限制代码必须失效...
 	// 如果已经有了rtp_source资源，就不能再添加新的rtp_source资源了...
-	if (m_bHasRtpSource && bIsNewRtpSource) {
+	/*if (m_bHasRtpSource && bIsNewRtpSource) {
 		OBSMessageBox::information(this, 
 			QTStr("SingleRtpSource.Title"), 
 			QTStr("SingleRtpSource.Text"));
 		return;
-	}
+	}*/
 
 	// 当前新添加的资源是否是 => InputAudioSource => 麦克风输入...
 	bool bIsNewMicSource = ((astrcmpi(id, App()->InputAudioSource()) == 0) ? true : false);
@@ -308,7 +310,6 @@ OBSBasicSourceSelect::OBSBasicSourceSelect(OBSBasic *parent, const char *id_)
 	  ui      (new Ui::OBSBasicSourceSelect),
 	  id      (id_)
 {
-	m_bHasRtpSource = false;
 	m_bHasMicSource = false;
 
 	ui->setupUi(this);

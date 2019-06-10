@@ -37,12 +37,12 @@ public slots:
 	void doEnableCamera(OBSQTDisplay * lpNewDisplay);
 	bool doVolumeEvent(int inKeyItem);
 public:
-	CViewCamera * FindDBCameraByID(int nDBCameraID);
-	CViewCamera * AddNewCamera(GM_MapData & inWebData);
 	void doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf);
+	CViewCamera * AddNewCamera(GM_MapData & inWebData);
+	CViewCamera * FindDBCameraByID(int nDBCameraID);
+	bool IsLeftPusher();
 public:
 	void SetCanAutoLink(bool bIsCanAuto) { m_bCanAutoLink = bIsCanAuto; }
-	int  GetLiveCameraID() { return m_nLiveCameraID; }
 	int  GetCurPage() { return m_nCurPage; }
 	int  GetMaxPage() { return m_nMaxPage; }
 	int  GetFocusID() { return m_nFocusID; }
@@ -69,7 +69,6 @@ protected:
 	void resizeEvent(QResizeEvent *event) override;
 	void timerEvent(QTimerEvent * inEvent) override;
 private:
-	int             m_nLiveCameraID;    // 正在进行直播推流的通道编号...
 	int             m_nAutoTimer;		// IPC自动重连时钟...
 	int				m_nCurPage;			// 当前页...
 	int				m_nMaxPage;			// 总页数...

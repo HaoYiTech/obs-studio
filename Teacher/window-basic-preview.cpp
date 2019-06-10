@@ -556,6 +556,18 @@ void OBSBasicPreview::DoSelect(const vec2 &pos)
 	OBSSceneItem item  = GetItemAtPos(pos, true);
 
 	obs_scene_enum_items(scene, select_one, (obs_sceneitem_t*)item);
+
+	obs_source_t * lpSource = obs_sceneitem_get_source(item);
+	const char * lpSrcID = obs_source_get_id(lpSource);
+	// 进行ID判断，如果是rtp资源，需要获取摄像头通道编号...
+	if (astrcmpi(lpSrcID, App()->InteractRtpSource()) == 0) {
+		obs_data_t * lpSettings = obs_source_get_settings(lpSource);
+		int theDBCameraID = obs_data_get_int(lpSettings, "camera_id");
+		// 将新的摄像头编号更新到云台控制当中...
+		main->doUpdatePTZ(theDBCameraID);
+		// 注意：这里必须手动进行引用计数减少，否则，会造成内存泄漏...
+		obs_data_release(lpSettings);
+	}
 }
 
 void OBSBasicPreview::DoCtrlSelect(const vec2 &pos)
@@ -1328,8 +1340,13 @@ void OBSBasicPreview::mouseDoubleClickEvent(QMouseEvent *event)
 	// 如果当前资源本身就是第一个窗口，直接返回...
 	if (posItem.x <= 0.0f && posItem.y <= 0.0f)
 		return;
+	// 向主窗口通知，鼠标双击事件，进行位置切换...
+	main->doSceneItemExchangePos(itemSelect);
+	// 向服务器发送当前摄像头推流编号的命令...
+	main->doSendCameraPusherID(itemSelect);
+
 	// 初始化场景资源算子对象 => 根据序号寻找第一个资源...
-	BaseSceneItem theRtpSceneItem = { 0 };
+	/*BaseSceneItem theRtpSceneItem = { 0 };
 	theRtpSceneItem.first_item = true;
 	// 每个场景资源的回调接口函数...
 	auto func = [](obs_scene_t *, obs_sceneitem_t *item, void *param)
@@ -1360,5 +1377,5 @@ void OBSBasicPreview::mouseDoubleClickEvent(QMouseEvent *event)
 		}
 	}
 	// 向主窗口通知，鼠标双击事件，进行位置切换...
-	main->doSceneItemExchangePos(itemSelect);
+	main->doSceneItemExchangePos(itemSelect);*/
 }

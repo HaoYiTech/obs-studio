@@ -141,6 +141,7 @@ private:
 
 	std::vector<OBSSignal> signalHandlers;
 
+	int  m_nDBCameraPusherID = 0;
 	bool m_bIsSlientClose = false;
 	bool m_bIsLoaded = false;
 	long disableSaving = 1;
@@ -427,7 +428,7 @@ public slots:
 	void onTriggerCameraList(Json::Value & value);
 	void onTriggerCameraLiveStop(int nDBCameraID);
 	void onTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID);
-	void onTriggerRtpSource(int nSceneItemID, int nDBCameraID, bool bIsCameraOnLine);
+	void onTriggerRtpSource(int nDBCameraID, bool bIsCameraOnLine);
 private slots:
 	void AddSceneItem(OBSSceneItem item);
 	void RemoveSceneItem(OBSSceneItem item);
@@ -586,6 +587,8 @@ public:
 	void doSceneItemLayout(obs_sceneitem_t * scene_item);
 	void doSceneItemExchangePos(obs_sceneitem_t * select_item);
 	void doSceneItemToFirst(obs_sceneitem_t * select_item);
+	void doSendCameraPusherID(obs_sceneitem_t * select_item);
+	void doUpdatePTZ(int nDBCameraID);
 	bool doCheckCanRecord();
 protected:
 	virtual void closeEvent(QCloseEvent *event) override;

@@ -541,7 +541,7 @@ void CUDPSendThread::doCalcAVJamFlag()
 	pthread_mutex_lock(&m_Mutex);
 	// 遍历环形队列，缓存了5秒数据，认为发生了拥塞，设置只能灌输视频关键帧标志...
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketBuffer[nPerPackSize] = {0};
+	char szPacketBuffer[nPerPackSize] = {0};
 	circlebuf & cur_circle = m_video_circle;
 	rtp_hdr_t * lpCurHeader = NULL;
 	uint32_t    min_ts = 0;
@@ -599,7 +599,7 @@ void CUDPSendThread::doCalcAVJamFlag()
 		return;
 	// 遍历环形队列，如果有两个关键帧存在，删除第一个关键帧之前的所有数据包...
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketBuffer[nPerPackSize] = {0};
+	char szPacketBuffer[nPerPackSize] = {0};
 	circlebuf & cur_circle = m_video_circle;
 	rtp_hdr_t * lpCurHeader = NULL;
 	uint32_t    min_seq = 0;
@@ -649,7 +649,7 @@ uint32_t CUDPSendThread::doEarseAudioByTime(uint32_t inTimeStamp)
 		return nAudioJamSeq;
 	// 遍历环形队列，删除所有时间戳小于输入时间戳的数据包，保持音视频时间戳同步...
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketBuffer[nPerPackSize] = {0};
+	char szPacketBuffer[nPerPackSize] = {0};
 	circlebuf & cur_circle = m_audio_circle;
 	rtp_hdr_t * lpCurHeader = NULL;
 	uint32_t    nPosition = 0;
@@ -718,7 +718,7 @@ void CUDPSendThread::doSendLosePacket(bool bIsAudio)
 		// 所以，一定要用接口读取完整的数据包之后，再进行操作；如果用指针，一旦发生回还，就会错误...
 		/////////////////////////////////////////////////////////////////////////////////////////////////
 		const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-		static char szPacketBuffer[nPerPackSize] = {0};
+		char szPacketBuffer[nPerPackSize] = {0};
 		circlebuf_peek_front(&cur_circle, szPacketBuffer, nPerPackSize);
 		lpFrontHeader = (rtp_hdr_t*)szPacketBuffer;
 		// 如果要补充的数据包序号比最小序号还要小 => 没有找到，直接返回...
@@ -799,7 +799,7 @@ void CUDPSendThread::doSendPacket(bool bIsAudio)
 		// 所以，一定要用接口读取完整的数据包之后，再进行操作；如果用指针，一旦发生回还，就会错误...
 		/////////////////////////////////////////////////////////////////////////////////////////////////
 		const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-		static char szPacketBuffer[nPerPackSize] = {0};
+		char szPacketBuffer[nPerPackSize] = {0};
 		circlebuf_peek_front(&cur_circle, szPacketBuffer, nPerPackSize);
 		// 计算环形队列中最前面数据包的头指针 => 最小序号...
 		lpFrontHeader = (rtp_hdr_t*)szPacketBuffer;
@@ -1024,7 +1024,8 @@ void CUDPSendThread::doTagSupplyProcess(char * lpBuffer, int inRecvLen)
 		nDataSize -= sizeof(int);
 	}
 	// 打印已收到补包命令...
-	//blog(LOG_INFO, "%s Supply Recv => Count: %d, Type: %d", TM_SEND_NAME, rtpSupply.suSize / sizeof(int), rtpSupply.suType);
+	blog(LOG_INFO, "%s Supply Recv => Live: %d, Count: %d, Type: %d", TM_SEND_NAME,
+		 m_rtp_create.liveID, rtpSupply.suSize / sizeof(int), rtpSupply.suType);
 }
 
 void CUDPSendThread::doProcMaxConSeq(bool bIsAudio, uint32_t inMaxConSeq)
@@ -1043,7 +1044,7 @@ void CUDPSendThread::doProcMaxConSeq(bool bIsAudio, uint32_t inMaxConSeq)
 	// 所以，一定要用接口读取完整的数据包之后，再进行操作；如果用指针，一旦发生回还，就会错误...
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketBuffer[nPerPackSize] = {0};
+	char szPacketBuffer[nPerPackSize] = {0};
 	circlebuf_peek_front(&cur_circle, szPacketBuffer, nPerPackSize);
 	lpFrontHeader = (rtp_hdr_t*)szPacketBuffer;
 	// 如果要删除的数据包序号比最小序号还要小 => 数据已经删除了，直接返回...
@@ -1061,8 +1062,8 @@ void CUDPSendThread::doProcMaxConSeq(bool bIsAudio, uint32_t inMaxConSeq)
 	// 注意：环形队列当中的数据块大小是连续的，是一样大的...
 	// 打印环形队列删除结果，计算环形队列剩余的数据包个数...
 	//uint32_t nRemainCount = cur_circle.size / nPerPackSize;
-	//blog(LOG_INFO, "%s Detect Erase Success => %s, MaxConSeq: %lu, MinSeq: %lu, CurSendSeq: %lu, CurPackSeq: %lu, Circle: %lu",
-	//	 TM_SEND_NAME, bIsAudio ? "Audio" : "Video", inMaxConSeq, lpFrontHeader->seq, nCurSendSeq, nCurPackSeq, nRemainCount);
+	//blog(LOG_INFO, "%s Detect Erase Success => Live: %d, %s, MaxConSeq: %lu, MinSeq: %lu, CurSendSeq: %lu, CurPackSeq: %lu, Circle: %lu",
+	//	 TM_SEND_NAME, m_rtp_create.liveID, bIsAudio ? "Audio" : "Video", inMaxConSeq, lpFrontHeader->seq, nCurSendSeq, nCurPackSeq, nRemainCount);
 }
 
 void CUDPSendThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
@@ -1107,7 +1108,8 @@ void CUDPSendThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 		if (m_server_rtt_var_ms < 0) { m_server_rtt_var_ms = abs(m_server_rtt_ms - keep_rtt); }
 		else { m_server_rtt_var_ms = (m_server_rtt_var_ms * 3 + abs(m_server_rtt_ms - keep_rtt)) / 4; }
 		// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
-		blog(LOG_INFO, "%s Recv Detect => Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms", TM_SEND_NAME, rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms);
+		blog(LOG_INFO, "%s Recv Detect => Live: %d, Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms", TM_SEND_NAME,
+			 m_rtp_create.liveID, rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms);
 		//////////////////////////////////////////////////////////////////////////////
 		// 注意：由于要靠服务器缓存，改进成永远是DT_TO_SERVER...
 		// 对发包线路进行选择 => 选择已联通的最小rtt进行发送正常包和发送补包...

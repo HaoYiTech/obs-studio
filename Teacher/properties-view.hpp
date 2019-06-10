@@ -115,7 +115,6 @@ private:
 	void GetScrollPos(int &h, int &v);
 	void SetScrollPos(int h, int v);
 public slots:
-	void onListCameraSelectionChanged();
 	void RefreshProperties();
 	void ReloadProperties();
 	void SignalChanged();
@@ -134,6 +133,8 @@ public:
 			PropertiesReloadCallback reloadCallback,
 			int minSize = 0);
 
+	bool doCheckRtpSource();
+	bool doCheckCamera(int nDBCameraID);
 	void onTriggerCameraLiveStop(int nDBCameraID);
 	void onTriggerCameraList(Json::Value & value);
 	inline bool IsUseRtpSource() { return m_bUseRtpSource; }

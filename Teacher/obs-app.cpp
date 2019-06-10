@@ -803,7 +803,6 @@ OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
 {
 	m_strWebCenter = DEF_WEB_CENTER;
 	m_strWebClass = DEF_WEB_CLASS;
-	m_nRtpDBCameraID = 0;
 	m_nRtpTCPSockFD = 0;
 	m_nOnLineTimer = -1;
 	m_nFastTimer = -1;
@@ -1200,7 +1199,7 @@ void OBSApp::onReplyFinished(QNetworkReply *reply)
 	}
 	QByteArray & theByteArray = reply->readAll();
 	string & strData = theByteArray.toStdString();
-	blog(LOG_DEBUG, "QT Reply Data => %s", strData.c_str());
+	//blog(LOG_DEBUG, "QT Reply Data => %s", strData.c_str());
 }
 //
 // 时钟定时执行过程...
@@ -1232,9 +1231,9 @@ void OBSApp::doCheckFDFS()
 	this->doCheckRemote();
 	this->doCheckRtpSource();
 }
-//
+
 // 遍历所有的会话资源，找到rtp_source资源，返回场景资源编号和摄像头编号...
-void OBSApp::FindRtpSource(int & outDBCameraID, int & outSceneItemID, bool & outHasRecvThread)
+/*void OBSApp::FindRtpSource(int & outDBCameraID, int & outSceneItemID, bool & outHasRecvThread)
 {
 	// 初始化返回的场景资源编号、摄像头编号、是否有拉流线程...
 	outDBCameraID = 0; outSceneItemID = 0; outHasRecvThread = false;
@@ -1275,7 +1274,7 @@ void OBSApp::FindRtpSource(int & outDBCameraID, int & outSceneItemID, bool & out
 		// 注意：这里必须手动进行引用计数减少，否则，会造成内存泄漏 => obs_source_get_settings 会增加引用计数...
 		obs_data_release(lpSettings);
 	}
-}
+}*/
 //
 // 自动检测rtp_source资源，向中转服务器发送开启推流命令...
 void OBSApp::doCheckRtpSource()
@@ -1287,7 +1286,37 @@ void OBSApp::doCheckRtpSource()
 	// 如果远程会话无效 或 远程会话没有成功连接，直接返回...
 	if (m_RemoteSession == NULL || !m_RemoteSession->IsConnected())
 		return;
-	// 设置登录需要的默认摄像头编号和场景资源编号...
+	// 场景资源遍历回调函数 => 找到rtp_source，执行相关操作...
+	auto func = [](obs_scene_t *, obs_sceneitem_t *item, void *param)
+	{
+		OBSApp * obsApp = reinterpret_cast<OBSApp*>(param);
+		obs_source_t * lpSource = obs_sceneitem_get_source(item);
+		const char * lpSrcID = obs_source_get_id(lpSource);
+		// 进行ID判断，如果不是rtp资源，返回true，继续查找...
+		if (astrcmpi(lpSrcID, App()->InteractRtpSource()) != 0)
+			return true;
+		// 如果是rtp资源，找到场景资源编号和场景资源配置对象...
+		int nSceneItemID = (int)obs_sceneitem_get_id(item);
+		obs_data_t * lpSettings = obs_source_get_settings(lpSource);
+		// 获取rtp_source资源是否已经创建了拉流线程标志，摄像头通道编号...
+		bool bHasRecvThread = obs_data_get_bool(lpSettings, "recv_thread");
+		int nDBCameraID = obs_data_get_int(lpSettings, "camera_id");
+		// 注意：这里必须手动进行引用计数减少，否则，会造成内存泄漏 => obs_source_get_settings 会增加引用计数...
+		obs_data_release(lpSettings);
+		// 如果摄像头通道无效 或 场景资源编号无效，直接返回...
+		if (nDBCameraID <= 0 || nSceneItemID <= 0)
+			return true;
+		// 如果资源里面的拉流线程正在有效运行，直接返回...
+		if (bHasRecvThread)
+			return true;
+		// 通过中转服务器向学生端发送开启指定通道的推流工作...
+		obsApp->doSendCameraLiveStartCmd(nDBCameraID);
+		// 返回true，继续下一条记录...
+		return true;
+	};
+	// 遍历当前场景所有的互动教室资源，尝试启动拉流...
+	obs_scene_enum_items(lpBasicWnd->GetCurrentScene(), func, this);
+	/*// 设置登录需要的默认摄像头编号和场景资源编号...
 	int nDBCameraID = 0; int nSceneItemID = 0; bool bHasRecvThread = false;
 	this->FindRtpSource(nDBCameraID, nSceneItemID, bHasRecvThread);
 	// 如果摄像头通道无效 或 场景资源编号无效，直接返回...
@@ -1297,7 +1326,7 @@ void OBSApp::doCheckRtpSource()
 	if (bHasRecvThread)
 		return;
 	// 通过中转服务器向学生端发送开启指定通道的推流工作...
-	this->doSendCameraLiveStartCmd(nDBCameraID, nSceneItemID);
+	this->doSendCameraLiveStartCmd(nDBCameraID, nSceneItemID);*/
 }
 //
 // 自动检测并创建RemoteSession...
@@ -1318,18 +1347,32 @@ void OBSApp::doCheckRemote()
 		delete m_RemoteSession;
 		m_RemoteSession = NULL;
 	}
-	// 设置登录需要的默认摄像头编号和场景资源编号...
-	int nDBCameraID = 0; int nSceneItemID = 0; bool bHasRecvThread = false;
-	this->FindRtpSource(nDBCameraID, nSceneItemID, bHasRecvThread);
 	// 初始化远程中转会话对象...
-	m_RemoteSession = new CRemoteSession(nDBCameraID, nSceneItemID);
+	m_RemoteSession = new CRemoteSession();
 	m_RemoteSession->InitSession(m_strRemoteAddr.c_str(), m_nRemotePort);
 	// 关联UDP连接被服务器删除时的事件通知信号槽、获取在线通道列表的信号槽、开启或删除rtp资源的信号槽...
 	this->connect(m_RemoteSession, SIGNAL(doTriggerUdpLogout(int, int, int)), lpBasicWnd, SLOT(onTriggerUdpLogout(int, int, int)));
 	this->connect(m_RemoteSession, SIGNAL(doTriggerCameraList(Json::Value&)), lpBasicWnd, SLOT(onTriggerCameraList(Json::Value&)));
-	this->connect(m_RemoteSession, SIGNAL(doTriggerRtpSource(int, int, bool)), lpBasicWnd, SLOT(onTriggerRtpSource(int, int, bool)));
+	this->connect(m_RemoteSession, SIGNAL(doTriggerRtpSource(int, bool)), lpBasicWnd, SLOT(onTriggerRtpSource(int, bool)));
 	this->connect(m_RemoteSession, SIGNAL(doTriggerCameraLiveStop(int)), lpBasicWnd, SLOT(onTriggerCameraLiveStop(int)));
 }
+
+// 获取0点位置的数据源对象的学生端推流摄像头编号...
+/*int OBSApp::doZeroPosCameraPusherID()
+{
+	int nDBCameraID = 0;
+	vec2 vPos = { 0.0f, 0.0f };
+	obs_sceneitem_t * lpPosItem = OBSBasicPreview::GetItemAtPos(vPos, false);
+	obs_source_t * lpSource = obs_sceneitem_get_source(lpPosItem);
+	const char * lpSrcID = obs_source_get_id(lpSource);
+	// 获取当前数据源的摄像头编号配置信息，注意释放配置...
+	if (astrcmpi(lpSrcID, App()->InteractRtpSource()) == 0) {
+		obs_data_t * lpSettings = obs_source_get_settings(lpSource);
+		nDBCameraID = obs_data_get_int(lpSettings, "camera_id");
+		obs_data_release(lpSettings);
+	}
+	return nDBCameraID;
+}*/
 
 // 向中转服务器请求当前房间在线的摄像头列表...
 bool OBSApp::doSendCameraOnLineListCmd()
@@ -1340,19 +1383,19 @@ bool OBSApp::doSendCameraOnLineListCmd()
 }
 
 // 通过中转服务器向学生端发送停止通道推流工作...
-bool OBSApp::doSendCameraLiveStopCmd(int nDBCameraID, int nSceneItemID)
+bool OBSApp::doSendCameraLiveStopCmd(int nDBCameraID)
 {
 	if (m_RemoteSession == NULL)
 		return false;
-	return m_RemoteSession->doSendCameraLiveStopCmd(nDBCameraID, nSceneItemID);
+	return m_RemoteSession->doSendCameraLiveStopCmd(nDBCameraID);
 }
 
 // 通过中转服务器向学生端发送开启通道推流工作...
-bool OBSApp::doSendCameraLiveStartCmd(int nDBCameraID, int nSceneItemID)
+bool OBSApp::doSendCameraLiveStartCmd(int nDBCameraID)
 {
 	if (m_RemoteSession == NULL)
 		return false;
-	return m_RemoteSession->doSendCameraLiveStartCmd(nDBCameraID, nSceneItemID);
+	return m_RemoteSession->doSendCameraLiveStartCmd(nDBCameraID);
 }
 
 // 通过中转服务器向学生端发送云台操作命令...
@@ -1361,6 +1404,14 @@ bool OBSApp::doSendCameraPTZCmd(int nDBCameraID, int nCmdID, int nSpeedVal)
 	if (m_RemoteSession == NULL || nDBCameraID <= 0)
 		return false;
 	return m_RemoteSession->doSendCameraPTZCmd(nDBCameraID, nCmdID, nSpeedVal);
+}
+
+bool OBSApp::doSendCameraPusherIDCmd(int nDBCameraID)
+{
+	if (m_RemoteSession == NULL)
+		return false;
+	// 注意：可以允许 nDBCameraID 是无效内容...
+	return m_RemoteSession->doSendCameraPusherIDCmd(nDBCameraID);
 }
 
 // 自动检测并创建TrackerSession...

@@ -69,7 +69,6 @@ private:
 	int                            m_nFlowTimer;               // 流量统计检测时钟...
 	int                            m_nOnLineTimer;             // 中转服务器在线检测时钟...
 	int                            m_nRtpTCPSockFD;            // CRemoteSession在服务器端的套接字号码...
-	int                            m_nRtpDBCameraID;           // 当前正在观看的互动教室的摄像头编号...
 	int                            m_nDBFlowID;                // 从服务器获取到的流量统计数据库编号...
 	int                            m_nDBUserID;                // 已登录用户的数据库编号...
 	bool                           m_bIsDebugMode;             // 是否是调试模式 => 挂载到调试服务器...
@@ -97,7 +96,6 @@ private:
 	bool InitLocale();
 	bool InitTheme();
 	bool InitMacIPAddr();
-	void FindRtpSource(int & outDBCameraID, int & outSceneItemID, bool & outHasRecvThread);
 public:
 	static char * GetServerDNSName();
 public:
@@ -117,11 +115,9 @@ public:
 	string & GetUdpAddr() { return m_strUdpAddr; }
 	int		 GetUdpPort() { return m_nUdpPort; }
 	int      GetRtpTCPSockFD() { return m_nRtpTCPSockFD; }
-	int      GetRtpDBCameraID() { return m_nRtpDBCameraID; }
 	int      GetDBFlowID() { return m_nDBFlowID; }
 
 	void     SetDBFlowID(int nDBFlowID) { m_nDBFlowID = nDBFlowID; }
-	void     SetRtpDBCameraID(int nDBCameraID) { m_nRtpDBCameraID = nDBCameraID; }
 	void     SetRtpTCPSockFD(int nTCPSockFD) { m_nRtpTCPSockFD = nTCPSockFD; }
 	void	 SetUdpAddr(const string & strAddr) { m_strUdpAddr = strAddr; }
 	void     SetUdpPort(int nPort) { m_nUdpPort = nPort; }
@@ -146,8 +142,9 @@ public:
 	void doProcessCmdLine(int argc, char * argv[]);
 
 	bool doSendCameraOnLineListCmd();
-	bool doSendCameraLiveStopCmd(int nDBCameraID, int nSceneItemID);
-	bool doSendCameraLiveStartCmd(int nDBCameraID, int nSceneItemID);
+	bool doSendCameraLiveStopCmd(int nDBCameraID);
+	bool doSendCameraLiveStartCmd(int nDBCameraID);
+	bool doSendCameraPusherIDCmd(int nDBCameraID);
 	bool doSendCameraPTZCmd(int nDBCameraID, int nCmdID, int nSpeedVal);
 
 	void doCheckTracker();

@@ -458,6 +458,12 @@ void CLoginMini::onTriggerTcpConnect()
 	m_nOnLineTimer = this->startTimer(30 * 1000);
 	// 发起获取小程序Token值的网络命令...
 	this->doWebGetMiniToken();
+	
+	/*== 仅供快速测试 ==*/
+	//m_nDBUserID = 1;
+	//m_nDBRoomID = 200001;
+	// 一切正常，开始登录指定的房间...
+	//this->doWebGetMiniLoginRoom();  
 }
 
 // 响应中心会话反馈的小程序绑定登录信号槽事件通知...
@@ -582,7 +588,7 @@ bool CLoginMini::parseJson(string & inData, Json::Value & outValue, bool bIsWeiX
 	if (outValue[lpszCode].asBool()) {
 		string & strMsg = OBSApp::getJsonString(outValue[lpszMsg]);
 		string & strCode = OBSApp::getJsonString(outValue[lpszCode]);
-		m_strQRNotice = QString("%1(%2)").arg(strMsg.c_str()).arg(strCode.c_str());
+		m_strQRNotice = QString("%1").arg(strMsg.c_str());
 		return false;
 	}
 	return true;

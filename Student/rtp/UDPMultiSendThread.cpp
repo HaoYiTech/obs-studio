@@ -216,7 +216,7 @@ void CUDPMultiSendThread::PushPacket(string & strPacket, uint8_t inPType)
 	pthread_mutex_lock(&m_MutexBuff);
 	// 输入缓存的长度一定是数据块的整数倍...
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketBuffer[nPerPackSize] = { 0 };
+	char szPacketBuffer[nPerPackSize] = { 0 };
 	ASSERT((strPacket.size() % nPerPackSize) == 0);
 	// 根据标志定位到音频或视频环形队列，并将输入的缓存追加到环形队列当中...
 	circlebuf & cur_circle = ((inPType == PT_TAG_EX_AUDIO) ? m_ex_audio_circle : ((inPType == PT_TAG_AUDIO) ? m_audio_circle : m_video_circle));
@@ -333,7 +333,7 @@ void CUDPMultiSendThread::doSendLosePacket(uint8_t inPType, uint32_t inLoseSeq)
 	// 所以，一定要用接口读取完整的数据包之后，再进行操作；如果用指针，一旦发生回还，就会错误...
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketBuffer[nPerPackSize] = { 0 };
+	char szPacketBuffer[nPerPackSize] = { 0 };
 	uint32_t max_seq = 0, min_seq = 0;
 	// 找到环形队列当中最小包号和最大包号...
 	circlebuf_peek_front(&cur_circle, szPacketBuffer, nPerPackSize);
@@ -401,7 +401,7 @@ void CUDPMultiSendThread::doSendLosePacket(uint8_t inPType, uint32_t inLoseSeq)
 	// 所以，一定要用接口读取完整的数据包之后，再进行操作；如果用指针，一旦发生回还，就会错误...
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketBuffer[nPerPackSize] = { 0 };
+	char szPacketBuffer[nPerPackSize] = { 0 };
 	uint32_t max_seq = 0, min_seq = 0;
 	// 如果环形队列最大序号包，比丢包号小 => 补包越界，直接返回...
 	circlebuf_peek_front(&cur_circle, szPacketBuffer, nPerPackSize);

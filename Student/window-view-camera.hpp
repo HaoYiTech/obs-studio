@@ -57,6 +57,7 @@ protected slots:
 public:
 	bool		IsCameraOffLine() { return ((m_nCameraState <= kCameraConnect) ? true : false); }
 	bool		IsCameraOnLine() { return ((m_nCameraState >= kCameraOnLine) ? true : false); }
+	bool        IsCameraPusher() { return ((m_nCameraState >= kCameraPusher) ? true : false); }
 	bool		IsCameraPreviewShow() { return m_bIsPreviewShow; }
 	bool		IsCameraPreviewMute() { return m_bIsPreviewMute; }
 	bool        IsCameraLoginISAPI() { return m_bIsLoginISAPI; }

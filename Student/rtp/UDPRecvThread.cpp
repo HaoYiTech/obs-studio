@@ -300,7 +300,7 @@ uint32_t CUDPRecvThread::doCalcMaxConSeq(uint8_t inPType)
 		return nMaxPlaySeq;
 	// 没有丢包 => 已收到的最大包号 => 环形队列中最大序列号...
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketBuffer[nPerPackSize] = {0};
+	char szPacketBuffer[nPerPackSize] = {0};
 	circlebuf_peek_back(&cur_circle, szPacketBuffer, nPerPackSize);
 	rtp_hdr_t * lpMaxHeader = (rtp_hdr_t*)szPacketBuffer;
 	return lpMaxHeader->seq;
@@ -324,7 +324,7 @@ void CUDPRecvThread::doSendSupplyCmd(uint8_t inPType)
 	// 定义最大的补包缓冲区...
 	const int nHeadSize = sizeof(m_rtp_supply);
 	const int nPerPackSize = DEF_MTU_SIZE + nHeadSize;
-	static char szPacket[nPerPackSize] = {0};
+	char szPacket[nPerPackSize] = {0};
 	char * lpData = szPacket + nHeadSize;
 	// 获取当前时间的毫秒值 => 小于或等于当前时间的丢包都需要通知发送端再次发送...
 	uint32_t cur_time_ms = (uint32_t)(os_gettime_ns() / 1000000);
@@ -550,7 +550,7 @@ void CUDPRecvThread::doDeleteExAudioThread()
 	circlebuf & cur_circle = bIsAudio ? m_audio_circle : m_video_circle;
 	GM_MapLose & theMapLose = bIsAudio ? m_AudioMapLose : m_VideoMapLose;
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketBuffer[nPerPackSize] = {0};
+	char szPacketBuffer[nPerPackSize] = {0};
 	// 打印收到拥塞命令信息...
 	log_trace( "%s Jam Recv => %s JamSeq: %lu, MaxPlaySeq: %lu, LoseSize: %d, Circle: %d", TM_RECV_NAME,
 			   (bIsAudio ? "Audio" : "Video"), inJamSeq, nMaxPlaySeq, theMapLose.size(), cur_circle.size/nPerPackSize );
@@ -697,7 +697,7 @@ void CUDPRecvThread::doServerMinSeq(uint8_t inPType, uint32_t inMinSeq)
 		return;
 	// 获取环形队列当中最小序号和最大序号，找到清理边界...
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketBuffer[nPerPackSize] = {0};
+	char szPacketBuffer[nPerPackSize] = {0};
 	rtp_hdr_t * lpCurHeader = NULL;
 	uint32_t    min_seq = 0, max_seq = 0;
 	// 读取最小的数据包的内容，获取最小序列号...
@@ -755,7 +755,7 @@ void CUDPRecvThread::doParseFrame(uint8_t inPType)
 	// 测试 => 打印收到的有效包序号，并从环形队列当中删除...
 	////////////////////////////////////////////////////////////////////////////
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketCheck[nPerPackSize] = {0};
+	char szPacketCheck[nPerPackSize] = {0};
 	if( m_circle.size <= nPerPackSize )
 		return;
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -781,7 +781,7 @@ void CUDPRecvThread::doParseFrame(uint8_t inPType)
 	// 验证是否丢包的实验...
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/*const int nPerTestSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketCheck[nPerPackSize] = {0};
+	char szPacketCheck[nPerPackSize] = {0};
 	if( m_circle.size <= nPerTestSize )
 		return;
 	circlebuf_peek_front(&m_circle, szPacketCheck, nPerPackSize);
@@ -811,8 +811,8 @@ void CUDPRecvThread::doParseFrame(uint8_t inPType)
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 准备解析抽包组帧过程中需要的变量和空间对象...
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketCurrent[nPerPackSize] = {0};
-	static char szPacketFront[nPerPackSize] = {0};
+	char szPacketCurrent[nPerPackSize] = {0};
+	char szPacketFront[nPerPackSize] = {0};
 	rtp_hdr_t * lpFrontHeader = NULL;
 	if( cur_circle.size <= nPerPackSize )
 		return;
@@ -1128,7 +1128,7 @@ void CUDPRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 	//////////////////////////////////////////////////////////////////////////////////////////////////
 	// 注意：每个环形队列中的数据包大小是一样的 => rtp_hdr_t + slice + Zero
 	//////////////////////////////////////////////////////////////////////////////////////////////////
-	static char szPacketBuffer[nPerPackSize] = {0};
+	char szPacketBuffer[nPerPackSize] = {0};
 	// 如果环形队列为空 => 需要对丢包做提前预判并进行处理...
 	if( cur_circle.size < nPerPackSize ) {
 		// 新到序号包与最大播放包之间有空隙，说明有丢包...

@@ -1,7 +1,13 @@
 #pragma once
 
+#include <map>
 #include <obs.hpp>
 #include "qt-display.hpp"
+
+using namespace std;
+
+typedef	map<int64_t, const char*> GM_MapLabel;
+typedef	map<int64_t, OBSSource>	  GM_MapSource;
 
 enum class ProjectorType {
 	Source,
@@ -42,6 +48,12 @@ private:
 	gs_vertbuffer_t *rightLine = nullptr;
 	bool ready = false;
 
+	int m_nLabelFontSize = 30;
+	int m_nRtpSourceCount = 0;
+	GM_MapSource m_MapSource;
+	GM_MapLabel  m_MapLabel;
+
+	void InitRtpSource();
 	void UpdateMultiview();
 	void UpdateProjectorTitle(QString name);
 
@@ -54,10 +66,11 @@ public:
 	~OBSProjector();
 
 	void Init();
+	bool RenderRtpSource(uint32_t cx, uint32_t cy);
 
+	int GetMonitor();
 	OBSSource GetSource();
 	ProjectorType GetProjectorType();
-	int GetMonitor();
 	static void UpdateMultiviewProjectors();
 	static void RenameProjector(QString oldName, QString newName);
 };

@@ -496,7 +496,7 @@ void CUDPMultiRecvThread::doServerMinSeq(uint8_t inPType, uint32_t inMinSeq)
 		return;
 	// 获取环形队列当中最小序号和最大序号，找到清理边界...
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketBuffer[nPerPackSize] = { 0 };
+	char szPacketBuffer[nPerPackSize] = { 0 };
 	rtp_hdr_t * lpCurHeader = NULL;
 	uint32_t    min_seq = 0, max_seq = 0;
 	// 读取最小的数据包的内容，获取最小序列号...
@@ -643,7 +643,7 @@ void CUDPMultiRecvThread::doTagAVPackProcess(char * lpBuffer, int inRecvLen)
 	//////////////////////////////////////////////////////////////////////////////////////////////////
 	// 注意：每个环形队列中的数据包大小是一样的 => rtp_hdr_t + slice + Zero
 	//////////////////////////////////////////////////////////////////////////////////////////////////
-	static char szPacketBuffer[nPerPackSize] = { 0 };
+	char szPacketBuffer[nPerPackSize] = { 0 };
 	// 如果环形队列为空 => 需要对丢包做提前预判并进行处理...
 	if (cur_circle.size < nPerPackSize) {
 		// 新到序号包与最大播放包之间有空隙，说明有丢包...
@@ -723,7 +723,7 @@ void CUDPMultiRecvThread::doSendSupplyCmd(uint8_t inPType)
 	// 定义最大的补包缓冲区...
 	const int nHeadSize = sizeof(m_rtp_supply);
 	const int nPerPackSize = DEF_MTU_SIZE + nHeadSize;
-	static char szPacket[nPerPackSize] = { 0 };
+	char szPacket[nPerPackSize] = { 0 };
 	char * lpData = szPacket + nHeadSize;
 	// 获取当前时间的毫秒值 => 小于或等于当前时间的丢包都需要通知发送端再次发送...
 	uint32_t cur_time_ms = (uint32_t)(os_gettime_ns() / 1000000);
@@ -805,8 +805,8 @@ void CUDPMultiRecvThread::doParseFrame(uint8_t inPType)
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 准备解析抽包组帧过程中需要的变量和空间对象...
 	const int nPerPackSize = DEF_MTU_SIZE + sizeof(rtp_hdr_t);
-	static char szPacketCurrent[nPerPackSize] = { 0 };
-	static char szPacketFront[nPerPackSize] = { 0 };
+	char szPacketCurrent[nPerPackSize] = { 0 };
+	char szPacketFront[nPerPackSize] = { 0 };
 	rtp_hdr_t * lpFrontHeader = NULL;
 	if (cur_circle.size <= nPerPackSize)
 		return;

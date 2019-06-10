@@ -94,19 +94,20 @@ private:
 class CRemoteSession : public CFastSession {
 	Q_OBJECT
 public:
-	CRemoteSession(int nDBCameraID, int nSceneItemID);
+	CRemoteSession();
 	virtual ~CRemoteSession();
 signals:
 	void doTriggerCameraLiveStop(int nDBCameraID);
 	void doTriggerCameraList(Json::Value & value);
 	void doTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID);
-	void doTriggerRtpSource(int nSceneItemID, int nDBCameraID, bool bIsCameraOnLine);
+	void doTriggerRtpSource(int nDBCameraID, bool bIsCameraOnLine);
 public:
 	bool IsCanReBuild() { return m_bCanReBuild; }
 	bool doSendOnLineCmd();
 	bool doSendCameraOnLineListCmd();
-	bool doSendCameraLiveStopCmd(int nDBCameraID, int nSceneItemID);
-	bool doSendCameraLiveStartCmd(int nDBCameraID, int nSceneItemID);
+	bool doSendCameraLiveStopCmd(int nDBCameraID);
+	bool doSendCameraLiveStartCmd(int nDBCameraID);
+	bool doSendCameraPusherIDCmd(int nDBCameraID);
 	bool doSendCameraPTZCmd(int nDBCameraID, int nCmdID, int nSpeedVal);
 protected slots:
 	void onConnected() override;
@@ -122,12 +123,10 @@ private:
 	bool doCmdTeacherOnLine(const char * lpData, int nSize);
 	bool doCmdTeacherCameraList(const char * lpData, int nSize);
 	bool doCmdTeacherCameraLiveStop(const char * lpData, int nSize);
-	bool SendLoginCmd(int nDBCameraID, int nSceneItemID);
 	bool SendData(const char * lpDataPtr, int nDataSize);
+	bool SendLoginCmd();
 private:
-	bool        m_bCanReBuild;			// 能否进行重建标志...
-	int         m_nInitDBCameraID;		// 初始默认通道编号...
-	int         m_nInitSceneitemID;		// 初始默认场景编号...
+	bool m_bCanReBuild;    // 能否进行重建标志...
 };
 
 // 与中心服务器交互的会话对象...

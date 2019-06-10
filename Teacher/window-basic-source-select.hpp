@@ -30,7 +30,6 @@ class OBSBasicSourceSelect : public QDialog {
 private:
 	std::unique_ptr<Ui::OBSBasicSourceSelect> ui;
 	const char *id;
-	bool m_bHasRtpSource;
 	bool m_bHasMicSource;
 
 	static bool EnumSources(void *data, obs_source_t *source);
