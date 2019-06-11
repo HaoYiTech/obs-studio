@@ -109,7 +109,7 @@ static inline DWORD GetTotalFileSize(const wchar_t *path)
 
 static inline bool is_64bit_windows(void);
 
-static inline bool HasVS2017Redist2()
+static inline bool HasVS2015Redist2()
 {
 	wchar_t base[MAX_PATH];
 	wchar_t path[MAX_PATH];
@@ -142,11 +142,11 @@ static inline bool HasVS2017Redist2()
 	return true;
 }
 
-static bool HasVS2017Redist()
+static bool HasVS2015Redist()
 {
 	PVOID old = nullptr;
 	bool redirect = !!Wow64DisableWow64FsRedirection(&old);
-	bool success = HasVS2017Redist2();
+	bool success = HasVS2015Redist2();
 	if (redirect) Wow64RevertWow64FsRedirection(old);
 	return success;
 }
@@ -1024,7 +1024,7 @@ static bool UpdateFile(update_t &file)
 
 static wchar_t g_tempPath[MAX_PATH] = {};
 
-static bool UpdateVS2017Redists(json_t *root)
+static bool UpdateVS2015Redists(json_t *root)
 {
 	/* ------------------------------------------ *
 	 * Initialize session                         */
@@ -1037,15 +1037,15 @@ static bool UpdateVS2017Redists(json_t *root)
 	                                  WINHTTP_NO_PROXY_BYPASS,
 	                                  0);
 	if (!hSession) {
-		Status(L"Update failed: Couldn't open obsproject.com");
+		Status(L"Update failed: Couldn't open %s", DEF_WEB_CLASS);
 		return false;
 	}
 
 	WinHttpSetOption(hSession, WINHTTP_OPTION_SECURE_PROTOCOLS, (LPVOID)&tlsProtocols, sizeof(tlsProtocols));
 
-	HttpHandle hConnect = WinHttpConnect(hSession, L"cdn-fastly.obsproject.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
+	HttpHandle hConnect = WinHttpConnect(hSession, DEF_WEB_CLASS, INTERNET_DEFAULT_HTTPS_PORT, 0);
 	if (!hConnect) {
-		Status(L"Update failed: Couldn't connect to cdn-fastly.obsproject.com");
+		Status(L"Update failed: Couldn't connect to %s", DEF_WEB_CLASS);
 		return false;
 	}
 
@@ -1059,12 +1059,13 @@ static bool UpdateVS2017Redists(json_t *root)
 	/* ------------------------------------------ *
 	 * Download redist                            */
 
-	Status(L"Downloading %s", L"Visual C++ 2017 Redistributable");
+	Status(L"Downloading %s", L"Visual C++ 2015 Redistributable");
 
-	const wchar_t *file = (is32bit) ? L"vc2017redist_x86.exe" : L"vc2017redist_x64.exe";
+	const wchar_t *file = (is32bit) ? L"vc_redist.x86.exe" : L"vc_redist.x64.exe";
 
 	wstring sourceURL;
-	sourceURL += L"https://cdn-fastly.obsproject.com/downloads/";
+	sourceURL += DEF_UPDATE_URL;
+	sourceURL += L"/";
 	sourceURL += file;
 
 	wstring destPath;
@@ -1076,7 +1077,7 @@ static bool UpdateVS2017Redists(json_t *root)
 		DeleteFile(destPath.c_str());
 		Status(L"Update failed: Could not download "
 		       L"%s (error code %d)",
-		       L"Visual C++ 2017 Redistributable",
+		       L"Visual C++ 2015 Redistributable",
 		       responseCode);
 		return false;
 	}
@@ -1084,9 +1085,9 @@ static bool UpdateVS2017Redists(json_t *root)
 	/* ------------------------------------------ *
 	 * Get expected hash                          */
 
-	json_t *redistJson = json_object_get(root, is32bit ? "vc2017_redist_x86" : "vc2017_redist_x64");
+	/*json_t *redistJson = json_object_get(root, is32bit ? "vc_redist_x86" : "vc_redist_x64");
 	if (!redistJson) {
-		Status(L"Update failed: Could not parse VC2017 redist json");
+		Status(L"Update failed: Could not parse VC2015 redist json");
 		return false;
 	}
 
@@ -1103,26 +1104,26 @@ static bool UpdateVS2017Redists(json_t *root)
 	StringToHash(expectedHashWide, expectedHash);
 
 	wchar_t downloadHashWide[BLAKE2_HASH_STR_LENGTH];
-	BYTE downloadHash[BLAKE2_HASH_LENGTH];
+	BYTE downloadHash[BLAKE2_HASH_LENGTH];*/
 
 	/* ------------------------------------------ *
 	 * Get download hash                          */
 
-	if (!CalculateFileHash(destPath.c_str(), downloadHash)) {
+	/*if (!CalculateFileHash(destPath.c_str(), downloadHash)) {
 		DeleteFile(destPath.c_str());
-		Status(L"Update failed: Couldn't verify integrity of %s", L"Visual C++ 2017 Redistributable");
+		Status(L"Update failed: Couldn't verify integrity of %s", L"Visual C++ 2015 Redistributable");
 		return false;
-	}
+	}*/
 
 	/* ------------------------------------------ *
 	 * If hashes do not match, integrity failed   */
 
-	HashToString(downloadHash, downloadHashWide);
+	/*HashToString(downloadHash, downloadHashWide);
 	if (wcscmp(expectedHashWide, downloadHashWide) != 0) {
 		DeleteFile(destPath.c_str());
-		Status(L"Update failed: Couldn't verify integrity of %s", L"Visual C++ 2017 Redistributable");
+		Status(L"Update failed: Couldn't verify integrity of %s", L"Visual C++ 2015 Redistributable");
 		return false;
-	}
+	}*/
 
 	/* ------------------------------------------ *
 	 * If hashes match, install redist            */
@@ -1138,7 +1139,7 @@ static bool UpdateVS2017Redists(json_t *root)
 			nullptr, nullptr, false, CREATE_NO_WINDOW,
 			nullptr, nullptr, &si, &pi);
 	if (success) {
-		Status(L"Installing %s...", L"Visual C++ 2017 Redistributable");
+		Status(L"Installing %s...", L"Visual C++ 2015 Redistributable");
 
 		CloseHandle(pi.hThread);
 		WaitForSingleObject(pi.hProcess, INFINITE);
@@ -1146,7 +1147,7 @@ static bool UpdateVS2017Redists(json_t *root)
 	} else {
 		Status(L"Update failed: Could not execute "
 		       L"%s (error code %d)",
-		       L"Visual C++ 2017 Redistributable",
+		       L"Visual C++ 2015 Redistributable",
 		       (int)GetLastError());
 	}
 
@@ -1436,10 +1437,10 @@ static bool Update(wchar_t *cmdLine)
 	}
 
 	/* ------------------------------------- *
-	 * Check for VS2017 redistributables     */
-	// 不进行vs2017的检测，只进行vs2015的加载...
-	/*if (!HasVS2017Redist()) {
-		if (!UpdateVS2017Redists(root)) {
+	 * Check for VS2015 redistributables     */
+	// 不进行哈希比对，只进行vs2015的检测比对...
+	/*if (!HasVS2015Redist()) {
+		if (!UpdateVS2015Redists(root)) {
 			return false;
 		}
 	}*/
