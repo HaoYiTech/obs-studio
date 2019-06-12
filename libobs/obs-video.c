@@ -176,13 +176,17 @@ static inline bool doEnumZeroSource(obs_scene_t *scence, obs_sceneitem_t *item, 
 	return true;
 }
 
-// 遍历场景数据源列表，找到第一个浮动数据源对象...
+struct float_item_info {
+	DARRAY(obs_sceneitem_t*) arrFloatItem;
+};
+typedef struct float_item_info float_item_info_t;
+
+// 遍历场景数据源列表，找到所有的浮动数据源对象...
 static inline bool doEnumFloatSource(obs_scene_t *scence, obs_sceneitem_t *item, void *param)
 {
-	obs_sceneitem_t ** out_item = (obs_sceneitem_t**)(param);
+	float_item_info_t * out_info = (float_item_info_t*)(param);
 	if (obs_sceneitem_floated(item)) {
-		*out_item = item;
-		return false;
+		da_push_back(out_info->arrFloatItem, &item);
 	}
 	return true;
 }
@@ -374,10 +378,11 @@ static inline void render_export_texture(struct obs_core_video *video, int cur_t
 	profile_start(render_export_texture_name);
 	// 找到第一个0点数据源和第一个浮动数据源...
 	obs_sceneitem_t * lpZeroSceneItem = NULL;
-	obs_sceneitem_t * lpFloatSceneItem = NULL;
 	obs_scene_t * lpCurScene = doFindSceneSource();
 	obs_scene_enum_items(lpCurScene, doEnumZeroSource, &lpZeroSceneItem);
-	obs_scene_enum_items(lpCurScene, doEnumFloatSource, &lpFloatSceneItem);
+	// 遍历场景数据源列表，找到所有的浮动数据源对象...
+	float_item_info_t info; da_init(info.arrFloatItem);
+	obs_scene_enum_items(lpCurScene, doEnumFloatSource, &info);
 	// 设置背景色...
 	struct vec4 clear_color;
 	vec4_set(&clear_color, 0.0f, 0.0f, 0.0f, 1.0f);
@@ -401,7 +406,11 @@ static inline void render_export_texture(struct obs_core_video *video, int cur_t
 	float yScale = srcBounds.y / dstBounds.y;
 	// 注意：位置和界限都是临时计算，绘制在渲染画布，并不改变场景元素的真实数据...
 	// 绘制浮动数据源对象，界限是场景自身 => 必须是可见状态才绘制...
-	if (obs_sceneitem_visible(lpFloatSceneItem)) {
+	for (size_t i = 0; i < info.arrFloatItem.num; i++) {
+		obs_sceneitem_t * lpFloatSceneItem = info.arrFloatItem.array[i];
+		if (!obs_sceneitem_visible(lpFloatSceneItem))
+			continue;
+		// 获取浮动窗口的当前矩形区域和当前坐标位置...
 		obs_sceneitem_get_bounds(lpFloatSceneItem, &srcBounds);
 		obs_sceneitem_get_pos(lpFloatSceneItem, &srcPos);
 		// 重新计算临时的显示位置和显示界限区域...
@@ -412,6 +421,8 @@ static inline void render_export_texture(struct obs_core_video *video, int cur_t
 		// 用临时计算的位置和界限绘制浮动数据源对象...
 		render_export_source(&dstPos, &dstBounds, lpFloatSceneItem);
 	}
+	// 需要释放浮动数组对象...
+	da_free(info.arrFloatItem);
 	// 恢复变换状态...
 	gs_blend_state_pop();
 	// 设定当前渲染纹理状态...
