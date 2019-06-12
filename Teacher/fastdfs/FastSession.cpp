@@ -590,10 +590,12 @@ bool CRemoteSession::doCmdTeacherLogin(const char * lpData, int nSize)
 	if (App()->GetRtpTCPSockFD() != nTCPSocketFD) {
 		App()->SetRtpTCPSockFD(nTCPSocketFD);
 	}
-	// 打印命令反馈详情信息...
-	blog(LOG_INFO, "[RemoteSession] doCmdTeacherLogin => CameraID: %d, OnLine: %d", nDBCameraID, bIsCameraOnLine);
+	// 打印命令反馈详情信息 => 只有摄像头通道编号大于0时，才需要反馈给主界面进行拉流或断流操作...
+	blog(LOG_INFO, "[RemoteSession] doCmdTeacherLogin => tcp_socket: %d, CameraID: %d, OnLine: %d", nTCPSocketFD, nDBCameraID, bIsCameraOnLine);
 	// 根据摄像头在线状态，进行rtp_source资源拉流线程的创建或删除...
-	emit this->doTriggerRtpSource(nDBCameraID, bIsCameraOnLine);
+	if ( nDBCameraID > 0 ) {
+		emit this->doTriggerRtpSource(nDBCameraID, bIsCameraOnLine);
+	}
 	return true;
 }
 
