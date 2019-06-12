@@ -3902,46 +3902,50 @@ void OBSBasic::OpenWindowPTZ()
 
 void OBSBasic::OpenFloatSource()
 {
+	// 通过标准接口，查找当前已选中数据源...
 	OBSScene scene = this->GetCurrentScene();
 	OBSSceneItem curItem = this->GetCurrentSceneItem();
 	if (scene == NULL || curItem == NULL)
 		return;
-	// 遍历所有数据源，只选中并浮动当前的数据源，其它数据源置反...
-	auto func = [](obs_scene_t *, obs_sceneitem_t *item, void *param)
-	{
-		obs_sceneitem_t *selectedItem = reinterpret_cast<obs_sceneitem_t*>(param);
-		obs_sceneitem_select(item, (selectedItem == item));
-		obs_sceneitem_set_floated(item, (selectedItem == item));
-		return true;
-	};
-	// 先置顶再枚举所有的数据源，这样就会只选中一个数据源...
+	// 先置顶当前数据源，再浮动已选中的当前数据源对象...
 	obs_sceneitem_set_order(curItem, OBS_ORDER_MOVE_TOP);
-	obs_scene_enum_items(scene, func, (obs_sceneitem_t*)curItem);
+	obs_sceneitem_set_floated(curItem, true);
 	// 获取显示系统的宽和高...
 	obs_video_info ovi = { 0 };
 	obs_get_video_info(&ovi);
 	// 将当前数据源移动到右上角...
-	vec2 vBounds, vPos;
+	vec2 vBounds, vPos, vFind;
+	obs_sceneitem_t * lpItemFind = NULL;
 	obs_sceneitem_get_bounds(curItem, &vBounds);
-	vec2_set(&vPos, ovi.base_width - vBounds.x, 0.0f);
-	obs_sceneitem_set_pos(curItem, &vPos);
+	float xPos = ovi.base_width;
+	while (xPos > 0.0f) {
+		// 计算X偏移位置...
+		xPos -= vBounds.x;
+		// 设置偏移和查找位置...
+		vec2_set(&vPos, xPos, 0.0f);
+		vec2_set(&vFind, vPos.x + 5, vPos.y + 5);
+		lpItemFind = OBSBasicPreview::GetItemAtPos(vFind, false);
+		bool bIsFloated = obs_sceneitem_floated(lpItemFind);
+		// 注意：需要将找到的数据源置为没有选中状态...
+		obs_sceneitem_select(lpItemFind, false);
+		// 查找位置没有数据源或没有浮动，设定位置，跳出循环...
+		if (lpItemFind == NULL || !bIsFloated) {
+			obs_sceneitem_set_pos(curItem, &vPos);
+			break;
+		}
+	}
 }
 
 void OBSBasic::ShutFloatSource()
 {
-	// 遍历所有数据源，给浮动数据源在第二排待选区设定一个新位置...
-	auto func = [](obs_scene_t *, obs_sceneitem_t *item, void * data)
-	{
-		// 如果数据源窗口处于浮动状态...
-		OBSBasic * lpBasic = (OBSBasic*)data;
-		if (obs_sceneitem_floated(item)) {
-			lpBasic->doSceneItemLayout(item);
-			obs_sceneitem_set_floated(item, false);
-		}
-		return true;
-	};
-	// 关闭浮动数据源，然后重排浮动数据源的显示位置...
-	obs_scene_enum_items(this->GetCurrentScene(), func, this);
+	// 通过标准接口，查找当前已选中数据源...
+	OBSScene scene = this->GetCurrentScene();
+	OBSSceneItem curItem = this->GetCurrentSceneItem();
+	if (scene == NULL || curItem == NULL)
+		return;
+	// 先关闭浮动，然后给当前浮动对象寻找放置位置...
+	obs_sceneitem_set_floated(curItem, false);
+	this->doSceneItemLayout(curItem);
 }
 
 void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
@@ -3963,24 +3967,14 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 	// 如果数据源有效，创建一个可浮动数据源的菜单项...
 	if (item != NULL) {
 		QAction * actionFloated = NULL;
-		bool bHasFloatedSource = false;
-		auto func = [](obs_scene_t *, obs_sceneitem_t *itemEnum, void *param) {
-			bool & isFloated = *reinterpret_cast<bool*>(param);
-			if (obs_sceneitem_floated(itemEnum)) {
-				isFloated = true;
-				return false;
-			}
-			return true;
-		};
-		// 首先要枚举查找浮动数据源是否已经存在，根据查询结果创建不同名称的菜单项...
-		obs_scene_enum_items(this->GetCurrentScene(), func, &bHasFloatedSource);
-		actionFloated = popup.addAction(QTStr(bHasFloatedSource ? "Basic.Main.ShutFloatSource" : "Basic.Main.OpenFloatSource"),
-										this, bHasFloatedSource ? SLOT(ShutFloatSource()) : SLOT(OpenFloatSource()));
+		bool bIsFloatedSource = obs_sceneitem_floated(sceneItem);
+		actionFloated = popup.addAction(QTStr(bIsFloatedSource ? "Basic.Main.ShutFloatSource" : "Basic.Main.OpenFloatSource"),
+										this, bIsFloatedSource ? SLOT(ShutFloatSource()) : SLOT(OpenFloatSource()));
 		// 获取坐标位置...
-		vec2 posDisp = {1.0f, 1.0f};
+		vec2 posDisp = { 1.0f, 1.0f };
 		obs_sceneitem_get_pos(sceneItem, &posDisp);
 		// 如果是第一个数据源并且是未浮动状态，需要对菜单进行灰色处理...
-		if (posDisp.x <= 0.0f && posDisp.y <= 0.0f && !bHasFloatedSource) {
+		if (posDisp.x <= 0.0f && posDisp.y <= 0.0f && !bIsFloatedSource) {
 			actionFloated->setEnabled(false);
 		}
 		// 增加一个分隔符...
