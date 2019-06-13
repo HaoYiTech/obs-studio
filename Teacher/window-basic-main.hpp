@@ -589,7 +589,9 @@ public:
 	void doSceneItemToFirst(obs_sceneitem_t * select_item);
 	void doSendCameraPusherID(obs_sceneitem_t * select_item);
 	void doUpdatePTZ(int nDBCameraID);
+	void doMovePageX(int nMoveLeftX);
 	bool doCheckCanRecord();
+	void doCheckBtnPage();
 protected:
 	virtual void closeEvent(QCloseEvent *event) override;
 	virtual void changeEvent(QEvent *event) override;
@@ -746,10 +748,10 @@ private slots:
 	void OpenSceneWindow();
 
 	void DeferredLoad(const QString &file, int requeueCount);
-
 public slots:
+	void onPageLeftClicked();
+	void onPageRightClicked();
 	void on_actionResetTransform_triggered();
-
 public:
 	explicit OBSBasic(QWidget *parent = 0);
 	virtual ~OBSBasic();

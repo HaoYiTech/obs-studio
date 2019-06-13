@@ -1662,7 +1662,7 @@ void OBSBasic::OBSInit()
 	QMetaObject::invokeMethod(this, "DeferredLoad",
 			Qt::QueuedConnection,
 			Q_ARG(QString, QT_UTF8(savePath)),
-			Q_ARG(int, 10));
+			Q_ARG(int, 1));
 }
 
 void OBSBasic::DeferredLoad(const QString &file, int requeueCount)
@@ -1682,6 +1682,10 @@ void OBSBasic::DeferredLoad(const QString &file, int requeueCount)
 	App()->doCheckRemote();
 	// 为了避免弹框被强制关闭，放在这里弹出更新确认框...
 	this->TimedCheckForUpdates();
+	// 绑定左右翻页按钮的点击事件...
+	ui->preview->BindBtnClickEvent();
+	// 遍历已加载数据源，判断是否显示左右箭头...
+	this->doCheckBtnPage();
 }
 
 void OBSBasic::UpdateMultiviewProjectorMenu()
@@ -3308,6 +3312,10 @@ void OBSBasic::ResizePreview(uint32_t cx, uint32_t cy)
 
 	previewX += float(PREVIEW_EDGE_SIZE);
 	previewY += float(PREVIEW_EDGE_SIZE);
+	
+	int nPrevCY = int(previewScale * float(ovi.base_height));
+	int nPosY = previewY + nPrevCY - nPrevCY / 5 / 2 - 20;
+	ui->preview->ResizeBtnPage(nPosY);
 }
 
 void OBSBasic::CloseDialogs()
@@ -3926,13 +3934,18 @@ void OBSBasic::OpenFloatSource()
 		vec2_set(&vFind, vPos.x + 5, vPos.y + 5);
 		lpItemFind = OBSBasicPreview::GetItemAtPos(vFind, false);
 		bool bIsFloated = obs_sceneitem_floated(lpItemFind);
-		// 注意：需要将找到的数据源置为没有选中状态...
-		obs_sceneitem_select(lpItemFind, false);
 		// 查找位置没有数据源或没有浮动，设定位置，跳出循环...
 		if (lpItemFind == NULL || !bIsFloated) {
 			obs_sceneitem_set_pos(curItem, &vPos);
 			break;
 		}
+	}
+	// 由于set_order会重选焦点，需要只保留当前数据源焦点...
+	for (int i = 0; i < ui->sources->count(); i++) {
+		QListWidgetItem * listItem = ui->sources->item(i);
+		OBSSceneItem theItem = this->GetSceneItem(listItem);
+		bool bIsSelect = ((theItem != curItem) ? false : true);
+		obs_sceneitem_select(theItem, bIsSelect);
 	}
 }
 
@@ -5893,8 +5906,8 @@ void OBSBasic::doSceneItemLayout(obs_sceneitem_t * scene_item)
 	itemInfo.bounds_type = OBS_BOUNDS_SCALE_INNER;
 	itemInfo.bounds_alignment = OBS_ALIGN_CENTER;
 	// 获取0点位置的数据源对象...
-	vec2 vPos = { 0.0f, 0.0f };
-	obs_sceneitem_t * lpPosItem = OBSBasicPreview::GetItemAtPos(vPos, false);
+	vec2 vPosFind = { 0.0f, 0.0f };
+	obs_sceneitem_t * lpPosItem = OBSBasicPreview::GetItemAtPos(vPosFind, false);
 	// 在0点位置查找数据源，如果没有被占用，将当前数据源设定到0点位置...
 	if (lpPosItem == NULL) {
 		// 更新场景资源的显示位置信息...
@@ -5908,17 +5921,18 @@ void OBSBasic::doSceneItemLayout(obs_sceneitem_t * scene_item)
 		this->doSendCameraPusherID(scene_item);
 		return;
 	}
-	// 遍历第二行的位置，查找空闲位置...
-	for (int i = 0; i < DEF_COL_SIZE; ++i) {
-		uint32_t pos_x = i * (other_width + DEF_COL_SPACE);
+	int iStep = 0;
+	while (true) {
+		// 遍历第二行的位置，查找空闲位置，即使越界了也要查找...
+		uint32_t pos_x = (iStep++) * (other_width + DEF_COL_SPACE);
 		uint32_t pos_y = first_height + DEF_ROW_SPACE;
 		// 在新窗口顶点稍微偏移的上下位置是否已有窗口存在...
-		vec2_set(&vPos, float(pos_x+5), float(pos_y+5));
+		vec2_set(&vPosFind, float(pos_x + 5), float(pos_y + 5));
 		// 如果当前位置的下面有数据源，跳过，继续找下一个...
-		if (OBSBasicPreview::GetItemAtPos(vPos, true))
+		if (OBSBasicPreview::GetItemAtPos(vPosFind, true))
 			continue;
 		// 根据当前位置查找对应的数据源 => 在位置的上面查找...
-		lpPosItem = OBSBasicPreview::GetItemAtPos(vPos, false);
+		lpPosItem = OBSBasicPreview::GetItemAtPos(vPosFind, false);
 		// 当前位置没有数据源对象或等于输入数据源，调整输入数据源的位置信息...
 		if (lpPosItem == NULL || lpPosItem == scene_item) {
 			// 当前位置没有数据源，更新数据源位置信息...
@@ -5928,9 +5942,128 @@ void OBSBasic::doSceneItemLayout(obs_sceneitem_t * scene_item)
 			// 轨道1|轨道2 => 屏蔽非第一个窗口资源的音频输出，只保留全局音频资源和第一个窗口的音频资源输出...
 			setAudioMixer(scene_item, 0, false);
 			setAudioMixer(scene_item, 1, false);
-			return;
+			break;
 		}
 	}
+	// 如果不需要向左移动，直接返回...
+	if (iStep <= DEF_COL_SIZE)
+		return;
+	// 计算所有的数据源需要向左移动的步数...
+	int nMoveLeftX = (iStep - DEF_COL_SIZE) * (other_width + DEF_COL_SPACE);
+	// 所有第二行数据源窗口向左移动...
+	this->doMovePageX(nMoveLeftX);
+	// 判断是否显示左右箭头...
+	this->doCheckBtnPage();
+}
+
+// 所有第二行数据源窗口向右移动一格...
+void OBSBasic::onPageLeftClicked()
+{
+	// 获取显示系统的宽和高...
+	obs_video_info ovi = { 0 };
+	obs_get_video_info(&ovi);
+	// 计算第一个资源的宽和高...
+	ovi.base_height -= DEF_ROW_SPACE;
+	uint32_t first_width = ovi.base_width;
+	uint32_t first_height = ovi.base_height - ovi.base_height / DEF_ROW_SIZE;
+	// 计算其它资源的宽和高...
+	ovi.base_width -= (DEF_COL_SIZE - 1) * DEF_COL_SPACE;
+	uint32_t other_width = ovi.base_width / DEF_COL_SIZE;
+	uint32_t other_height = ovi.base_height / DEF_ROW_SIZE;
+	// 计算所有的数据源需要向右移动的步数 => 注意是负数...
+	int nMoveLeftX = -1 * (other_width + DEF_COL_SPACE);
+	// 所有第二行数据源窗口向右移动...
+	this->doMovePageX(nMoveLeftX);
+	// 判断是否显示左右箭头...
+	this->doCheckBtnPage();
+}
+
+// 所有第二行数据源窗口向左移动一格...
+void OBSBasic::onPageRightClicked()
+{
+	// 获取显示系统的宽和高...
+	obs_video_info ovi = { 0 };
+	obs_get_video_info(&ovi);
+	// 计算第一个资源的宽和高...
+	ovi.base_height -= DEF_ROW_SPACE;
+	uint32_t first_width = ovi.base_width;
+	uint32_t first_height = ovi.base_height - ovi.base_height / DEF_ROW_SIZE;
+	// 计算其它资源的宽和高...
+	ovi.base_width -= (DEF_COL_SIZE - 1) * DEF_COL_SPACE;
+	uint32_t other_width = ovi.base_width / DEF_COL_SIZE;
+	uint32_t other_height = ovi.base_height / DEF_ROW_SIZE;
+	// 计算所有的数据源需要向右移动的步数 => 注意是正数...
+	int nMoveLeftX = other_width + DEF_COL_SPACE;
+	// 所有第二行数据源窗口向左移动...
+	this->doMovePageX(nMoveLeftX);
+	// 判断是否显示左右箭头...
+	this->doCheckBtnPage();
+}
+
+// 遍历所有的数据源，排除0点位置数据源和浮动数据源...
+void OBSBasic::doMovePageX(int nMoveLeftX)
+{
+	for (int i = 0; i < ui->sources->count(); i++) {
+		QListWidgetItem * listItem = ui->sources->item(i);
+		obs_sceneitem_t * item = this->GetSceneItem(listItem);
+		obs_source_t * source = obs_sceneitem_get_source(item);
+		uint32_t flags = obs_source_get_output_flags(source);
+		bool bIsFloated = obs_sceneitem_floated(item);
+		// 如果数据源对象无效，继续寻找...
+		if (item == NULL || source == NULL)
+			continue;
+		// 如果没有视频数据源标志或处于浮动状态，继续寻找...
+		if (bIsFloated || (flags & OBS_SOURCE_VIDEO) == 0)
+			continue;
+		vec2 vPos = { 1.0f, 1.0f };
+		obs_sceneitem_get_pos(item, &vPos);
+		// 如果数据源是在0点位置，继续寻找...
+		if (vPos.x <= 0.0f && vPos.y <= 0.0f)
+			continue;
+		// 设定这个数据源的新位置...
+		vPos.x -= nMoveLeftX;
+		obs_sceneitem_set_pos(item, &vPos);
+	}
+}
+
+// 判断是否显示左右箭头...
+void OBSBasic::doCheckBtnPage()
+{
+	// 获取显示系统的宽和高...
+	obs_video_info ovi = { 0 };
+	obs_get_video_info(&ovi);
+	bool bIsShowLeft = false;
+	bool bIsShowRight = false;
+	// 遍历所有的数据源对象，判断是否需要显示左右翻页箭头按钮...
+	for (int i = 0; i < ui->sources->count(); i++) {
+		QListWidgetItem * listItem = ui->sources->item(i);
+		obs_sceneitem_t * item = this->GetSceneItem(listItem);
+		obs_source_t * source = obs_sceneitem_get_source(item);
+		uint32_t flags = obs_source_get_output_flags(source);
+		bool bIsFloated = obs_sceneitem_floated(item);
+		// 如果数据源对象无效，继续寻找...
+		if (item == NULL || source == NULL)
+			continue;
+		// 如果没有视频数据源标志或处于浮动状态，继续寻找...
+		if (bIsFloated || (flags & OBS_SOURCE_VIDEO) == 0)
+			continue;
+		// 获取当前数据源的显示位置...
+		vec2 vPos = { 1.0f, 1.0f };
+		obs_sceneitem_get_pos(item, &vPos);
+		// < 0 => 显示左侧按钮..
+		if (vPos.x < 0.0f) {
+			bIsShowLeft = true;
+			continue;
+		}
+		// > ovi.base_width => 显示右侧按钮...
+		if (vPos.x > ovi.base_width) {
+			bIsShowRight = true;
+			continue;
+		}
+	}
+	// 根据最终计算的结果显示左右翻页按钮...
+	ui->preview->DispBtnLeft(bIsShowLeft);
+	ui->preview->DispBtnRight(bIsShowRight);
 }
 
 // 放弃这种思路 => 任何的修改都会重排整个数据源，这样体验会非常差...

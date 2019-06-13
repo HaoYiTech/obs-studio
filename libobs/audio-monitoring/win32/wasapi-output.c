@@ -220,12 +220,12 @@ static void on_audio_playback(void *param, obs_source_t *source,
 	}
 
 	// 判断当前数据源是否是rtp互动教室数据源对象，获取数据源的焦点配置状态...
-	bool bIsRtpSource = ((astrcmpi(source->info.id, "rtp_source") == 0) ? true : false);
+	/*bool bIsRtpSource = ((astrcmpi(source->info.id, "rtp_source") == 0) ? true : false);
 	obs_data_t * lpSettings = obs_source_get_settings(source);
 	bool bIsFocusMix = obs_data_get_bool(lpSettings, "focus_mix");
 	obs_data_release(lpSettings);
 	// 如果是互动教室数据源并且不是焦点，需要强制为静音状态...
-	muted = ((bIsRtpSource && !bIsFocusMix) ? true : muted);
+	muted = ((bIsRtpSource && !bIsFocusMix) ? true : muted);*/
 
 	if (!muted) {
 		/* apply volume */
@@ -243,7 +243,8 @@ static void on_audio_playback(void *param, obs_source_t *source,
 		// 注意：目前采用折中方案，多路监视音频需要进行混音之后才能进行回音消除 => 反复测试回音消除效果不好...
 		// 只投递处于焦点的互动教室的音频回放数据进行回音消除，其它音频不进行回音消除...
 		// setAudioMixer => 屏蔽了不是焦点状态的互动教室的音频的本地回放...
-		if (bIsRtpSource && bIsFocusMix) {
+		//if (bIsRtpSource && bIsFocusMix) {
+		if (astrcmpi(source->info.id, "rtp_source") == 0) {
 			// 构造需要投递给麦克风数据源的结构体 => 样本总是float格式...
 			struct obs_source_audio theEchoData = { 0 };
 			theEchoData.data[0] = resample_data[0];

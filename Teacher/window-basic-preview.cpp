@@ -1,7 +1,9 @@
 
 #include <QGuiApplication>
+#include <QPushButton>
 #include <QMouseEvent>
 #include <QScreen>
+#include <QBitmap>
 
 #include <algorithm>
 #include <cmath>
@@ -9,6 +11,7 @@
 #include <graphics/matrix4.h>
 #include "window-basic-preview.hpp"
 #include "window-basic-main.hpp"
+#include "display-helpers.hpp"
 #include "obs-app.hpp"
 
 #define HANDLE_RADIUS     4.0f
@@ -16,31 +19,67 @@
 
 using namespace std;
 
-/* TODO: make C++ math classes and clean up code here later */
-
 OBSBasicPreview::OBSBasicPreview(QWidget *parent, Qt::WindowFlags flags)
   : OBSQTDisplay(parent, flags)
 {
-	/*#include <QBitmap>
-	#include <QPushButton>
-	m_btnPTZ = new QPushButton(this);
-	m_btnPTZ->setObjectName(QStringLiteral("btnPTZ"));
-	m_btnPTZ->setMinimumSize(QSize(30, 30));
-	m_btnPTZ->setMaximumSize(QSize(30, 30));
-	m_btnPTZ->setCursor(QCursor(Qt::PointingHandCursor));
-	m_btnPTZ->setGeometry(200, 100, 10, 30);
-	m_btnPTZ->setStyleSheet("QPushButton{background:transparent;border-image:url(:/ptz/images/ptz/ptz.png) 0 60 0 0;}"
-							"QPushButton:hover{border-image:url(:ptz/images/ptz/ptz.png) 0 30 0 30;}"
-							"QPushButton:pressed{border-image:url(:ptz/images/ptz/ptz.png) 0 0 0 60;}");
-	QPalette myPalette;
-	QPixmap  myPixmap(":/ptz/images/ptz/ptz.png");
-	// 让背景图片适应窗口的大小，在背景图片上做 scaled 操作...
-	myPalette.setBrush(QPalette::Background, QBrush(myPixmap));
-	m_btnPTZ->setPalette(myPalette);
-	m_btnPTZ->setMask(myPixmap.mask());*/
-
 	ResetScrollingOffset();
 	setMouseTracking(true);
+
+	m_btnLeft = this->CreateBtnPage(true);
+	m_btnRight = this->CreateBtnPage(false);
+}
+
+void OBSBasicPreview::BindBtnClickEvent()
+{
+	OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	this->connect(m_btnLeft, SIGNAL(clicked()), main, SLOT(onPageLeftClicked()));
+	this->connect(m_btnRight, SIGNAL(clicked()), main, SLOT(onPageRightClicked()));
+}
+
+QPushButton * OBSBasicPreview::CreateBtnPage(bool bIsLeft)
+{
+	QPushButton * lpObjButton = new QPushButton(this);
+	QString strBtnName = (bIsLeft ? QStringLiteral("btn_left") : QStringLiteral("btn_right"));
+	QString strStyle = QString("QPushButton{ background:transparent; border-image:url(:/res/images/%1.png) 0 80 0 0; }"
+		"QPushButton:hover{border-image:url(:/res/images/%1.png) 0 40 0 40;}"
+		"QPushButton:pressed{border-image:url(:/res/images/%1.png) 0 0 0 80;}")
+		.arg(strBtnName);
+	lpObjButton->setStyleSheet(strStyle);
+	lpObjButton->setObjectName(strBtnName);
+	lpObjButton->setMinimumSize(QSize(40, 40));
+	lpObjButton->setMaximumSize(QSize(40, 40));
+	lpObjButton->setCursor(QCursor(Qt::PointingHandCursor));
+	lpObjButton->setToolTip(QTStr((bIsLeft ? "Preview.Page.Left" : "Preview.Page.Right")));
+	// 进行按钮图片的透明化处理...
+	QPalette myPalette;
+	QPixmap  myPixmap(QString(":/res/images/%1.png").arg(strBtnName));
+	// 让背景图片适应窗口的大小，在背景图片上做 scaled 操作...
+	myPalette.setBrush(QPalette::Background, QBrush(myPixmap));
+	lpObjButton->setPalette(myPalette);
+	lpObjButton->setMask(myPixmap.mask());
+	lpObjButton->hide();
+	return lpObjButton;
+}
+
+void OBSBasicPreview::ResizeBtnPage(int nPosY)
+{
+	QSize targetSize = GetPixelSize(this);
+	int nPosLeftX = 0; int nPosRightX = 0;
+	nPosRightX = targetSize.width() - 40;
+	m_btnLeft->setGeometry(nPosLeftX, nPosY, 40, 40);
+	m_btnRight->setGeometry(nPosRightX, nPosY, 40, 40);
+}
+
+void OBSBasicPreview::DispBtnRight(bool bIsShow)
+{
+	if (m_btnRight == NULL) return;
+	(bIsShow ? m_btnRight->show() : m_btnRight->hide());
+}
+
+void OBSBasicPreview::DispBtnLeft(bool bIsShow)
+{
+	if (m_btnLeft == NULL) return;
+	(bIsShow ? m_btnLeft->show() : m_btnLeft->hide());
 }
 
 vec2 OBSBasicPreview::GetMouseEventPos(QMouseEvent *event)

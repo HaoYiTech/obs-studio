@@ -10,6 +10,7 @@
 
 class OBSBasic;
 class QMouseEvent;
+class QPushButton;
 
 #define ITEM_LEFT   (1<<0)
 #define ITEM_RIGHT  (1<<1)
@@ -41,6 +42,9 @@ private:
 	vec2         stretchItemSize;
 	matrix4      screenToItem;
 	matrix4      itemToScreen;
+
+	QPushButton * m_btnLeft  = nullptr;
+	QPushButton * m_btnRight = nullptr;
 
 	vec2         startPos;
 	vec2         lastMoveOffset;
@@ -79,8 +83,13 @@ private:
 
 	void ProcessClick(const vec2 &pos);
 
+	QPushButton * CreateBtnPage(bool bIsLeft);
 public:
 	OBSBasicPreview(QWidget *parent, Qt::WindowFlags flags = 0);
+
+	void DispBtnRight(bool bIsShow);
+	void DispBtnLeft(bool bIsShow);
+	void BindBtnClickEvent();
 
 	virtual void keyPressEvent(QKeyEvent *event) override;
 	virtual void keyReleaseEvent(QKeyEvent *event) override;
@@ -92,6 +101,7 @@ public:
 	virtual void mouseReleaseEvent(QMouseEvent *event) override;
 	virtual void mouseMoveEvent(QMouseEvent *event) override;
 
+	void ResizeBtnPage(int nPosY);
 	void DrawSceneEditing();
 
 	inline void SetLocked(bool newLockedVal) {locked = newLockedVal;}
