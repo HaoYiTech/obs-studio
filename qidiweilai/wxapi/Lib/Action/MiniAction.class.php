@@ -642,6 +642,98 @@ class MiniAction extends Action
     echo json_encode($arrErr);
   }
   //
+  // 获取机构列表接口...
+  public function getAgent()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    // 注意：这里使用的是 $_POST 数据...
+    do {
+      // 判断输入的参数是否有效...
+      if( !isset($_POST['cur_page']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入参数无效！';
+        break;
+      }
+      // 得到每页条数...
+      $pagePer = C('PAGE_PER');
+      $pageCur = $_POST['cur_page'];  // 当前页码...
+      $pageLimit = (($pageCur-1)*$pagePer).','.$pagePer; // 读取范围...
+      // 获取记录总数和总页数...
+      $totalNum = D('agent')->count();
+      $max_page = intval($totalNum / $pagePer);
+      // 判断是否是整数倍的页码...
+      $max_page += (($totalNum % $pagePer) ? 1 : 0);
+      // 填充需要返回的信息...
+      $arrErr['total_num'] = $totalNum;
+      $arrErr['max_page'] = $max_page;
+      $arrErr['cur_page'] = $pageCur;
+      // 获取机构分页数据，直接通过数据表读取...
+      $arrErr['agent'] = D('agent')->limit($pageLimit)->order('created DESC')->select();
+    } while ( false );
+    // 返回json编码数据包...
+    echo json_encode($arrErr);
+  }
+  //
+  // 删除机构记录的接口...
+  public function delAgent()
+  {
+    $condition['agent_id'] = $_POST['agent_id'];
+    D('agent')->where($condition)->delete();
+    unlink($_POST['qrcode']);
+  }
+  //
+  // 更新机构记录的接口...
+  public function saveAgent()
+  {
+    D('agent')->save($_POST);
+  }
+  //
+  // 新建机构记录的接口...
+  public function addAgent()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    // 保存到临时对象...
+    $dbAgent = $_POST;
+    $dbAgent['created'] = date('Y-m-d H:i:s');
+    $dbAgent['agent_id'] = D('agent')->add($dbAgent);
+    // 将新创建的数据库记录返回给小程序...
+    $arrErr['agent'] = $dbAgent;
+    do {
+      // 获取小程序码的token值...
+      $arrToken = $this->getToken(false);
+      if ($arrToken['err_code'] > 0) {
+        $arrErr['err_code'] = $arrToken['err_code'];
+        $arrErr['err_msg'] = $arrToken['err_msg'];
+        break;
+      }
+      // 通过小程序码再获取小程序二维码，然后存入数据库...
+      $strQRUrl = sprintf("https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=%s", $arrToken['access_token']);
+      $itemData["scene"] = "agent_" . $dbAgent['agent_id'];
+      $itemData["page"] = "pages/home/home";
+      $itemData["width"] = 280;
+      // 直接通过设定参数获取小程序码...
+      $result = http_post($strQRUrl, json_encode($itemData));
+      // 获取小程序码失败的情况...
+      if( !$result ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '获取小程序码失败';
+        break;
+      }
+      // 将小程序码写入指定的上传目录当中，并将图片地址写入数据库...
+      $strImgPath = sprintf("%s/upload/%s.jpg", APP_PATH, $itemData["scene"]);
+      file_put_contents($strImgPath, $result);
+      $dbAgent['qrcode'] = $strImgPath;
+      $arrErr['agent'] = $dbAgent;
+      D('agent')->save($dbAgent);
+    } while( false );
+    // 返回json编码数据包...
+    echo json_encode($arrErr);
+  }
+  //
   // 获取门店列表接口...
   public function getShop()
   {
@@ -738,8 +830,9 @@ class MiniAction extends Action
   public function getMasterFree()
   {
     $curMasterID = (isset($_GET['master_id']) ? intval($_GET['master_id']) : 0);
-    $arrFree = $this->findMasterFree($curMasterID);
-    echo json_encode($arrFree);
+    $arrErr['master'] = $this->findMasterFree($curMasterID);
+    $arrErr['agent'] = D('agent')->field('agent_id,name')->select();
+    echo json_encode($arrErr);
   }
   //
   // 查找空闲的店长列表...
