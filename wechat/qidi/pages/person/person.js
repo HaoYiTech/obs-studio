@@ -58,11 +58,7 @@ Page({
       label: '我的帐号',
       data: 'navAccount',
       icon: 'fa-user-o',
-    }, {
-      label: '支付管理',
-      data: 'navOrder',
-      icon: 'fa-money',
-    }, {
+    },{
       label: '会员管理',
       data: 'navMember',
       icon: 'fa-id-card-o',
@@ -70,6 +66,10 @@ Page({
       label: '门店管理',
       data: 'navShop',
       icon: 'fa-home',
+    }, {
+      label: '机构管理',
+      data: 'navAgent',
+      icon: 'fa-graduation-cap',
     }],
     m_code: '',
     m_bgColor: '#fff',
@@ -156,7 +156,9 @@ Page({
   // 点击导航栏事件...
   toggleGridNav: function(event) {
     let navItem = event.currentTarget.dataset['item'];
-    if (navItem === 'navShop') {
+    if (navItem === 'navAgent') {
+      wx.navigateTo({ url: '../agent/agent' });
+    } else if (navItem === 'navShop') {
       wx.navigateTo({ url: '../shop/shop' });
     } else if (navItem === 'navMember') {
       wx.navigateTo({ url: '../member/member' });

@@ -8,7 +8,7 @@
     icon-class="icon-blue" icon="smile-o" url="/pages/child/child" />
 </view>
 
-<view class="top-area">
+<!--<view class="top-area">
   <van-cell custom-class="feed-cell" title="立即签到" size="large" is-link border="{{ false }}"
     icon-class="icon-red" icon="sign" value="{{ m_curUser.lesson_num }}" />
   <van-cell custom-class="feed-cell" title="发送红包" size="large" is-link border="{{ false }}"
@@ -29,4 +29,4 @@
   <van-cell custom-class="feed-cell" title="宝宝风采" size="large" is-link border="{{ false }}"
     icon-class="icon-green" icon="award-o" value="" 
     url="/pages/listGrow/listGrow" />
-</view>
+</view>-->

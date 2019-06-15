@@ -12,12 +12,16 @@ Page({
   data: {
     m_bEdit: false,
     m_curMasterName: '',
+    m_curAgentName: '',
     m_curMasterID: 0,
+    m_curAgentID: 0,
     m_arrMaster: [],
+    m_arrAgent: [],
     m_arrArea: [],
     m_curArea: '',
     m_shopName: '',
     m_shopAddr: '',
+    m_shopPhone: ''
   },
 
   /**
@@ -47,8 +51,8 @@ Page({
           return;
         }
         // dataType 没有设置json，需要自己转换...
-        let arrMaster = JSON.parse(res.data);
-        that.doShowShop(isEdit, arrMaster);
+        let arrJson = JSON.parse(res.data);
+        that.doShowShop(isEdit, arrJson.master, arrJson.agent);
       },
       fail: function (res) {
         // 隐藏导航栏加载动画...
@@ -58,16 +62,19 @@ Page({
     });
   },
   // 显示具体的门店操作界面...
-  doShowShop: function(isEdit, arrMaster) {
+  doShowShop: function(isEdit, arrMaster, arrAgent) {
     let strTitle = (isEdit ? '修改' : '添加') + ' - 门店';
     let theShop  = isEdit ? g_app.globalData.m_curSelectItem : null;
     let theArrArea  = isEdit ? [theShop.province, theShop.city, theShop.area] : [];
     let theCurArea  = isEdit ? theArrArea.join(' / ') : '请选择';
     let theShopName = isEdit ? theShop.name : '';
     let theShopAddr = isEdit ? theShop.addr : '';
+    let theShopPhone = isEdit ? theShop.phone : '';
     let theCurMasterID = (isEdit ? theShop.master_id : 0);
     let theCurMasterName = isEdit ? theShop.wx_nickname : '请选择';
-    let theCurMasterIndex = 0;
+    let theCurAgentID = (isEdit ? theShop.agent_id : 0);
+    let theCurAgentName = isEdit ? theShop.agent_name : '请选择';
+    let theCurMasterIndex = 0; let theCurAgentIndex = 0;
     // 修改标题信息...
     wx.setNavigationBarTitle({ title: strTitle });
     // 如果是编辑状态，需要找到店长所在的索引编号...
@@ -79,6 +86,15 @@ Page({
         }
       }
     }
+    // 如果是编辑状态，需要找到机构所在的索引编号...
+    if (isEdit && arrAgent.length > 0) {
+      for (let index = 0; index < arrAgent.length; ++index) {
+        if (arrAgent[index].user_id == theCurAgentID) {
+          theCurAgentIndex = index;
+          break;
+        }
+      }
+    }
     // 应用到界面...
     this.setData({ 
       m_bEdit: isEdit, 
@@ -86,10 +102,15 @@ Page({
       m_curArea: theCurArea,
       m_shopName: theShopName, 
       m_shopAddr: theShopAddr,
+      m_shopPhone: theShopPhone,
       m_arrMaster: arrMaster,
       m_curMasterID: theCurMasterID,
       m_curMasterName: theCurMasterName,
       m_curMasterIndex: theCurMasterIndex,
+      m_arrAgent: arrAgent,
+      m_curAgentID: theCurAgentID,
+      m_curAgentName: theCurAgentName,
+      m_curAgentIndex: theCurAgentIndex,
     });
   },
   // 点击取消按钮...
@@ -106,12 +127,20 @@ Page({
       Notify('【门店地址】不能为空，请重新输入！');
       return;
     }
+    if (this.data.m_shopPhone.length <= 0) {
+      Notify('【门店电话】不能为空，请重新输入！');
+      return;
+    }
     if (this.data.m_arrArea.length <= 0) {
       Notify('【门店地区】不能为空，请重新选择！');
       return;
     }
     if (parseInt(this.data.m_curMasterID) <= 0) {
       Notify('【门店店长】不能为空，请重新选择！');
+      return;
+    }
+    if (parseInt(this.data.m_curMasterID) <= 0) {
+      Notify('【所属机构】不能为空，请重新选择！');
       return;
     }
     // 根据不同的标志进行不同的接口调用...
@@ -125,6 +154,8 @@ Page({
     var thePostData = {
       'name': that.data.m_shopName,
       'addr': that.data.m_shopAddr,
+      'phone': that.data.m_shopPhone,
+      'agent_id': that.data.m_curAgentID,
       'master_id': that.data.m_curMasterID,
       'province': that.data.m_arrArea[0],
       'city': that.data.m_arrArea[1],
@@ -156,6 +187,8 @@ Page({
         // 再更新一些数据到新建记录当中...
         arrData.shop.user_id = that.data.m_curMasterID;
         arrData.shop.wx_nickname = that.data.m_curMasterName;
+        arrData.shop.agent_id = that.data.m_curAgentID;
+        arrData.shop.agent_name = that.data.m_curAgentName;
         // 将新得到的门店记录存入父页面当中...
         let pages = getCurrentPages();
         let prevPage = pages[pages.length - 2];
@@ -186,6 +219,8 @@ Page({
       'shop_id': theCurShop.shop_id,
       'name': that.data.m_shopName,
       'addr': that.data.m_shopAddr,
+      'phone': that.data.m_shopPhone,
+      'agent_id': that.data.m_curAgentID,
       'master_id': that.data.m_curMasterID,
       'province': that.data.m_arrArea[0],
       'city': that.data.m_arrArea[1],
@@ -216,8 +251,11 @@ Page({
         let thePrevShop = theArrShop[theIndex];
         thePrevShop.name = that.data.m_shopName;
         thePrevShop.addr = that.data.m_shopAddr;
+        thePrevShop.phone = that.data.m_shopPhone;
         thePrevShop.user_id = that.data.m_curMasterID;
+        thePrevShop.agent_id = that.data.m_curAgentID;
         thePrevShop.master_id = that.data.m_curMasterID;
+        thePrevShop.agent_name = that.data.m_curAgentName;
         thePrevShop.wx_nickname = that.data.m_curMasterName;
         thePrevShop.province = that.data.m_arrArea[0];
         thePrevShop.city = that.data.m_arrArea[1];
@@ -298,6 +336,10 @@ Page({
   onAddrChange: function(event) {
     this.data.m_shopAddr = event.detail;
   },
+  // 门店电话发生变化...
+  onPhoneChange: function (event) {
+    this.data.m_shopPhone = event.detail;
+  },
   // 地区发生选择变化...
   onAreaChange: function(event) {
     const { code: currentCode, value: currentValue } = event.detail;
@@ -317,6 +359,18 @@ Page({
     // 获取到当前变化后的店长信息，并写入数据然后显示出来...
     let theCurMaster = this.data.m_arrMaster[theNewMasterID];
     this.setData({ m_curMasterID: theCurMaster.user_id, m_curMasterName: theCurMaster.wx_nickname });
+  },
+  // 所属机构发生选择变化...
+  onAgentChange: function (event) {
+    const { value } = event.detail;
+    let theNewAgentID = parseInt(value);
+    if (theNewAgentID < 0 || theNewAgentID >= this.data.m_arrAgent.length) {
+      Notify('【所属机构】选择内容越界！');
+      return;
+    }
+    // 获取到当前变化后的店长信息，并写入数据然后显示出来...
+    let theCurAgent = this.data.m_arrAgent[theNewAgentID];
+    this.setData({ m_curAgentID: theCurAgent.agent_id, m_curAgentName: theCurAgent.name });
   },
   /**
    * 生命周期函数--监听页面初次渲染完成
