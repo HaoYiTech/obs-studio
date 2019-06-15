@@ -6,11 +6,13 @@
     "pages/shop/shop",
     "pages/child/child",
     "pages/about/about",
+    "pages/agent/agent",
     "pages/parent/parent",
     "pages/person/person",
     "pages/member/member",
+    "pages/userItem/userItem",
     "pages/shopItem/shopItem",
-    "pages/userItem/userItem"
+    "pages/agentItem/agentItem"
   ],
   "window":{
     "navigationBarBackgroundColor": "#fff",
@@ -26,15 +28,15 @@
     "selectedColor": "#0099e9",
     "list": [
       {
+        "selectedIconPath": "images/home_focus.png",
         "pagePath": "pages/home/home",
         "iconPath": "images/home.png",
-        "selectedIconPath": "images/home_focus.png",
         "text": "首页"
       },
       {
+        "selectedIconPath": "images/person_focus.png",
         "pagePath": "pages/person/person",
         "iconPath": "images/person.png",
-        "selectedIconPath": "images/person_focus.png",
         "text": "我的"
       }
     ]
