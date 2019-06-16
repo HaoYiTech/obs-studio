@@ -63,6 +63,10 @@ Page({
       data: 'navMember',
       icon: 'fa-id-card-o',
     }, {
+      label: '直播间管理',
+      data: 'navLive',
+      icon: 'fa-video-camera',
+    }, {
       label: '门店管理',
       data: 'navShop',
       icon: 'fa-home',
@@ -160,6 +164,8 @@ Page({
       wx.navigateTo({ url: '../agent/agent' });
     } else if (navItem === 'navShop') {
       wx.navigateTo({ url: '../shop/shop' });
+    } else if (navItem === 'navLive') {
+      wx.navigateTo({ url: '../live/live' });
     } else if (navItem === 'navMember') {
       wx.navigateTo({ url: '../member/member' });
     }

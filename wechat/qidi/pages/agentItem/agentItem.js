@@ -207,7 +207,7 @@ Page({
         let prevPage = pages[pages.length - 2];
         let theIndex = parseInt(theCurAgent.indexID);
         // 删除并更新机构记录到界面当中...
-        prevPage.data.m_arrAgent.splice(theIndex);
+        prevPage.data.m_arrAgent.splice(theIndex,1);
         let theArrAgent = prevPage.data.m_arrAgent;
         prevPage.setData({ m_arrAgent: theArrAgent, m_total_num: theArrAgent.length });
         // 进行页面的更新跳转...

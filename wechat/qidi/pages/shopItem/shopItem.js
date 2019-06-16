@@ -89,7 +89,7 @@ Page({
     // 如果是编辑状态，需要找到机构所在的索引编号...
     if (isEdit && arrAgent.length > 0) {
       for (let index = 0; index < arrAgent.length; ++index) {
-        if (arrAgent[index].user_id == theCurAgentID) {
+        if (arrAgent[index].agent_id == theCurAgentID) {
           theCurAgentIndex = index;
           break;
         }
@@ -139,7 +139,7 @@ Page({
       Notify('【门店店长】不能为空，请重新选择！');
       return;
     }
-    if (parseInt(this.data.m_curMasterID) <= 0) {
+    if (parseInt(this.data.m_curAgentID) <= 0) {
       Notify('【所属机构】不能为空，请重新选择！');
       return;
     }
@@ -316,7 +316,7 @@ Page({
         let prevPage = pages[pages.length - 2];
         let theIndex = parseInt(theCurShop.indexID);
         // 删除并更新门店记录到界面当中...
-        prevPage.data.m_arrShop.splice(theIndex);
+        prevPage.data.m_arrShop.splice(theIndex,1);
         let theArrShop = prevPage.data.m_arrShop;
         prevPage.setData({ m_arrShop: theArrShop, m_total_num: theArrShop.length });
         // 进行页面的更新跳转...

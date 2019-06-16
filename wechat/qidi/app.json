@@ -2,6 +2,7 @@
   "pages":[
     "pages/home/home",
     "pages/room/room",
+    "pages/live/live",
     "pages/bind/bind",
     "pages/shop/shop",
     "pages/child/child",
@@ -10,6 +11,7 @@
     "pages/parent/parent",
     "pages/person/person",
     "pages/member/member",
+    "pages/liveItem/liveItem",
     "pages/userItem/userItem",
     "pages/shopItem/shopItem",
     "pages/agentItem/agentItem"
