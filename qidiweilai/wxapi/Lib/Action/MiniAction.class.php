@@ -193,6 +193,188 @@ class MiniAction extends Action
     echo json_encode($arrErr);
   }
   //
+  // 获取直播间列表接口...
+  public function getLive()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    // 注意：这里使用的是 $_POST 数据...
+    do {
+      // 判断输入的参数是否有效...
+      if( !isset($_POST['cur_page']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入参数无效！';
+        break;
+      }
+      // 得到每页条数...
+      $pagePer = C('PAGE_PER');
+      $pageCur = $_POST['cur_page'];  // 当前页码...
+      $pageLimit = (($pageCur-1)*$pagePer).','.$pagePer; // 读取范围...
+      // 获取记录总数和总页数...
+      $totalNum = D('room')->count();
+      $max_page = intval($totalNum / $pagePer);
+      // 判断是否是整数倍的页码...
+      $max_page += (($totalNum % $pagePer) ? 1 : 0);
+      // 填充需要返回的信息...
+      $arrErr['total_num'] = $totalNum;
+      $arrErr['max_page'] = $max_page;
+      $arrErr['cur_page'] = $pageCur;
+      // 获取机构分页数据，直接通过数据表读取...
+      $arrLive = D('LiveView')->limit($pageLimit)->order('Room.created DESC')->select();
+      // 修改直播间编号 => 终端软件使用...
+      foreach($arrLive as &$dbItem) {
+        $dbItem['room_id'] = LIVE_BEGIN_ID + $dbItem['room_id'];
+      }
+      // 组合最终返回的数据结果...
+      $arrErr['live'] = $arrLive;
+    } while ( false );
+    // 返回json编码数据包...
+    echo json_encode($arrErr);
+  }
+  //
+  // 获取直播间扩展信息...
+  public function getExLive()
+  {
+    $arrErr['subject'] = D('subject')->field('subject_id,subject_name')->select();
+    $arrErr['agent'] = D('agent')->field('agent_id,name')->select();
+    echo json_encode($arrErr);
+  }
+  //
+  // 删除直播间记录的接口...
+  public function delLive()
+  {
+    // 修改房间编号 => 减去房间偏移号码...
+    $_POST['room_id'] = $_POST['room_id'] - LIVE_BEGIN_ID;
+    $condition['room_id'] = $_POST['room_id'];
+    D('room')->where($condition)->delete();
+    unlink($_POST['qrcode']);
+  }
+  //
+  // 更新直播间记录的接口...
+  public function saveLive()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    do {
+      if( !isset($_POST['room_pass']) || !isset($_POST['room_id']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入的参数无效';
+        break;
+      }
+      // 修改房间编号 => 减去房间偏移号码...
+      $_POST['room_id'] = $_POST['room_id'] - LIVE_BEGIN_ID;
+      // 判断输入密码的唯一性...
+      $condition['room_pass'] = $_POST['room_pass'];
+      $condition['room_id'] = array('neq', $_POST['room_id']);
+      $arrFind = D('room')->where($condition)->field('room_id,room_pass')->select();
+      if( count($arrFind) > 0 ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入的密码已经存在，请重新输入！';
+        break;
+      }
+      // 将输入的数据存入数据库...
+      D('room')->save($_POST);
+    } while ( false );
+    // 返回json数据包...
+    echo json_encode($arrErr);
+  }
+
+  // 专门生成直播间二维码测试代码...
+  /*public function doTest()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    do {
+      // 获取小程序码的token值...
+      $arrToken = $this->getToken(false);
+      if ($arrToken['err_code'] > 0) {
+        $arrErr['err_code'] = $arrToken['err_code'];
+        $arrErr['err_msg'] = $arrToken['err_msg'];
+        break;
+      }
+      // 通过小程序码再获取小程序二维码，然后存入数据库...
+      $strQRUrl = sprintf("https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=%s", $arrToken['access_token']);
+      $itemData["scene"] = "room_" . $_GET['room_id'];
+      $itemData["page"] = "pages/home/home";
+      $itemData["width"] = 280;
+      // 直接通过设定参数获取小程序码...
+      $result = http_post($strQRUrl, json_encode($itemData));
+      // 获取小程序码失败的情况...
+      if( !$result ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '获取小程序码失败';
+        break;
+      }
+      // 将小程序码写入指定的上传目录当中，并将图片地址写入数据库...
+      $strImgPath = sprintf("%s/upload/%s.jpg", APP_PATH, $itemData["scene"]);
+      file_put_contents($strImgPath, $result);
+    } while ( false );
+    echo json_encode($arrErr);
+  }*/
+
+  //
+  // 新建直播间记录的接口...
+  public function addLive()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    do {
+      if( !isset($_POST['room_pass']) || !isset($_POST['room_name']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入的参数无效';
+        break;
+      }
+      // 判断输入密码的唯一性...
+      $condition['room_pass'] = $_POST['room_pass'];
+      $arrFind = D('room')->where($condition)->field('room_id,room_pass')->select();
+      if( count($arrFind) > 0 ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入的密码已经存在，请重新输入！';
+        break;
+      }
+      $dbLive = $_POST;
+      $dbLive['created'] = date('Y-m-d H:i:s');
+      $dbLive['updated'] = date('Y-m-d H:i:s');
+      $dbLive['room_id'] = D('room')->add($dbLive);
+      // 将新创建的数据库记录返回给小程序...
+      $arrErr['live'] = $dbLive;
+      // 获取小程序码的token值...
+      $arrToken = $this->getToken(false);
+      if ($arrToken['err_code'] > 0) {
+        $arrErr['err_code'] = $arrToken['err_code'];
+        $arrErr['err_msg'] = $arrToken['err_msg'];
+        break;
+      }
+      // 通过小程序码再获取小程序二维码，然后存入数据库...
+      $strQRUrl = sprintf("https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=%s", $arrToken['access_token']);
+      $itemData["scene"] = "room_" . $dbLive['room_id'];
+      $itemData["page"] = "pages/home/home";
+      $itemData["width"] = 280;
+      // 直接通过设定参数获取小程序码...
+      $result = http_post($strQRUrl, json_encode($itemData));
+      // 获取小程序码失败的情况...
+      if( !$result ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '获取小程序码失败';
+        break;
+      }
+      // 将小程序码写入指定的上传目录当中，并将图片地址写入数据库...
+      $strImgPath = sprintf("%s/upload/%s.jpg", APP_PATH, $itemData["scene"]);
+      file_put_contents($strImgPath, $result);
+      $dbLive['qrcode'] = $strImgPath;
+      D('room')->save($dbLive);
+      // 修改房间编号，增加房间偏移号码...
+      $dbLive['room_id'] = $dbLive['room_id'] + LIVE_BEGIN_ID;
+      $arrErr['live'] = $dbLive;
+    } while ( false );
+    // 返回json数据包...
+    echo json_encode($arrErr);
+  }
+  //
   // 处理小程序登录事件...
   public function login()
   {
