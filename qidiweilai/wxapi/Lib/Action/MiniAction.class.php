@@ -193,6 +193,37 @@ class MiniAction extends Action
     echo json_encode($arrErr);
   }
   //
+  // 验证房间密码接口...
+  public function roomPass()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    // 注意：这里使用的是 $_POST 数据...
+    do {
+      // 判断输入的参数是否有效...
+      if( !isset($_POST['room_pass']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入参数无效！';
+        break;
+      }
+      // 判断房间是否有效 => 房间表中查找...
+      $condition['room_pass'] = $_POST['room_pass'];
+      $dbRoom = D('room')->where($condition)->find();
+      // 密码验证失败，直接返回错误信息...
+      if( !isset($dbRoom['room_id']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '密码错误，请重新输入！';
+        break;
+      }
+      // 验证成功，返回密码对应的房间信息 => 需要修改房间偏移号...
+      $dbRoom['room_id'] += LIVE_BEGIN_ID;
+      $arrErr['room'] = $dbRoom;
+    } while ( false );
+    // 返回json编码数据包...
+    echo json_encode($arrErr);
+  }
+  //
   // 获取直播间列表接口...
   public function getLive()
   {
@@ -202,17 +233,24 @@ class MiniAction extends Action
     // 注意：这里使用的是 $_POST 数据...
     do {
       // 判断输入的参数是否有效...
-      if( !isset($_POST['cur_page']) ) {
+      if( !isset($_POST['cur_page']) || !isset($_POST['user_id']) || !isset($_POST['user_type']) ) {
         $arrErr['err_code'] = true;
         $arrErr['err_msg'] = '输入参数无效！';
         break;
       }
+      // 判断是否是超级帐号 => 运营者和管理员...
+      $bIsAdmin = (($_POST['user_type'] >= kMaintainUser) ? true : false);
+      $condition['master_id'] = $_POST['user_id'];
       // 得到每页条数...
       $pagePer = C('PAGE_PER');
       $pageCur = $_POST['cur_page'];  // 当前页码...
       $pageLimit = (($pageCur-1)*$pagePer).','.$pagePer; // 读取范围...
       // 获取记录总数和总页数...
-      $totalNum = D('room')->count();
+      if( $bIsAdmin ) {
+        $totalNum = D('room')->count();
+      } else {
+        $totalNum = D('LiveView')->where($condition)->count();
+      }
       $max_page = intval($totalNum / $pagePer);
       // 判断是否是整数倍的页码...
       $max_page += (($totalNum % $pagePer) ? 1 : 0);
@@ -221,7 +259,11 @@ class MiniAction extends Action
       $arrErr['max_page'] = $max_page;
       $arrErr['cur_page'] = $pageCur;
       // 获取机构分页数据，直接通过数据表读取...
-      $arrLive = D('LiveView')->limit($pageLimit)->order('Room.created DESC')->select();
+      if( $bIsAdmin ) {
+        $arrLive = D('LiveView')->limit($pageLimit)->order('Room.created DESC')->select();
+      } else {
+        $arrLive = D('LiveView')->where($condition)->limit($pageLimit)->order('Room.created DESC')->select();
+      }
       // 修改直播间编号 => 终端软件使用...
       foreach($arrLive as &$dbItem) {
         $dbItem['room_id'] = LIVE_BEGIN_ID + $dbItem['room_id'];
@@ -852,7 +894,7 @@ class MiniAction extends Action
       $arrErr['max_page'] = $max_page;
       $arrErr['cur_page'] = $pageCur;
       // 获取机构分页数据，直接通过数据表读取...
-      $arrErr['agent'] = D('agent')->limit($pageLimit)->order('created DESC')->select();
+      $arrErr['agent'] = D('AgentView')->limit($pageLimit)->order('created DESC')->select();
     } while ( false );
     // 返回json编码数据包...
     echo json_encode($arrErr);
@@ -914,6 +956,13 @@ class MiniAction extends Action
     } while( false );
     // 返回json编码数据包...
     echo json_encode($arrErr);
+  }
+  //
+  // 获取所有门店列表接口...
+  public function getAllShop()
+  {
+    $arrShop = D('shop')->field('shop_id,name')->order('created ASC')->select();
+    echo json_encode($arrShop);
   }
   //
   // 获取门店列表接口...
@@ -1006,6 +1055,14 @@ class MiniAction extends Action
     } while( false );
     // 返回json编码数据包...
     echo json_encode($arrErr);
+  }
+
+  public function getAgentFree()
+  {
+    // 找到所有 user_type > kTeacherUser 的用户，这些用户都可以成为机构管理员...
+    $condition['user_type'] = array('gt', kTeacherUser);
+    $arrMaster = D('user')->where($condition)->field('user_id,wx_nickname')->select();
+    echo json_encode($arrMaster);
   }
   //
   // 得到所有的可用的店长列表 => 没有被占用的自由店长列表...
