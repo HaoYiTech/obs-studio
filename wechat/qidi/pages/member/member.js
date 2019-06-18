@@ -1,6 +1,6 @@
 
 // 获取全局的app对象...
-const g_app = getApp()
+const g_appData = getApp().globalData;
 
 Page({
   /**
@@ -14,7 +14,7 @@ Page({
     m_str_query: '',
     m_show_more: true,
     m_no_more: '正在加载...',
-    m_userTypeName: g_app.globalData.m_userTypeName
+    m_userTypeName: g_appData.m_userTypeName
   },
 
   // 搜索框发生变化...
@@ -35,7 +35,7 @@ Page({
   doShowUser: function (event) {
     let theItem = event.currentTarget.dataset['item'];
     theItem.indexID = event.currentTarget.id;
-    g_app.globalData.m_curSelectItem = theItem;
+    g_appData.m_curSelectItem = theItem;
     wx.navigateTo({ url: '../userItem/userItem' });
   },
 
@@ -46,7 +46,7 @@ Page({
     this.doAPIGetUser();
   },
 
-  // 获会员用户列表...
+  // 获用户列表...
   doAPIGetUser: function () {
     // 显示导航栏|浮动加载动画...
     wx.showLoading({ title: '加载中' });
@@ -58,7 +58,7 @@ Page({
       'search': that.data.m_str_query,
     }
     // 构造访问接口连接地址...
-    var theUrl = g_app.globalData.m_urlPrev + 'Mini/getUser';
+    var theUrl = g_appData.m_urlPrev + 'Mini/getUser';
     // 请求远程API过程...
     wx.request({
       url: theUrl,
@@ -71,7 +71,7 @@ Page({
         wx.hideLoading();
         // 调用接口失败...
         if (res.statusCode != 200) {
-          that.setData({ m_show_more: false, m_no_more: '获取会员用户列表失败' })
+          that.setData({ m_show_more: false, m_no_more: '获取用户列表失败' })
           return
         }
         // dataType 没有设置json，需要自己转换...
@@ -89,7 +89,7 @@ Page({
         that.data.m_total_num = arrData.total_num
         that.data.m_max_page = arrData.max_page
         wx.setNavigationBarTitle({
-          title: '会员管理(' + that.data.m_total_num + ')',
+          title: '用户管理(' + that.data.m_total_num + ')',
         })
         // 将数据显示到模版界面上去，并且显示加载更多页面...
         that.setData({ m_arrUser: that.data.m_arrUser })
@@ -101,7 +101,7 @@ Page({
       fail: function (res) {
         // 隐藏导航栏加载动画...
         wx.hideLoading()
-        that.setData({ m_show_more: false, m_no_more: '获取会员用户记录失败' })
+        that.setData({ m_show_more: false, m_no_more: '获取用户记录失败' })
       }
     })
   },

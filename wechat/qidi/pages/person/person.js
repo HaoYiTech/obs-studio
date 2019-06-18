@@ -10,16 +10,20 @@ Page({
    * 页面的初始数据
    */
   data: {
-    icon: {
+    m_code: '',
+    m_bgColor: '#fff',
+    m_show_auth: false,
+    m_icon: {
       type: 'warn',
       color: '#ef473a',
     },
-    buttons: [{
+    m_buttons: [{
       type: 'balanced',
       block: true,
       text: '点击授权',
       openType: 'getUserInfo',
     }],
+
     m_UserGrids: [{
       label: '我的帐号',
       data: 'navAccount',
@@ -37,29 +41,34 @@ Page({
       data: 'navBaby',
       icon: 'fa-child',
     }],
+
+    /*label: '支付管理',
+      data: 'navOrder',
+      icon: 'fa-money',
+      label: '门店管理',
+      data: 'navShop',
+      icon: 'fa-home',*/
+
     m_ShopGrids: [{
       label: '我的帐号',
       data: 'navAccount',
       icon: 'fa-user-o',
     }, {
-      label: '支付管理',
-      data: 'navOrder',
-      icon: 'fa-money',
-    }, {
-      label: '会员管理',
+      label: '用户管理',
       data: 'navMember',
       icon: 'fa-id-card-o',
     }, {
-      label: '门店管理',
-      data: 'navShop',
-      icon: 'fa-home',
+      label: '直播间管理',
+      data: 'navLive',
+      icon: 'fa-video-camera',
     }],
+    
     m_AdminGrids: [{
       label: '我的帐号',
       data: 'navAccount',
       icon: 'fa-user-o',
     },{
-      label: '会员管理',
+      label: '用户管理',
       data: 'navMember',
       icon: 'fa-id-card-o',
     }, {
@@ -75,9 +84,6 @@ Page({
       data: 'navAgent',
       icon: 'fa-graduation-cap',
     }],
-    m_code: '',
-    m_bgColor: '#fff',
-    m_show_auth: false,
   },
 
   /**
@@ -142,8 +148,8 @@ Page({
     let theUserType = parseInt(theAppData.m_userInfo.userType);
     switch(theUserType) {
       case theTypeID.kParentUser:
-      case theTypeID.kTeacherUser: theGrids = this.data.m_UserGrids; break;
       case theTypeID.kAssistUser:
+      case theTypeID.kTeacherUser: theGrids = this.data.m_UserGrids; break;
       case theTypeID.kShopMasterUser:
       case theTypeID.kShopOwnerUser: theGrids = this.data.m_ShopGrids; break;
       case theTypeID.kMaintainUser:

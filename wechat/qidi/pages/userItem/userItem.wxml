@@ -1,6 +1,6 @@
 
 <view class="top-area">
-  <van-cell custom-class="feed-cell" title="家长信息" size="large" is-link border="{{ false }}"
+  <van-cell custom-class="feed-cell" title="用户信息" size="large" is-link border="{{ false }}"
     value="{{ m_curUser.real_name ? m_curUser.real_name : '未填写' }} - {{ m_curUser.wx_nickname }}"
     icon-class="icon-blue" icon="manager-o" url="/pages/parent/parent" />
   <van-cell custom-class="feed-cell" title="宝宝信息" size="large" is-link border="{{ false }}"

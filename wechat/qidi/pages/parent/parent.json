@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "家长信息 - 修改",
+  "navigationBarTitleText": "用户信息 - 修改",
   "enablePullDownRefresh": false,
   "usingComponents": {
     "van-cell-group": "../../vant-weapp/cell-group/index",

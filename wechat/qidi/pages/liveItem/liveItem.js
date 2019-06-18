@@ -3,7 +3,7 @@ import Notify from '../../vant-weapp/notify/notify';
 import Dialog from '../../vant-weapp/dialog/dialog';
 
 // 获取全局的app对象...
-const g_app = getApp()
+const g_appData = getApp().globalData;
 
 Page({
   /**
@@ -25,13 +25,16 @@ Page({
    * 生命周期函数--监听页面加载
    */
   onLoad: function (options) {
+    // 设置界面是否是系统管理员身份 => 可以添加|删除...
+    let theIsAdmin = ((g_appData.m_userInfo.userType >= g_appData.m_userTypeID.kMaintainUser) ? true : false);
+    this.setData({ m_isAdmin: theIsAdmin });
     // 显示导航栏|浮动加载动画...
     wx.showLoading({ title: '加载中' });
     // 保存this对象...
     let that = this
     let isEdit = parseInt(options.edit);
     // 构造访问接口连接地址...
-    let theUrl = g_app.globalData.m_urlPrev + 'Mini/getExLive';
+    let theUrl = g_appData.m_urlPrev + 'Mini/getExLive';
     // 请求远程API过程...
     wx.request({
       url: theUrl,
@@ -60,7 +63,7 @@ Page({
   // 显示具体的直播间操作界面...
   doShowLive: function (isEdit, arrSubject, arrAgent) {
     let strTitle = (isEdit ? '修改' : '添加') + ' - 直播间';
-    let theLive = isEdit ? g_app.globalData.m_curSelectItem : null;
+    let theLive = isEdit ? g_appData.m_curSelectItem : null;
     let theLiveName = isEdit ? theLive.room_name : '';
     let theLivePass = isEdit ? theLive.room_pass : '';
     theLivePass = ((typeof theLivePass === 'undefined') ? '' : theLivePass);
@@ -141,7 +144,7 @@ Page({
       'subject_id': that.data.m_curSubjectID,
     }
     // 构造访问接口连接地址...
-    let theUrl = g_app.globalData.m_urlPrev + 'Mini/addLive';
+    let theUrl = g_appData.m_urlPrev + 'Mini/addLive';
     // 请求远程API过程...
     wx.request({
       url: theUrl,
@@ -192,7 +195,7 @@ Page({
     wx.showLoading({ title: '加载中' });
     // 保存this对象...
     let that = this
-    let theCurLive = g_app.globalData.m_curSelectItem;
+    let theCurLive = g_appData.m_curSelectItem;
     // 准备需要的参数信息...
     var thePostData = {
       'room_id': theCurLive.room_id,
@@ -202,7 +205,7 @@ Page({
       'subject_id': that.data.m_curSubjectID,
     }
     // 构造访问接口连接地址...
-    let theUrl = g_app.globalData.m_urlPrev + 'Mini/saveLive';
+    let theUrl = g_appData.m_urlPrev + 'Mini/saveLive';
     // 请求远程API过程...
     wx.request({
       url: theUrl,
@@ -264,14 +267,14 @@ Page({
     wx.showLoading({ title: '加载中' });
     // 保存this对象...
     let that = this
-    let theCurLive = g_app.globalData.m_curSelectItem;
+    let theCurLive = g_appData.m_curSelectItem;
     // 准备需要的参数信息...
     var thePostData = {
       'room_id': theCurLive.room_id,
       'qrcode': theCurLive.qrcode,
     }
     // 构造访问接口连接地址...
-    let theUrl = g_app.globalData.m_urlPrev + 'Mini/delLive';
+    let theUrl = g_appData.m_urlPrev + 'Mini/delLive';
     // 请求远程API过程...
     wx.request({
       url: theUrl,

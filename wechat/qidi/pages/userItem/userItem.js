@@ -15,7 +15,7 @@ Page({
    */
   onLoad: function (options) {
     let curUser = g_app.globalData.m_curSelectItem;
-    wx.setNavigationBarTitle({ title: curUser.wx_nickname + ' - 会员详情' });
+    wx.setNavigationBarTitle({ title: curUser.wx_nickname + ' - 用户详情' });
     this.setData({ m_curUser: curUser });
   },
 

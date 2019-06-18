@@ -14,7 +14,7 @@
     title="{{ item.name }}"
     desc="地址：{{item.addr}}"
     card-time="电话：{{ item.phone }}"
-    card-age="时间：{{ item.created }}"
+    card-age="管理：{{ item.wx_nickname }}"
     lazy-load="{{ true }}"
     shop-cart="{{ false }}"
     show-arrow="{{ true }}"

@@ -15,7 +15,8 @@ Page({
     m_total_num: 0,
     m_show_more: true,
     m_show_auth: false,
-    m_load_type: null
+    m_load_type: null,
+    m_urlSite: g_app.globalData.m_urlSite
   },
 
   /**
@@ -72,7 +73,7 @@ Page({
         that.data.m_total_num = arrData.total_num
         that.data.m_max_page = arrData.max_page
         // 将数据显示到模版界面上去，并且显示加载更多页面...
-        that.setData({ m_arrRoom: that.data.m_arrRoom })
+        that.setData({ m_arrRoom: that.data.m_arrRoom, m_total_num: that.data.m_total_num })
         // 如果到达最大页数，关闭加载更多信息...
         if (that.data.m_cur_page >= that.data.m_max_page) {
           that.setData({ m_show_more: false, m_no_more: '没有更多内容了' })

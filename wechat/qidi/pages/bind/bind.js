@@ -1,5 +1,6 @@
 
-import Dialog from '../../vant-weapp/dialog/dialog';
+import { $wuxKeyBoard } from '../../wux-weapp/index'
+import Notify from '../../vant-weapp/notify/notify';
 
 // 定义绑定登录子命令...
 const BIND_SCAN = 1
@@ -39,38 +40,10 @@ Page({
       block: true,
       text: '取消',
     }],
-    /*btnAuths: [{
-      type: 'balanced',
-      outline: false,
-      block: true,
-      text: '确认登录',
-    }, {
-      type: 'stable',
-      outline: true,
-      block: true,
-      text: '取消',
-    }],*/
     m_code: '',
     m_btnClick: '',
     m_show_auth: false,
-    m_show_more: true,
-    m_cur_page: 1,
-    m_max_page: 1,
-    m_total_num: 0,
-    m_arrRoom: [],
   },
-
-  // 点击确认登录或取消...
-  /*doClickAuth: function(e) {
-    console.log(e);
-    const { index } = e.detail;
-    // 确认或取消，发送不同的命令...
-    if (index === 0) {
-      this.doAPIBindMini(BIND_SAVE);
-    } else if (index === 1) {
-      this.doAPIBindMini(BIND_CANCEL);
-    }
-  },*/
 
   // 用户点击重新扫描或取消...
   doClickScan: function (inEvent) {
@@ -245,20 +218,17 @@ Page({
           // 如果点了 取消 直接跳转到无参数首页页面...
           that.doBindError("您已取消此次登录", "您可再次扫描登录，或关闭窗口！")
         } else if (inSubCmd == BIND_SCAN) {
-          // 扫码授权成功之后，显示房间列表...
+          // 扫码授权成功之后，更改标题，输入密码...
+          wx.setNavigationBarTitle({ title: '扫码登录 - 房间密码' });
           that.setData({ m_show_auth: 2 });
-          that.doAPIGetRoom();
-          // 显示扫码授权成功界面，需要用户点击确定登录或取消 => 需要计算终端类型...
-          /*let strType = ((g_app.globalData.m_scanType === kClientTeacher) ? '讲师端' : '学生端');
-          that.setData({
-            m_show_auth: true,
-            m_btnClick: 'doClickAuth',
-            m_title: "扫描授权成功",
-            m_label: "请点击确认登录按钮，完成 " + strType + " 授权登录。",
-            buttons: that.data.btnAuths,
-            'icon.color': '#33cd5f',
-            'icon.type': 'success',
-          });*/
+          // 显示明文，输完数字会自动回调...
+          $wuxKeyBoard().show({
+            showCancel: false,
+            password: false,
+            callback(value) {
+              that.doAPIRoomPass(value);
+            }
+          });
         }
       },
       fail: function (res) {
@@ -269,11 +239,54 @@ Page({
       }
     })
   },
-
+  // 发送到网站端验证房间密码是否正确...
+  doAPIRoomPass: function (inPass) {
+    // 获取到的用户信息有效，弹出等待框...
+    wx.showLoading({ title: '密码验证中' })
+    // 保存this对象...
+    var that = this
+    // 准备需要的参数信息...
+    var thePostData = {
+      'room_pass': inPass
+    }
+    // 构造访问接口连接地址...
+    var theUrl = g_app.globalData.m_urlPrev + 'Mini/roomPass'
+    // 请求远程API过程...
+    wx.request({
+      url: theUrl,
+      method: 'POST',
+      data: thePostData,
+      dataType: 'x-www-form-urlencoded',
+      header: { 'content-type': 'application/x-www-form-urlencoded' },
+      success: function (res) {
+        wx.hideLoading();
+        // 调用接口失败 => 直接返回
+        if (res.statusCode != 200) {
+          Notify(`发送命令失败，错误码：${res.statusCode}`)
+          return
+        }
+        // dataType 没有设置json，需要自己转换...
+        var arrData = JSON.parse(res.data);
+        // 汇报反馈失败的处理 => 直接返回...
+        if (arrData.err_code > 0) {
+          Notify(arrData.err_msg);
+          return
+        }
+        // 保存房间，然后通知中心服务器登录完成...
+        g_app.globalData.m_curRoomItem = arrData.room;
+        that.doAPIBindMini(BIND_SAVE, arrData.room.room_id);
+      },
+      fail: function (res) {
+        wx.hideLoading();
+        // 打印错误信息，显示错误警告...
+        Notify("调用网站验证接口失败！")
+      }
+    })
+  },
   // 显示绑定错误时的页面信息...
   doBindError: function (inTitle, inError, inShowDlg = false) {
     if (inShowDlg) {
-      Dialog.alert({ title: inTitle, message: inError });
+      Notify(inError);
     } else {
       this.setData({
         m_show_auth: true,
@@ -288,7 +301,7 @@ Page({
   },
 
   // 获取房间列表...
-  doAPIGetRoom: function () {
+  /*doAPIGetRoom: function () {
     // 显示导航栏|浮动加载动画...
     wx.showLoading({ title: '加载中' });
     // 保存this对象...
@@ -360,21 +373,13 @@ Page({
     }).catch(() => {
       console.log("Dialog - Cancel");
     });
-  },
+  },*/
 
   /**
    * 页面上拉触底事件的处理函数
    */
   onReachBottom: function () {
     console.log('onReachBottom')
-    // 如果到达最大页数，关闭加载更多信息...
-    if (this.data.m_cur_page >= this.data.m_max_page) {
-      this.setData({ m_show_more: false, m_no_more: '没有更多内容了' })
-      return
-    }
-    // 没有达到最大页数，累加当前页码，请求更多数据...
-    this.data.m_cur_page += 1
-    this.doAPIGetRoom()
   },
 
   /**

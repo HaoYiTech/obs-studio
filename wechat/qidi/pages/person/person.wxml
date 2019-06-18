@@ -11,8 +11,8 @@
   <wux-result
       fixed="true"
       title="授权失败"
-      icon="{{ icon }}"
-      buttons="{{ buttons }}"
+      icon="{{ m_icon }}"
+      buttons="{{ m_buttons }}"
       bind:getuserinfo="getUserInfo"
       extra="Copyright © 2019 启迪未来"
       label="本小程序需要您的授权，请点击授权按钮完成授权。"

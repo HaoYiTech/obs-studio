@@ -2,7 +2,10 @@
 <view class="top-area">
   <van-cell title="总共 {{ m_total_num }} 个直播间" icon="video-o" border="{{ true }}"
     icon-class="feed-left-icon" custom-class="feed-live">
-    <van-button slot="extra" type="primary" size="small" bind:click="doAddLive">添加直播间</van-button>
+    <van-button
+      wx:if="{{ m_isAdmin }}" slot="extra"
+      type="primary" size="small" bind:click="doAddLive">添加直播间
+    </van-button>
   </van-cell>
 </view>
 <block wx:for="{{ m_arrLive }}" wx:key="index">
@@ -12,8 +15,8 @@
     bind:click="doModLive"
     customStyle="font-size:14px;padding:10px 15px;"
     title="{{ item.room_name }}"
-    desc="教室：{{item.room_id}} - {{item.room_pass}}"
-    card-time="课程：{{ item.subject_name }}"
+    desc="教室：{{ item.room_id }}"
+    card-time="密码：{{ item.room_pass }}"
     card-age="机构：{{ item.agent_name }}"
     tag="{{item.subject_name}}"
     lazy-load="{{ true }}"

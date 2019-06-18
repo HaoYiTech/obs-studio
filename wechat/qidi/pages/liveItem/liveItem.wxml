@@ -25,9 +25,10 @@
         <view>{{ m_curSubjectName }}</view>
       </picker>
     </van-cell>
-    <van-cell title="所属机构" required is-link>
+    <van-cell title="所属机构" required is-link="{{ m_isAdmin }}">
       <picker slot="extra" mode="selector" class="addr-picker" range="{{ m_arrAgent }}" 
-        value="{{ m_curAgentIndex }}" range-key="name" bindchange="onAgentChange">
+        value="{{ m_curAgentIndex }}" range-key="name" bindchange="onAgentChange"
+        disabled="{{ !m_isAdmin }}">
         <view>{{ m_curAgentName }}</view>
       </picker>
     </van-cell>
@@ -36,6 +37,7 @@
       plain class="addr-right" bind:click="doBtnCancel"> 取 消 </van-button>
       <van-button size="small" type="primary" 
       class="addr-right" bind:click="doBtnSave">{{ m_bEdit ? ' 保 存 ' : ' 添 加 ' }}</van-button>
-      <van-button wx:if="{{ m_bEdit }}" size="small" type="danger" bind:click="doBtnDel"> 删 除 </van-button>
+      <van-button wx:if="{{ m_bEdit && m_isAdmin }}"
+      size="small" type="danger" bind:click="doBtnDel"> 删 除 </van-button>
     </view>
   </van-cell-group>

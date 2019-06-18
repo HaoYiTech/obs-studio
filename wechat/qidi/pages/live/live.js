@@ -1,6 +1,6 @@
 
 // 获取全局的app对象...
-const g_app = getApp()
+const g_appData = getApp().globalData;
 
 Page({
   /**
@@ -13,12 +13,12 @@ Page({
     m_total_num: 0,
     m_show_more: true,
     m_no_more: '正在加载...',
-    m_urlSite: g_app.globalData.m_urlSite
+    m_urlSite: g_appData.m_urlSite,
   },
 
   // 响应点击新增直播间...
   doAddLive: function () {
-    g_app.globalData.m_curSelectItem = null;
+    g_appData.m_curSelectItem = null;
     wx.navigateTo({ url: '../liveItem/liveItem?edit=0' });
   },
 
@@ -26,7 +26,7 @@ Page({
   doModLive: function (event) {
     let theItem = event.currentTarget.dataset['item'];
     theItem.indexID = event.currentTarget.id;
-    g_app.globalData.m_curSelectItem = theItem;
+    g_appData.m_curSelectItem = theItem;
     wx.navigateTo({ url: '../liveItem/liveItem?edit=1' });
   },
 
@@ -34,6 +34,8 @@ Page({
    * 生命周期函数--监听页面加载
    */
   onLoad: function (options) {
+    let theIsAdmin = ((g_appData.m_userInfo.userType >= g_appData.m_userTypeID.kMaintainUser) ? true : false);
+    this.setData({ m_isAdmin: theIsAdmin });
     this.doAPIGetLive();
   },
 
@@ -45,10 +47,12 @@ Page({
     var that = this
     // 准备需要的参数信息...
     var thePostData = {
-      'cur_page': that.data.m_cur_page
+      'cur_page': that.data.m_cur_page,
+      'user_id': g_appData.m_nUserID,
+      'user_type': g_appData.m_userInfo.userType,
     }
     // 构造访问接口连接地址...
-    var theUrl = g_app.globalData.m_urlPrev + 'Mini/getLive'
+    var theUrl = g_appData.m_urlPrev + 'Mini/getLive'
     // 请求远程API过程...
     wx.request({
       url: theUrl,

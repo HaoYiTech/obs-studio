@@ -24,6 +24,12 @@
       bind:change="onPhoneChange"
       clearable required
     />
+    <van-cell title="机构管理员" required is-link>
+      <picker slot="extra" mode="selector" class="addr-picker" range="{{ m_arrMaster }}" 
+        value="{{ m_curMasterIndex }}" range-key="wx_nickname" bindchange="onMasterChange">
+        <view>{{ m_curMasterName }}</view>
+      </picker>
+    </van-cell>
     <view class="addr-footer">
       <van-button size="small" type="primary"
       plain class="addr-right" bind:click="doBtnCancel"> 取 消 </van-button>
