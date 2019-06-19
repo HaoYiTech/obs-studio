@@ -465,7 +465,7 @@ void CLoginMini::onTriggerBindMini(int nUserID, int nBindCmd, int nRoomID)
 	//	return;
 	// 根据绑定子命令显示不同的信息或图片状态...
 	if (nBindCmd == kScanCmd) {
-		m_strScan = QStringLiteral("扫描成功，请在微信中选择要进入的教室，完成授权登录。");
+		m_strScan = QStringLiteral("已扫描成功，请在微信中输入教室密码，完成授权登录。");
 		QString strStyle = QString("background-image: url(:/mini/images/mini/scan.png);background-repeat: no-repeat;margin-left: 25px;margin-top: -46px;");
 		ui->iconScan->setStyleSheet(strStyle);
 		ui->iconScan->show();
