@@ -14,7 +14,7 @@ const defaults = {
     maxlength: 6,
     onChange(value) {},
     callback(value) {},
-    // onClose(value) {},
+    onCancel(value) {},
 }
 
 /**
@@ -105,6 +105,15 @@ Component({
             if (value.length === 0) return
 
             this.updateValue(value.substr(0, value.length - 1))
+        },
+        /**
+         * 取消
+         */
+        doCancel(e) {
+          if (typeof this.fns.onCancel === 'function') {
+            const { value } = this.data;
+            this.fns.onCancel.call(this, value);
+          }
         },
         /**
          * 更新

@@ -1,6 +1,6 @@
 
 // 获取全局的app对象...
-const g_app = getApp()
+const g_appData = getApp().globalData
 
 Page({
   /**
@@ -13,12 +13,12 @@ Page({
     m_total_num: 0,
     m_show_more: true,
     m_no_more: '正在加载...',
-    m_urlSite: g_app.globalData.m_urlSite
+    m_urlSite: g_appData.m_urlSite
   },
 
   // 响应点击新增机构...
   doAddAgent: function () {
-    g_app.globalData.m_curSelectItem = null;
+    g_appData.m_curSelectItem = null;
     wx.navigateTo({ url: '../agentItem/agentItem?edit=0' });
   },
 
@@ -26,7 +26,7 @@ Page({
   doModAgent: function (event) {
     let theItem = event.currentTarget.dataset['item'];
     theItem.indexID = event.currentTarget.id;
-    g_app.globalData.m_curSelectItem = theItem;
+    g_appData.m_curSelectItem = theItem;
     wx.navigateTo({ url: '../agentItem/agentItem?edit=1' });
   },
 
@@ -48,7 +48,7 @@ Page({
       'cur_page': that.data.m_cur_page
     }
     // 构造访问接口连接地址...
-    var theUrl = g_app.globalData.m_urlPrev + 'Mini/getAgent'
+    var theUrl = g_appData.m_urlPrev + 'Mini/getAgent'
     // 请求远程API过程...
     wx.request({
       url: theUrl,

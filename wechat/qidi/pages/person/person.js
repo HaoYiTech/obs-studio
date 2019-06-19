@@ -24,7 +24,16 @@ Page({
       openType: 'getUserInfo',
     }],
 
-    m_UserGrids: [{
+    /*label: '支付管理',
+      data: 'navOrder',
+      icon: 'fa-money',
+      label: '门店管理',
+      data: 'navShop',
+      icon: 'fa-home',
+      label: '我的帐号',
+      data: 'navAccount',
+      icon: 'fa-user-o',*/
+    /*m_UserGrids: [{
       label: '我的帐号',
       data: 'navAccount',
       icon: 'fa-user-o',
@@ -40,20 +49,8 @@ Page({
       label: '宝宝风采',
       data: 'navBaby',
       icon: 'fa-child',
-    }],
-
-    /*label: '支付管理',
-      data: 'navOrder',
-      icon: 'fa-money',
-      label: '门店管理',
-      data: 'navShop',
-      icon: 'fa-home',*/
-
-    m_ShopGrids: [{
-      label: '我的帐号',
-      data: 'navAccount',
-      icon: 'fa-user-o',
-    }, {
+    }],*/
+    /*m_ShopGrids: [{
       label: '用户管理',
       data: 'navMember',
       icon: 'fa-id-card-o',
@@ -62,12 +59,7 @@ Page({
       data: 'navLive',
       icon: 'fa-video-camera',
     }],
-    
     m_AdminGrids: [{
-      label: '我的帐号',
-      data: 'navAccount',
-      icon: 'fa-user-o',
-    },{
       label: '用户管理',
       data: 'navMember',
       icon: 'fa-id-card-o',
@@ -83,7 +75,41 @@ Page({
       label: '机构管理',
       data: 'navAgent',
       icon: 'fa-graduation-cap',
+    }],*/
+
+    m_UserGrids: [],
+    m_ShopGrids: [{
+      label: '用户管理',
+      data: 'icon-blue',
+      icon: 'friends-o',
+      link: '../member/member',
+    }, {
+      label: '直播间管理',
+      data: 'icon-red',
+      icon: 'tv-o',
+      link: '../live/live',
     }],
+    m_AdminGrids: [{
+      label: '用户管理',
+      data: 'icon-blue',
+      icon: 'friends-o',
+      link: '../member/member',
+    }, {
+      label: '直播间管理',
+      data: 'icon-red',
+      icon: 'tv-o',
+      link: '../live/live',
+    }, {
+      label: '门店管理',
+      data: 'icon-green',
+      icon: 'shop-o',
+      link: '../shop/shop',
+    }, {
+      label: '机构管理',
+      data: 'icon-blue',
+      icon: 'wap-home',
+      link: '../agent/agent',
+    }]
   },
 
   /**
@@ -164,7 +190,7 @@ Page({
   },
 
   // 点击导航栏事件...
-  toggleGridNav: function(event) {
+  /*toggleGridNav: function(event) {
     let navItem = event.currentTarget.dataset['item'];
     if (navItem === 'navAgent') {
       wx.navigateTo({ url: '../agent/agent' });
@@ -176,7 +202,7 @@ Page({
       wx.navigateTo({ url: '../member/member' });
     }
     console.log(navItem);
-  },
+  },*/
 
   /**
    * 生命周期函数--监听页面初次渲染完成

@@ -19,7 +19,7 @@
       <view class="wux-keyboard__numbers">
         <block wx:for="{{ nums }}" wx:for-item="n" wx:key="index">
           <view class="wux-keyboard__number" wx:if="{{ index === 3 }}">
-            <view class="wux-keyboard__text" hover-class="wux-keyboard__cancel--hover" hover-start-time="20" hover-stay-time="170" wx:if="{{ showCancel }}" bindtap="decrease">{{ cancelText }}</view>
+            <view class="wux-keyboard__text" hover-class="wux-keyboard__cancel--hover" hover-start-time="20" hover-stay-time="170" wx:if="{{ showCancel }}" bindtap="doCancel">{{ cancelText }}</view>
             <view class="wux-keyboard__text" hover-class="wux-keyboard__text--hover" hover-start-time="20" hover-stay-time="170" wx:else></view>
             <block wx:for="{{ n }}" wx:for-item="m" wx:key="index">
               <view class="wux-keyboard__text" hover-class="wux-keyboard__text--hover" hover-start-time="20" hover-stay-time="170" data-value="{{ m }}" bindtap="increase">{{ m }}</view>

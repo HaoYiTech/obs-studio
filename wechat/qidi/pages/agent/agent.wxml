@@ -1,6 +1,6 @@
 
 <view class="top-area">
-  <van-cell title="总共 {{ m_total_num }} 个机构" icon="shop-collect-o" border="{{ true }}"
+  <van-cell title="总共 {{ m_total_num }} 个机构" icon="wap-home" border="{{ true }}"
     icon-class="feed-left-icon" custom-class="feed-agent">
     <van-button slot="extra" type="primary" size="small" bind:click="doAddAgent">添加机构</van-button>
   </van-cell>

@@ -223,10 +223,13 @@ Page({
           that.setData({ m_show_auth: 2 });
           // 显示明文，输完数字会自动回调...
           $wuxKeyBoard().show({
-            showCancel: false,
+            showCancel: true,
             password: false,
             callback(value) {
               that.doAPIRoomPass(value);
+            },
+            onCancel(value) {
+              that.doAPIBindMini(BIND_CANCEL);
             }
           });
         }
