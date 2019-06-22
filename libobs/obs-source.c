@@ -3952,6 +3952,7 @@ static inline void process_audio_source_tick(obs_source_t *source,
 		return;
 	}
 
+	// 将当前数据源的音频放入第1个输出缓存...
 	for (size_t ch = 0; ch < channels; ch++)
 		circlebuf_peek_front(&source->audio_input_buf[ch],
 				source->audio_output_buf[0][ch],
@@ -3959,21 +3960,22 @@ static inline void process_audio_source_tick(obs_source_t *source,
 
 	pthread_mutex_unlock(&source->audio_buf_mutex);
 
+	// 从第二输出缓存开始查看是否需要混音...
 	for (size_t mix = 1; mix < MAX_AUDIO_MIXES; mix++) {
 		uint32_t mix_and_val = (1 << mix);
-
+		// 当前序号不需要混音，将当前输出缓存置空...
 		if ((source->audio_mixers & mix_and_val) == 0 ||
 		    (mixers & mix_and_val) == 0) {
 			memset(source->audio_output_buf[mix][0],
 					0, size * channels);
 			continue;
 		}
-
+		// 当前序号需要混音，从第一个缓存拷贝过去...
 		for (size_t ch = 0; ch < channels; ch++)
 			memcpy(source->audio_output_buf[mix][ch],
 					source->audio_output_buf[0][ch], size);
 	}
-
+	// 如果第一个序号不需要混音，需要将第一个缓存置空...
 	if ((source->audio_mixers & 1) == 0 || (mixers & 1) == 0)
 		memset(source->audio_output_buf[0][0], 0,
 				size * channels);
