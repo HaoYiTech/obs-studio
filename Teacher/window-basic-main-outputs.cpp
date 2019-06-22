@@ -1070,8 +1070,9 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_) : BasicOutputHandler(main_)
 			"RecEncoder");
 
 	ffmpegOutput = astrcmpi(recType, "FFmpeg") == 0;
-	ffmpegRecording = ffmpegOutput &&
-		config_get_bool(main->Config(), "AdvOut", "FFOutputToFile");
+	ffmpegRecording = ffmpegOutput && config_get_bool(main->Config(), "AdvOut", "FFOutputToFile");
+
+	// 录像压缩器是否使用跟网络流一样的压缩器 => 默认使用相同压缩器...
 	useStreamEncoder = astrcmpi(recordEncoder, "none") == 0;
 
 	OBSData streamEncSettings = GetDataFromJsonFile("streamEncoder.json");

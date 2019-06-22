@@ -1078,8 +1078,10 @@ bool OBSBasic::InitBasicConfigDefaults()
 
 	/* ----------------------------------------------------- */
 
+	// 对外输出模式选择 => 默认选择了 Advanced => 主要包含录像配置和压缩器配置...
 	config_set_default_string(basicConfig, "Output", "Mode", "Advanced"); //"Simple");
 
+	// 这是针对 Simple 输出模式的配置 => 目前用的高级输出模式...
 	config_set_default_string(basicConfig, "SimpleOutput", "FilePath", GetDefaultVideoSavePath().c_str());
 	config_set_default_string(basicConfig, "SimpleOutput", "RecFormat",	"flv");
 	config_set_default_uint  (basicConfig, "SimpleOutput", "VBitrate", 1024); //2500
@@ -1095,20 +1097,24 @@ bool OBSBasic::InitBasicConfigDefaults()
 	config_set_default_int(basicConfig, "SimpleOutput", "RecRBSize", 512);
 	config_set_default_string(basicConfig, "SimpleOutput", "RecRBPrefix", "Replay");
 
+	// 这是针对 Advanced 输出模式的配置 => 包含 网络流输出 和 录像输出...
 	config_set_default_bool  (basicConfig, "AdvOut", "ApplyServiceSettings", true);
 	config_set_default_bool  (basicConfig, "AdvOut", "UseRescale", false);
-	config_set_default_uint  (basicConfig, "AdvOut", "TrackIndex", 1);
+	config_set_default_uint  (basicConfig, "AdvOut", "TrackIndex", 1); // 默认网络流和录像都用轨道1
 	config_set_default_string(basicConfig, "AdvOut", "Encoder", "obs_x264");
 
+	// Advanced 输出模式当中针对录像的类型配置 => Standard|FFmpeg => 采用Standard模式...
 	config_set_default_string(basicConfig, "AdvOut", "RecType", "Standard");
 
+	// Standard标准录像模式的参数配置 => 音频可以支持多轨道录像 => 目前使用这些配置...
 	config_set_default_string(basicConfig, "AdvOut", "RecFilePath", GetDefaultVideoSavePath().c_str());
 	config_set_default_string(basicConfig, "AdvOut", "RecFormat", "flv");
 	config_set_default_bool  (basicConfig, "AdvOut", "RecUseRescale", false);
-	config_set_default_bool  (basicConfig, "AdvOut", "RecFileNameWithoutSpace", true); //录像文件名不包含空格
-	config_set_default_uint  (basicConfig, "AdvOut", "RecTracks", (2<<0)); //录像用轨道2
+	config_set_default_bool  (basicConfig, "AdvOut", "RecFileNameWithoutSpace", true); //标准录像文件名不包含空格
+	config_set_default_uint  (basicConfig, "AdvOut", "RecTracks", (2<<0)); //标准录像用轨道2 => 支持多音轨录像
 	config_set_default_string(basicConfig, "AdvOut", "RecEncoder", "none");
 
+	// FFmpeg自定义录像模式的参数配置 => 音频只支持1个轨道录像 => 目前没有使用...
 	config_set_default_bool  (basicConfig, "AdvOut", "FFOutputToFile", true);
 	config_set_default_string(basicConfig, "AdvOut", "FFFilePath", GetDefaultVideoSavePath().c_str());
 	config_set_default_string(basicConfig, "AdvOut", "FFExtension", "mp4");
@@ -1117,7 +1123,7 @@ bool OBSBasic::InitBasicConfigDefaults()
 	config_set_default_bool  (basicConfig, "AdvOut", "FFUseRescale", false);
 	config_set_default_bool  (basicConfig, "AdvOut", "FFIgnoreCompat", false);
 	config_set_default_uint  (basicConfig, "AdvOut", "FFABitrate", 64); //160);
-	config_set_default_uint  (basicConfig, "AdvOut", "FFAudioTrack", 1);
+	config_set_default_uint  (basicConfig, "AdvOut", "FFAudioTrack", 1); //FFmpeg录像用轨道1 => 单音轨录像
 
 	config_set_default_uint  (basicConfig, "AdvOut", "Track1Bitrate", 64);//160);
 	config_set_default_uint  (basicConfig, "AdvOut", "Track2Bitrate", 64);//160);

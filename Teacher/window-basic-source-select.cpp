@@ -268,8 +268,11 @@ void OBSBasicSourceSelect::on_buttonBox_accepted()
 
 void OBSBasicSourceSelect::AddFilterToSourceByID(obs_source_t *source, const char * lpFilterID)
 {
+	////////////////////////////////////////////////////////
+	// 2019.06.20 - 去掉系统自带的噪声抑制功能，效果一般...
+	////////////////////////////////////////////////////////
 	// 通过id名称查找过滤器资源名称...
-	string strFilterName = obs_source_get_display_name(lpFilterID);
+	/*string strFilterName = obs_source_get_display_name(lpFilterID);
 	obs_source_t * existing_filter = obs_source_get_filter_by_name(source, strFilterName.c_str());
 	// 如果资源上已经挂载了相同名称的过滤器，直接返回...
 	if (existing_filter != nullptr)
@@ -282,7 +285,7 @@ void OBSBasicSourceSelect::AddFilterToSourceByID(obs_source_t *source, const cha
 	const char *sourceName = obs_source_get_name(source);
 	blog(LOG_INFO, "User added filter '%s' (%s) to source '%s'", strFilterName.c_str(), lpFilterID, sourceName);
 	obs_source_filter_add(source, new_filter);
-	obs_source_release(new_filter);
+	obs_source_release(new_filter);*/
 }
 
 void OBSBasicSourceSelect::on_buttonBox_rejected()
