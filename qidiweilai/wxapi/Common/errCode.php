@@ -49,6 +49,11 @@ define('kClientStudent',      2);
 define('kClientTeacher',      3);
 define('kClientUdpServer',    4);
 
+// 定义绑定登录子命令...
+define('BIND_SCAN',           1);
+define('BIND_SAVE',           2);
+define('BIND_CANCEL',         3);
+
 // 定义UDP服务器反馈错误号...
 define('ERR_OK',                      0);
 define('ERR_NO_ROOM',             10001);
