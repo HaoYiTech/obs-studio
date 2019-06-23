@@ -824,11 +824,12 @@ string CStudentApp::GetSystemVer()
 void CStudentApp::doProcessCmdLine(int argc, char * argv[])
 {
 	int	ch = 0;
-	while ((ch = getopt(argc, argv, "?hvdr")) != EOF)
+	while ((ch = getopt(argc, argv, "?hvdrz")) != EOF)
 	{
 		switch (ch) {
-		case 'd': m_bIsDebugMode = true;  break;
-		case 'r': m_bIsDebugMode = false; break;
+		case 'd': m_bIsDebugMode = true;  continue;
+		case 'r': m_bIsDebugMode = false; continue;
+		case 'z': m_strThirdURI = argv[optind++]; continue;
 		case '?':
 		case 'h':
 		case 'v':

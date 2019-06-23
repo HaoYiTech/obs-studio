@@ -155,6 +155,7 @@ public:
 	bool     IsDebugMode() { return m_bIsDebugMode; }
 	bool     IsSaveAECSample() { return m_bSaveAECSample; }
 	int      GetClientType() { return kClientStudent; }
+	string & GetThirdURI() { return m_strThirdURI; }
 	string & GetWebClass() { return m_strWebClass; }
 	string & GetWebCenter() { return m_strWebCenter; }
 	string & GetLocalIPAddr() { return m_strIPAddr; }
@@ -243,6 +244,7 @@ private:
 	int                 m_nAudioOutBitrateAAC;          // 回音消除后AAC压缩输出码流
 	bool                m_bHasAudioHorn;                // 扬声器是否已经开启标志
 	bool                m_bIsDebugMode;                 // 是否是调试模式 => 挂载到调试服务器...
+	string              m_strThirdURI;                  // 第三方登录的URI地址 => http:// 或 https://
 	uint64_t            m_nDownFlowByte;                // 学生端下行流量...
 	uint64_t            m_nUpFlowByte;                  // 学生端上行流量...
 };
