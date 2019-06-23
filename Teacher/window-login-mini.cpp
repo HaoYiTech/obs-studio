@@ -22,6 +22,7 @@ CLoginMini::CLoginMini(QWidget *parent)
   , m_nCenterTimer(-1)
   , m_nCenterTcpPort(0)
   , m_CenterSession(NULL)
+  , m_bIsThirdUsed(false)
   , ui(new Ui::LoginMini)
   , m_eLoginCmd(kNoneCmd)
   , m_eMiniState(kCenterAddr)
@@ -87,6 +88,10 @@ void CLoginMini::paintEvent(QPaintEvent *event)
 
 void CLoginMini::initWindow()
 {
+	// 验证并判断是否需要使用第三方二维码模式...
+	m_strThirdURI = App()->GetThirdURI();
+	m_bIsThirdUsed = ((strnicmp(m_strThirdURI.c_str(), "http://", strlen("http://")) == 0) ? true : m_bIsThirdUsed);
+	m_bIsThirdUsed = ((strnicmp(m_strThirdURI.c_str(), "https://", strlen("https://")) == 0) ? true : m_bIsThirdUsed);
 	// 更新扫码状态栏...
 	m_strScan.clear();
 	ui->iconScan->hide();
@@ -165,6 +170,11 @@ void CLoginMini::doWebGetCenterAddr()
 
 void CLoginMini::doWebGetMiniToken()
 {
+	// 如果是第三模式验证，访问不同的接口...
+	if (m_strThirdURI.size() > 0 && m_bIsThirdUsed) {
+		this->doWebGetMiniThirdCode();
+		return;
+	}
 	// 修改获取小程序token状态...
 	m_eMiniState = kMiniToken;
 	m_strQRNotice = QStringLiteral("正在获取访问凭证...");
@@ -393,6 +403,7 @@ void CLoginMini::onReplyFinished(QNetworkReply *reply)
 	case kMiniQRCode: this->onProcMiniQRCode(reply); break;
 	case kMiniUserInfo: this->onProcMiniUserInfo(reply); break;
 	case kMiniLoginRoom: this->onProcMiniLoginRoom(reply); break;
+	case kMiniThirdCode: this->onProcMiniThirdCode(reply); break;
 	}
 }
 
@@ -461,7 +472,7 @@ void CLoginMini::onTriggerTcpConnect()
 	
 	/*== 仅供快速测试 ==*/
 	//m_nDBUserID = 1;
-	//m_nDBRoomID = 200001;
+	//m_nDBRoomID = 200002;
 	// 一切正常，开始登录指定的房间...
 	//this->doWebGetMiniLoginRoom();  
 }
@@ -526,6 +537,56 @@ bool CLoginMini::doCheckOnLine()
 	if (m_CenterSession == NULL)
 		return false;
 	return m_CenterSession->doSendOnLineCmd();
+}
+
+// 获取第三方二维码...
+void CLoginMini::doWebGetMiniThirdCode()
+{
+	// 必须是第三方模式并且第三方链接地址有效...
+	ASSERT(m_bIsThirdUsed && m_strThirdURI.size() > 0);
+	// 修改获取第三方二维码状态...
+	m_eMiniState = kMiniThirdCode;
+	m_strQRNotice = QStringLiteral("正在获取第三方凭证...");
+	// 构造凭证访问地址，发起网络请求...
+	QNetworkReply * lpNetReply = NULL;
+	QNetworkRequest theQTNetRequest;
+	// 二维码场景值 => 用户类型 + 套接字 + 时间标识 => 总长度不超过32字节...
+	QString strRequestURL = QString("%1").arg(m_strThirdURI.c_str());
+	QString strContentVal = QString("scene=%1_%2_%3").arg(App()->GetClientType()).arg(m_nTcpSocketFD).arg(m_uTcpTimeID);
+	theQTNetRequest.setUrl(QUrl(strRequestURL));
+	theQTNetRequest.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/x-www-form-urlencoded"));
+	lpNetReply = m_objNetManager.post(theQTNetRequest, strContentVal.toUtf8());
+	// 更新显示界面内容...
+	this->update();
+}
+
+// 处理第三方反馈的二维码图片内容...
+void CLoginMini::onProcMiniThirdCode(QNetworkReply *reply)
+{
+	// 无论对错，都要关闭加载动画...
+	m_lpLoadBack->hide();
+	// 读取获取到的网络数据内容...
+	ASSERT(m_eMiniState == kMiniThirdCode);
+	QByteArray & theByteArray = reply->readAll();
+	// 从网路数据直接构造二维码的图片信息|设定默认扫码信息...
+	if (m_QPixQRCode.loadFromData(theByteArray)) {
+		m_strScan = QStringLiteral("请使用微信扫描二维码登录");
+		m_strQRNotice.clear();
+		this->update();
+		return;
+	}
+	// 解除位图显示对象...
+	Json::Value value;
+	m_QPixQRCode.detach();
+	// 构造二维码图片对象失败，进行错误解析...
+	string & strData = theByteArray.toStdString();
+	if (!this->parseJson(strData, value, false)) {
+		this->update();
+		return;
+	}
+	// 解析json数据包仍然失败，显示特定的错误信息...
+	m_strQRNotice = QStringLiteral("解析获取到的JSON数据失败");
+	this->update();
 }
 
 void CLoginMini::onProcMiniToken(QNetworkReply *reply)

@@ -72,6 +72,7 @@ private:
 	int                            m_nDBFlowID;                // 从服务器获取到的流量统计数据库编号...
 	int                            m_nDBUserID;                // 已登录用户的数据库编号...
 	bool                           m_bIsDebugMode;             // 是否是调试模式 => 挂载到调试服务器...
+	std::string                    m_strThirdURI;              // 第三方登录的URI地址 => http:// 或 https://
 	std::string                    locale;
 	std::string	                   theme;
 	ConfigFile                     globalConfig;
@@ -102,6 +103,7 @@ public:
 	bool     IsClassHttps() { return ((strnicmp(m_strWebClass.c_str(), "https://", strlen("https://")) == 0) ? true : false); }
 	bool     IsDebugMode() { return m_bIsDebugMode; }
 	int      GetClientType() { return kClientTeacher; }
+	string & GetThirdURI() { return m_strThirdURI; }
 	string & GetWebClass() { return m_strWebClass; }
 	string & GetWebCenter() { return m_strWebCenter; }
 	string & GetLocalIPAddr() { return m_strIPAddr; }
