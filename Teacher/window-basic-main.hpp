@@ -440,6 +440,7 @@ private slots:
 
 	void ActivateAudioSource(OBSSource source);
 	void DeactivateAudioSource(OBSSource source);
+	void MonitoringSourceChanged(OBSSource source);
 
 	void DuplicateSelectedScene();
 	void RemoveSelectedScene();
@@ -484,6 +485,7 @@ private slots:
 	void on_actionPasteFilters_triggered();
 private:
 	/* OBS Callbacks */
+	static void SourceMonitoring(void *data, calldata_t *params);
 	static void SceneReordered(void *data, calldata_t *params);
 	static void SceneItemAdded(void *data, calldata_t *params);
 	static void SceneItemRemoved(void *data, calldata_t *params);
@@ -505,6 +507,8 @@ private:
 
 	static void HotkeyTriggered(void *data, obs_hotkey_id id, bool pressed);
 
+	void doSceneCreateMonitor();
+	void doSceneDestoryMonitor();
 public:
 	inline void SetSlientClose(bool bIsSlient) { m_bIsSlientClose = bIsSlient; }
 	inline bool IsLoaded() { return m_bIsLoaded; }
@@ -583,6 +587,7 @@ public:
 
 	void OpenSavedProjectors();
 	
+	void doLocalPlayAudioMixer(obs_source_t * source);
 	void doHideDShowAudioMixer(obs_sceneitem_t * scene_item);
 	void doSceneItemLayout(obs_sceneitem_t * scene_item);
 	void doSceneItemExchangePos(obs_sceneitem_t * select_item);

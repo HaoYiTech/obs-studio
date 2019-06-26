@@ -610,37 +610,6 @@ DWORD WINAPI WASAPISource::ReconnectThread(LPVOID param)
 	}
 }*/
 
-/*bool WASAPISource::doFindRtpAudio()
-{
-	// 遍历所有数据源，查找互动教室的音频状态...
-	auto cbFind = [](void *data, obs_source_t *source)
-	{
-		obs_monitoring_type theType = obs_source_get_monitoring_type(source);
-		bool * lpHasRtpAudio = static_cast<bool*>(data);
-		const char *id = obs_source_get_id(source);
-		bool   bIsMuted = obs_source_muted(source);
-		// 如果数据源不是互动教室数据源 => 返回继续寻找...
-		if (astrcmpi(id, "rtp_source") != 0)
-			return true;
-		//互动教室没有本地监听，或者已经被静音，没有扬声器数据，返回终止查找...
-		if (theType == OBS_MONITORING_TYPE_NONE || bIsMuted) {
-			*lpHasRtpAudio = false;
-			return false;
-		}
-		// 如果互动教室数据源拉流线程已启动，返回true，否则返回false，然后终止查找...
-		obs_data_t * lpSettings = obs_source_get_settings(source);
-		*lpHasRtpAudio = obs_data_get_bool(lpSettings, "recv_thread");
-		// 注意：obs_source_get_settings 会增加引用计数...
-		obs_data_release(lpSettings);
-		return false;
-	};
-	// 遍历资源查找互动教室...
-	bool bHasRtpAudio = false;
-	obs_enum_sources(cbFind, &bHasRtpAudio);
-	// 返回互动教室是否有效...
-	return bHasRtpAudio;
-}*/
-
 bool WASAPISource::ProcessCaptureData()
 {
 	HRESULT res;

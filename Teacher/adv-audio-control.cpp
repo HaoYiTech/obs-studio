@@ -298,6 +298,17 @@ void OBSAdvAudioCtrl::syncOffsetChanged(int milliseconds)
 				int64_t(milliseconds) * NSEC_PER_MSEC);
 }
 
+static inline void setMixer(obs_source_t *source, const int mixerIdx, const bool checked)
+{
+	uint32_t mixers = obs_source_get_audio_mixers(source);
+	uint32_t new_mixers = mixers;
+
+	if (checked) new_mixers |=  (1<<mixerIdx);
+	else         new_mixers &= ~(1<<mixerIdx);
+
+	obs_source_set_audio_mixers(source, new_mixers);
+}
+
 void OBSAdvAudioCtrl::monitoringTypeChanged(int index)
 {
 	int mt = monitoringType->itemData(index).toInt();
@@ -319,18 +330,10 @@ void OBSAdvAudioCtrl::monitoringTypeChanged(int index)
 
 	blog(LOG_INFO, "User changed audio monitoring for source '%s' to: %s",
 			obs_source_get_name(source), type);
-}
 
-static inline void setMixer(obs_source_t *source, const int mixerIdx,
-		const bool checked)
-{
-	uint32_t mixers = obs_source_get_audio_mixers(source);
-	uint32_t new_mixers = mixers;
-
-	if (checked) new_mixers |=  (1<<mixerIdx);
-	else         new_mixers &= ~(1<<mixerIdx);
-
-	obs_source_set_audio_mixers(source, new_mixers);
+	// 轨道3 => 输出给本地播放，数据源大于OBS_MONITORING_TYPE_NONE时，才进行混音处理...
+	bool enabled = ((mt > OBS_MONITORING_TYPE_NONE) ? true : false);
+	setMixer(source, 2, enabled);
 }
 
 void OBSAdvAudioCtrl::mixer1Changed(bool checked)

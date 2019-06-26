@@ -1000,6 +1000,12 @@ EXPORT void obs_source_set_monitoring_type(obs_source_t *source,
 EXPORT enum obs_monitoring_type obs_source_get_monitoring_type(
 		const obs_source_t *source);
 
+/** Create the scene's monitor object */
+EXPORT bool obs_scene_create_monitor(const obs_scene_t *scene, int mix_idx);
+
+/** Destory the scene's monitor object */
+EXPORT bool obs_scene_destory_monitor(const obs_scene_t *scene, int mix_idx);
+
 /** Gets private front-end settings data.  This data is saved/loaded
  * automatically.  Returns an incremented reference. */
 EXPORT obs_data_t *obs_source_get_private_settings(obs_source_t *item);

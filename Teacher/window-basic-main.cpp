@@ -1100,7 +1100,7 @@ bool OBSBasic::InitBasicConfigDefaults()
 	// 这是针对 Advanced 输出模式的配置 => 包含 网络流输出 和 录像输出...
 	config_set_default_bool  (basicConfig, "AdvOut", "ApplyServiceSettings", true);
 	config_set_default_bool  (basicConfig, "AdvOut", "UseRescale", false);
-	config_set_default_uint  (basicConfig, "AdvOut", "TrackIndex", 1); // 默认网络流和录像都用轨道1
+	config_set_default_uint  (basicConfig, "AdvOut", "TrackIndex", 1); // 默认网络流和录像都用轨道1(索引编号是0)
 	config_set_default_string(basicConfig, "AdvOut", "Encoder", "obs_x264");
 
 	// Advanced 输出模式当中针对录像的类型配置 => Standard|FFmpeg => 采用Standard模式...
@@ -1111,7 +1111,7 @@ bool OBSBasic::InitBasicConfigDefaults()
 	config_set_default_string(basicConfig, "AdvOut", "RecFormat", "flv");
 	config_set_default_bool  (basicConfig, "AdvOut", "RecUseRescale", false);
 	config_set_default_bool  (basicConfig, "AdvOut", "RecFileNameWithoutSpace", true); //标准录像文件名不包含空格
-	config_set_default_uint  (basicConfig, "AdvOut", "RecTracks", (2<<0)); //标准录像用轨道2 => 支持多音轨录像
+	config_set_default_uint  (basicConfig, "AdvOut", "RecTracks", (2<<0)); //标准录像用轨道2(索引编号是1) => 支持多音轨录像
 	config_set_default_string(basicConfig, "AdvOut", "RecEncoder", "none");
 
 	// FFmpeg自定义录像模式的参数配置 => 音频只支持1个轨道录像 => 目前没有使用...
@@ -1266,6 +1266,8 @@ void OBSBasic::InitOBSCallbacks()
 			OBSBasic::SourceDeactivated, this);
 	signalHandlers.emplace_back(obs_get_signal_handler(), "source_rename",
 			OBSBasic::SourceRenamed, this);
+	signalHandlers.emplace_back(obs_get_signal_handler(), "source_monitoring",
+			OBSBasic::SourceMonitoring, this);
 }
 
 void OBSBasic::InitPrimitives()
@@ -1692,6 +1694,30 @@ void OBSBasic::DeferredLoad(const QString &file, int requeueCount)
 	ui->preview->BindBtnClickEvent();
 	// 遍历已加载数据源，判断是否显示左右箭头...
 	this->doCheckBtnPage();
+	// 这里还需补充创建监视器，有可能source在重建时，scene还没有创建...
+	this->doSceneCreateMonitor();
+}
+
+// 当source的监视发生变化，需要重建场景的监视器，播放轨道3音频...
+void OBSBasic::MonitoringSourceChanged(OBSSource source)
+{
+	this->doSceneCreateMonitor();
+}
+
+void OBSBasic::doSceneCreateMonitor()
+{
+	int mix_idx = 2;
+	OBSScene theCurScene = this->GetCurrentScene();
+	bool bResult = obs_scene_create_monitor(theCurScene, mix_idx);
+	blog(LOG_INFO, "== Scene Create Monitor result: %d, mix: %d ==", bResult, mix_idx);
+}
+
+void OBSBasic::doSceneDestoryMonitor()
+{
+	int mix_idx = 2;
+	OBSScene theCurScene = this->GetCurrentScene();
+	bool bResult = obs_scene_destory_monitor(theCurScene, mix_idx);
+	blog(LOG_INFO, "== Scene Destory Monitor result: %d, mix: %d ==", bResult, mix_idx);
 }
 
 void OBSBasic::UpdateMultiviewProjectorMenu()
@@ -2853,6 +2879,14 @@ void OBSBasic::ReorderSources(OBSScene scene)
 
 /* OBS Callbacks */
 
+void OBSBasic::SourceMonitoring(void *data, calldata_t *params)
+{
+	OBSBasic *window = static_cast<OBSBasic*>(data);
+	obs_source_t *source = (obs_source_t*)calldata_ptr(params, "source");
+	QMetaObject::invokeMethod(window, "MonitoringSourceChanged",
+			Q_ARG(OBSSource, OBSSource(source)));
+}
+
 void OBSBasic::SceneReordered(void *data, calldata_t *params)
 {
 	OBSBasic *window = static_cast<OBSBasic*>(data);
@@ -3277,9 +3311,12 @@ void OBSBasic::ResetAudioDevice(const char *sourceId, const char *deviceId,	cons
 		obs_data_release(settings);
 		obs_set_output_source(channel, source);
 		obs_source_release(source);
-		// 如果是音频输入设备，自动加入噪音抑制过滤器...
+		// 注意：第三轨道混音(索引编号是2)专门用来本地统一播放使用的混音通道...
+		// 如果是音频输入设备，自动加入噪音抑制过滤器|自动屏蔽第三轨道混音...
 		if (strcmp(sourceId, App()->InputAudioSource()) == 0) {
 			OBSBasicSourceSelect::AddFilterToSourceByID(source, App()->GetNSFilter());
+			uint32_t new_mixers = obs_source_get_audio_mixers(source) & (~(1 << 2));
+			obs_source_set_audio_mixers(source, new_mixers);
 		}
 		// 如果是音频输出设备，自动设置为静音状态，避免发生多次叠加啸叫...
 		if (strcmp(sourceId, App()->OutputAudioSource()) == 0) {
@@ -3371,6 +3408,10 @@ void OBSBasic::EnumDialogs()
 void OBSBasic::ClearSceneData()
 {
 	disableSaving++;
+
+	// 注意：如果不删除，obs核心也会主动删除...
+	// 断开并删除当前scene下面的本地播放监视器...
+	this->doSceneDestoryMonitor();
 
 	CloseDialogs();
 
@@ -5864,10 +5905,12 @@ static inline void setAudioMixer(obs_sceneitem_t *scene_item, const int mixerIdx
 	// 没有音频属性，或资源为空，直接返回...
 	if (mixers <= 0 || source == NULL)
 		return;
-	// 如果是第一个轨道，需要将混音标志存入配置，wasapi-output.c当中会用到...
+
+	/*// 如果是第一个轨道，需要将混音标志存入配置，wasapi-output.c当中会用到...
+	// 采用了新的第三轨道混音输出模式，不用第一轨道输出模式了...
 	obs_data_t * lpSettings = obs_source_get_settings(source);
 	obs_data_set_bool(lpSettings, "focus_mix", enabled);
-	obs_data_release(lpSettings);
+	obs_data_release(lpSettings);*/
 
 	// 注意：如果是互动教室资源、第一个轨道、投递数据，三个条件都满足，就进行强制屏蔽...
 	bool bIsRtpSource = ((astrcmpi(obs_source_get_id(source), App()->InteractRtpSource()) == 0) ? true : false);
@@ -6258,6 +6301,18 @@ void OBSBasic::doHideDShowAudioMixer(obs_sceneitem_t * scene_item)
 		SetSourceMixerHidden(source, true);
 		DeactivateAudioSource(source);
 	}
+}
+
+// 轨道3 => 输出给本地播放，数据源大于OBS_MONITORING_TYPE_NONE时，才进行混音处理...
+void OBSBasic::doLocalPlayAudioMixer(obs_source_t * source)
+{
+	bool enabled = ((obs_source_get_monitoring_type(source) > OBS_MONITORING_TYPE_NONE) ? true : false);
+	uint32_t new_mixers = obs_source_get_audio_mixers(source);
+	// 针对轨道3(索引编号是2)的添加混音或取消混音处理...
+	if (enabled) new_mixers |= (1 << 2);
+	else         new_mixers &= ~(1 << 2);
+	// 执行具体的新数据源的针对轨道3的混音处理接口...
+	obs_source_set_audio_mixers(source, new_mixers);
 }
 
 void OBSBasic::OpenStudioProgramProjector()

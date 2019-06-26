@@ -136,28 +136,13 @@ static bool process_audio_delay(struct audio_monitor *monitor,
 	return false;
 }
 
-
-/*static void doSaveAudioPCM(uint8_t * lpBufData, int nBufSize, int nAudioRate, int nAudioChannel)
-{
-	// 注意：PCM数据必须用二进制方式打开文件...
-	char szFullPath[MAX_PATH] = { 0 };
-	sprintf(szFullPath, "F:/MP4/PCM/horn_%d_%d_short.pcm", nAudioRate, nAudioChannel);
-	FILE * lpFile = fopen(szFullPath, "ab+");
-	// 打开文件成功，开始写入音频PCM数据内容...
-	if (lpFile != NULL) {
-		fwrite(lpBufData, nBufSize, 1, lpFile);
-		fclose(lpFile);
-	}
-}*/
-
+// 枚举所有的音频数据源对象，找到麦克风对象，投递数据，进行回音消除...
 // 注意：不要用obs_enum_sources，互斥data.sources_mutex会跟rtp-source发生互锁...
 void doPushEchoDataToMic(struct obs_source_audio * lpObsAudio)
 {
 	struct obs_source *source;
 	struct obs_core_data *data = &obs->data;
-
 	pthread_mutex_lock(&data->audio_sources_mutex);
-
 	source = data->first_audio_source;
 	while (source) {
 		// 如果找到数据源是麦克风输入对象，投递数据，退出...
@@ -219,14 +204,6 @@ static void on_audio_playback(void *param, obs_source_t *source,
 		goto unlock;
 	}
 
-	// 判断当前数据源是否是rtp互动教室数据源对象，获取数据源的焦点配置状态...
-	/*bool bIsRtpSource = ((astrcmpi(source->info.id, "rtp_source") == 0) ? true : false);
-	obs_data_t * lpSettings = obs_source_get_settings(source);
-	bool bIsFocusMix = obs_data_get_bool(lpSettings, "focus_mix");
-	obs_data_release(lpSettings);
-	// 如果是互动教室数据源并且不是焦点，需要强制为静音状态...
-	muted = ((bIsRtpSource && !bIsFocusMix) ? true : muted);*/
-
 	if (!muted) {
 		/* apply volume */
 		if (!close_float(vol, 1.0f, EPSILON)) {
@@ -240,23 +217,20 @@ static void on_audio_playback(void *param, obs_source_t *source,
 		// 将转换后的音频数据投递到监视器(扬声器)的缓冲区当中...
 		memcpy(output, resample_data[0], resample_frames * monitor->channels * sizeof(float));
 
-		// 注意：目前采用折中方案，多路监视音频需要进行混音之后才能进行回音消除 => 反复测试回音消除效果不好...
-		// 只投递处于焦点的互动教室的音频回放数据进行回音消除，其它音频不进行回音消除...
-		// setAudioMixer => 屏蔽了不是焦点状态的互动教室的音频的本地回放...
-		//if (bIsRtpSource && bIsFocusMix) {
-		if (astrcmpi(source->info.id, "rtp_source") == 0) {
-			// 构造需要投递给麦克风数据源的结构体 => 样本总是float格式...
-			struct obs_source_audio theEchoData = { 0 };
-			theEchoData.data[0] = resample_data[0];
-			theEchoData.frames = resample_frames;
-			theEchoData.format = AUDIO_FORMAT_FLOAT;
-			theEchoData.speakers = monitor->speakers;
-			theEchoData.samples_per_sec = monitor->sample_rate;
-			theEchoData.timestamp = audio_data->timestamp;
-			// 注意：不要用obs_enum_sources，互斥data.sources_mutex会跟rtp-source发生互锁...
-			// 枚举所有的音频数据源对象，找到麦克风对象，投递数据，进行回音消除...
-			doPushEchoDataToMic(&theEchoData);
-		}
+		// 注意：目前进行了全新升级 => 所有播放音频混合到轨道3，进行统一的播放，都放到scene场景下面的source当中...
+		// 注意：不能用obs自带的直接多路监视音频，再进行多路单独输入回音消除，这种方式回音消除效果很不好...
+		// 注意：新的归一化之后，就不用进行焦点处理了，所有音频数据直接投递进行回音消除就可以了...
+		assert(astrcmpi(source->info.id, "scene") == 0);
+		// 构造需要投递给麦克风数据源的结构体 => 样本总是float格式...
+		struct obs_source_audio theEchoData = { 0 };
+		theEchoData.data[0] = resample_data[0];
+		theEchoData.frames = resample_frames;
+		theEchoData.format = AUDIO_FORMAT_FLOAT;
+		theEchoData.speakers = monitor->speakers;
+		theEchoData.samples_per_sec = monitor->sample_rate;
+		theEchoData.timestamp = audio_data->timestamp;
+		// 枚举所有的音频数据源对象，找到麦克风，进行回音消除...
+		doPushEchoDataToMic(&theEchoData);
 	}
 
 	render->lpVtbl->ReleaseBuffer(render, resample_frames,
@@ -438,11 +412,10 @@ static void audio_monitor_init_final(struct audio_monitor *monitor)
 {
 	if (monitor->ignore)
 		return;
-
-	monitor->source_has_video =
-		(monitor->source->info.output_flags & OBS_SOURCE_VIDEO) != 0;
-	obs_source_add_audio_capture_callback(monitor->source,
-			on_audio_playback, monitor);
+	// 注意：这里进行了改进，如果是scene下面的source，强制认为只有音频，是混音后的轨道...
+	bool source_has_video = (monitor->source->info.output_flags & OBS_SOURCE_VIDEO) != 0;
+	monitor->source_has_video = (obs_scene_from_source(monitor->source) ? false : source_has_video);
+	obs_source_add_audio_capture_callback(monitor->source, on_audio_playback, monitor);
 }
 
 struct audio_monitor *audio_monitor_create(obs_source_t *source)
