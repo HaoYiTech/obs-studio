@@ -13,6 +13,7 @@
 #include <deque>
 
 #include "FastSession.h"
+#include "window-login-mini.h"
 #include "window-student-main.h"
 
 using namespace std;
@@ -165,6 +166,7 @@ public:
 	std::string GetVersionString() const;
 	bool TranslateString(const char *lookupVal, const char **out) const;
 	inline StudentWindow *GetMainWindow() const { return m_studentWindow.data(); }
+	inline CLoginMini *GetLoginMini() const { return m_LoginMini.data(); }
 	inline config_t *GlobalConfig() const { return m_globalConfig; }
 	inline lookup_t *GetTextLookup() const { return m_textLookup; }
 	inline const char *GetString(const char *lookupVal) const

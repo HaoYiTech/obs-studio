@@ -480,7 +480,9 @@ void GenerateGUID(string &guid)
 
 void AutoUpdateThread::infoMsg(const QString &title, const QString &text)
 {
-	OBSMessageBox::information(App()->GetMainWindow(), title, text);
+	QWidget * parent = App()->GetMainWindow();
+	parent = (parent ? parent : App()->GetLoginMini());
+	OBSMessageBox::information(parent, title, text);
 }
 
 void AutoUpdateThread::info(const QString &title, const QString &text)
@@ -493,7 +495,9 @@ void AutoUpdateThread::info(const QString &title, const QString &text)
 
 int AutoUpdateThread::queryUpdateSlot(bool localManualUpdate, const QString &text)
 {
-	OBSUpdate updateDlg(App()->GetMainWindow(), localManualUpdate, text);
+	QWidget * parent = App()->GetMainWindow();
+	parent = (parent ? parent : App()->GetLoginMini());
+	OBSUpdate updateDlg(parent, localManualUpdate, text);
 	return updateDlg.exec();
 }
 
@@ -541,7 +545,9 @@ try {
 
 	struct FinishedTrigger {
 		inline ~FinishedTrigger() {
-			QMetaObject::invokeMethod(App()->GetMainWindow(), "updateCheckFinished");	
+			QWidget * parent = App()->GetMainWindow();
+			parent = (parent ? parent : App()->GetLoginMini());
+			QMetaObject::invokeMethod(parent, "updateCheckFinished");
 		}
 	} finishedTrigger;
 
@@ -781,10 +787,16 @@ try {
 
 	// 这里需要告诉主窗口不要弹出询问框，直接退出主进程就可以了...
 	OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
-	// 设置主窗口沉默退出...
-	main->SetSlientClose(true);
-	// 向主窗口发送退出信号...
-	QMetaObject::invokeMethod(App()->GetMainWindow(), "close");
+	CLoginMini * mini = reinterpret_cast<CLoginMini*>(App()->GetLoginMini());
+	if (main != NULL) {
+		// 设置主窗口沉默退出...
+		main->SetSlientClose(true);
+		// 向主窗口发送退出信号...
+		QMetaObject::invokeMethod(main, "close");
+	} else if (mini != NULL) {
+		// 向主窗口发送退出信号...
+		QMetaObject::invokeMethod(mini, "close");
+	}
 
 } catch (string text) {
 	blog(LOG_WARNING, "%s: %s", __FUNCTION__, text.c_str());

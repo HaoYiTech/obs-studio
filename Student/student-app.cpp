@@ -28,7 +28,6 @@
 #include <atlconv.h>
 #include "SDL2/SDL.h"
 
-#include "window-login-mini.h"
 #include "window-view-camera.hpp"
 #include "window-view-teacher.hpp"
 

@@ -19,6 +19,7 @@
 
 #include "HYDefine.h"
 #include "window-main.hpp"
+#include "window-login-mini.h"
 
 using namespace std;
 
@@ -162,6 +163,7 @@ public:
 	void timerEvent(QTimerEvent * inEvent);
 
 	inline QMainWindow *GetMainWindow() const { return mainWindow.data(); }
+	inline CLoginMini *GetLoginMini() const { return m_LoginMini.data(); }
 	inline config_t *GlobalConfig() const { return globalConfig; }
 
 	inline const char *GetLocale() const

@@ -20,7 +20,6 @@
 
 #include "qt-wrappers.hpp"
 #include "obs-app.hpp"
-#include "window-login-mini.h"
 #include "window-basic-main.hpp"
 //#include "window-basic-settings.hpp"
 //#include "window-license-agreement.hpp"
