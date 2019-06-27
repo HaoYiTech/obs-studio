@@ -7,6 +7,7 @@
 
 #include <string>
 #include <functional>
+#include <QThread>
 #include <QPointer>
 #include <QNetworkAccessManager>
 
@@ -56,6 +57,8 @@ private:
 	void onProcMiniLoginRoom(QNetworkReply *reply);
 	void onProcMiniThirdCode(QNetworkReply *reply);
 	bool parseJson(string & inData, Json::Value & outValue, bool bIsWeiXin);
+	void CheckForUpdates(bool manualUpdate);
+	void TimedCheckForUpdates();
 private:
 	enum {
 		kQRCodeWidth = 280,	// 小程序二维码宽度
@@ -99,4 +102,5 @@ private:
 	QString           m_strVer;                 // 显示版本信息内容文字...
 	QNetworkAccessManager    m_objNetManager;	// QT 网络管理对象...
 	QPointer<CCenterSession> m_CenterSession;   // For UDP-Center
+	QPointer<QThread> updateCheckThread = NULL; // 升级检测线程...
 };

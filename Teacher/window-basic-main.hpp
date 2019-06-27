@@ -39,7 +39,6 @@
 #include <util/util.hpp>
 
 #include <QPointer>
-
 #include <QThread>
 #include <QMenu>
 #include <functional>
@@ -153,9 +152,9 @@ private:
 	const char *copyFiltersString;
 	bool copyVisible = true;
 
+	QPointer<QThread> updateCheckThread = NULL;
+	QPointer<QThread> logUploadThread = NULL;
 	QPointer<CPTZWindow> m_PTZWindow = NULL;
-	QPointer<QThread> updateCheckThread;
-	QPointer<QThread> logUploadThread;
 
 	QPointer<OBSBasicInteraction> interaction;
 	QPointer<OBSBasicProperties> properties;
@@ -243,7 +242,6 @@ private:
 
 	bool          QueryRemoveSource(obs_source_t *source);
 
-	void          TimedCheckForUpdates();
 	void          CheckForUpdates(bool manualUpdate);
 
 	void GetFPSCommon(uint32_t &num, uint32_t &den) const;

@@ -22,8 +22,6 @@
 #define STARTUP_SEPARATOR   "==== Startup complete ==============================================="
 #define SHUTDOWN_SEPARATOR 	"==== Shutting down =================================================="
 
-#define UPDATE_CHECK_INTERVAL (60*60*24*4) /* 4 days */
-
 StudentWindow::StudentWindow(QWidget *parent)
  : QMainWindow(parent)
 {
@@ -301,7 +299,10 @@ StudentWindow::~StudentWindow()
 	// 等待并删除自动升级线程的退出...
 	if (updateCheckThread && updateCheckThread->isRunning()) {
 		updateCheckThread->wait();
+	}
+	if (updateCheckThread) {
 		delete updateCheckThread;
+		updateCheckThread = NULL;
 	}
 	// 窗口关闭前，保存所有的配置信息...
 	config_save_safe(App()->GlobalConfig(), "tmp", nullptr);
@@ -314,28 +315,6 @@ void StudentWindow::UpdateTitleBar()
 	QString strRole = App()->GetRoleString();
 	QString strTitle = QString("%1%2 - %3").arg(QTStr("Main.Window.TitleContent")).arg(QString::fromUtf8(strRoomID.c_str())).arg(strRole);
 	this->setWindowTitle(strTitle);
-}
-
-void StudentWindow::TimedCheckForUpdates()
-{
-	// 检测是否开启自动更新开关，默认是处于开启状态 => CStudentApp::InitGlobalConfigDefaults()...
-	if (!config_get_bool(App()->GlobalConfig(), "General", "EnableAutoUpdates"))
-		return;
-	// 注意：LastUpdateCheck只在用户点击“稍后提醒”才会起作用(4天后)；如果是相同版本，也会每次启动都会检测；
-	long long lastUpdate = config_get_int(App()->GlobalConfig(), "General", "LastUpdateCheck");
-	uint32_t lastVersion = config_get_int(App()->GlobalConfig(), "General", "LastVersion");
-	// 如果上次升级版本比当前exe存放版本还要小，立即升级...
-	if (lastVersion < LIBOBS_API_VER) {
-		lastUpdate = 0;
-		config_set_int(App()->GlobalConfig(), "General", "LastUpdateCheck", 0);
-	}
-	// 计算当前时间与上次升级之间的时间差...
-	long long t = (long long)time(nullptr);
-	long long secs = t - lastUpdate;
-	// 时间差超过4天，开始检查并执行升级...
-	if (secs > UPDATE_CHECK_INTERVAL) {
-		this->CheckForUpdates(false);
-	}
 }
 
 void StudentWindow::CheckForUpdates(bool manualUpdate)
@@ -366,8 +345,9 @@ void StudentWindow::InitWindow()
 		this->showNormal();
 	}
 
+	// 2019.06.27 - by jackey => 转移到登录界面当中...
 	// 窗口初始化完毕，进行升级检测...
-	this->TimedCheckForUpdates();
+	//this->TimedCheckForUpdates();
 }
 
 void StudentWindow::closeEvent(QCloseEvent *event)

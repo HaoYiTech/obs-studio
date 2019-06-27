@@ -1689,7 +1689,8 @@ void OBSBasic::DeferredLoad(const QString &file, int requeueCount)
 	// 立即启动远程连接...
 	App()->doCheckRemote();
 	// 为了避免弹框被强制关闭，放在这里弹出更新确认框...
-	this->TimedCheckForUpdates();
+	// 2019.06.27 - by jackey => 转移到登录界面当中...
+	//this->TimedCheckForUpdates();
 	// 绑定左右翻页按钮的点击事件...
 	ui->preview->BindBtnClickEvent();
 	// 遍历已加载数据源，判断是否显示左右箭头...
@@ -1947,11 +1948,17 @@ OBSBasic::~OBSBasic()
 {
 	if (updateCheckThread && updateCheckThread->isRunning()) {
 		updateCheckThread->wait();
+	}
+	if (updateCheckThread) {
 		delete updateCheckThread;
+		updateCheckThread = NULL;
 	}
 	if (logUploadThread && logUploadThread->isRunning()) {
 		logUploadThread->wait();
+	}
+	if (logUploadThread) {
 		delete logUploadThread;
+		logUploadThread = NULL;
 	}
 
 	delete programOptions;
@@ -2678,41 +2685,6 @@ bool OBSBasic::QueryRemoveSource(obs_source_t *source)
 	remove_source.exec();
 
 	return Yes == remove_source.clickedButton();
-}
-
-#define UPDATE_CHECK_INTERVAL (60*60*24*4) /* 4 days */
-
-#ifdef UPDATE_SPARKLE
-void init_sparkle_updater(bool update_to_undeployed);
-void trigger_sparkle_update();
-#endif
-
-void OBSBasic::TimedCheckForUpdates()
-{
-	// 检测是否开启自动更新开关，默认是处于开启状态 => OBSApp::InitGlobalConfigDefaults()...
-	if (!config_get_bool(App()->GlobalConfig(), "General", "EnableAutoUpdates"))
-		return;
-
-#ifdef UPDATE_SPARKLE
-	init_sparkle_updater(config_get_bool(App()->GlobalConfig(), "General", "UpdateToUndeployed"));
-#elif ENABLE_WIN_UPDATER
-
-	// 从global.ini中读取上次检查时间和上次升级版本号...
-	long long lastUpdate = config_get_int(App()->GlobalConfig(), "General", "LastUpdateCheck");
-	uint32_t lastVersion = config_get_int(App()->GlobalConfig(), "General", "LastVersion");
-	// 如果上次升级版本比当前exe存放版本还要小，立即升级...
-	if (lastVersion < LIBOBS_API_VER) {
-		lastUpdate = 0;
-		config_set_int(App()->GlobalConfig(), "General", "LastUpdateCheck", 0);
-	}
-	// 计算当前时间与上次升级之间的时间差...
-	long long t    = (long long)time(nullptr);
-	long long secs = t - lastUpdate;
-	// 时间差超过4天，开始检查并执行升级...
-	if (secs > UPDATE_CHECK_INTERVAL) {
-		this->CheckForUpdates(false);
-	}
-#endif
 }
 
 void OBSBasic::CheckForUpdates(bool manualUpdate)

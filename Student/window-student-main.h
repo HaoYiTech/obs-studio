@@ -49,11 +49,10 @@ private slots:
 	void on_actionPageNext_triggered();
 	void on_actionHelpAbout_triggered();
 private:
-	void TimedCheckForUpdates();
 	void CheckForUpdates(bool manualUpdate);
 private:
 	Ui::StudentClass m_ui;
 	bool m_bIsSlientClose = false;
-	QPointer<QThread> updateCheckThread;
 	QPointer<CPTZWindow> m_PTZWindow = NULL;
+	QPointer<QThread> updateCheckThread = NULL;
 };

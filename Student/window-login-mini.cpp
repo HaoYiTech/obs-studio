@@ -1,5 +1,6 @@
 
 #include "window-login-mini.h"
+#include "win-update.hpp"
 #include "student-app.h"
 #include "FastSession.h"
 #include <QNetworkRequest>
@@ -9,6 +10,42 @@
 #include <QBitmap>
 #include <QMovie>
 #include <time.h>
+
+#define UPDATE_CHECK_INTERVAL (60*60*24*4) /* 4 days */
+
+void CLoginMini::TimedCheckForUpdates()
+{
+	// 检测是否开启自动更新开关，默认是处于开启状态 => CStudentApp::InitGlobalConfigDefaults()...
+	if (!config_get_bool(App()->GlobalConfig(), "General", "EnableAutoUpdates"))
+		return;
+	// 注意：LastUpdateCheck只在用户点击“稍后提醒”才会起作用(4天后)；如果是相同版本，也会每次启动都会检测；
+	long long lastUpdate = config_get_int(App()->GlobalConfig(), "General", "LastUpdateCheck");
+	uint32_t lastVersion = config_get_int(App()->GlobalConfig(), "General", "LastVersion");
+	// 如果上次升级版本比当前exe存放版本还要小，立即升级...
+	if (lastVersion < LIBOBS_API_VER) {
+		lastUpdate = 0;
+		config_set_int(App()->GlobalConfig(), "General", "LastUpdateCheck", 0);
+	}
+	// 计算当前时间与上次升级之间的时间差...
+	long long t = (long long)time(nullptr);
+	long long secs = t - lastUpdate;
+	// 时间差超过4天，开始检查并执行升级...
+	if (secs > UPDATE_CHECK_INTERVAL) {
+		this->CheckForUpdates(false);
+	}
+}
+
+void CLoginMini::CheckForUpdates(bool manualUpdate)
+{
+	// 屏蔽升级操作菜单，避免在升级过程中重复升级...
+	if (updateCheckThread && updateCheckThread->isRunning())
+		return;
+	// 创建升级线程，并启动之 => 可以手动直接升级...
+	updateCheckThread = new AutoUpdateThread(manualUpdate);
+	updateCheckThread->start();
+
+	UNUSED_PARAMETER(manualUpdate);
+}
 
 CLoginMini::CLoginMini(QWidget *parent)
   : QDialog(parent)
@@ -47,6 +84,17 @@ CLoginMini::~CLoginMini()
 		delete m_CenterSession;
 		m_CenterSession = NULL;
 	}
+	// 窗口退出时，需要保证升级线程已经完全退出了...
+	if (updateCheckThread && updateCheckThread->isRunning()) {
+		updateCheckThread->wait();
+	}
+	// 这里需要显示删除升级线程对象...
+	if (updateCheckThread) {
+		delete updateCheckThread;
+		updateCheckThread = NULL;
+	}
+	// 将发生变化的配置信息存入配置文件 => 主要存放global.ini文件...
+	config_save_safe(GetGlobalConfig(), "tmp", nullptr);
 }
 
 void CLoginMini::loadStyleSheet(const QString &sheetName)
@@ -129,6 +177,8 @@ void CLoginMini::initWindow()
 	connect(&m_objNetManager, SIGNAL(finished(QNetworkReply *)), this, SLOT(onReplyFinished(QNetworkReply *)));
 	// 发起获取中心服务器的TCP地址和端口的命令...
 	this->doWebGetCenterAddr();
+	// 只进行一次更新状态检测...
+	this->TimedCheckForUpdates();
 }
 
 void CLoginMini::doWebGetCenterAddr()
