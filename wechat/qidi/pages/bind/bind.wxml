@@ -12,7 +12,7 @@
       title="{{ m_title }}"
       label="{{ m_label }}"
       buttons="{{ buttons }}"
-      extra="Copyright © 2019 启迪未来"
+      extra="Copyright © 2019 双师课堂"
       fixed="true"
       bind:click="{{m_btnClick}}"
       bind:getuserinfo="getUserInfo"
@@ -24,6 +24,6 @@
   </view>
   <wux-keyboard id="wux-keyboard" wux-class="feed-keyboard" />
   <view class="wux-result__ft">
-    <text>Copyright © 2019 启迪未来</text>
+    <text>Copyright © 2019 双师课堂</text>
   </view>
 </block>

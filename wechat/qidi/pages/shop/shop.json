@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "门店管理",
+  "navigationBarTitleText": "幼儿园管理",
   "enablePullDownRefresh": false,
   "usingComponents": {
     "i-load-more": "../../view-weapp/load-more/index",

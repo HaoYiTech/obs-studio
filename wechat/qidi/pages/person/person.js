@@ -27,7 +27,7 @@ Page({
     /*label: '支付管理',
       data: 'navOrder',
       icon: 'fa-money',
-      label: '门店管理',
+      label: '幼儿园管理',
       data: 'navShop',
       icon: 'fa-home',
       label: '我的帐号',
@@ -68,7 +68,7 @@ Page({
       data: 'navLive',
       icon: 'fa-video-camera',
     }, {
-      label: '门店管理',
+      label: '幼儿园管理',
       data: 'navShop',
       icon: 'fa-home',
     }, {
@@ -100,7 +100,7 @@ Page({
       icon: 'tv-o',
       link: '../live/live',
     }, {
-      label: '门店管理',
+      label: '幼儿园管理',
       data: 'icon-green',
       icon: 'shop-o',
       link: '../shop/shop',

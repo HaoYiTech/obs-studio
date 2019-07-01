@@ -16,13 +16,13 @@ Page({
     m_urlSite: g_app.globalData.m_urlSite
   },
 
-  // 响应点击新增门店...
+  // 响应点击新增幼儿园...
   doAddShop: function() {
     g_app.globalData.m_curSelectItem = null;
     wx.navigateTo({ url: '../shopItem/shopItem?edit=0' });
   },
 
-  // 响应点击修改门店...
+  // 响应点击修改幼儿园...
   doModShop: function(event) {
     let theItem = event.currentTarget.dataset['item'];
     theItem.indexID = event.currentTarget.id;
@@ -36,7 +36,7 @@ Page({
     this.doAPIGetShop();
   },
 
-  // 获取门店列表...
+  // 获取幼儿园列表...
   doAPIGetShop: function () {
     // 显示导航栏|浮动加载动画...
     wx.showLoading({ title: '加载中' });
@@ -60,7 +60,7 @@ Page({
         wx.hideLoading();
         // 调用接口失败...
         if (res.statusCode != 200) {
-          that.setData({ m_show_more: false, m_no_more: '获取门店记录失败' })
+          that.setData({ m_show_more: false, m_no_more: '获取幼儿园记录失败' })
           return
         }
         // dataType 没有设置json，需要自己转换...
@@ -87,7 +87,7 @@ Page({
       fail: function (res) {
         // 隐藏导航栏加载动画...
         wx.hideLoading()
-        that.setData({ m_show_more: false, m_no_more: '获取门店记录失败' })
+        that.setData({ m_show_more: false, m_no_more: '获取幼儿园记录失败' })
       }
     })
   },

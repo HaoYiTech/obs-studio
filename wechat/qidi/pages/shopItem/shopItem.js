@@ -47,7 +47,7 @@ Page({
         wx.hideLoading();
         // 调用接口失败...
         if (res.statusCode != 200) {
-          Notify('获取空闲店长列表失败！');
+          Notify('获取空闲园长列表失败！');
           return;
         }
         // dataType 没有设置json，需要自己转换...
@@ -57,13 +57,13 @@ Page({
       fail: function (res) {
         // 隐藏导航栏加载动画...
         wx.hideLoading();
-        Notify('获取空闲店长列表失败！');
+        Notify('获取空闲园长列表失败！');
       }
     });
   },
-  // 显示具体的门店操作界面...
+  // 显示具体的幼儿园操作界面...
   doShowShop: function(isEdit, arrMaster, arrAgent) {
-    let strTitle = (isEdit ? '修改' : '添加') + ' - 门店';
+    let strTitle = (isEdit ? '修改' : '添加') + ' - 幼儿园';
     let theShop  = isEdit ? g_app.globalData.m_curSelectItem : null;
     let theArrArea  = isEdit ? [theShop.province, theShop.city, theShop.area] : [];
     let theCurArea  = isEdit ? theArrArea.join(' / ') : '请选择';
@@ -77,7 +77,7 @@ Page({
     let theCurMasterIndex = 0; let theCurAgentIndex = 0;
     // 修改标题信息...
     wx.setNavigationBarTitle({ title: strTitle });
-    // 如果是编辑状态，需要找到店长所在的索引编号...
+    // 如果是编辑状态，需要找到园长所在的索引编号...
     if (isEdit && arrMaster.length > 0) {
       for (let index = 0; index < arrMaster.length; ++index) {
         if (arrMaster[index].user_id == theCurMasterID) {
@@ -120,23 +120,23 @@ Page({
   // 点击保存按钮...
   doBtnSave: function(event) {
     if (this.data.m_shopName.length <= 0) {
-      Notify('【门店名称】不能为空，请重新输入！');
+      Notify('【幼儿园名称】不能为空，请重新输入！');
       return;
     }
     if (this.data.m_shopAddr.length <= 0) {
-      Notify('【门店地址】不能为空，请重新输入！');
+      Notify('【幼儿园地址】不能为空，请重新输入！');
       return;
     }
     if (this.data.m_shopPhone.length <= 0) {
-      Notify('【门店电话】不能为空，请重新输入！');
+      Notify('【幼儿园电话】不能为空，请重新输入！');
       return;
     }
     if (this.data.m_arrArea.length <= 0) {
-      Notify('【门店地区】不能为空，请重新选择！');
+      Notify('【幼儿园地区】不能为空，请重新选择！');
       return;
     }
     if (parseInt(this.data.m_curMasterID) <= 0) {
-      Notify('【门店店长】不能为空，请重新选择！');
+      Notify('【幼儿园园长】不能为空，请重新选择！');
       return;
     }
     if (parseInt(this.data.m_curAgentID) <= 0) {
@@ -146,7 +146,7 @@ Page({
     // 根据不同的标志进行不同的接口调用...
     this.data.m_bEdit ? this.doShopSave() : this.doShopAdd();
   },
-  // 进行门店的添加操作...
+  // 进行幼儿园的添加操作...
   doShopAdd: function() {
     wx.showLoading({ title: '加载中' });
     let that = this;
@@ -175,7 +175,7 @@ Page({
         wx.hideLoading();
         // 调用接口失败...
         if (res.statusCode != 200) {
-          Notify('新建门店记录失败！');
+          Notify('新建幼儿园记录失败！');
           return;
         }
         // dataType 没有设置json，需要自己转换...
@@ -189,12 +189,12 @@ Page({
         arrData.shop.wx_nickname = that.data.m_curMasterName;
         arrData.shop.agent_id = that.data.m_curAgentID;
         arrData.shop.agent_name = that.data.m_curAgentName;
-        // 将新得到的门店记录存入父页面当中...
+        // 将新得到的幼儿园记录存入父页面当中...
         let pages = getCurrentPages();
         let prevPage = pages[pages.length - 2];
         let theNewShop = new Array();
         theNewShop.push(arrData.shop);
-        // 向前插入并更新门店记录到界面当中...
+        // 向前插入并更新幼儿园记录到界面当中...
         let theArrShop = prevPage.data.m_arrShop;
         theArrShop = theNewShop.concat(theArrShop);
         prevPage.setData({ m_arrShop: theArrShop, m_total_num: theArrShop.length });
@@ -203,11 +203,11 @@ Page({
       },
       fail: function (res) {
         wx.hideLoading()
-        Notify('新建门店记录失败！');
+        Notify('新建幼儿园记录失败！');
       }
     })
   },
-  // 进行门店的保存操作...
+  // 进行幼儿园的保存操作...
   doShopSave: function() {
     // 显示导航栏|浮动加载动画...
     wx.showLoading({ title: '加载中' });
@@ -240,7 +240,7 @@ Page({
         wx.hideLoading();
         // 调用接口失败...
         if (res.statusCode != 200) {
-          Notify('更新门店记录失败！');
+          Notify('更新幼儿园记录失败！');
           return;
         }
         // 进行父页面的数据更新...
@@ -266,7 +266,7 @@ Page({
       },
       fail: function (res) {
         wx.hideLoading()
-        Notify('更新门店记录失败！');
+        Notify('更新幼儿园记录失败！');
       }
     })
   },
@@ -274,15 +274,15 @@ Page({
   doBtnDel: function(event) {
     Dialog.confirm({
       confirmButtonText: "删除",
-      title: '门店：' + this.data.m_shopName,
-      message: "确实要删除当前选中的门店记录吗？"
+      title: '幼儿园：' + this.data.m_shopName,
+      message: "确实要删除当前选中的幼儿园记录吗？"
     }).then(() => {
       this.doShopDel();
     }).catch(() => {
       console.log("Dialog - Cancel");
     });
   },
-  // 进行门店的删除操作...
+  // 进行幼儿园的删除操作...
   doShopDel: function() {
     // 显示导航栏|浮动加载动画...
     wx.showLoading({ title: '加载中' });
@@ -308,14 +308,14 @@ Page({
         wx.hideLoading();
         // 调用接口失败...
         if (res.statusCode != 200) {
-          Notify('删除门店记录失败！');
+          Notify('删除幼儿园记录失败！');
           return;
         }
         // 进行父页面的数据更新...
         let pages = getCurrentPages();
         let prevPage = pages[pages.length - 2];
         let theIndex = parseInt(theCurShop.indexID);
-        // 删除并更新门店记录到界面当中...
+        // 删除并更新幼儿园记录到界面当中...
         prevPage.data.m_arrShop.splice(theIndex,1);
         let theArrShop = prevPage.data.m_arrShop;
         prevPage.setData({ m_arrShop: theArrShop, m_total_num: theArrShop.length });
@@ -324,19 +324,19 @@ Page({
       },
       fail: function (res) {
         wx.hideLoading()
-        Notify('删除门店记录失败！');
+        Notify('删除幼儿园记录失败！');
       }
     })
   },
-  // 门店名称发生变化...
+  // 幼儿园名称发生变化...
   onNameChange: function(event) {
     this.data.m_shopName = event.detail;
   },
-  // 门店地址发生变化...
+  // 幼儿园地址发生变化...
   onAddrChange: function(event) {
     this.data.m_shopAddr = event.detail;
   },
-  // 门店电话发生变化...
+  // 幼儿园电话发生变化...
   onPhoneChange: function (event) {
     this.data.m_shopPhone = event.detail;
   },
@@ -348,15 +348,15 @@ Page({
       m_curArea: currentValue.join(' / '),
     })
   },
-  // 店长发生选择变化...
+  // 园长发生选择变化...
   onMasterChange: function(event) {
     const { value } = event.detail;
     let theNewMasterID = parseInt(value);
     if (theNewMasterID < 0 || theNewMasterID >= this.data.m_arrMaster.length) {
-      Notify('【门店店长】选择内容越界！');
+      Notify('【幼儿园长】选择内容越界！');
       return;
     }
-    // 获取到当前变化后的店长信息，并写入数据然后显示出来...
+    // 获取到当前变化后的园长信息，并写入数据然后显示出来...
     let theCurMaster = this.data.m_arrMaster[theNewMasterID];
     this.setData({ m_curMasterID: theCurMaster.user_id, m_curMasterName: theCurMaster.wx_nickname });
   },
@@ -368,7 +368,7 @@ Page({
       Notify('【所属机构】选择内容越界！');
       return;
     }
-    // 获取到当前变化后的店长信息，并写入数据然后显示出来...
+    // 获取到当前变化后的园长信息，并写入数据然后显示出来...
     let theCurAgent = this.data.m_arrAgent[theNewAgentID];
     this.setData({ m_curAgentID: theCurAgent.agent_id, m_curAgentName: theCurAgent.name });
   },

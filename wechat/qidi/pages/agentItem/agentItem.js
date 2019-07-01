@@ -59,7 +59,7 @@ Page({
       }
     });
   },
-  // 显示具体的门店操作界面...
+  // 显示具体的幼儿园操作界面...
   doShowAgent: function (isEdit, arrMaster) {
     let strTitle = (isEdit ? '修改' : '添加') + ' - 机构';
     let theAgent = isEdit ? g_app.globalData.m_curSelectItem : null;

@@ -31,7 +31,7 @@
       <view>{{ m_arrParentType[m_curUser.parent_type] }}</view>
     </picker>
   </van-cell>
-  <van-cell title="所属门店" required is-link>
+  <van-cell title="所属幼儿园" required is-link>
     <picker slot="extra" mode="selector" class="feed-picker" range="{{ m_arrShop }}" 
       value="{{ m_curShopIndex }}" range-key="name" bindchange="onShopChange">
       <view>{{ m_curShopName }}</view>

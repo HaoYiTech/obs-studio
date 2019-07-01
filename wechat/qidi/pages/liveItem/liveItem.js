@@ -323,7 +323,7 @@ Page({
       Notify('【所属科目】选择内容越界！');
       return;
     }
-    // 获取到当前变化后的店长信息，并写入数据然后显示出来...
+    // 获取到当前变化后的园长信息，并写入数据然后显示出来...
     let theCurSubject = this.data.m_arrSubject[theNewSubjectID];
     this.setData({ m_curSubjectID: theCurSubject.subject_id, m_curSubjectName: theCurSubject.subject_name });
   },
@@ -335,7 +335,7 @@ Page({
       Notify('【所属机构】选择内容越界！');
       return;
     }
-    // 获取到当前变化后的店长信息，并写入数据然后显示出来...
+    // 获取到当前变化后的园长信息，并写入数据然后显示出来...
     let theCurAgent = this.data.m_arrAgent[theNewAgentID];
     this.setData({ m_curAgentID: theCurAgent.agent_id, m_curAgentName: theCurAgent.name });
   },

@@ -1,7 +1,7 @@
 
 <view class="feed-head">
   <image mode="aspectFill" lazy-load="true" src="../../images/logo.png"></image>
-  <view class="feed-name">启迪未来</view>
+  <view class="feed-name">双师课堂</view>
 </view>
 <view class="feed-text">STEAM双师云平台是由公司重资打造的新一代创客双师云平台；</view>
 <view class="feed-text">拥有自己的底层技术和核心压缩算法，能把视频推流、双向与多向音视频交流互动达到及时、同步；</view>
@@ -13,5 +13,5 @@
 <view class="feed-text">能帮助中小学解决STEAM教育的师资问题，同时也能利用该平台来开展其它的双师课程。</view>
 
 <view class="wux-result__ft">
-  <text>Copyright © 2019 启迪未来</text>
+  <text>Copyright © 2019 双师课堂</text>
 </view>

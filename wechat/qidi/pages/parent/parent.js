@@ -39,7 +39,7 @@ Page({
         wx.hideLoading();
         // 调用接口失败...
         if (res.statusCode != 200) {
-          Notify('获取门店列表信息失败！');
+          Notify('获取幼儿园列表信息失败！');
           return;
         }
         // dataType 没有设置json，需要自己转换...
@@ -53,7 +53,7 @@ Page({
       fail: function (res) {
         // 隐藏导航栏加载动画...
         wx.hideLoading();
-        Notify('获取门店列表信息失败！');
+        Notify('获取幼儿园列表信息失败！');
       }
     });
   },
@@ -68,7 +68,7 @@ Page({
     let theCurShopIndex = 0;
     // 修改标题信息...
     wx.setNavigationBarTitle({ title: strTitle });
-    // 需要找到当前用户所在的门店索引编号...
+    // 需要找到当前用户所在的幼儿园索引编号...
     if (arrShop.length > 0) {
       for (let index = 0; index < arrShop.length; ++index) {
         if (arrShop[index].shop_id == theCurShopID) {
@@ -88,15 +88,15 @@ Page({
     });
   },
 
-  // 所属门店发生选择变化...
+  // 所属幼儿园发生选择变化...
   onShopChange: function (event) {
     const { value } = event.detail;
     let theNewShopID = parseInt(value);
     if (theNewShopID < 0 || theNewShopID >= this.data.m_arrShop.length) {
-      Notify('【所属门店】选择内容越界！');
+      Notify('【所属幼儿园】选择内容越界！');
       return;
     }
-    // 获取到当前变化后的门店信息，并写入数据然后显示出来...
+    // 获取到当前变化后的幼儿园信息，并写入数据然后显示出来...
     let theCurShop = this.data.m_arrShop[theNewShopID];
     this.setData({ m_curShopID: theCurShop.shop_id, m_curShopName: theCurShop.name });
   },

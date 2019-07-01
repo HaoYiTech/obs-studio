@@ -1,8 +1,8 @@
 
 <view class="top-area">
-  <van-cell title="总共 {{ m_total_num }} 个门店" icon="shop-o" border="{{ true }}"
+  <van-cell title="总共 {{ m_total_num }} 个幼儿园" icon="shop-o" border="{{ true }}"
     icon-class="feed-left-icon" custom-class="feed-shop">
-    <van-button slot="extra" type="primary" size="small" bind:click="doAddShop">添加门店</van-button>
+    <van-button slot="extra" type="primary" size="small" bind:click="doAddShop">添加幼儿园</van-button>
   </van-cell>
 </view>
 <block wx:for="{{ m_arrShop }}" wx:key="index">
@@ -12,9 +12,9 @@
     bind:click="doModShop"
     customStyle="font-size:14px;padding:10px 15px;"
     title="{{ item.name }}"
-    desc="店长：{{ item.wx_nickname }}"
+    desc="园长：{{ item.wx_nickname }}"
     card-age="地区：{{item.province}} / {{item.city}} / {{item.area}}"
-    card-time="建店：{{ item.created }}"
+    card-time="时间：{{ item.created }}"
     lazy-load="{{ true }}"
     shop-cart="{{ false }}"
     show-arrow="{{ true }}"
