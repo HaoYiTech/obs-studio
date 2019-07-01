@@ -28,12 +28,12 @@ define('SEX_TYPE', "return array('无', '男', '女');");
 define('kParentUser',        0);    // 家长
 define('kAssistUser',        1);    // 助教
 define('kTeacherUser',       2);    // 讲师
-define('kShopMasterUser',    3);    // 店长
-define('kShopOwnerUser',     4);    // 门店老板
-define('kMaintainUser',      5);    // 运营维护
+define('kShopMasterUser',    3);    // 园长
+define('kShopOwnerUser',     4);    // 幼儿园老板
+define('kMaintainUser',      5);    // 运营维护者
 define('kAdministerUser',    6);    // 系统管理员
 // 定义用户类型名称数组，需要使用eval才能返回数组...
-define('USER_TYPE', "return array('家长', '助教', '讲师', '店长', '门店老板', '运营维护', '系统管理员');");
+define('USER_TYPE', "return array('家长', '助教', '讲师', '园长', '幼儿园老板', '运营维护者', '系统管理员');");
 
 // 定义父母类型标识符号...
 define('kNoneParent',        0);     // 无

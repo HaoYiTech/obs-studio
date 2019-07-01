@@ -857,9 +857,9 @@ class MiniAction extends Action
       $arrErr['cur_page'] = $pageCur;
       // 获取会员用户分页数据，通过视图获取数据...
       if ( $bIsSearch ) {
-        $arrErr['user'] = D('UserView')->where($arrWhere)->limit($pageLimit)->order('User.shop_id DESC, User.create_time DESC')->select();
+        $arrErr['user'] = D('UserView')->where($arrWhere)->limit($pageLimit)->order('User.update_time DESC, User.create_time DESC')->select();
       } else {
-        $arrErr['user'] = D('UserView')->limit($pageLimit)->order('User.shop_id DESC, User.create_time DESC')->select();
+        $arrErr['user'] = D('UserView')->limit($pageLimit)->order('User.update_time DESC, User.create_time DESC')->select();
       }
     } while ( false );
     // 返回json编码数据包...
@@ -958,14 +958,14 @@ class MiniAction extends Action
     echo json_encode($arrErr);
   }
   //
-  // 获取所有门店列表接口...
+  // 获取所有幼儿园列表接口...
   public function getAllShop()
   {
     $arrShop = D('shop')->field('shop_id,name')->order('created ASC')->select();
     echo json_encode($arrShop);
   }
   //
-  // 获取门店列表接口...
+  // 获取幼儿园列表接口...
   public function getShop()
   {
     // 准备返回信息...
@@ -992,14 +992,14 @@ class MiniAction extends Action
       $arrErr['total_num'] = $totalNum;
       $arrErr['max_page'] = $max_page;
       $arrErr['cur_page'] = $pageCur;
-      // 获取门店分页数据，通过视图获取数据，并查找所有空闲的店长列表...
+      // 获取幼儿园分页数据，通过视图获取数据，并查找所有空闲的园长列表...
       $arrErr['shop'] = D('ShopView')->limit($pageLimit)->order('Shop.created DESC')->select();
     } while ( false );
     // 返回json编码数据包...
     echo json_encode($arrErr);
   }
   //
-  // 删除门店记录的接口...
+  // 删除幼儿园记录的接口...
   public function delShop()
   {
     $condition['shop_id'] = $_POST['shop_id'];
@@ -1007,13 +1007,13 @@ class MiniAction extends Action
     unlink($_POST['qrcode']);
   }
   //
-  // 更新门店记录的接口...
+  // 更新幼儿园记录的接口...
   public function saveShop()
   {
     D('shop')->save($_POST);
   }
   //
-  // 新建门店记录的接口...
+  // 新建幼儿园记录的接口...
   public function addShop()
   {
     // 准备返回信息...
@@ -1065,7 +1065,7 @@ class MiniAction extends Action
     echo json_encode($arrMaster);
   }
   //
-  // 得到所有的可用的店长列表 => 没有被占用的自由店长列表...
+  // 得到所有的可用的园长列表 => 没有被占用的自由园长列表...
   public function getMasterFree()
   {
     $curMasterID = (isset($_GET['master_id']) ? intval($_GET['master_id']) : 0);
@@ -1074,15 +1074,15 @@ class MiniAction extends Action
     echo json_encode($arrErr);
   }
   //
-  // 查找空闲的店长列表...
+  // 查找空闲的园长列表...
   private function findMasterFree($inCurMasterID)
   {
-    // 找到所有 user_type > kTeacherUser 的用户，这些用户都可以成为店长...
+    // 找到所有 user_type > kTeacherUser 的用户，这些用户都可以成为园长...
     $condition['user_type'] = array('gt', kTeacherUser);
     $arrMaster = D('user')->where($condition)->field('user_id,wx_nickname')->select();
-    // 找到所有有店长的门店列表，然后排除对应的用户...
+    // 找到所有有园长的幼儿园列表，然后排除对应的用户...
     $arrShop = D('shop')->where('master_id > 0')->field('shop_id,master_id')->select();
-    // 找到没有被占用的自由店长列表...
+    // 找到没有被占用的自由园长列表...
     $arrFree = array();
 		foreach($arrMaster as &$dbItem) {
       $bFreeFlag = true;
@@ -1094,7 +1094,7 @@ class MiniAction extends Action
           }
         }
       }
-      // 如果在门店中没有找到对应的店长，则是自由店长...
+      // 如果在幼儿园中没有找到对应的园长，则是自由园长...
       if( $bFreeFlag ) {
         array_push($arrFree, $dbItem);
       }
