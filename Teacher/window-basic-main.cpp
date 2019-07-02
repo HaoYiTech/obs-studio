@@ -3990,12 +3990,6 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 	obs_source_t *source = obs_sceneitem_get_source(sceneItem);
 	bool bIsRtpSource = ((astrcmpi(obs_source_get_id(source), App()->InteractRtpSource()) == 0) ? true : false);
 
-	// 始终自动追加一个“检查升级”的菜单...
-	if (ui->actionCheckForUpdates != NULL) {
-		popup.addAction(ui->actionCheckForUpdates);
-		popup.addSeparator();
-	}
-
 	// 如果数据源有效，创建一个可浮动数据源的菜单项...
 	if (item != NULL) {
 		QAction * actionFloated = NULL;
@@ -4044,8 +4038,13 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 		popup.addSeparator();*/
 	}
 
-	// 添加投影|预览菜单...
 	if (item != NULL) {
+		// 开启 滤镜 | 属性 菜单...
+		popup.addAction(QTStr("Filters"), this, SLOT(OpenFilters()));
+		popup.addAction(QTStr("Properties"), this, SLOT(on_actionSourceProperties_triggered()));
+		popup.addSeparator();
+
+		// 添加投影|预览菜单...
 		sourceProjector = new QMenu(QTStr("SourceProjector"));
 		AddProjectorMenuMonitors(sourceProjector, this, SLOT(OpenSourceProjector()));
 		QAction *sourceWindow = popup.addAction(QTStr("SourceWindow"), this, SLOT(OpenSourceWindow()));
@@ -4099,7 +4098,6 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 		}
 
 		popup.addMenu(AddScaleFilteringMenu(sceneItem));
-		popup.addSeparator();
 
 		// 屏蔽 交互 菜单...
 		/*action = popup.addAction(QTStr("Interact"), this,
@@ -4107,14 +4105,16 @@ void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
 		action->setEnabled(obs_source_get_output_flags(source) &
 				OBS_SOURCE_INTERACTION);*/
 
-		// 开启 滤镜 | 属性 菜单...
-		popup.addAction(QTStr("Filters"), this, SLOT(OpenFilters()));
-		popup.addAction(QTStr("Properties"), this, SLOT(on_actionSourceProperties_triggered()));
-
 		//ui->actionCopyFilters->setEnabled(true);
 		//ui->actionCopySource->setEnabled(true);
 	} else {
 		//ui->actionPasteFilters->setEnabled(false);
+	}
+
+	// 始终自动追加一个“检查升级”的菜单...
+	if (ui->actionCheckForUpdates != NULL) {
+		popup.addSeparator();
+		popup.addAction(ui->actionCheckForUpdates);
 	}
 
 	popup.exec(QCursor::pos());
@@ -4215,6 +4215,15 @@ QMenu *OBSBasic::CreateAddSourcePopupMenu()
 #endif
 		// 去掉 文本(GDI+) 的菜单添加入口...
 		if (astrcmpi(type, text_source_id) == 0)
+			continue;
+		// 去掉 图片幻灯片 的菜单添加入口...
+		if (astrcmpi(type, "slideshow") == 0)
+			continue;
+		// 去掉 色源 的菜单添加入口...
+		if (astrcmpi(type, "color_source") == 0)
+			continue;
+		// 去掉 音频输入捕获 的菜单添加入口...
+		if (astrcmpi(type, "wasapi_input_capture") == 0)
 			continue;
 		// 添加相关数据源的菜单入口...
 		if ((caps & OBS_SOURCE_DEPRECATED) == 0) {
