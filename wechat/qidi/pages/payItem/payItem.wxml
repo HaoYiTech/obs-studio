@@ -1,0 +1,55 @@
+
+<van-notify id="van-notify" />
+<van-dialog id="van-dialog" />
+
+<van-cell-group custom-class="feed-item">
+  <van-field
+    label="宝宝姓名" required disabled
+    placeholder="{{m_curUser.child_name?m_curUser.child_name:''}} - {{m_curUser.child_nick?m_curUser.child_nick:''}}"
+    placeholder-style="color:#0080FF !important;"
+  />
+  <van-field
+    label="所属幼儿园" required disabled
+    placeholder="{{m_curUser.shop_name}}"
+    placeholder-style="color:#0080FF !important;"
+  />
+  <van-field
+    type="number"
+    maxlength="6"
+    label="订单总价"
+    value="{{ m_total_price }}"
+    placeholder="请输入总价"
+    bind:change="onPriceChange"
+    placeholder-style="color:#999 !important;"
+    error clearable required focus="{{ !m_bEdit }}"
+  />
+  <van-field
+    type="number"
+    maxlength="4"
+    label="购买课时"
+    value="{{ m_point_num }}"
+    placeholder="请输入课时"
+    bind:change="onPointChange"
+    error clearable required
+    placeholder-style="color:#999 !important;"
+  />
+  <van-cell title="课程名称" required is-link>
+    <picker slot="extra" mode="selector" class="feed-picker" range="{{ m_arrSubject }}" 
+      value="{{ m_curSubjectIndex }}" range-key="subject_name" bindchange="onSubjectChange">
+      <view>{{ m_curSubjectName }}</view>
+    </picker>
+  </van-cell>
+  <van-cell title="年级名称" required is-link>
+    <picker slot="extra" mode="selector" class="feed-picker" range="{{ m_arrGrade }}" 
+      value="{{ m_curGradeIndex }}" range-key="grade_name" bindchange="onGradeChange">
+      <view>{{ m_curGradeName }}</view>
+    </picker>
+  </van-cell>
+  <view class="addr-footer">
+    <van-button size="small" type="primary"
+    plain class="addr-right" bind:click="doBtnCancel"> 取 消 </van-button>
+    <van-button size="small" type="primary" 
+    class="addr-right" bind:click="doBtnSave">{{ m_bEdit ? ' 保 存 ' : ' 添 加 ' }}</van-button>
+    <!--<van-button wx:if="{{ m_bEdit }}" size="small" type="danger" bind:click="doBtnDel"> 删 除 </van-button>-->
+  </view>
+</van-cell-group>

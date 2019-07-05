@@ -81,7 +81,7 @@ Page({
     m_ShopGrids: [{
       label: '用户管理',
       data: 'icon-blue',
-      icon: 'friends-o',
+      icon: 'user-o',
       link: '../member/member',
     }, {
       label: '直播间管理',
@@ -91,9 +91,14 @@ Page({
     }],
     m_AdminGrids: [{
       label: '用户管理',
+      data: 'icon-green',
+      icon: 'user-o',
+      link: '../member/member',
+    }, {
+      label: '班级管理',
       data: 'icon-blue',
       icon: 'friends-o',
-      link: '../member/member',
+      link: '../grade/grade',
     }, {
       label: '直播间管理',
       data: 'icon-red',

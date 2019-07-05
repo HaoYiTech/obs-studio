@@ -1,0 +1,33 @@
+
+.icon-green {
+  font-size: 20px !important;
+  color: forestgreen;
+}
+.icon-point {
+  font-size: 20px !important;
+  color: forestgreen;
+  vertical-align: middle;
+  margin-right: 5px;
+}
+.cell-title {
+  -webkit-flex: 2 !important;
+  flex: 2 !important;
+}
+.cell-value {
+  color: #e76547 !important;
+  justify-content: flex-end;
+  display: -webkit-flex;
+  align-items: center;
+}
+.van-swipe-cell__right {
+  width: 65px;
+  height: 44px;
+  font-size: 15px;
+  line-height: 44px;
+  color: #fff;
+  text-align: center;
+  background-color: #f44;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}

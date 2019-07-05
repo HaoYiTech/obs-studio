@@ -34,33 +34,37 @@
     </block>
   </wux-grids>-->
   <view wx:if="{{ m_grids.length > 0 }}" class="feed-top-area">
-    <block wx:for="{{ m_grids }}" wx:for-item="grid" wx:key="index">
-      <van-cell custom-class="feed-cell" title="{{ grid.label }}" size="large"
-      icon-class="{{ grid.data }}" icon="{{ grid.icon }}" is-link border="{{false}}"
-      url="{{ grid.link }}" />
-    </block>
+    <van-cell-group>
+      <block wx:for="{{ m_grids }}" wx:for-item="grid" wx:key="index">
+        <van-cell title="{{ grid.label }}" size="large" is-link
+        icon-class="{{ grid.data }}" icon="{{ grid.icon }}"
+        url="{{ grid.link }}" />
+      </block>
+    </van-cell-group>
   </view>
   <view class="feed-top-area">
-    <van-cell custom-class="feed-cell" title="推荐给朋友" size="large"
-      icon-class="icon-green" icon="gift-o" is-link border="{{false}}">
-      <button slot="extra" open-type="share" class="feed-share" />
-    </van-cell>
-    <van-cell custom-class="feed-cell" title="意见反馈" size="large"
-      icon-class="icon-blue" icon="question-o" is-link border="{{false}}">
-      <contact-button slot="extra" type="default-light" />
-      <contact-button slot="extra" type="default-light" />
-      <contact-button slot="extra" type="default-light" />
-      <contact-button slot="extra" type="default-light" />
-      <contact-button slot="extra" type="default-light" />
-      <contact-button slot="extra" type="default-light" />
-      <contact-button slot="extra" type="default-light" />
-      <contact-button slot="extra" type="default-light" />
-      <contact-button slot="extra" type="default-light" />
-      <contact-button slot="extra" type="default-light" />
-    </van-cell>
-    <van-cell custom-class="feed-cell" title="关于我们" size="large"
-     icon-class="icon-red" icon="like-o" is-link border="{{false}}"
-     url="/pages/about/about" />
+    <van-cell-group>
+      <van-cell title="推荐给朋友" size="large" is-link
+        icon-class="icon-green" icon="gift-o">
+        <button slot="extra" open-type="share" class="feed-share" />
+      </van-cell>
+      <van-cell title="意见反馈" size="large" is-link
+        icon-class="icon-blue" icon="question-o">
+        <contact-button slot="extra" type="default-light" />
+        <contact-button slot="extra" type="default-light" />
+        <contact-button slot="extra" type="default-light" />
+        <contact-button slot="extra" type="default-light" />
+        <contact-button slot="extra" type="default-light" />
+        <contact-button slot="extra" type="default-light" />
+        <contact-button slot="extra" type="default-light" />
+        <contact-button slot="extra" type="default-light" />
+        <contact-button slot="extra" type="default-light" />
+        <contact-button slot="extra" type="default-light" />
+      </van-cell>
+      <van-cell title="关于我们" size="large" is-link
+      icon-class="icon-red" icon="like-o"
+      url="/pages/about/about" />
+    </van-cell-group>
   </view>
 </block>
 </view>

@@ -1,0 +1,14 @@
+
+.feed-search {
+  border-bottom: 1rpx solid #ddd;
+  position: fixed;
+  z-index: 100;
+  width: 100%;
+}
+.feed-contain {
+  padding-top: 50px;
+}
+.feed-card {
+  font-size: 14px !important;
+  padding: 10px 15px !important;
+}

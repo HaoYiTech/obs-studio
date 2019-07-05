@@ -8,7 +8,7 @@
       value="{{ m_agentName }}"
       placeholder="请输入机构名称"
       bind:change="onNameChange"
-      clearable required
+      clearable required focus="{{ !m_bEdit }}"
     />
     <van-field
       label="机构地址"

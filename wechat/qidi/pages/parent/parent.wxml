@@ -3,38 +3,25 @@
 
 <van-cell-group custom-class="feed-item">
   <van-field
-    label="用户姓名"
+    label="家长姓名"
     value="{{ m_curUser.real_name }}"
-    placeholder="请输入用户名称"
+    placeholder="请输入家长姓名"
     bind:change="onNameChange"
     clearable required
   />
   <van-field
     type="number"
     maxlength="11"
-    label="用户手机"
+    label="家长手机"
     value="{{ m_curUser.real_phone }}"
-    placeholder="请输入用户手机"
+    placeholder="请输入家长手机"
     bind:change="onPhoneChange"
     clearable required
   />
-  <van-cell title="用户类型" required is-link="{{ m_bIsAdmin }}">
-    <picker slot="extra" mode="selector" class="feed-picker" range="{{ m_userTypeName }}" 
-      value="{{ m_curUser.user_type }}" bindchange="onUserTypeChange"
-      disabled="{{ !m_bIsAdmin }}">
-      <view>{{ m_userTypeName[m_curUser.user_type] }}</view>
-    </picker>
-  </van-cell>
   <van-cell title="家长身份" required is-link>
     <picker slot="extra" mode="selector" class="feed-picker" range="{{ m_arrParentType }}" 
       value="{{ m_curUser.parent_type }}" bindchange="onParentTypeChange">
       <view>{{ m_arrParentType[m_curUser.parent_type] }}</view>
-    </picker>
-  </van-cell>
-  <van-cell title="所属幼儿园" required is-link>
-    <picker slot="extra" mode="selector" class="feed-picker" range="{{ m_arrShop }}" 
-      value="{{ m_curShopIndex }}" range-key="name" bindchange="onShopChange">
-      <view>{{ m_curShopName }}</view>
     </picker>
   </van-cell>
   <view class="feed-footer">

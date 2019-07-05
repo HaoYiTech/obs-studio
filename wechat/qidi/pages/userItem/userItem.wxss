@@ -14,3 +14,11 @@
   font-size: 20px !important;
   color: forestgreen;
 }
+.feed-picker {
+  width: 50%;
+  color: #888;
+  text-align: right;
+}
+.feed-margin {
+  margin-right: 20px;
+}

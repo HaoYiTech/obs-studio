@@ -1,5 +1,5 @@
 {
-  "pages":[
+  "pages": [
     "pages/home/home",
     "pages/room/room",
     "pages/live/live",
@@ -8,20 +8,24 @@
     "pages/child/child",
     "pages/about/about",
     "pages/agent/agent",
+    "pages/grade/grade",
     "pages/parent/parent",
     "pages/person/person",
     "pages/member/member",
+    "pages/listPay/listPay",
+    "pages/payItem/payItem",
     "pages/liveItem/liveItem",
     "pages/userItem/userItem",
     "pages/shopItem/shopItem",
-    "pages/agentItem/agentItem"
+    "pages/agentItem/agentItem",
+    "pages/gradeItem/gradeItem"
   ],
-  "window":{
+  "window": {
     "navigationBarBackgroundColor": "#fff",
     "navigationBarTitleText": "启迪云",
-    "navigationBarTextStyle":"black",
+    "navigationBarTextStyle": "black",
     "backgroundColor": "#eee",
-    "backgroundTextStyle":"dark",
+    "backgroundTextStyle": "dark",
     "enablePullDownRefresh": true,
     "onReachBottomDistance": 40
   },
@@ -42,5 +46,6 @@
         "text": "我的"
       }
     ]
-  }
+  },
+  "sitemapLocation": "sitemap.json"
 }

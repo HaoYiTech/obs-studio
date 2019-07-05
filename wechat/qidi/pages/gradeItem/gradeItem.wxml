@@ -1,0 +1,7 @@
+
+<van-search
+  custom-class="feed-search"
+  placeholder="请输入搜索关键词"
+  bind:change="onChange"
+  value="{{ m_str_query }}"
+/>

@@ -1,0 +1,8 @@
+
+.grade-icon {
+  color:deepskyblue;
+  font-size: 20px !important;
+}
+.feed-cell {
+  border-bottom: 1px solid #eee;
+}

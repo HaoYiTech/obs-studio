@@ -1,8 +1,9 @@
 {
-  "navigationBarTitleText": "用户详情",
+  "navigationBarTitleText": "班级管理",
   "enablePullDownRefresh": false,
   "usingComponents": {
     "van-cell-group": "../../vant-weapp/cell-group/index",
+    "i-load-more": "../../view-weapp/load-more/index",
     "van-cell": "../../vant-weapp/cell/index"
   }
 }

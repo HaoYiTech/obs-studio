@@ -7,11 +7,15 @@
   color: #888;
   text-align: right;
 }
-.feed-footer {
+.addr-picker {
+  color: #888;
+  text-align: right;
+}
+.addr-footer {
   text-align: right;
   padding: 15px 20px;
   background: #fff;
 }
-.feed-right {
+.addr-right {
   margin-right: 30rpx;
 }

@@ -9,12 +9,7 @@ Page({
    * 页面的初始数据
    */
   data: {
-    m_bIsAdmin: false,
     m_curUser: null,
-    m_arrShop: [],
-    m_curShopID: 0,
-    m_curShopName: '',
-    m_userTypeName: g_appData.m_userTypeName,
     m_arrParentType: g_appData.m_parentTypeName
   },
 
@@ -22,83 +17,12 @@ Page({
    * 生命周期函数--监听页面加载
    */
   onLoad: function (options) {
-    // 显示导航栏|浮动加载动画...
-    wx.showLoading({ title: '加载中' });
-    // 保存this对象...
-    let that = this
-    // 构造访问接口连接地址...
-    let theUrl = g_appData.m_urlPrev + 'Mini/getAllShop';
-    // 请求远程API过程...
-    wx.request({
-      url: theUrl,
-      method: 'GET',
-      dataType: 'x-www-form-urlencoded',
-      header: { 'content-type': 'application/x-www-form-urlencoded' },
-      success: function (res) {
-        // 隐藏导航栏加载动画...
-        wx.hideLoading();
-        // 调用接口失败...
-        if (res.statusCode != 200) {
-          Notify('获取幼儿园列表信息失败！');
-          return;
-        }
-        // dataType 没有设置json，需要自己转换...
-        let arrShop = JSON.parse(res.data);
-        if (!(arrShop instanceof Array)) {
-          arrShop = [];
-        }
-        // 保证输入必须是数组类型...
-        that.doShowUser(arrShop);
-      },
-      fail: function (res) {
-        // 隐藏导航栏加载动画...
-        wx.hideLoading();
-        Notify('获取幼儿园列表信息失败！');
-      }
-    });
-  },
-  
-  doShowUser: function (arrShop) {
-    let loginUser = g_appData.m_userInfo;
-    let curUser = g_appData.m_curSelectItem;
-    let strTitle = curUser.wx_nickname + ' - 用户信息';
-    let bIsAdmin = ((loginUser.userType >= g_appData.m_userTypeID.kMaintainUser) ? true : false);
-    let theCurShopName = curUser.shop_name;
-    let theCurShopID = curUser.shop_id;
-    let theCurShopIndex = 0;
     // 修改标题信息...
+    let curUser = g_appData.m_curSelectItem;
+    let strTitle = curUser.wx_nickname + ' - 家长信息';
     wx.setNavigationBarTitle({ title: strTitle });
-    // 需要找到当前用户所在的幼儿园索引编号...
-    if (arrShop.length > 0) {
-      for (let index = 0; index < arrShop.length; ++index) {
-        if (arrShop[index].shop_id == theCurShopID) {
-          theCurShopIndex = index;
-          break;
-        }
-      }
-    }
     // 应用到界面...
-    this.setData({ 
-      m_curUser: curUser,
-      m_bIsAdmin: bIsAdmin,
-      m_arrShop: arrShop,
-      m_curShopID: theCurShopID,
-      m_curShopName: theCurShopName,
-      m_curShopIndex: theCurShopIndex,
-    });
-  },
-
-  // 所属幼儿园发生选择变化...
-  onShopChange: function (event) {
-    const { value } = event.detail;
-    let theNewShopID = parseInt(value);
-    if (theNewShopID < 0 || theNewShopID >= this.data.m_arrShop.length) {
-      Notify('【所属幼儿园】选择内容越界！');
-      return;
-    }
-    // 获取到当前变化后的幼儿园信息，并写入数据然后显示出来...
-    let theCurShop = this.data.m_arrShop[theNewShopID];
-    this.setData({ m_curShopID: theCurShop.shop_id, m_curShopName: theCurShop.name });
+    this.setData({ m_curUser: curUser });
   },
 
   onNameChange: function (event) {
@@ -107,11 +31,6 @@ Page({
 
   onPhoneChange: function (event) {
     this.setData({ 'm_curUser.real_phone': event.detail });
-  },
-
-  onUserTypeChange: function (event) {
-    const { value } = event.detail;
-    this.setData({ 'm_curUser.user_type': value });
   },
 
   // 用户身份发生变化时的处理...
@@ -146,8 +65,6 @@ Page({
       'real_name': theCurUser.real_name,
       'real_phone': theCurUser.real_phone,
       'parent_type': theCurUser.parent_type,
-      'user_type': theCurUser.user_type,
-      'shop_id': that.data.m_curShopID,
     }
     // 构造访问接口连接地址...
     let theUrl = g_appData.m_urlPrev + 'Mini/saveUser';
@@ -176,9 +93,6 @@ Page({
         thePrevUser.real_name = theCurUser.real_name;
         thePrevUser.real_phone = theCurUser.real_phone;
         thePrevUser.parent_type = theCurUser.parent_type;
-        thePrevUser.user_type = theCurUser.user_type;
-        thePrevUser.shop_id = that.data.m_curShopID;
-        thePrevUser.shop_name = that.data.m_curShopName;
         prevParentPage.setData({ m_arrUser: theArrUser });
         thePrevUser.indexID = theCurUser.indexID;
         prevItemPage.setData({ m_curUser: thePrevUser });

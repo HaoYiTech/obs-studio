@@ -15,7 +15,7 @@
       custom-class="feed-card"
       title="{{item.child_name ? item.child_name : ''}} - {{item.child_nick ? item.child_nick : ''}} - {{item.real_name ? item.real_name : ''}} - {{item.wx_nickname}} - {{m_userTypeName[item.user_type]}}"
       desc-class="feed-desc"
-      desc="剩余：{{ item.lesson_num }} 课时，"
+      desc="剩余：{{ item.point_num }} 课时，"
       card-time="地区：{{item.wx_country}} / {{item.wx_province}} / {{item.wx_city}}"
       card-age="园所：{{ item.shop_name ? item.shop_name : '无' }}"
       lazy-load="{{ true }}"
