@@ -15,8 +15,75 @@ Page({
     m_cur_page: 1,
     m_max_page: 1,
     m_total_num: 0,
+    m_point_num: 0,
     m_show_more: true,
     m_no_more: '正在加载...',
+  },
+
+  // 响应修改课时操作...
+  doModPoint: function() {
+    let theCurUser = this.data.m_curUser;
+    let nCurPoint = parseInt(this.data.m_point_num);
+    // 强制将剩余课时数设置为 0 => 当输入为空时 => 可以设置为小于0...
+    if ((this.data.m_point_num.length <= 0) || isNaN(nCurPoint)) {
+      nCurPoint = 0;
+    }
+    // 没有发生变化，直接返回...
+    if (nCurPoint == theCurUser.point_num) {
+      Notify('【剩余课时数】修改完成！');
+      return;
+    }
+    // 显示导航栏|浮动加载动画...
+    wx.showLoading({ title: '加载中' });
+    let that = this;
+    // 准备需要的参数信息...
+    var thePostData = {
+      'user_id': theCurUser.user_id,
+      'point_num': nCurPoint,
+    }
+    // 构造访问接口连接地址...
+    let theUrl = g_appData.m_urlPrev + 'Mini/saveUser';
+    // 请求远程API过程...
+    wx.request({
+      url: theUrl,
+      method: 'POST',
+      data: thePostData,
+      dataType: 'x-www-form-urlencoded',
+      header: { 'content-type': 'application/x-www-form-urlencoded' },
+      success: function (res) {
+        // 隐藏导航栏加载动画...
+        wx.hideLoading();
+        // 调用接口失败...
+        if (res.statusCode != 200) {
+          Notify('【剩余课时数】修改失败！');
+          return;
+        }
+        // 更新数据到本地页面当中...
+        theCurUser.point_num = nCurPoint;
+        that.setData({ m_curUser: theCurUser });
+        // 进行父页面的数据更新...
+        let pages = getCurrentPages();
+        let prevUserPage = pages[pages.length - 2];
+        let prevParentPage = pages[pages.length - 3];
+        let theIndex = parseInt(theCurUser.indexID);
+        let theArrUser = prevParentPage.data.m_arrUser;
+        let thePrevUser = theArrUser[theIndex];
+        thePrevUser.indexID = theCurUser.indexID;
+        thePrevUser.point_num = theCurUser.point_num;
+        prevParentPage.setData({ m_arrUser: theArrUser });
+        g_appData.m_curSelectItem = thePrevUser;
+        Notify('【剩余课时数】修改成功！');
+      },
+      fail: function (res) {
+        wx.hideLoading()
+        Notify('【剩余课时数】修改失败！');
+      }
+    })
+  },
+  
+  // 剩余课时数发生变化...
+  onPointChange: function (event) {
+    this.data.m_point_num = event.detail;
   },
 
   // 响应点击新增充值...
@@ -94,6 +161,7 @@ Page({
     let pages = getCurrentPages();
     let prevParentPage = pages[pages.length - 2];
     this.setData({ m_curUser: prevParentPage.data.m_curUser });
+    this.data.m_point_num = this.data.m_curUser.point_num;
     // 获取当前登录用户的购课记录...
     this.doAPIGetPay();
   },

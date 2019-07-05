@@ -4,10 +4,12 @@
 
 <view class="top-area">
   <van-field label="剩余课时数"
-    type="number" maxlength="4" useButtonSlot error clearable
-    custom-style="align-items:center;" value="{{m_curUser.point_num}}" >
+    type="number" maxlength="4"
+    useButtonSlot error clearable
+    custom-style="align-items:center;"
+    value="{{m_curUser.point_num}}" bind:change="onPointChange" >
     <van-icon slot="left-icon" name="like-o" custom-class="icon-point" />
-    <van-button slot="button" size="small" type="primary">修改课时</van-button>
+    <van-button slot="button" size="small" type="primary" bind:click="doModPoint">修改课时</van-button>
   </van-field>
 </view>
 
@@ -33,6 +35,11 @@
       title-class="cell-title"
       title="购买 - {{item.subject_name}} - {{item.grade_name}} - 充 {{item.point_num}} 课时"
       label="时间：{{item.created}}"
+      value-class="cell-value"
+      value="￥{{item.total_price}}"
+    />
+    <van-cell
+      title="合计金额"
       value-class="cell-value"
       value="￥{{item.total_price}}"
     />

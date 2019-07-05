@@ -173,18 +173,36 @@ Page({
           Notify(arrData.err_msg);
           return;
         }
+        // 修改课时总数到当前用户当中...
+        let theCurUser = that.data.m_curUser;
+        theCurUser.point_num = arrData.point_num;
         // 再更新一些数据到新建记录当中...
         arrData.consume.subject_name = that.data.m_curSubjectName;
         arrData.consume.grade_name = that.data.m_curGradeName;
         // 将新得到的购课记录存入父页面当中...
         let pages = getCurrentPages();
-        let prevPage = pages[pages.length - 2];
+        let prevListPage = pages[pages.length - 2];
         let theNewConsume = new Array();
         theNewConsume.push(arrData.consume);
         // 向前插入并更新购课记录到界面当中...
-        let theArrPay = prevPage.data.m_arrPay;
+        let theArrPay = prevListPage.data.m_arrPay;
         theArrPay = theNewConsume.concat(theArrPay);
-        prevPage.setData({ m_arrPay: theArrPay, m_total_num: theArrPay.length });
+        prevListPage.setData({
+          m_arrPay: theArrPay,
+          m_total_num: theArrPay.length,
+          m_point_num: arrData.point_num,
+          m_curUser: theCurUser,
+        });
+        // 进行更上一层的父窗口的信息修改...
+        let prevUserPage = pages[pages.length - 3];
+        let prevParentPage = pages[pages.length - 4];
+        let theIndex = parseInt(theCurUser.indexID);
+        let theArrUser = prevParentPage.data.m_arrUser;
+        let thePrevUser = theArrUser[theIndex];
+        thePrevUser.indexID = theCurUser.indexID;
+        thePrevUser.point_num = theCurUser.point_num;
+        prevParentPage.setData({ m_arrUser: theArrUser });
+        g_appData.m_curSelectItem = thePrevUser;
         // 进行页面的更新跳转...
         wx.navigateBack();
       },
