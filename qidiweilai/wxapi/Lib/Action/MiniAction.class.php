@@ -1130,5 +1130,120 @@ class MiniAction extends Action
     $arrErr['child_id'] = $dbChild['child_id'];
     echo json_encode($arrErr);
   }
+  //
+  // 获取班级列表接口...
+  public function getAllGrade()
+  {
+    $arrErr['subject'] = D('subject')->order('subject_id ASC')->select();
+    $arrErr['grade'] = D('grade')->order('grade_id ASC')->select();
+    echo json_encode($arrErr);
+  }
+  //
+  // 创建现金支付购课记录接口...
+  public function addCashPay()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    // 保存到临时对象...
+    $dbConsume = $_POST;
+    $dbConsume['created'] = date('Y-m-d H:i:s');
+    $dbConsume['updated'] = date('Y-m-d H:i:s');
+    $dbConsume['consume_type'] = PAY_CASH;            // 现金支付...
+    $dbConsume['status_id'] = STATUS_HAVE_PAY;        // 已付款...
+    $dbConsume['mode_id'] = MODE_BUY_CLASS;           // 购买课程...
+    $dbConsume['pay_error_code'] = PAY_ERR_SUCCESS;
+    $dbConsume['pay_time_end'] = date('Y-m-d H:i:s');
+    $dbConsume['pay_trade_no'] = '0000000000000000000000000000';
+    $dbConsume['pay_transaction'] = '0000000000000000000000000000';
+    $dbConsume['consume_id'] = D('consume')->add($dbConsume);
+    do {
+      // 如果保存失败，返回错误信息...
+      if ($dbConsume['consume_id'] <= 0) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '保存现金支付失败！';
+        break;
+      }
+      // 如果保存成功，更新数据到用户记录当中...
+      $condition['user_id'] = $dbConsume['user_id'];
+      $dbUser = D('user')->where($condition)->field('user_id,point_num')->find();
+      // 更新用户记录需要的购买信息...
+      $dbUser['user_id'] = $dbConsume['user_id'];           // 用户编号
+      $dbUser['shop_id'] = $dbConsume['shop_id'];           // 所在幼儿园
+      $dbUser['point_num'] += $dbConsume['point_num'];      // 累加有效次数
+      // 直接存放到数据库中...
+      D('user')->save($dbUser);
+      // 返回用户最终的有效课时数...
+      $arrErr['point_num'] = $dbUser['point_num'];
+    } while( false );
+    // 将新创建的数据库记录返回给小程序...
+    $arrErr['consume'] = $dbConsume;
+    // 返回json编码数据包...
+    echo json_encode($arrErr);
+  }
+  //
+  // 获取指定用户的充值记录...
+  public function getPay()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    // 注意：这里使用的是 $_POST 数据...
+    do {
+      // 判断输入的参数是否有效...
+      if( !isset($_POST['cur_page']) || !isset($_POST['user_id']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入参数无效！';
+        break;
+      }
+      // 得到每页条数...
+      $pagePer = C('PAGE_PER');
+      $pageCur = $_POST['cur_page'];  // 当前页码...
+      $pageLimit = (($pageCur-1)*$pagePer).','.$pagePer; // 读取范围...
+      // 获取记录总数和总页数...
+      $condition['user_id'] = $_POST['user_id'];
+      $totalNum = D('consume')->where($condition)->count();
+      $max_page = intval($totalNum / $pagePer);
+      // 判断是否是整数倍的页码...
+      $max_page += (($totalNum % $pagePer) ? 1 : 0);
+      // 填充需要返回的信息...
+      $arrErr['total_num'] = $totalNum;
+      $arrErr['max_page'] = $max_page;
+      $arrErr['cur_page'] = $pageCur;
+      // 设定查询条件，获取购课记录...
+      $arrList = D('PayView')->where($condition)->limit($pageLimit)->order('Consume.created DESC')->select();
+      foreach($arrList as &$dbItem) {
+        // 没有pay_transaction时，使用pay_trade_no...
+        if( !isset($dbItem['pay_transaction']) ) {
+          $dbItem['pay_transaction'] = $dbItem['pay_trade_no'];
+        }
+        // 获取支付状态信息...
+        switch( $dbItem['pay_error_code'] )
+        {
+          case PAY_ERR_RETURN:  $dbItem['pay_status'] = "支付通信错误"; break;
+          case PAY_ERR_RESULT:  $dbItem['pay_status'] = "支付业务错误"; break;
+          case PAY_ERR_SUCCESS: $dbItem['pay_status'] = "支付成功";     break;
+          default:              $dbItem['pay_status'] = "未知错误";     break;
+        }
+        // 获取支付类型...
+        switch( $dbItem['consume_type'] )
+        {
+          case PAY_WECHAT: $dbItem['pay_status'] = "微信".$dbItem['pay_status']; break;
+          case PAY_CASH:   $dbItem['pay_status'] = "现金".$dbItem['pay_status']; break;
+        }
+      }
+      // 保存修改后的购课记录...
+      $arrErr['pay'] = $arrList;
+    } while ( false );
+    // 返回json编码数据包...
+    echo json_encode($arrErr);
+  }
+  //
+  // 删除充值记录的接口...
+  public function delPay()
+  {
+    $condition['consume_id'] = $_POST['consume_id'];
+    D('consume')->where($condition)->delete();
+  }
 }
 ?>

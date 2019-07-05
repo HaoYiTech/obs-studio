@@ -43,6 +43,23 @@ define('kFamiParent',        3);     // 亲属
 // 定义父母类型名称数组，需要使用eval才能返回数组...
 define('PARENT_TYPE', "return array('无', '妈妈', '爸爸', '亲属');");
 
+// 定义支付方式
+define('PAY_WECHAT',                0);       // 0,微信支付
+define('PAY_CASH',                  1);       // 1,现金支付
+
+// 定义用户消费状态
+define('STATUS_WAIT_PAY',           0);       // 0,商品已放购物车，等待买家付款，这时商家可修改单价
+define('STATUS_HAVE_PAY',           1);       // 1,商品已完成付款。
+
+// 定义支付错误号
+define('PAY_ERR_SUCCESS',           0);       // 0,支付成功
+define('PAY_ERR_RETURN',            1);       // 1,通信出错,return_code
+define('PAY_ERR_RESULT',            2);       // 2,业务出错,result_code
+
+// 定义用户消费类型
+define('MODE_BUY_CLASS',            0);       // 0,购买课程
+define('MODE_BUY_MEMBER',           1);       // 1,购买会员
+
 // 定义UDP中转服务器支持的客户端类型...
 define('kClientPHP',          1);
 define('kClientStudent',      2);
