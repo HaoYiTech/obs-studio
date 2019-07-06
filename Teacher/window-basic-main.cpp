@@ -3959,13 +3959,44 @@ void OBSBasic::OpenFloatSource()
 			break;
 		}
 	}
+	int nCurStep = 0;
+	// 计算第一个资源的宽和高...
+	ovi.base_height -= DEF_ROW_SPACE;
+	uint32_t first_width = ovi.base_width;
+	uint32_t first_height = ovi.base_height - ovi.base_height / DEF_ROW_SIZE;
+	// 计算其它资源的宽和高...
+	ovi.base_width -= (DEF_COL_SIZE - 1) * DEF_COL_SPACE;
+	uint32_t other_width = ovi.base_width / DEF_COL_SIZE;
+	uint32_t other_height = ovi.base_height / DEF_ROW_SIZE;
 	// 由于set_order会重选焦点，需要只保留当前数据源焦点...
 	for (int i = 0; i < ui->sources->count(); i++) {
 		QListWidgetItem * listItem = ui->sources->item(i);
 		OBSSceneItem theItem = this->GetSceneItem(listItem);
 		bool bIsSelect = ((theItem != curItem) ? false : true);
 		obs_sceneitem_select(theItem, bIsSelect);
+		// 重排所有数据源，目的是腾出空位 => 排除0点位置和已浮动数据源...
+		obs_source_t * source = obs_sceneitem_get_source(theItem);
+		uint32_t flags = obs_source_get_output_flags(source);
+		bool bIsFloated = obs_sceneitem_floated(theItem);
+		// 如果数据源对象无效，继续寻找...
+		if (theItem == NULL || source == NULL)
+			continue;
+		// 如果没有视频数据源标志或处于浮动状态，继续寻找...
+		if (bIsFloated || (flags & OBS_SOURCE_VIDEO) == 0)
+			continue;
+		vec2 vPos = { 1.0f, 1.0f };
+		obs_sceneitem_get_pos(theItem, &vPos);
+		// 如果数据源是在0点位置，继续寻找...
+		if (vPos.x <= 0.0f && vPos.y <= 0.0f)
+			continue;
+		// 遍历第二行的位置，查找空闲位置，即使越界了也要查找...
+		uint32_t pos_x = (nCurStep++) * (other_width + DEF_COL_SPACE);
+		uint32_t pos_y = first_height + DEF_ROW_SPACE;
+		vec2_set(&vPos, float(pos_x), float(pos_y));
+		obs_sceneitem_set_pos(theItem, &vPos);
 	}
+	// 判断是否显示左右箭头...
+	this->doCheckBtnPage();
 }
 
 void OBSBasic::ShutFloatSource()
@@ -5951,20 +5982,30 @@ void OBSBasic::doSceneItemLayout(obs_sceneitem_t * scene_item)
 		this->doSendCameraPusherID(scene_item);
 		return;
 	}
-	int iStep = 0;
-	while (true) {
-		// 遍历第二行的位置，查找空闲位置，即使越界了也要查找...
-		uint32_t pos_x = (iStep++) * (other_width + DEF_COL_SPACE);
-		uint32_t pos_y = first_height + DEF_ROW_SPACE;
-		// 在新窗口顶点稍微偏移的上下位置是否已有窗口存在...
-		vec2_set(&vPosFind, float(pos_x + 5), float(pos_y + 5));
-		// 如果当前位置的下面有数据源，跳过，继续找下一个...
-		if (OBSBasicPreview::GetItemAtPos(vPosFind, true))
+	int nCurStep = 0, nItemStep = 0;
+	// 重排所有数据源(排除0点位置和已浮动数据源)...
+	for (int i = 0; i < ui->sources->count(); i++) {
+		QListWidgetItem * lpListItem = ui->sources->item(i);
+		obs_sceneitem_t * lpCurItem = this->GetSceneItem(lpListItem);
+		obs_source_t * lpCurSource = obs_sceneitem_get_source(lpCurItem);
+		uint32_t nCurflags = obs_source_get_output_flags(lpCurSource);
+		bool bIsFloated = obs_sceneitem_floated(lpCurItem);
+		// 如果数据源对象无效，继续寻找...
+		if (lpCurItem == NULL || lpCurSource == NULL)
 			continue;
-		// 根据当前位置查找对应的数据源 => 在位置的上面查找...
-		lpPosItem = OBSBasicPreview::GetItemAtPos(vPosFind, false);
-		// 当前位置没有数据源对象或等于输入数据源，调整输入数据源的位置信息...
-		if (lpPosItem == NULL || lpPosItem == scene_item) {
+		// 如果没有视频数据源标志或处于浮动状态，继续寻找...
+		if (bIsFloated || (nCurflags & OBS_SOURCE_VIDEO) == 0)
+			continue;
+		vec2 vPos = { 1.0f, 1.0f };
+		obs_sceneitem_get_pos(lpCurItem, &vPos);
+		// 如果数据源是在0点位置，继续寻找...
+		if (vPos.x <= 0.0f && vPos.y <= 0.0f)
+			continue;
+		// 遍历第二行的位置，查找空闲位置，即使越界了也要查找...
+		uint32_t pos_x = (nCurStep++) * (other_width + DEF_COL_SPACE);
+		uint32_t pos_y = first_height + DEF_ROW_SPACE;
+		// 当前位置等于输入数据源，调整输入数据源的位置信息...
+		if (lpCurItem == scene_item) {
 			// 当前位置没有数据源，更新数据源位置信息...
 			vec2_set(&itemInfo.pos, float(pos_x), float(pos_y));
 			vec2_set(&itemInfo.bounds, float(other_width), float(other_height));
@@ -5972,16 +6013,17 @@ void OBSBasic::doSceneItemLayout(obs_sceneitem_t * scene_item)
 			// 轨道1|轨道2 => 屏蔽非第一个窗口资源的音频输出，只保留全局音频资源和第一个窗口的音频资源输出...
 			setAudioMixer(scene_item, 0, false);
 			setAudioMixer(scene_item, 1, false);
-			break;
+			nItemStep = nCurStep;
+		} else {
+			vec2_set(&vPos, float(pos_x), float(pos_y));
+			obs_sceneitem_set_pos(lpCurItem, &vPos);
 		}
 	}
-	// 如果不需要向左移动，直接返回...
-	if (iStep <= DEF_COL_SIZE)
-		return;
 	// 计算所有的数据源需要向左移动的步数...
-	int nMoveLeftX = (iStep - DEF_COL_SIZE) * (other_width + DEF_COL_SPACE);
-	// 所有第二行数据源窗口向左移动...
-	this->doMovePageX(nMoveLeftX);
+	if (nItemStep > DEF_COL_SIZE) {
+		int nMoveLeftX = (nItemStep - DEF_COL_SIZE) * (other_width + DEF_COL_SPACE);
+		this->doMovePageX(nMoveLeftX);
+	}
 	// 判断是否显示左右箭头...
 	this->doCheckBtnPage();
 }
