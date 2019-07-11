@@ -201,6 +201,12 @@
     <ClCompile Include="window-login-mini.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="md5.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="window-wait-ppt.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="crash-report.hpp">
@@ -326,6 +332,9 @@
     <QtMoc Include="window-login-mini.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="window-wait-ppt.hpp">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="platform.hpp">
@@ -400,6 +409,9 @@
     <ClInclude Include="getopt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="md5.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="forms\NameDialog.ui">
@@ -433,6 +445,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="forms\LoginWindow.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="forms\PPTWait.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>

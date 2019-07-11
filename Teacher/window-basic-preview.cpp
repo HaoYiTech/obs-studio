@@ -607,6 +607,20 @@ void OBSBasicPreview::DoSelect(const vec2 &pos)
 		// 注意：这里必须手动进行引用计数减少，否则，会造成内存泄漏...
 		obs_data_release(lpSettings);
 	}
+	// 如果是幻灯片资源，需要进行位置判断...
+	if (astrcmpi(lpSrcID, "slideshow") == 0) {
+		// 获取到幻灯片数据源的上一页和下一页的快捷热键值...
+		obs_data_t * lpSettings = obs_source_get_settings(lpSource);
+		obs_hotkey_id next_hotkey = obs_data_get_int(lpSettings, "next_hotkey");
+		obs_hotkey_id prev_hotkey = obs_data_get_int(lpSettings, "prev_hotkey");
+		obs_data_release(lpSettings);
+		// 计算鼠标位置在数据源窗口的位置...
+		obs_transform_info itemInfo = { 0 };
+		obs_sceneitem_get_info(item, &itemInfo);
+		float nMiddlePos = itemInfo.pos.x + itemInfo.bounds.x / 2;
+		obs_hotkey_id click_hotkey = (pos.x > nMiddlePos) ? next_hotkey : prev_hotkey;
+		obs_hotkey_trigger_routed_callback(click_hotkey, true);
+	}
 }
 
 void OBSBasicPreview::DoCtrlSelect(const vec2 &pos)

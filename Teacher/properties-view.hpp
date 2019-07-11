@@ -67,6 +67,7 @@ class OBSPropertiesView : public VScrollArea {
 	Q_OBJECT
 
 	friend class WidgetInfo;
+	friend class CPPTWait;
 
 	using properties_delete_t = decltype(&obs_properties_destroy);
 	using properties_t =

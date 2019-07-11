@@ -138,7 +138,9 @@ QObject *CreateShortcutFilter()
 			QDialog *dialog = qobject_cast<QDialog*>(obj);
 
 			obs_key_combination_t hotkey = { 0, OBS_KEY_NONE };
-			bool pressed = event->type() == QEvent::KeyPress;
+
+			// 2019.07.11 - 强制设置为QEvent::KeyPress...
+			bool pressed = true; //event->type() == QEvent::KeyPress;
 
 			switch (event->key()) {
 			case Qt::Key_Shift:
@@ -449,6 +451,11 @@ static bool MakeUserDirs()
 #endif
 
 	if (GetConfigPath(path, sizeof(path), "obs-teacher/plugin_config") <= 0)
+		return false;
+	if (!do_mkdir(path))
+		return false;
+
+	if (GetConfigPath(path, sizeof(path), "obs-teacher/ppt") <= 0)
 		return false;
 	if (!do_mkdir(path))
 		return false;

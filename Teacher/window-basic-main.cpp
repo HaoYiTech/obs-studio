@@ -4248,8 +4248,8 @@ QMenu *OBSBasic::CreateAddSourcePopupMenu()
 		if (astrcmpi(type, text_source_id) == 0)
 			continue;
 		// 去掉 图片幻灯片 的菜单添加入口...
-		if (astrcmpi(type, "slideshow") == 0)
-			continue;
+		//if (astrcmpi(type, "slideshow") == 0)
+		//	continue;
 		// 去掉 色源 的菜单添加入口...
 		if (astrcmpi(type, "color_source") == 0)
 			continue;
@@ -6265,6 +6265,15 @@ void OBSBasic::doSceneItemExchangePos(obs_sceneitem_t * select_item)
 	// 轨道1|轨道2 => 强制新的第一个窗口音频输出...
 	setAudioMixer(select_item, 0, true);
 	setAudioMixer(select_item, 1, true);
+	// 强制新的数据源置于0点位置的最底层，避免遮挡浮动窗口...
+	obs_sceneitem_set_order(select_item, OBS_ORDER_MOVE_BOTTOM);
+	// 由于set_order会重选焦点，需要只保留当前数据源焦点...
+	for (int i = 0; i < ui->sources->count(); i++) {
+		QListWidgetItem * listItem = ui->sources->item(i);
+		OBSSceneItem theItem = this->GetSceneItem(listItem);
+		bool bIsSelect = ((theItem != select_item) ? false : true);
+		obs_sceneitem_select(theItem, bIsSelect);
+	}
 }
 
 // 将当前场景资源设置为第一个显示资源，重新计算显示坐标...
