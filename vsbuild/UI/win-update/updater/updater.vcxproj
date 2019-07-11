@@ -364,9 +364,9 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">E:\obs-studio\UI\win-update\updater\CMakeLists.txt;E:\obs-studio\cmake\Modules\FindZLIB.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPkgConfig.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageHandleStandardArgs.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageMessage.cmake;%(AdditionalInputs)</AdditionalInputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">E:\obs-studio\vsbuild\UI\win-update\updater\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Building Custom Rule E:/GitHaoYi/obs-studio/UI/win-update/updater/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Building Custom Rule E:/obs-studio/UI/win-update/updater/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">setlocal
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -HE:/GitHaoYi/obs-studio -BE:/GitHaoYi/obs-studio/vsbuild --check-stamp-file E:/GitHaoYi/obs-studio/vsbuild/UI/win-update/updater/CMakeFiles/generate.stamp
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -HE:/obs-studio -BE:/obs-studio/vsbuild --check-stamp-file E:/obs-studio/vsbuild/UI/win-update/updater/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -374,7 +374,7 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">E:/GitHaoYi/obs-studio/UI/win-update/updater/CMakeLists.txt;E:\obs-studio\UI\win-update\updater\CMakeLists.txt;E:\obs-studio\cmake\Modules\FindZLIB.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPkgConfig.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageHandleStandardArgs.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageMessage.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageHandleStandardArgs.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageMessage.cmake;E:\obs-studio\UI\win-update\updater\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">E:\obs-studio\UI\win-update\updater\CMakeLists.txt;E:\obs-studio\cmake\Modules\FindZLIB.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPkgConfig.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageHandleStandardArgs.cmake;E:\cmake-3.11.1-win32-x86\share\cmake-3.11\Modules\FindPackageMessage.cmake;%(AdditionalInputs)</AdditionalInputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">E:\obs-studio\vsbuild\UI\win-update\updater\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkObjects>
       <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">Building Custom Rule E:/GitHaoYi/obs-studio/UI/win-update/updater/CMakeLists.txt</Message>
