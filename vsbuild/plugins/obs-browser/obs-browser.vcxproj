@@ -82,7 +82,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_75.0.13_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_3.2987_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Debug/</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -100,10 +100,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;DEBUG=1;_DEBUG=1;UNICODE;_UNICODE;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;HAVE_OBSCONFIG_H;CMAKE_INTDIR=\"Debug\";obs_browser_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_75.0.13_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_3.2987_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_75.0.13_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_3.2987_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -111,9 +111,10 @@
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>					</Message>
+      <Message>
+      </Message>
       <Command>setlocal
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy_directory E:/CEF/cef_binary_75.0.13_windows32/Resources E:/obs-studio/vsbuild/rundir/Debug/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy_directory E:/CEF/cef_binary_3.2987_windows32/Resources E:/obs-studio/vsbuild/rundir/Debug/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -122,19 +123,17 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
 setlocal
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/chrome_elf.dll E:/obs-studio/vsbuild/rundir/Debug/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Debug/chrome_elf.dll E:/obs-studio/vsbuild/rundir/Debug/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/libcef.dll E:/obs-studio/vsbuild/rundir/Debug/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Debug/libcef.dll E:/obs-studio/vsbuild/rundir/Debug/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/libEGL.dll E:/obs-studio/vsbuild/rundir/Debug/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Debug/libEGL.dll E:/obs-studio/vsbuild/rundir/Debug/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/libGLESv2.dll E:/obs-studio/vsbuild/rundir/Debug/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Debug/libGLESv2.dll E:/obs-studio/vsbuild/rundir/Debug/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/natives_blob.bin E:/obs-studio/vsbuild/rundir/Debug/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Debug/natives_blob.bin E:/obs-studio/vsbuild/rundir/Debug/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/snapshot_blob.bin E:/obs-studio/vsbuild/rundir/Debug/obs-plugins/32bit/
-if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/v8_context_snapshot.bin E:/obs-studio/vsbuild/rundir/Debug/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Debug/snapshot_blob.bin E:/obs-studio/vsbuild/rundir/Debug/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -180,7 +179,7 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>..\..\UI\obs-frontend-api\Debug\obs-frontend-api.lib;E:\CEF\cef_binary_75.0.13_windows32\libcef_dll_wrapper\Debug\libcef_dll_wrapper.lib;E:\CEF\cef_binary_75.0.13_windows32\Debug\libcef.lib;..\..\libobs\Debug\obs.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalDependencies>..\..\UI\obs-frontend-api\Debug\obs-frontend-api.lib;E:\CEF\cef_binary_3.2987_windows32\libcef_dll_wrapper\Debug\libcef_dll_wrapper.lib;E:\CEF\cef_binary_3.2987_windows32\Debug\libcef.lib;..\..\libobs\Debug\obs.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:X86</AdditionalOptions>
       <GenerateDebugInformation>Debug</GenerateDebugInformation>
@@ -196,7 +195,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_75.0.13_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_3.2987_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Release/</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4127;4201;4456;4457;4458;4459;4595</DisableSpecificWarnings>
@@ -214,10 +213,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;UNICODE;_UNICODE;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;HAVE_OBSCONFIG_H;CMAKE_INTDIR=\"Release\";obs_browser_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_75.0.13_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_3.2987_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_75.0.13_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_3.2987_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -225,9 +224,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>					</Message>
+      <Message>
+      </Message>
       <Command>setlocal
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy_directory E:/CEF/cef_binary_75.0.13_windows32/Resources E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy_directory E:/CEF/cef_binary_3.2987_windows32/Resources E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -236,19 +236,19 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
 setlocal
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/chrome_elf.dll E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/chrome_elf.dll E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/libcef.dll E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/libcef.dll E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/libEGL.dll E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/libEGL.dll E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/libGLESv2.dll E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/libGLESv2.dll E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/natives_blob.bin E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/natives_blob.bin E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/snapshot_blob.bin E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/snapshot_blob.bin E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/v8_context_snapshot.bin E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/v8_context_snapshot.bin E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -294,7 +294,7 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>..\..\UI\obs-frontend-api\Release\obs-frontend-api.lib;E:\CEF\cef_binary_75.0.13_windows32\libcef_dll_wrapper\Release\libcef_dll_wrapper.lib;E:\CEF\cef_binary_75.0.13_windows32\Release\libcef.lib;..\..\libobs\Release\obs.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalDependencies>..\..\UI\obs-frontend-api\Release\obs-frontend-api.lib;E:\CEF\cef_binary_3.2987_windows32\libcef_dll_wrapper\Release\libcef_dll_wrapper.lib;E:\CEF\cef_binary_3.2987_windows32\Release\libcef.lib;..\..\libobs\Release\obs.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:X86</AdditionalOptions>
       <GenerateDebugInformation>No</GenerateDebugInformation>
@@ -310,7 +310,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_75.0.13_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_3.2987_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>MinSizeRel/</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4127;4201;4456;4457;4458;4459;4595</DisableSpecificWarnings>
@@ -328,10 +328,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;UNICODE;_UNICODE;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;HAVE_OBSCONFIG_H;CMAKE_INTDIR=\"MinSizeRel\";obs_browser_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_75.0.13_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_3.2987_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_75.0.13_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_3.2987_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -339,9 +339,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>					</Message>
+      <Message>
+      </Message>
       <Command>setlocal
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy_directory E:/CEF/cef_binary_75.0.13_windows32/Resources E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy_directory E:/CEF/cef_binary_3.2987_windows32/Resources E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -350,19 +351,19 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
 setlocal
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/chrome_elf.dll E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/chrome_elf.dll E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/libcef.dll E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/libcef.dll E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/libEGL.dll E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/libEGL.dll E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/libGLESv2.dll E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/libGLESv2.dll E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/natives_blob.bin E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/natives_blob.bin E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/snapshot_blob.bin E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/snapshot_blob.bin E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/v8_context_snapshot.bin E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/v8_context_snapshot.bin E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -408,7 +409,7 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>..\..\UI\obs-frontend-api\MinSizeRel\obs-frontend-api.lib;E:\CEF\cef_binary_75.0.13_windows32\libcef_dll_wrapper\Release\libcef_dll_wrapper.lib;E:\CEF\cef_binary_75.0.13_windows32\Release\libcef.lib;..\..\libobs\MinSizeRel\obs.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalDependencies>..\..\UI\obs-frontend-api\MinSizeRel\obs-frontend-api.lib;E:\CEF\cef_binary_3.2987_windows32\libcef_dll_wrapper\Release\libcef_dll_wrapper.lib;E:\CEF\cef_binary_3.2987_windows32\Release\libcef.lib;..\..\libobs\MinSizeRel\obs.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:X86</AdditionalOptions>
       <GenerateDebugInformation>No</GenerateDebugInformation>
@@ -424,7 +425,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_75.0.13_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_3.2987_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>RelWithDebInfo/</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -441,10 +442,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;UNICODE;_UNICODE;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;HAVE_OBSCONFIG_H;CMAKE_INTDIR=\"RelWithDebInfo\";obs_browser_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_75.0.13_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_3.2987_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_75.0.13_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_3.2987_windows32;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -452,9 +453,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>					</Message>
+      <Message>
+      </Message>
       <Command>setlocal
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy_directory E:/CEF/cef_binary_75.0.13_windows32/Resources E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy_directory E:/CEF/cef_binary_3.2987_windows32/Resources E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -463,19 +465,19 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
 setlocal
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/chrome_elf.dll E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/chrome_elf.dll E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/libcef.dll E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/libcef.dll E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/libEGL.dll E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/libEGL.dll E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/libGLESv2.dll E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/libGLESv2.dll E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/natives_blob.bin E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/natives_blob.bin E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/snapshot_blob.bin E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/snapshot_blob.bin E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
-E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_75.0.13_windows32/Release/v8_context_snapshot.bin E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/CEF/cef_binary_3.2987_windows32/Release/v8_context_snapshot.bin E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -521,7 +523,7 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>..\..\UI\obs-frontend-api\RelWithDebInfo\obs-frontend-api.lib;E:\CEF\cef_binary_75.0.13_windows32\libcef_dll_wrapper\Release\libcef_dll_wrapper.lib;E:\CEF\cef_binary_75.0.13_windows32\Release\libcef.lib;..\..\libobs\RelWithDebInfo\obs.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalDependencies>..\..\UI\obs-frontend-api\RelWithDebInfo\obs-frontend-api.lib;E:\CEF\cef_binary_3.2987_windows32\libcef_dll_wrapper\Release\libcef_dll_wrapper.lib;E:\CEF\cef_binary_3.2987_windows32\Release\libcef.lib;..\..\libobs\RelWithDebInfo\obs.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:X86</AdditionalOptions>
       <GenerateDebugInformation>Debug</GenerateDebugInformation>

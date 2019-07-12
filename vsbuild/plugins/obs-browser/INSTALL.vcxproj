@@ -62,7 +62,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Midl>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_75.0.13_windows32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_3.2987_windows32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -84,7 +84,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Midl>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_75.0.13_windows32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_3.2987_windows32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -106,7 +106,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">
     <Midl>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_75.0.13_windows32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_3.2987_windows32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -128,7 +128,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">
     <Midl>
-      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_75.0.13_windows32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\obs-studio\vsbuild\plugins\obs-browser;E:\obs-studio\plugins\obs-browser;E:\obs-studio\UI\obs-frontend-api;E:\obs-studio\plugins\obs-browser\deps;E:\CEF\cef_binary_3.2987_windows32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
