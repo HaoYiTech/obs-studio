@@ -1554,10 +1554,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="E:\obs-studio\vsbuild\UI\obs_autogen\mocs_compilation.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="E:\obs-studio\vsbuild\ZERO_CHECK.vcxproj">
-      <Project>{BA947A84-0290-3579-9863-BA9A70F590C1}</Project>
-      <Name>ZERO_CHECK</Name>
-    </ProjectReference>
     <ProjectReference Include="E:\obs-studio\vsbuild\deps\blake2\blake2.vcxproj">
       <Project>{429B001A-85D3-354E-90E6-3E04D0D6AF0C}</Project>
       <Name>blake2</Name>

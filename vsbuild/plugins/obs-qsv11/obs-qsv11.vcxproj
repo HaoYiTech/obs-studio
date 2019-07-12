@@ -111,7 +111,8 @@
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>			</Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/plugins/obs-qsv11/Debug/obs-qsv11.dll E:/obs-studio/vsbuild/rundir/Debug/obs-plugins/32bit/obs-qsv11.dll
 if %errorlevel% neq 0 goto :cmEnd
@@ -195,7 +196,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>			</Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/plugins/obs-qsv11/Release/obs-qsv11.dll E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/obs-qsv11.dll
 if %errorlevel% neq 0 goto :cmEnd
@@ -279,7 +281,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>			</Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/plugins/obs-qsv11/MinSizeRel/obs-qsv11.dll E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/obs-qsv11.dll
 if %errorlevel% neq 0 goto :cmEnd
@@ -362,7 +365,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>			</Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/plugins/obs-qsv11/RelWithDebInfo/obs-qsv11.dll E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/obs-qsv11.dll
 if %errorlevel% neq 0 goto :cmEnd
@@ -539,10 +543,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="E:\obs-studio\plugins\obs-qsv11\libmfx\include\mfxaudio_exposed_functions_list.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="E:\obs-studio\vsbuild\ZERO_CHECK.vcxproj">
-      <Project>{BA947A84-0290-3579-9863-BA9A70F590C1}</Project>
-      <Name>ZERO_CHECK</Name>
-    </ProjectReference>
     <ProjectReference Include="E:\obs-studio\vsbuild\libobs\libobs.vcxproj">
       <Project>{FFD76A14-AEE4-357C-869A-1E80B7A577CB}</Project>
       <Name>libobs</Name>

@@ -110,7 +110,8 @@
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>			</Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/plugins/win-capture/Debug/win-capture.dll E:/obs-studio/vsbuild/rundir/Debug/obs-plugins/32bit/win-capture.dll
 if %errorlevel% neq 0 goto :cmEnd
@@ -193,7 +194,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>			</Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/plugins/win-capture/Release/win-capture.dll E:/obs-studio/vsbuild/rundir/Release/obs-plugins/32bit/win-capture.dll
 if %errorlevel% neq 0 goto :cmEnd
@@ -276,7 +278,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>			</Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/plugins/win-capture/MinSizeRel/win-capture.dll E:/obs-studio/vsbuild/rundir/MinSizeRel/obs-plugins/32bit/win-capture.dll
 if %errorlevel% neq 0 goto :cmEnd
@@ -358,7 +361,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>			</Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/plugins/win-capture/RelWithDebInfo/win-capture.dll E:/obs-studio/vsbuild/rundir/RelWithDebInfo/obs-plugins/32bit/win-capture.dll
 if %errorlevel% neq 0 goto :cmEnd
@@ -491,10 +495,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="E:\obs-studio\plugins\win-capture\dc-capture.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="E:\obs-studio\vsbuild\ZERO_CHECK.vcxproj">
-      <Project>{BA947A84-0290-3579-9863-BA9A70F590C1}</Project>
-      <Name>ZERO_CHECK</Name>
-    </ProjectReference>
     <ProjectReference Include="E:\obs-studio\vsbuild\deps\ipc-util\ipc-util.vcxproj">
       <Project>{7FCA7B95-177C-3A09-B599-DAF8E89FD423}</Project>
       <Name>ipc-util</Name>

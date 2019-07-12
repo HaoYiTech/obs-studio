@@ -4133,6 +4133,14 @@ def obs_source_get_monitoring_type(source: 'obs_source_t const *') -> "enum obs_
     return _obspython.obs_source_get_monitoring_type(source)
 obs_source_get_monitoring_type = _obspython.obs_source_get_monitoring_type
 
+def obs_scene_create_monitor(scene: 'obs_scene_t const *', mix_idx: 'int') -> "bool":
+    return _obspython.obs_scene_create_monitor(scene, mix_idx)
+obs_scene_create_monitor = _obspython.obs_scene_create_monitor
+
+def obs_scene_destory_monitor(scene: 'obs_scene_t const *', mix_idx: 'int') -> "bool":
+    return _obspython.obs_scene_destory_monitor(scene, mix_idx)
+obs_scene_destory_monitor = _obspython.obs_scene_destory_monitor
+
 def obs_source_get_private_settings(item: 'obs_source_t *') -> "obs_data_t *":
     return _obspython.obs_source_get_private_settings(item)
 obs_source_get_private_settings = _obspython.obs_source_get_private_settings
@@ -4434,6 +4442,14 @@ obs_sceneitem_locked = _obspython.obs_sceneitem_locked
 def obs_sceneitem_set_locked(item: 'obs_sceneitem_t *', lock: 'bool') -> "bool":
     return _obspython.obs_sceneitem_set_locked(item, lock)
 obs_sceneitem_set_locked = _obspython.obs_sceneitem_set_locked
+
+def obs_sceneitem_floated(item: 'obs_sceneitem_t const *') -> "bool":
+    return _obspython.obs_sceneitem_floated(item)
+obs_sceneitem_floated = _obspython.obs_sceneitem_floated
+
+def obs_sceneitem_set_floated(item: 'obs_sceneitem_t *', floated: 'bool') -> "bool":
+    return _obspython.obs_sceneitem_set_floated(item, floated)
+obs_sceneitem_set_floated = _obspython.obs_sceneitem_set_floated
 
 def obs_sceneitem_set_pos(item: 'obs_sceneitem_t *', pos: 'vec2') -> "void":
     return _obspython.obs_sceneitem_set_pos(item, pos)

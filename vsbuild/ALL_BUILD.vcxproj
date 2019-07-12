@@ -159,10 +159,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   <ItemGroup>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="E:\obs-studio\vsbuild\ZERO_CHECK.vcxproj">
-      <Project>{BA947A84-0290-3579-9863-BA9A70F590C1}</Project>
-      <Name>ZERO_CHECK</Name>
-    </ProjectReference>
     <ProjectReference Include="E:\obs-studio\vsbuild\deps\obs-scripting\obspython\_obspython.vcxproj">
       <Project>{6559C841-418B-3BB7-8471-73437C6FCBF7}</Project>
       <Name>_obspython</Name>

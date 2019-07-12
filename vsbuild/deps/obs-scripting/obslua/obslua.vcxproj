@@ -111,7 +111,8 @@
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message></Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/deps/obs-scripting/obslua/Debug/obslua.dll E:/obs-studio/vsbuild/rundir/Debug/data/obs-scripting/32bit/obslua.dll
 if %errorlevel% neq 0 goto :cmEnd
@@ -168,7 +169,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message></Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/deps/obs-scripting/obslua/Release/obslua.dll E:/obs-studio/vsbuild/rundir/Release/data/obs-scripting/32bit/obslua.dll
 if %errorlevel% neq 0 goto :cmEnd
@@ -225,7 +227,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message></Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/deps/obs-scripting/obslua/MinSizeRel/obslua.dll E:/obs-studio/vsbuild/rundir/MinSizeRel/data/obs-scripting/32bit/obslua.dll
 if %errorlevel% neq 0 goto :cmEnd
@@ -281,7 +284,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message></Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/deps/obs-scripting/obslua/RelWithDebInfo/obslua.dll E:/obs-studio/vsbuild/rundir/RelWithDebInfo/data/obs-scripting/32bit/obslua.dll
 if %errorlevel% neq 0 goto :cmEnd
@@ -438,10 +442,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="E:\obs-studio\deps\obs-scripting\cstrcache.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="E:\obs-studio\vsbuild\ZERO_CHECK.vcxproj">
-      <Project>{BA947A84-0290-3579-9863-BA9A70F590C1}</Project>
-      <Name>ZERO_CHECK</Name>
-    </ProjectReference>
     <ProjectReference Include="E:\obs-studio\vsbuild\libobs\libobs.vcxproj">
       <Project>{FFD76A14-AEE4-357C-869A-1E80B7A577CB}</Project>
       <Name>libobs</Name>
@@ -449,10 +449,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ProjectReference Include="E:\obs-studio\vsbuild\UI\obs-frontend-api\obs-frontend-api.vcxproj">
       <Project>{509641F7-C9FD-3B7B-9ABC-DCF3A9690709}</Project>
       <Name>obs-frontend-api</Name>
-    </ProjectReference>
-    <ProjectReference Include="E:\obs-studio\vsbuild\deps\obs-scripting\obs-scripting.vcxproj">
-      <Project>{29540155-7594-380F-8C6F-1941C337A471}</Project>
-      <Name>obs-scripting</Name>
     </ProjectReference>
     <ProjectReference Include="E:\obs-studio\vsbuild\deps\w32-pthreads\w32-pthreads.vcxproj">
       <Project>{F0673D42-0362-3741-8D65-8764B4948E1F}</Project>

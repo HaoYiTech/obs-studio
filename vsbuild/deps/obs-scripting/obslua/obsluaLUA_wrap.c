@@ -30986,6 +30986,60 @@ fail:
 }
 
 
+static int _wrap_obs_scene_create_monitor(lua_State* L) {
+  int SWIG_arg = 0;
+  obs_scene_t *arg1 = (obs_scene_t *) 0 ;
+  int arg2 ;
+  bool result;
+  
+  SWIG_check_num_args("obs_scene_create_monitor",2,2)
+  if(!SWIG_isptrtype(L,1)) SWIG_fail_arg("obs_scene_create_monitor",1,"obs_scene_t const *");
+  if(!lua_isnumber(L,2)) SWIG_fail_arg("obs_scene_create_monitor",2,"int");
+  
+  if (!SWIG_IsOK(SWIG_ConvertPtr(L,1,(void**)&arg1,SWIGTYPE_p_obs_scene,0))){
+    SWIG_fail_ptr("obs_scene_create_monitor",1,SWIGTYPE_p_obs_scene);
+  }
+  
+  arg2 = (int)lua_tonumber(L, 2);
+  result = (bool)obs_scene_create_monitor((struct obs_scene const *)arg1,arg2);
+  lua_pushboolean(L,(int)(result!=0)); SWIG_arg++;
+  return SWIG_arg;
+  
+  if(0) SWIG_fail;
+  
+fail:
+  lua_error(L);
+  return SWIG_arg;
+}
+
+
+static int _wrap_obs_scene_destory_monitor(lua_State* L) {
+  int SWIG_arg = 0;
+  obs_scene_t *arg1 = (obs_scene_t *) 0 ;
+  int arg2 ;
+  bool result;
+  
+  SWIG_check_num_args("obs_scene_destory_monitor",2,2)
+  if(!SWIG_isptrtype(L,1)) SWIG_fail_arg("obs_scene_destory_monitor",1,"obs_scene_t const *");
+  if(!lua_isnumber(L,2)) SWIG_fail_arg("obs_scene_destory_monitor",2,"int");
+  
+  if (!SWIG_IsOK(SWIG_ConvertPtr(L,1,(void**)&arg1,SWIGTYPE_p_obs_scene,0))){
+    SWIG_fail_ptr("obs_scene_destory_monitor",1,SWIGTYPE_p_obs_scene);
+  }
+  
+  arg2 = (int)lua_tonumber(L, 2);
+  result = (bool)obs_scene_destory_monitor((struct obs_scene const *)arg1,arg2);
+  lua_pushboolean(L,(int)(result!=0)); SWIG_arg++;
+  return SWIG_arg;
+  
+  if(0) SWIG_fail;
+  
+fail:
+  lua_error(L);
+  return SWIG_arg;
+}
+
+
 static int _wrap_obs_source_get_private_settings(lua_State* L) {
   int SWIG_arg = 0;
   obs_source_t *arg1 = (obs_source_t *) 0 ;
@@ -33042,6 +33096,57 @@ static int _wrap_obs_sceneitem_set_locked(lua_State* L) {
   
   arg2 = (lua_toboolean(L, 2)!=0);
   result = (bool)obs_sceneitem_set_locked(arg1,arg2);
+  lua_pushboolean(L,(int)(result!=0)); SWIG_arg++;
+  return SWIG_arg;
+  
+  if(0) SWIG_fail;
+  
+fail:
+  lua_error(L);
+  return SWIG_arg;
+}
+
+
+static int _wrap_obs_sceneitem_floated(lua_State* L) {
+  int SWIG_arg = 0;
+  obs_sceneitem_t *arg1 = (obs_sceneitem_t *) 0 ;
+  bool result;
+  
+  SWIG_check_num_args("obs_sceneitem_floated",1,1)
+  if(!SWIG_isptrtype(L,1)) SWIG_fail_arg("obs_sceneitem_floated",1,"obs_sceneitem_t const *");
+  
+  if (!SWIG_IsOK(SWIG_ConvertPtr(L,1,(void**)&arg1,SWIGTYPE_p_obs_scene_item,0))){
+    SWIG_fail_ptr("obs_sceneitem_floated",1,SWIGTYPE_p_obs_scene_item);
+  }
+  
+  result = (bool)obs_sceneitem_floated((struct obs_scene_item const *)arg1);
+  lua_pushboolean(L,(int)(result!=0)); SWIG_arg++;
+  return SWIG_arg;
+  
+  if(0) SWIG_fail;
+  
+fail:
+  lua_error(L);
+  return SWIG_arg;
+}
+
+
+static int _wrap_obs_sceneitem_set_floated(lua_State* L) {
+  int SWIG_arg = 0;
+  obs_sceneitem_t *arg1 = (obs_sceneitem_t *) 0 ;
+  bool arg2 ;
+  bool result;
+  
+  SWIG_check_num_args("obs_sceneitem_set_floated",2,2)
+  if(!SWIG_isptrtype(L,1)) SWIG_fail_arg("obs_sceneitem_set_floated",1,"obs_sceneitem_t *");
+  if(!lua_isboolean(L,2)) SWIG_fail_arg("obs_sceneitem_set_floated",2,"bool");
+  
+  if (!SWIG_IsOK(SWIG_ConvertPtr(L,1,(void**)&arg1,SWIGTYPE_p_obs_scene_item,0))){
+    SWIG_fail_ptr("obs_sceneitem_set_floated",1,SWIGTYPE_p_obs_scene_item);
+  }
+  
+  arg2 = (lua_toboolean(L, 2)!=0);
+  result = (bool)obs_sceneitem_set_floated(arg1,arg2);
   lua_pushboolean(L,(int)(result!=0)); SWIG_arg++;
   return SWIG_arg;
   
@@ -40786,6 +40891,8 @@ static swig_lua_method swig_SwigModule_methods[]= {
     { "obs_source_get_deinterlace_field_order", _wrap_obs_source_get_deinterlace_field_order},
     { "obs_source_set_monitoring_type", _wrap_obs_source_set_monitoring_type},
     { "obs_source_get_monitoring_type", _wrap_obs_source_get_monitoring_type},
+    { "obs_scene_create_monitor", _wrap_obs_scene_create_monitor},
+    { "obs_scene_destory_monitor", _wrap_obs_scene_destory_monitor},
     { "obs_source_get_private_settings", _wrap_obs_source_get_private_settings},
     { "obs_source_get_type_data", _wrap_obs_source_get_type_data},
     { "obs_source_draw_set_color_matrix", _wrap_obs_source_draw_set_color_matrix},
@@ -40859,6 +40966,8 @@ static swig_lua_method swig_SwigModule_methods[]= {
     { "obs_sceneitem_selected", _wrap_obs_sceneitem_selected},
     { "obs_sceneitem_locked", _wrap_obs_sceneitem_locked},
     { "obs_sceneitem_set_locked", _wrap_obs_sceneitem_set_locked},
+    { "obs_sceneitem_floated", _wrap_obs_sceneitem_floated},
+    { "obs_sceneitem_set_floated", _wrap_obs_sceneitem_set_floated},
     { "obs_sceneitem_set_pos", _wrap_obs_sceneitem_set_pos},
     { "obs_sceneitem_set_rot", _wrap_obs_sceneitem_set_rot},
     { "obs_sceneitem_set_scale", _wrap_obs_sceneitem_set_scale},

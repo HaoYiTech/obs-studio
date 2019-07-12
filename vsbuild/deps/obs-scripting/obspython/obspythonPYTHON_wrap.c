@@ -32781,6 +32781,68 @@ fail:
 }
 
 
+SWIGINTERN PyObject *_wrap_obs_scene_create_monitor(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  obs_scene_t *arg1 = (obs_scene_t *) 0 ;
+  int arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  int val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  bool result;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:obs_scene_create_monitor",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_obs_scene, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "obs_scene_create_monitor" "', argument " "1"" of type '" "obs_scene_t const *""'"); 
+  }
+  arg1 = (obs_scene_t *)(argp1);
+  ecode2 = SWIG_AsVal_int(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "obs_scene_create_monitor" "', argument " "2"" of type '" "int""'");
+  } 
+  arg2 = (int)(val2);
+  result = (bool)obs_scene_create_monitor((struct obs_scene const *)arg1,arg2);
+  resultobj = SWIG_From_bool((bool)(result));
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_obs_scene_destory_monitor(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  obs_scene_t *arg1 = (obs_scene_t *) 0 ;
+  int arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  int val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  bool result;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:obs_scene_destory_monitor",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_obs_scene, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "obs_scene_destory_monitor" "', argument " "1"" of type '" "obs_scene_t const *""'"); 
+  }
+  arg1 = (obs_scene_t *)(argp1);
+  ecode2 = SWIG_AsVal_int(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "obs_scene_destory_monitor" "', argument " "2"" of type '" "int""'");
+  } 
+  arg2 = (int)(val2);
+  result = (bool)obs_scene_destory_monitor((struct obs_scene const *)arg1,arg2);
+  resultobj = SWIG_From_bool((bool)(result));
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
 SWIGINTERN PyObject *_wrap_obs_source_get_private_settings(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   obs_source_t *arg1 = (obs_source_t *) 0 ;
@@ -35022,6 +35084,59 @@ SWIGINTERN PyObject *_wrap_obs_sceneitem_set_locked(PyObject *SWIGUNUSEDPARM(sel
   } 
   arg2 = (bool)(val2);
   result = (bool)obs_sceneitem_set_locked(arg1,arg2);
+  resultobj = SWIG_From_bool((bool)(result));
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_obs_sceneitem_floated(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  obs_sceneitem_t *arg1 = (obs_sceneitem_t *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyObject * obj0 = 0 ;
+  bool result;
+  
+  if (!PyArg_ParseTuple(args,(char *)"O:obs_sceneitem_floated",&obj0)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_obs_scene_item, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "obs_sceneitem_floated" "', argument " "1"" of type '" "obs_sceneitem_t const *""'"); 
+  }
+  arg1 = (obs_sceneitem_t *)(argp1);
+  result = (bool)obs_sceneitem_floated((struct obs_scene_item const *)arg1);
+  resultobj = SWIG_From_bool((bool)(result));
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_obs_sceneitem_set_floated(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  obs_sceneitem_t *arg1 = (obs_sceneitem_t *) 0 ;
+  bool arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  bool val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  bool result;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:obs_sceneitem_set_floated",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_obs_scene_item, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "obs_sceneitem_set_floated" "', argument " "1"" of type '" "obs_sceneitem_t *""'"); 
+  }
+  arg1 = (obs_sceneitem_t *)(argp1);
+  ecode2 = SWIG_AsVal_bool(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "obs_sceneitem_set_floated" "', argument " "2"" of type '" "bool""'");
+  } 
+  arg2 = (bool)(val2);
+  result = (bool)obs_sceneitem_set_floated(arg1,arg2);
   resultobj = SWIG_From_bool((bool)(result));
   return resultobj;
 fail:
@@ -42943,6 +43058,8 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"obs_source_get_deinterlace_field_order", _wrap_obs_source_get_deinterlace_field_order, METH_VARARGS, NULL},
 	 { (char *)"obs_source_set_monitoring_type", _wrap_obs_source_set_monitoring_type, METH_VARARGS, NULL},
 	 { (char *)"obs_source_get_monitoring_type", _wrap_obs_source_get_monitoring_type, METH_VARARGS, NULL},
+	 { (char *)"obs_scene_create_monitor", _wrap_obs_scene_create_monitor, METH_VARARGS, NULL},
+	 { (char *)"obs_scene_destory_monitor", _wrap_obs_scene_destory_monitor, METH_VARARGS, NULL},
 	 { (char *)"obs_source_get_private_settings", _wrap_obs_source_get_private_settings, METH_VARARGS, NULL},
 	 { (char *)"obs_source_get_type_data", _wrap_obs_source_get_type_data, METH_VARARGS, NULL},
 	 { (char *)"obs_source_draw_set_color_matrix", _wrap_obs_source_draw_set_color_matrix, METH_VARARGS, NULL},
@@ -43016,6 +43133,8 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"obs_sceneitem_selected", _wrap_obs_sceneitem_selected, METH_VARARGS, NULL},
 	 { (char *)"obs_sceneitem_locked", _wrap_obs_sceneitem_locked, METH_VARARGS, NULL},
 	 { (char *)"obs_sceneitem_set_locked", _wrap_obs_sceneitem_set_locked, METH_VARARGS, NULL},
+	 { (char *)"obs_sceneitem_floated", _wrap_obs_sceneitem_floated, METH_VARARGS, NULL},
+	 { (char *)"obs_sceneitem_set_floated", _wrap_obs_sceneitem_set_floated, METH_VARARGS, NULL},
 	 { (char *)"obs_sceneitem_set_pos", _wrap_obs_sceneitem_set_pos, METH_VARARGS, NULL},
 	 { (char *)"obs_sceneitem_set_rot", _wrap_obs_sceneitem_set_rot, METH_VARARGS, NULL},
 	 { (char *)"obs_sceneitem_set_scale", _wrap_obs_sceneitem_set_scale, METH_VARARGS, NULL},

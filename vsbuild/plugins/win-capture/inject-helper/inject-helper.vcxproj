@@ -108,7 +108,8 @@
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message></Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/plugins/win-capture/inject-helper/Debug/inject-helper32.exe E:/obs-studio/vsbuild/rundir/Debug/data/obs-plugins/win-capture/inject-helper32.exe
 if %errorlevel% neq 0 goto :cmEnd
@@ -162,7 +163,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message></Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/plugins/win-capture/inject-helper/Release/inject-helper32.exe E:/obs-studio/vsbuild/rundir/Release/data/obs-plugins/win-capture/inject-helper32.exe
 if %errorlevel% neq 0 goto :cmEnd
@@ -216,7 +218,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message></Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/plugins/win-capture/inject-helper/MinSizeRel/inject-helper32.exe E:/obs-studio/vsbuild/rundir/MinSizeRel/data/obs-plugins/win-capture/inject-helper32.exe
 if %errorlevel% neq 0 goto :cmEnd
@@ -269,7 +272,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message></Message>
+      <Message>
+      </Message>
       <Command>setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/plugins/win-capture/inject-helper/RelWithDebInfo/inject-helper32.exe E:/obs-studio/vsbuild/rundir/RelWithDebInfo/data/obs-plugins/win-capture/inject-helper32.exe
 if %errorlevel% neq 0 goto :cmEnd
@@ -355,12 +359,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="E:\obs-studio\plugins\win-capture\inject-library.c" />
     <ClCompile Include="E:\obs-studio\plugins\win-capture\obfuscate.c" />
     <ClCompile Include="E:\obs-studio\plugins\win-capture\inject-helper\inject-helper.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="E:\obs-studio\vsbuild\ZERO_CHECK.vcxproj">
-      <Project>{BA947A84-0290-3579-9863-BA9A70F590C1}</Project>
-      <Name>ZERO_CHECK</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
