@@ -97,7 +97,6 @@ tags
 */**/.DS_Store
 enc-amf
 obs-vst
-obs-browser
 *_autogen
 
 config.inc.php
