@@ -66,7 +66,7 @@ Page({
     let theAgentName = isEdit ? theAgent.name : '';
     let theAgentAddr = isEdit ? theAgent.addr : '';
     let theAgentPhone = isEdit ? theAgent.phone : '';
-    let theCurMasterID = (isEdit ? theAgent.master_id : 0);
+    let theCurMasterID = isEdit ? theAgent.master_id : 0;
     let theCurMasterName = isEdit ? theAgent.wx_nickname : '请选择';
     let theCurMasterIndex = 0;
     // 修改标题信息...
