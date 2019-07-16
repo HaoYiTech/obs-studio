@@ -469,7 +469,7 @@ class MiniAction extends Action
       // 将获取到的用户关键值查找数据库内容...
       // 这里是小程序，注意有些字段有大写字母，字段标识也有区别...
       $where['wx_unionid'] = $arrUser['unionId'];
-      $dbUser = D('user')->where($where)->find();
+      $dbUser = D('UserMast')->where($where)->find();
       // 根据小程序名称设置openid...
       $dbUser['wx_qidi_mini'] = $arrUser['openId'];
       // 从微信获取的信息更新到数据库当中...
@@ -512,6 +512,8 @@ class MiniAction extends Action
       $arrErr['user_id'] = $dbUser['user_id'];
       $arrErr['user_type'] = $dbUser['user_type'];
       $arrErr['real_name'] = $dbUser['real_name'];
+      $arrErr['master_shop_id'] = (isset($dbUser['master_shop_id']) ? $dbUser['master_shop_id'] : 0);
+      $arrErr['master_agent_id'] = (isset($dbUser['master_agent_id']) ? $dbUser['master_agent_id'] : 0);
       //////////////////////////////////////////////////////
       // 注意：修改为选择房间，而不是绑定房间，简化流程...
       //////////////////////////////////////////////////////
@@ -716,7 +718,7 @@ class MiniAction extends Action
       }
       // 先查找流量记录，没有直接返回...
       $condition['flow_id'] = $_POST['flow_id'];
-      $dbFind = D('flow')->where($condition)->find();
+      $dbFind = D('FlowView')->where($condition)->find();
       if( !isset($dbFind['flow_id']) ) {
         $arrErr['err_code'] = true;
         $arrErr['err_msg'] = '没有找到流量记录！';
@@ -728,7 +730,14 @@ class MiniAction extends Action
       $dbFlow['up_flow'] = (isset($_POST['up_flow']) ? $_POST['up_flow'] : 0);
       $dbFlow['down_flow'] = (isset($_POST['down_flow']) ? $_POST['down_flow'] : 0);
       $dbFlow['flow_teacher'] = (isset($_POST['flow_teacher']) ? $_POST['flow_teacher'] : 0);
-      $dbFlow['updated'] = date('Y-m-d H:i:s');
+      // 计算按时间计费的花费 => 计算持续分钟数量 => 向上取整...
+      // 注意：只有当讲师端正式上线或正式推流之后，学生端才开始计费...
+      if ($dbFlow['flow_teacher'] > 0 && $dbFind['cpm'] > 0 ) {
+        $dbFlow['updated'] = date('Y-m-d H:i:s');
+        $nMinute = ceil((strtotime($dbFlow['updated']) - strtotime($dbFind['created'])) / 60);
+        $dbFlow['cost'] = $nMinute * $dbFind['cpm'];
+        $dbFlow['cpm'] = $dbFind['cpm'];
+      }
       // 只存放更大的流量记录 => 避免流量异常时的错误记录...
       $dbFlow['up_flow'] = max($dbFlow['up_flow'], $dbFind['up_flow']);
       $dbFlow['down_flow'] = max($dbFlow['down_flow'], $dbFind['down_flow']);
@@ -755,7 +764,7 @@ class MiniAction extends Action
       }
       // 先查找流量记录，没有直接返回...
       $condition['flow_id'] = $_POST['flow_id'];
-      $dbFind = D('flow')->where($condition)->find();
+      $dbFind = D('FlowView')->where($condition)->find();
       if( !isset($dbFind['flow_id']) ) {
         $arrErr['err_code'] = true;
         $arrErr['err_msg'] = '没有找到流量记录！';
@@ -781,6 +790,14 @@ class MiniAction extends Action
       $dbFlow['up_flow'] = $dbResult['up_flow'];
       $dbFlow['down_flow'] = $dbResult['down_flow'];
       $dbFlow['updated'] = date('Y-m-d H:i:s');
+      // 计算按时间计费的花费 => 计算持续分钟数量 => 向上取整...
+      // 注意：讲师端只要上线之后就开始计费，不管是否推流...
+      $nMinute = ceil((strtotime($dbFlow['updated']) - strtotime($dbFind['created'])) / 60);
+      if ($nMinute > 0 && $dbFind['cpm'] > 0 ) {
+        $dbFlow['cost'] = $nMinute * $dbFind['cpm'];
+        $dbFlow['cpm'] = $dbFind['cpm'];
+      }
+      // 将数据更新到数据库...
       D('flow')->save($dbFlow);
       // 将获取到的流量信息直接存入返回记录当中...
       $arrErr['up_flow'] = $dbResult['up_flow'];
@@ -862,6 +879,129 @@ class MiniAction extends Action
         $arrErr['user'] = D('UserView')->limit($pageLimit)->order('User.update_time DESC, User.create_time DESC')->select();
       }
     } while ( false );
+    // 返回json编码数据包...
+    echo json_encode($arrErr);
+  }
+  //
+  // 扣费结算接口...
+  public function saveFlowCharged()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    // 注意：这里使用的是 $_POST 数据...
+    do {
+      // 判断输入的参数是否有效...
+      if( !isset($_POST['flow_id']) || !isset($_POST['agent_id']) || !isset($_POST['cost_val']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入参数无效！';
+        break;
+      }
+      // 计算cost_val的浮点数字...
+      $theCostVal = floatval($_POST['cost_val']);
+      // 先对讲师记录进行结算处理...
+      $dbTeacher['flow_id'] = $_POST['flow_id'];
+      $dbTeacher['charged'] = true;
+      D('flow')->save($dbTeacher);
+      // 在对学生记录进行结算处理...
+      $dbStudent['charged'] = true;
+      D('flow')->where('flow_teacher='.$_POST['flow_id'])->save($dbStudent);
+      // 读取机构的金额信息，更新之...
+      $dbAgent = D('agent')->where('agent_id='.$_POST['agent_id'])->field('agent_id,cost,money')->find();
+      if (isset($dbAgent['agent_id'])) {
+        $dbAgent['cost'] += $theCostVal;
+        $dbAgent['money'] -= $theCostVal;
+        D('agent')->save($dbAgent);
+      }
+    } while( false );
+    // 返回json编码数据包...
+    echo json_encode($arrErr);
+  }
+  //
+  // 获取学生账单记录...
+  public function getStudentCost()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    // 注意：这里使用的是 $_POST 数据...
+    do {
+      // 判断输入的参数是否有效...
+      if( !isset($_POST['cur_page']) || !isset($_POST['flow_teacher']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入参数无效！';
+        break;
+      }
+      // 得到每页条数...
+      $pagePer = C('PAGE_PER');
+      $pageCur = $_POST['cur_page'];  // 当前页码...
+      $pageLimit = (($pageCur-1)*$pagePer).','.$pagePer; // 读取范围...
+      $condition['flow_teacher'] = $_POST['flow_teacher'];
+      $totalNum = D('FlowGather')->where($condition)->count();
+      $max_page = intval($totalNum / $pagePer);
+      // 判断是否是整数倍的页码...
+      $max_page += (($totalNum % $pagePer) ? 1 : 0);
+      // 填充需要返回的信息...
+      $arrErr['total_num'] = $totalNum;
+      $arrErr['max_page'] = $max_page;
+      $arrErr['cur_page'] = $pageCur;
+      // 获取消费分页数据，直接通过数据表读取...
+      $arrFlow = D('FlowGather')->where($condition)->limit($pageLimit)->order('Flow.created DESC')->select();
+      // 保存最终计算后的消费记录...
+      $arrErr['cost'] = $arrFlow;
+    } while( false );
+    // 返回json编码数据包...
+    echo json_encode($arrErr);
+  }
+  //
+  // 获取机构消费记录...
+  public function getAgentCost()
+  {
+    // 准备返回信息...
+    $arrErr['err_code'] = 0;
+    $arrErr['err_msg'] = 'ok';
+    // 注意：这里使用的是 $_POST 数据...
+    do {
+      // 判断输入的参数是否有效...
+      if( !isset($_POST['cur_page']) || !isset($_POST['agent_id']) ) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '输入参数无效！';
+        break;
+      }
+      // 得到每页条数...
+      $pagePer = C('PAGE_PER');
+      $pageCur = $_POST['cur_page'];  // 当前页码...
+      $pageLimit = (($pageCur-1)*$pagePer).','.$pagePer; // 读取范围...
+      // 设定查询条件 => 机构编号|讲师终端 为查询条件...
+      $condition['agent_id'] = $_POST['agent_id'];
+      $condition['type_id'] = kClientTeacher;
+      // 计算在当前查询条件下的老师记录总数...
+      $totalNum = D('FlowUser')->where($condition)->count();
+      $max_page = intval($totalNum / $pagePer);
+      // 判断是否是整数倍的页码...
+      $max_page += (($totalNum % $pagePer) ? 1 : 0);
+      // 填充需要返回的信息...
+      $arrErr['total_num'] = $totalNum;
+      $arrErr['max_page'] = $max_page;
+      $arrErr['cur_page'] = $pageCur;
+      $arrErr['begin_id'] = LIVE_BEGIN_ID;
+      // 获取消费分页数据，直接通过数据表读取...
+      $arrFlow = D('FlowUser')->where($condition)->limit($pageLimit)->order('Flow.created DESC')->select();
+      // 计算每一条记录当中，相关学生端的消费总数...
+      foreach($arrFlow as &$dbItem) {
+        $strField = "SUM( cost ) AS sales";
+        $arrWhere['flow_teacher'] = $dbItem['flow_id'];
+        $dbStudent = D('flow')->where($arrWhere)->field($strField)->find();
+        $dbItem['student'] = (isset($dbStudent['sales']) ? round($dbStudent['sales'],2) : 0);
+      }
+      // 如果需要查找机构信息 => 查找并附加到末尾处...
+      if (isset($_POST['find_agent']) && $_POST['find_agent'] > 0) {
+        $dbFind['agent_id'] = $_POST['agent_id'];
+        $arrErr['agent'] = D('agent')->where($dbFind)->find();
+      }
+      // 保存最终计算后的消费记录...
+      $arrErr['cost'] = $arrFlow;
+    } while( false );
     // 返回json编码数据包...
     echo json_encode($arrErr);
   }
@@ -1164,17 +1304,29 @@ class MiniAction extends Action
         $arrErr['err_msg'] = '保存现金支付失败！';
         break;
       }
-      // 如果保存成功，更新数据到用户记录当中...
-      $condition['user_id'] = $dbConsume['user_id'];
-      $dbUser = D('user')->where($condition)->field('user_id,point_num')->find();
-      // 更新用户记录需要的购买信息...
-      $dbUser['user_id'] = $dbConsume['user_id'];           // 用户编号
-      $dbUser['shop_id'] = $dbConsume['shop_id'];           // 所在幼儿园
-      $dbUser['point_num'] += $dbConsume['point_num'];      // 累加有效次数
-      // 直接存放到数据库中...
-      D('user')->save($dbUser);
-      // 返回用户最终的有效课时数...
-      $arrErr['point_num'] = $dbUser['point_num'];
+      // 针对普通用户的充值处理...
+      if (isset($dbConsume['user_id'])) {
+        // 如果保存成功，更新数据到用户记录当中...
+        $condition['user_id'] = $dbConsume['user_id'];
+        $dbUser = D('user')->where($condition)->field('user_id,point_num')->find();
+        // 更新用户记录需要的购买信息...
+        $dbUser['user_id'] = $dbConsume['user_id'];           // 用户编号
+        $dbUser['shop_id'] = $dbConsume['shop_id'];           // 所在幼儿园
+        $dbUser['point_num'] += $dbConsume['point_num'];      // 累加有效次数
+        // 直接存放到数据库中...
+        D('user')->save($dbUser);
+        // 返回用户最终的有效课时数...
+        $arrErr['point_num'] = $dbUser['point_num'];
+      }
+      // 针对机构的充值处理...
+      if (isset($dbConsume['agent_id'])) {
+        $condition['agent_id'] = $dbConsume['agent_id'];
+        $dbAgent = D('agent')->where($condition)->field('agent_id,money')->find();
+        $dbAgent['money'] += $dbConsume['total_price'];
+        D('agent')->save($dbAgent);
+        // 返回机构最终的有效剩余金额...
+        $arrErr['money'] = $dbAgent['money'];
+      }
     } while( false );
     // 将新创建的数据库记录返回给小程序...
     $arrErr['consume'] = $dbConsume;
@@ -1191,7 +1343,7 @@ class MiniAction extends Action
     // 注意：这里使用的是 $_POST 数据...
     do {
       // 判断输入的参数是否有效...
-      if( !isset($_POST['cur_page']) || !isset($_POST['user_id']) ) {
+      if( !isset($_POST['cur_page']) ) {
         $arrErr['err_code'] = true;
         $arrErr['err_msg'] = '输入参数无效！';
         break;
@@ -1201,7 +1353,11 @@ class MiniAction extends Action
       $pageCur = $_POST['cur_page'];  // 当前页码...
       $pageLimit = (($pageCur-1)*$pagePer).','.$pagePer; // 读取范围...
       // 获取记录总数和总页数...
-      $condition['user_id'] = $_POST['user_id'];
+      if (isset($_POST['user_id'])) {
+        $condition['user_id'] = $_POST['user_id'];
+      } else if (isset($_POST['agent_id'])) {
+        $condition['agent_id'] = $_POST['agent_id'];
+      }
       $totalNum = D('consume')->where($condition)->count();
       $max_page = intval($totalNum / $pagePer);
       // 判断是否是整数倍的页码...
