@@ -1,0 +1,35 @@
+
+<wxs src="../../utils/filters.wxs" module="filters" />
+
+<view class="top-area">
+  <van-cell title="机构名称" icon="wap-home" icon-class="icon-blue"
+    value-class="cell-value" value="{{ m_curAgent.name }}" />
+  <van-cell title="消费记录" icon="label-o" icon-class="icon-blue"
+    value-class="cell-value" value="{{ m_total_num }} 条" />
+  <van-cell title="剩余金额" icon="gold-coin-o" icon-class="icon-blue"
+    value-class="cell-value" value="￥{{ filters.toFix(m_curAgent.money) }}" />
+</view>
+
+<block wx:for="{{ m_arrCost }}" wx:key="index">
+<van-cell-group custom-class="top-area">
+  <van-cell title="出单时间" icon="clock-o"
+    icon-class="icon-blue" value="{{ item.created }}" />
+  <van-cell title="账单状态" icon="bill-o" icon-class="icon-blue"
+    value="{{ item.charged > 0 ? '已结算' : '未结算' }}" />
+  <van-cell title="直播时长" icon="todo-list-o" icon-class="icon-blue"
+    value="{{ filters.toMinute(item.created, item.updated) }} 分钟" />
+  <van-cell title="直播房间" icon="tv-o" icon-class="icon-blue"
+    value="{{ filters.toAddInt(item.room_id, m_begin_id) }}" />
+  <van-cell title="直播讲师" icon="user-o"
+    icon-class="icon-blue" value="{{ item.wx_nickname }}" />
+  <van-cell title="学生费用" icon="gold-coin-o" icon-class="icon-blue" is-link
+    value-class="cell-value" value="￥{{ filters.toFix(item.student) }}"
+    id="{{ index }}" bind:click="doBtnStudent" />
+  <van-cell title="讲师费用" icon="gold-coin-o" icon-class="icon-blue"
+    value-class="cell-cost" value="￥{{ filters.toFix(item.cost) }}" />
+  <van-cell title="合计费用" icon="gold-coin-o" icon-class="icon-blue"
+    value-class="cell-cost" value="￥{{ filters.toAddFloat(item.cost,item.student) }}" />
+</van-cell-group>
+</block>
+
+<i-load-more loading="{{ m_show_more }}" tip="{{ m_no_more }}" />

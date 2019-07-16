@@ -3,7 +3,7 @@ import Notify from '../../vant-weapp/notify/notify';
 import Dialog from '../../vant-weapp/dialog/dialog';
 
 // 获取全局的app对象...
-const g_app = getApp()
+const g_appData = getApp().globalData;
 
 Page({
   /**
@@ -11,6 +11,7 @@ Page({
    */
   data: {
     m_bEdit: false,
+    m_agentCPM: 0.20,
     m_agentName: '',
     m_agentAddr: '',
     m_agentPhone: '',
@@ -29,7 +30,7 @@ Page({
     let that = this
     let isEdit = parseInt(options.edit);
     // 构造访问接口连接地址...
-    let theUrl = g_app.globalData.m_urlPrev + 'Mini/getAgentFree';
+    let theUrl = g_appData.m_urlPrev + 'Mini/getAgentFree';
     // 请求远程API过程...
     wx.request({
       url: theUrl,
@@ -62,7 +63,8 @@ Page({
   // 显示具体的幼儿园操作界面...
   doShowAgent: function (isEdit, arrMaster) {
     let strTitle = (isEdit ? '修改' : '添加') + ' - 机构';
-    let theAgent = isEdit ? g_app.globalData.m_curSelectItem : null;
+    let theAgent = isEdit ? g_appData.m_curSelectItem : null;
+    let theAgentCPM = isEdit ? theAgent.cpm : 0.20;
     let theAgentName = isEdit ? theAgent.name : '';
     let theAgentAddr = isEdit ? theAgent.addr : '';
     let theAgentPhone = isEdit ? theAgent.phone : '';
@@ -83,6 +85,7 @@ Page({
     // 应用到界面...
     this.setData({
       m_bEdit: isEdit,
+      m_agentCPM: theAgentCPM,
       m_agentName: theAgentName,
       m_agentAddr: theAgentAddr,
       m_agentPhone: theAgentPhone,
@@ -107,8 +110,11 @@ Page({
       return;
     }
     if (this.data.m_agentPhone.length <= 0) {
-      Notify('【机构电话】不能为空，请重新选择！');
+      Notify('【机构电话】不能为空，请重新输入！');
       return;
+    }
+    if (parseFloat(this.data.m_agentCPM) <= 0) {
+      Notify('【机构费率】不能为空，请重新输入！');
     }
     if (parseInt(this.data.m_curMasterID) <= 0) {
       Notify('【机构管理员】不能为空，请重新选择！');
@@ -123,13 +129,14 @@ Page({
     let that = this;
     // 准备需要的参数信息...
     var thePostData = {
+      'cpm': that.data.m_agentCPM,
       'name': that.data.m_agentName,
       'addr': that.data.m_agentAddr,
       'phone': that.data.m_agentPhone,
       'master_id': that.data.m_curMasterID,
     }
     // 构造访问接口连接地址...
-    let theUrl = g_app.globalData.m_urlPrev + 'Mini/addAgent';
+    let theUrl = g_appData.m_urlPrev + 'Mini/addAgent';
     // 请求远程API过程...
     wx.request({
       url: theUrl,
@@ -177,17 +184,18 @@ Page({
     wx.showLoading({ title: '加载中' });
     // 保存this对象...
     let that = this
-    let theCurAgent = g_app.globalData.m_curSelectItem;
+    let theCurAgent = g_appData.m_curSelectItem;
     // 准备需要的参数信息...
     var thePostData = {
       'agent_id': theCurAgent.agent_id,
+      'cpm': that.data.m_agentCPM,
       'name': that.data.m_agentName,
       'addr': that.data.m_agentAddr,
       'phone': that.data.m_agentPhone,
       'master_id': that.data.m_curMasterID,
     }
     // 构造访问接口连接地址...
-    let theUrl = g_app.globalData.m_urlPrev + 'Mini/saveAgent';
+    let theUrl = g_appData.m_urlPrev + 'Mini/saveAgent';
     // 请求远程API过程...
     wx.request({
       url: theUrl,
@@ -209,6 +217,7 @@ Page({
         let theIndex = parseInt(theCurAgent.indexID);
         let theArrAgent = prevPage.data.m_arrAgent;
         let thePrevAgent = theArrAgent[theIndex];
+        thePrevAgent.cpm = that.data.m_agentCPM;
         thePrevAgent.name = that.data.m_agentName;
         thePrevAgent.addr = that.data.m_agentAddr;
         thePrevAgent.phone = that.data.m_agentPhone;
@@ -242,14 +251,14 @@ Page({
     wx.showLoading({ title: '加载中' });
     // 保存this对象...
     let that = this
-    let theCurAgent = g_app.globalData.m_curSelectItem;
+    let theCurAgent = g_appData.m_curSelectItem;
     // 准备需要的参数信息...
     var thePostData = {
       'agent_id': theCurAgent.agent_id,
       'qrcode': theCurAgent.qrcode,
     }
     // 构造访问接口连接地址...
-    let theUrl = g_app.globalData.m_urlPrev + 'Mini/delAgent';
+    let theUrl = g_appData.m_urlPrev + 'Mini/delAgent';
     // 请求远程API过程...
     wx.request({
       url: theUrl,
@@ -293,6 +302,9 @@ Page({
   // 机构电话发生变化...
   onPhoneChange: function (event) {
     this.data.m_agentPhone = event.detail;
+  },
+  onCPMChange: function (event) {
+    this.data.m_agentCPM = event.detail;
   },
   // 机构管理员发生选择变化...
   onMasterChange: function (event) {

@@ -14,6 +14,8 @@ App({
   globalData: {
     m_urlSite: 'https://www.qidiweilai.com/',
     m_urlPrev: 'https://www.qidiweilai.com/wxapi.php/',
+    m_nMasterAgentID: 0,        // 管理的机构编号...
+    m_nMasterShopID: 0,         // 管理的门店编号...
     m_curSelectItem: null,
     m_curRoomItem: null,
     m_scanSockFD: null,
@@ -80,6 +82,8 @@ App({
           return
         }
         // 获取授权数据成功，保存用户编号|用户类型|真实姓名...
+        g_app.globalData.m_nMasterAgentID = arrData.master_agent_id
+        g_app.globalData.m_nMasterShopID = arrData.master_shop_id
         g_app.globalData.m_nUserID = arrData.user_id
         g_app.globalData.m_userInfo = inUserInfo
         g_app.globalData.m_userInfo.userType = arrData.user_type

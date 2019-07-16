@@ -23,16 +23,16 @@
   </van-cell-group>
 </view>
 
-<view class="top-area">
+<!--<view class="top-area">
   <van-cell-group>
   <van-cell title="购课充值" size="large" is-link icon="gold-coin-o" 
     icon-class="icon-green" url="/pages/listPay/listPay" />
   <van-cell title="签到记录" size="large" is-link icon="label-o"
     icon-class="icon-green" url="/pages/listSign/listSign" />
-  <!--<van-cell title="宝宝风采" size="large" is-link icon="award-o"
-    icon-class="icon-green" url="/pages/listGrow/listGrow" />-->
+  <van-cell title="宝宝风采" size="large" is-link icon="award-o"
+    icon-class="icon-green" url="/pages/listGrow/listGrow" />
   </van-cell-group>
-</view>
+</view>-->
 
 <!--<view class="top-area">
   <van-cell custom-class="feed-cell" title="立即签到" size="large" is-link border="{{ false }}"

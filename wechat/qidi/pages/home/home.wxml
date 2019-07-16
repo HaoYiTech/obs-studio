@@ -13,9 +13,7 @@
 <view class="top-area">
   <van-cell
     title="总共 {{ m_total_num }} 个直播房间教室"
-    icon="tv-o"
-    border="{{ true }}"
-    icon-class="room-icon"
+    icon="tv-o" icon-class="room-icon"
   />
 </view>
 

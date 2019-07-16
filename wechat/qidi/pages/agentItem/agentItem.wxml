@@ -24,6 +24,14 @@
     bind:change="onPhoneChange"
     clearable required
   />
+  <van-field
+    label="机构费率"
+    value="{{ m_agentCPM }}"
+    placeholder="请输入每分钟费用"
+    error-message="每分钟费用(单位:元)"
+    bind:change="onCPMChange"
+    clearable required
+  />
   <van-cell title="机构管理员" required is-link>
     <picker slot="extra" mode="selector" class="addr-picker" range="{{ m_arrMaster }}" 
       value="{{ m_curMasterIndex }}" range-key="wx_nickname" bindchange="onMasterChange">

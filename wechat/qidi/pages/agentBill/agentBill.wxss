@@ -1,0 +1,26 @@
+
+.icon-red {
+  font-size: 20px !important;
+  color: tomato;
+}
+.icon-blue {
+  font-size: 20px !important;
+  color: deepskyblue;
+}
+.cell-title {
+  -webkit-flex: 2 !important;
+  flex: 2 !important;
+}
+.cell-value {
+  color: #e76547 !important;
+  justify-content: flex-end;
+  display: -webkit-flex;
+  align-items: center;
+}
+.cell-cost {
+  color: #e76547 !important;
+  justify-content: flex-end;
+  display: -webkit-flex;
+  align-items: center;
+  margin-right: 22px;
+}

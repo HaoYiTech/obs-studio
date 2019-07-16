@@ -17,8 +17,12 @@
     "pages/liveItem/liveItem",
     "pages/userItem/userItem",
     "pages/shopItem/shopItem",
+    "pages/agentPay/agentPay",
+    "pages/agentCost/agentCost",
     "pages/agentItem/agentItem",
-    "pages/gradeItem/gradeItem"
+    "pages/gradeItem/gradeItem",
+    "pages/agentBill/agentBill",
+    "pages/agentStudent/agentStudent"
   ],
   "window": {
     "navigationBarBackgroundColor": "#fff",

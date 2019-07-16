@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "学生账单记录",
+  "enablePullDownRefresh": false,
+  "usingComponents": {
+    "van-cell-group": "../../vant-weapp/cell-group/index",
+    "i-load-more": "../../view-weapp/load-more/index",
+    "van-icon": "../../vant-weapp/icon/index",
+    "van-cell": "../../vant-weapp/cell/index"
+  }
+}

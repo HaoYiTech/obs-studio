@@ -68,6 +68,11 @@ Page({
       data: 'navLive',
       icon: 'fa-video-camera',
     }, {
+      label: '班级管理',
+      data: 'icon-blue',
+      icon: 'friends-o',
+      link: '../grade/grade',
+    }, {
       label: '幼儿园管理',
       data: 'navShop',
       icon: 'fa-home',
@@ -76,8 +81,16 @@ Page({
       data: 'navAgent',
       icon: 'fa-graduation-cap',
     }],*/
+    
+    m_myAgent: {
+      label: '我的机构',
+      data: 'icon-green',
+      icon: 'home-o',
+      link: '../agentBill/agentBill',
+    },
 
     m_UserGrids: [],
+
     m_ShopGrids: [{
       label: '用户管理',
       data: 'icon-blue',
@@ -89,16 +102,12 @@ Page({
       icon: 'tv-o',
       link: '../live/live',
     }],
+    
     m_AdminGrids: [{
       label: '用户管理',
       data: 'icon-green',
       icon: 'user-o',
       link: '../member/member',
-    }, {
-      label: '班级管理',
-      data: 'icon-blue',
-      icon: 'friends-o',
-      link: '../grade/grade',
     }, {
       label: '直播间管理',
       data: 'icon-red',
@@ -186,6 +195,11 @@ Page({
       case theTypeID.kMaintainUser:
       case theTypeID.kAdministerUser: theGrids = this.data.m_AdminGrids; break;
     }
+    // 如果用户可以管理机构，需要追加条目...
+    if (theAppData.m_nMasterAgentID > 0) {
+      theGrids.push(this.data.m_myAgent);
+    }
+    // 更新到界面...
     this.setData({ 
       m_show_auth: 2, 
       m_bgColor: '#eee',
