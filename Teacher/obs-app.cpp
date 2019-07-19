@@ -792,7 +792,7 @@ void OBSApp::doProcessCmdLine(int argc, char * argv[])
 		switch (ch) {
 		case 'd': m_bIsDebugMode = true;  continue;
 		case 'r': m_bIsDebugMode = false; continue;
-		case 'z': m_strThirdURI = argv[optind++]; continue;
+		case 'z': m_strThirdURI = argv[optind++]; optreset = 1; continue;
 		case '?':
 		case 'h':
 		case 'v':

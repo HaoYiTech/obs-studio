@@ -308,7 +308,8 @@ private:
 	obs_data_array_t *SaveTransitions();
 	void LoadTransitions(obs_data_array_t *transitions);
 
-	obs_source_t *fadeTransition;
+	obs_source_t    * fadeTransition = nullptr;
+	obs_sceneitem_t * m_lpZeroSceneItem = nullptr;
 
 	void CreateProgramDisplay();
 	void CreateProgramOptions();
@@ -335,8 +336,7 @@ private:
 
 	void SetPreviewProgramMode(bool enabled);
 	void ResizeProgram(uint32_t cx, uint32_t cy);
-	void SetCurrentScene(obs_scene_t *scene, bool force = false,
-			bool direct = false);
+	void SetCurrentScene(obs_scene_t *scene, bool force = false, bool direct = false);
 	static void RenderProgram(void *data, uint32_t cx, uint32_t cy);
 
 	std::vector<QuickTransition> quickTransitions;
@@ -439,6 +439,7 @@ private slots:
 	void ActivateAudioSource(OBSSource source);
 	void DeactivateAudioSource(OBSSource source);
 	void MonitoringSourceChanged(OBSSource source);
+	void UpdatedSourceItem(OBSSource source);
 
 	void DuplicateSelectedScene();
 	void RemoveSelectedScene();
@@ -483,6 +484,7 @@ private slots:
 	void on_actionPasteFilters_triggered();
 private:
 	/* OBS Callbacks */
+	static void SourceUpdated(void *data, calldata_t *params);
 	static void SourceMonitoring(void *data, calldata_t *params);
 	static void SceneReordered(void *data, calldata_t *params);
 	static void SceneItemAdded(void *data, calldata_t *params);
@@ -508,6 +510,7 @@ private:
 	void doSceneCreateMonitor();
 	void doSceneDestoryMonitor();
 public:
+	inline obs_sceneitem_t * GetZeroSceneItem() { return m_lpZeroSceneItem; }
 	inline void SetSlientClose(bool bIsSlient) { m_bIsSlientClose = bIsSlient; }
 	inline bool IsLoaded() { return m_bIsLoaded; }
 
@@ -585,6 +588,8 @@ public:
 
 	void OpenSavedProjectors();
 	
+	void doCheckBtnPage(bool bIsFirst = false);
+	void doCheckPPTSource(obs_source_t * source);
 	void doLocalPlayAudioMixer(obs_source_t * source);
 	void doHideDShowAudioMixer(obs_sceneitem_t * scene_item);
 	void doSceneItemLayout(obs_sceneitem_t * scene_item);
@@ -594,7 +599,6 @@ public:
 	void doUpdatePTZ(int nDBCameraID);
 	void doMovePageX(int nMoveLeftX);
 	bool doCheckCanRecord();
-	void doCheckBtnPage();
 protected:
 	virtual void closeEvent(QCloseEvent *event) override;
 	virtual void changeEvent(QEvent *event) override;
@@ -752,9 +756,14 @@ private slots:
 
 	void DeferredLoad(const QString &file, int requeueCount);
 public slots:
+	void onPagePrevClicked();
+	void onPageNextClicked();
 	void onPageLeftClicked();
 	void onPageRightClicked();
 	void on_actionResetTransform_triggered();
+private:
+	void doBtnPrevNext(bool bIsPrev);
+	void doBtnLeftRight(bool bIsLeft);
 public:
 	explicit OBSBasic(QWidget *parent = 0);
 	virtual ~OBSBasic();

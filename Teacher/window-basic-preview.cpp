@@ -27,6 +27,19 @@ OBSBasicPreview::OBSBasicPreview(QWidget *parent, Qt::WindowFlags flags)
 
 	m_btnLeft = this->CreateBtnPage(true);
 	m_btnRight = this->CreateBtnPage(false);
+
+	m_btnPrev = this->CreateBtnPPT(true);
+	m_btnNext = this->CreateBtnPPT(false);
+	m_btnFoot = this->CreateBtnFoot();
+}
+
+OBSBasicPreview::~OBSBasicPreview()
+{
+	if (m_btnRight != NULL) { delete m_btnRight; m_btnRight = NULL; }
+	if (m_btnLeft != NULL) { delete m_btnLeft; m_btnLeft = NULL; }
+	if (m_btnPrev != NULL) { delete m_btnPrev; m_btnPrev = NULL; }
+	if (m_btnNext != NULL) { delete m_btnNext; m_btnNext = NULL; }
+	if (m_btnFoot != NULL) { delete m_btnFoot; m_btnFoot = NULL; }
 }
 
 void OBSBasicPreview::BindBtnClickEvent()
@@ -34,6 +47,54 @@ void OBSBasicPreview::BindBtnClickEvent()
 	OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
 	this->connect(m_btnLeft, SIGNAL(clicked()), main, SLOT(onPageLeftClicked()));
 	this->connect(m_btnRight, SIGNAL(clicked()), main, SLOT(onPageRightClicked()));
+	this->connect(m_btnPrev, SIGNAL(clicked()), main, SLOT(onPagePrevClicked()));
+	this->connect(m_btnNext, SIGNAL(clicked()), main, SLOT(onPageNextClicked()));
+}
+
+QPushButton * OBSBasicPreview::CreateBtnFoot()
+{
+	QPushButton * lpObjButton = new QPushButton(this);
+	QString strBtnName = QStringLiteral("btn_foot");
+	QString strStyle = QString("QPushButton{ font-family:'Microsoft YaHei'; font-size:14px; color:#FFFFFF;}"
+		"QPushButton{ background:transparent; border-image:url(:/res/images/%1.png);}").arg(strBtnName);
+	lpObjButton->setStyleSheet(strStyle);
+	lpObjButton->setObjectName(strBtnName);
+	lpObjButton->setMinimumSize(QSize(50, 30));
+	lpObjButton->setMaximumSize(QSize(50, 30));
+	// 进行按钮图片的透明化处理...
+	QPalette myPalette;
+	QPixmap  myPixmap(QString(":/res/images/%1.png").arg(strBtnName));
+	// 让背景图片适应窗口的大小，在背景图片上做 scaled 操作...
+	myPalette.setBrush(QPalette::Background, QBrush(myPixmap));
+	lpObjButton->setPalette(myPalette);
+	lpObjButton->setMask(myPixmap.mask());
+	lpObjButton->hide();
+	return lpObjButton;
+}
+
+QPushButton * OBSBasicPreview::CreateBtnPPT(bool bIsPrev)
+{
+	QPushButton * lpObjButton = new QPushButton(this);
+	QString strBtnName = (bIsPrev ? QStringLiteral("btn_prev") : QStringLiteral("btn_next"));
+	QString strStyle = QString("QPushButton{ background:transparent; border-image:url(:/res/images/%1.png) 0 80 0 0; }"
+		"QPushButton:hover{border-image:url(:/res/images/%1.png) 0 40 0 40;}"
+		"QPushButton:pressed{border-image:url(:/res/images/%1.png) 0 0 0 80;}")
+		.arg(strBtnName);
+	lpObjButton->setStyleSheet(strStyle);
+	lpObjButton->setObjectName(strBtnName);
+	lpObjButton->setMinimumSize(QSize(40, 50));
+	lpObjButton->setMaximumSize(QSize(40, 50));
+	lpObjButton->setCursor(QCursor(Qt::PointingHandCursor));
+	lpObjButton->setToolTip(QTStr((bIsPrev ? "Preview.Page.Prev" : "Preview.Page.Next")));
+	// 进行按钮图片的透明化处理...
+	QPalette myPalette;
+	QPixmap  myPixmap(QString(":/res/images/%1.png").arg(strBtnName));
+	// 让背景图片适应窗口的大小，在背景图片上做 scaled 操作...
+	myPalette.setBrush(QPalette::Background, QBrush(myPixmap));
+	lpObjButton->setPalette(myPalette);
+	lpObjButton->setMask(myPixmap.mask());
+	lpObjButton->hide();
+	return lpObjButton;
 }
 
 QPushButton * OBSBasicPreview::CreateBtnPage(bool bIsLeft)
@@ -70,6 +131,17 @@ void OBSBasicPreview::ResizeBtnPage(int nPosY)
 	m_btnRight->setGeometry(nPosRightX, nPosY, 40, 40);
 }
 
+void OBSBasicPreview::ResizeBtnPPT(int nPosY, int nPreviewY)
+{
+	QSize targetSize = GetPixelSize(this);
+	int nPosLeftX = 0; int nPosRightX = 0;
+	nPosRightX = targetSize.width() - 40;
+	m_btnPrev->setGeometry(nPosLeftX, nPosY, 40, 50);
+	m_btnNext->setGeometry(nPosRightX, nPosY, 40, 50);
+	nPosLeftX = targetSize.width() / 2 - 25;
+	m_btnFoot->setGeometry(nPosLeftX, nPreviewY, 50, 30);
+}
+
 void OBSBasicPreview::DispBtnRight(bool bIsShow)
 {
 	if (m_btnRight == NULL) return;
@@ -80,6 +152,25 @@ void OBSBasicPreview::DispBtnLeft(bool bIsShow)
 {
 	if (m_btnLeft == NULL) return;
 	(bIsShow ? m_btnLeft->show() : m_btnLeft->hide());
+}
+
+void OBSBasicPreview::DispBtnPrev(bool bIsShow)
+{
+	if (m_btnPrev == NULL) return;
+	(bIsShow ? m_btnPrev->show() : m_btnPrev->hide());
+}
+
+void OBSBasicPreview::DispBtnNext(bool bIsShow)
+{
+	if (m_btnNext == NULL) return;
+	(bIsShow ? m_btnNext->show() : m_btnNext->hide());
+}
+
+void OBSBasicPreview::DispBtnFoot(bool bIsShow, int nCurItem, int nFileNum)
+{
+	if (m_btnFoot == NULL) return;
+	(bIsShow ? m_btnFoot->show() : m_btnFoot->hide());
+	m_btnFoot->setText(QString("%1/%2").arg(nCurItem+1).arg(nFileNum));
 }
 
 vec2 OBSBasicPreview::GetMouseEventPos(QMouseEvent *event)
@@ -598,6 +689,9 @@ void OBSBasicPreview::DoSelect(const vec2 &pos)
 
 	obs_source_t * lpSource = obs_sceneitem_get_source(item);
 	const char * lpSrcID = obs_source_get_id(lpSource);
+	if (lpSource == NULL || lpSrcID == NULL)
+		return;
+	ASSERT(lpSource != NULL && lpSrcID != NULL);
 	// 进行ID判断，如果是rtp资源，需要获取摄像头通道编号...
 	if (astrcmpi(lpSrcID, App()->InteractRtpSource()) == 0) {
 		obs_data_t * lpSettings = obs_source_get_settings(lpSource);
@@ -608,7 +702,7 @@ void OBSBasicPreview::DoSelect(const vec2 &pos)
 		obs_data_release(lpSettings);
 	}
 	// 如果是幻灯片资源，需要进行位置判断...
-	if (astrcmpi(lpSrcID, "slideshow") == 0) {
+	/*if (astrcmpi(lpSrcID, "slideshow") == 0) {
 		// 获取到幻灯片数据源的上一页和下一页的快捷热键值...
 		obs_data_t * lpSettings = obs_source_get_settings(lpSource);
 		obs_hotkey_id next_hotkey = obs_data_get_int(lpSettings, "next_hotkey");
@@ -620,7 +714,7 @@ void OBSBasicPreview::DoSelect(const vec2 &pos)
 		float nMiddlePos = itemInfo.pos.x + itemInfo.bounds.x / 2;
 		obs_hotkey_id click_hotkey = (pos.x > nMiddlePos) ? next_hotkey : prev_hotkey;
 		obs_hotkey_trigger_routed_callback(click_hotkey, true);
-	}
+	}*/
 }
 
 void OBSBasicPreview::DoCtrlSelect(const vec2 &pos)
@@ -1388,47 +1482,11 @@ void OBSBasicPreview::mouseDoubleClickEvent(QMouseEvent *event)
 	// 如果当前场景是浮动数据源，不能进行位置切换...
 	if (obs_sceneitem_floated(itemSelect))
 		return;
-	// 获取当前选中资源的左上角坐标位置...
-	obs_sceneitem_get_pos(itemSelect, &posItem);
-	// 如果当前资源本身就是第一个窗口，直接返回...
-	if (posItem.x <= 0.0f && posItem.y <= 0.0f)
+	// 如果双击的本身就是0点位置数据源，直接返回...
+	if (itemSelect == main->GetZeroSceneItem())
 		return;
 	// 向主窗口通知，鼠标双击事件，进行位置切换...
 	main->doSceneItemExchangePos(itemSelect);
 	// 向服务器发送当前摄像头推流编号的命令...
 	main->doSendCameraPusherID(itemSelect);
-
-	// 初始化场景资源算子对象 => 根据序号寻找第一个资源...
-	/*BaseSceneItem theRtpSceneItem = { 0 };
-	theRtpSceneItem.first_item = true;
-	// 每个场景资源的回调接口函数...
-	auto func = [](obs_scene_t *, obs_sceneitem_t *item, void *param)
-	{
-		// 有视频的资源才进行显示位置重排处理...
-		obs_source_t *source = obs_sceneitem_get_source(item);
-		uint32_t flags = obs_source_get_output_flags(source);
-		if ((flags & OBS_SOURCE_VIDEO) == 0)
-			return true;
-		// 对传入的参数结构进行转换处理...
-		BaseSceneItem * out_item = reinterpret_cast<BaseSceneItem*>(param);
-		// 判断是否是第一个显示资源 => 根据序号进行判定...
-		if (out_item->first_item) {
-			out_item->scene_item = item;
-			return false;
-		}
-		return true;
-	};
-	// 遍历所有的场景资源查找第一个资源对象，并进行显示位置交换...
-	obs_scene_enum_items(main->GetCurrentScene(), func, &theRtpSceneItem);
-	obs_sceneitem_t * lpFirstSceneItem = theRtpSceneItem.scene_item;
-	// 判断第一个序号资源的位置是否需要变换...
-	if (lpFirstSceneItem != NULL) {
-		obs_sceneitem_get_pos(lpFirstSceneItem, &posDisp);
-		// 如果第一个序号资源不在第一个显示位置，进行位置交换...
-		if (posDisp.x != 0.0f || posDisp.y != 0.0f) {
-			main->doSceneItemExchangePos(lpFirstSceneItem);
-		}
-	}
-	// 向主窗口通知，鼠标双击事件，进行位置切换...
-	main->doSceneItemExchangePos(itemSelect);*/
 }

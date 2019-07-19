@@ -513,6 +513,12 @@ static void ss_update(void *data, obs_data_t *settings)
 		do_transition(ss, false);
 
 	obs_data_array_release(array);
+
+	// 保存当前编号和总数到配置当中 => 方便外层界面使用...
+	obs_data_set_int(settings, "cur_item", ss->cur_item);
+	obs_data_set_int(settings, "file_num", ss->files.num);
+	// 进行数据源的上层通知，幻灯片已经完全加载更新完毕...
+	obs_source_updated(ss->source);
 }
 
 static void ss_play_pause(void *data)
@@ -559,6 +565,14 @@ static void ss_next_slide(void *data)
 	if (++ss->cur_item >= ss->files.num)
 		ss->cur_item = 0;
 
+	// 保存当前编号和总数到配置当中 => 方便外层界面使用...
+	if (ss->source != NULL) {
+		obs_data_t * settings = obs_source_get_settings(ss->source);
+		obs_data_set_int(settings, "cur_item", ss->cur_item);
+		obs_data_set_int(settings, "file_num", ss->files.num);
+		obs_data_release(settings);
+	}
+
 	// 如果transition是slide或swipe变换，需要修改成left滑动方向...
 	if (astrcmpi(obs_source_get_id(ss->transition), "slide_transition") == 0 ||
 		astrcmpi(obs_source_get_id(ss->transition), "swipe_transition") == 0) {
@@ -582,6 +596,14 @@ static void ss_previous_slide(void *data)
 		ss->cur_item = ss->files.num - 1;
 	else
 		--ss->cur_item;
+
+	// 保存当前编号和总数到配置当中 => 方便外层界面使用...
+	if (ss->source != NULL) {
+		obs_data_t * settings = obs_source_get_settings(ss->source);
+		obs_data_set_int(settings, "cur_item", ss->cur_item);
+		obs_data_set_int(settings, "file_num", ss->files.num);
+		obs_data_release(settings);
+	}
 
 	// 如果transition是slide或swipe变换，需要修改成right滑动方向...
 	if (astrcmpi(obs_source_get_id(ss->transition), "slide_transition") == 0 ||
@@ -799,6 +821,14 @@ static void ss_video_tick(void *data, float seconds)
 
 		if (ss->files.num)
 			do_transition(ss, false);
+	}
+
+	// 保存当前编号和总数到配置当中 => 方便外层界面使用...
+	if (ss->source != NULL) {
+		obs_data_t * settings = obs_source_get_settings(ss->source);
+		obs_data_set_int(settings, "cur_item", ss->cur_item);
+		obs_data_set_int(settings, "file_num", ss->files.num);
+		obs_data_release(settings);
 	}
 }
 

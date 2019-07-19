@@ -21,6 +21,9 @@
     <file>images/camera.png</file>
     <file>images/btn_left.png</file>
     <file>images/btn_right.png</file>
+    <file>images/btn_prev.png</file>
+    <file>images/btn_next.png</file>
+    <file>images/btn_foot.png</file>
     <file>../HaoYi.ico</file>
   </qresource>
   <qresource prefix="/settings">

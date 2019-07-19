@@ -598,8 +598,8 @@ bool CRemoteSession::doCmdStudentLogin(const char * lpData, int nSize)
 	bool bIsTCPTeacherOnLine = atoi(CStudentApp::getJsonString(value["tcp_teacher"]).c_str());
 	bool bIsUDPTeacherOnLine = atoi(CStudentApp::getJsonString(value["udp_teacher"]).c_str());
 	int  nFlowTeacherID = atoi(CStudentApp::getJsonString(value["flow_teacher"]).c_str());
-	// 保存关联的讲师流量记录编号...
-	if (App()->GetFlowTeacherID() != nFlowTeacherID) {
+	// 保存关联的讲师流量记录编号 => 不一致，并且有效时才更新...
+	if (nFlowTeacherID > 0 && App()->GetFlowTeacherID() != nFlowTeacherID) {
 		App()->SetFlowTeacherID(nFlowTeacherID);
 	}
 	// 将获取的TCP套接字更新到系统变量当中 => 在创建UDP连接时会用到...
@@ -611,9 +611,21 @@ bool CRemoteSession::doCmdStudentLogin(const char * lpData, int nSize)
 	return true;
 }
 
-// 处理中转服务器反馈的在线通道列表 => 不用反馈数据给中转服务器...
+// 处理中转服务器反馈的在线信息 => 不用反馈数据给中转服务器...
 bool CRemoteSession::doCmdStudentOnLine(const char * lpData, int nSize)
 {
+	Json::Value value;
+	// 进行Json数据包的内容解析...
+	if (!this->doParseJson(lpData, nSize, value)) {
+		blog(LOG_INFO, "CRemoteSession::doParseJson Error!");
+		return false;
+	}
+	// 获取TCP讲师端的流量编号...
+	int  nFlowTeacherID = atoi(CStudentApp::getJsonString(value["flow_teacher"]).c_str());
+	// 保存关联的讲师流量记录编号 => 不一致，并且有效时才更新...
+	if (nFlowTeacherID > 0 && App()->GetFlowTeacherID() != nFlowTeacherID) {
+		App()->SetFlowTeacherID(nFlowTeacherID);
+	}
 	return true;
 }
 

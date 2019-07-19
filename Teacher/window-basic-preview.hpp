@@ -45,6 +45,9 @@ private:
 
 	QPushButton * m_btnLeft  = nullptr;
 	QPushButton * m_btnRight = nullptr;
+	QPushButton * m_btnPrev  = nullptr;
+	QPushButton * m_btnNext  = nullptr;
+	QPushButton * m_btnFoot  = nullptr;
 
 	vec2         startPos;
 	vec2         lastMoveOffset;
@@ -84,11 +87,17 @@ private:
 	void ProcessClick(const vec2 &pos);
 
 	QPushButton * CreateBtnPage(bool bIsLeft);
+	QPushButton * CreateBtnPPT(bool bIsPrev);
+	QPushButton * CreateBtnFoot();
 public:
 	OBSBasicPreview(QWidget *parent, Qt::WindowFlags flags = 0);
+	~OBSBasicPreview();
 
 	void DispBtnRight(bool bIsShow);
 	void DispBtnLeft(bool bIsShow);
+	void DispBtnPrev(bool bIsShow);
+	void DispBtnNext(bool bIsShow);
+	void DispBtnFoot(bool bIsShow, int nCurItem, int nFileNum);
 	void BindBtnClickEvent();
 
 	virtual void keyPressEvent(QKeyEvent *event) override;
@@ -101,6 +110,7 @@ public:
 	virtual void mouseReleaseEvent(QMouseEvent *event) override;
 	virtual void mouseMoveEvent(QMouseEvent *event) override;
 
+	void ResizeBtnPPT(int nPosY, int nPreviewY);
 	void ResizeBtnPage(int nPosY);
 	void DrawSceneEditing();
 
