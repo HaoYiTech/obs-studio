@@ -780,6 +780,8 @@ void CAudioPlay::doDecodeFrame()
 		circlebuf_push_back(&m_circle, &frame_pts_ms, sizeof(int64_t));
 		circlebuf_push_back(&m_circle, &cur_data_size, sizeof(int));
 		circlebuf_push_back(&m_circle, output_data[0], cur_data_size);
+		//blog(LOG_INFO, "%s [Audio-Decode] CurTime: %I64d ms, PTS: %I64d ms, Frame: %d, Duration:%.2f", TM_RECV_NAME,
+		//	os_gettime_ns()/1000000, frame_pts_ms, output_frames, 1000*output_frames/(1.0f*m_horn_sample_info.samples_per_sec));
 		// 累加环形队列中有效数据帧的个数...
 		++m_frame_num;
 	}

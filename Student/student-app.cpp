@@ -684,6 +684,187 @@ bool doTestMd5()
 	return 0;
 }*/
 
+// 进行音频速度的整体测试...
+
+/*// 进行音频频率转换的测试...
+#include <media-io/audio-io.h>
+#include <media-io/audio-resampler.h>
+#define FRAME_SAMPLES 1024
+int doTestAudioConvert()
+{
+	resample_info speed_dst = { 0 };
+	resample_info speed_src = { 0 };
+	audio_resampler_t * speed_resampler;
+	speed_src.format = AUDIO_FORMAT_16BIT;
+	speed_src.samples_per_sec = 16000;
+	speed_src.speakers = SPEAKERS_MONO;
+	memcpy(&speed_dst, &speed_src, sizeof(speed_dst));
+	speed_dst.samples_per_sec = speed_src.samples_per_sec / 2;
+	speed_resampler = audio_resampler_create(&speed_dst, &speed_src);
+
+	FILE * lpInPCM = NULL;
+	FILE * lpOutPCM = NULL;
+
+	uint32_t  input_frames = FRAME_SAMPLES;
+	short     sInFrame[FRAME_SAMPLES];
+	char   szOutFName[MAX_PATH] = { 0 };
+	char * lpInFName = "F:\\MP4\\PCM\\src_16000_1_16.pcm";
+	sprintf(szOutFName, "F:\\MP4\\PCM\\dst_%d_1_16.pcm", speed_dst.samples_per_sec);
+
+	do {
+		// 打开原始音频文件...
+		if ((lpInPCM = fopen(lpInFName, "rb")) == NULL)
+			break;
+		// 创建降处理后的文件...
+		if ((lpOutPCM = fopen(szOutFName, "wb")) == NULL)
+			break;
+		while (true) {
+			// 读取指定长度的噪声音频文件内容...
+			if (fread(sInFrame, sizeof(short), input_frames, lpInPCM) != input_frames)
+				break;
+			uint64_t  ts_offset = 0;
+			uint32_t  output_frames = 0;
+			uint8_t * output_data[MAX_AV_PLANES] = { 0 };
+			uint8_t * input_data[MAX_AV_PLANES] = { 0 };
+			input_data[0] = (uint8_t *)&sInFrame;
+			if (audio_resampler_resample(speed_resampler, output_data, &output_frames, &ts_offset, input_data, input_frames)) {
+				int cur_data_size = get_audio_size(speed_dst.format, speed_dst.speakers, output_frames);
+				fwrite(output_data[0], 1, cur_data_size, lpOutPCM);
+			}
+		}
+	} while (false);
+	if (speed_resampler != nullptr) {
+		audio_resampler_destroy(speed_resampler);
+		speed_resampler = nullptr;
+	}
+	if (lpInPCM != NULL) {
+		fclose(lpInPCM);
+	}
+	if (lpOutPCM != NULL) {
+		fclose(lpOutPCM);
+	}
+	return 0;
+}*/
+
+/*// 进行音频速度的整体测试...
+#include "sonic.h"
+#define JUMP_NUM       1
+#define FRAME_SAMPLES  1024
+int doTestAudioSpeed()
+{
+	sonicStream stream;
+	int sampleRate = 16000;
+	int numChannels = 1;
+	float speed = 2.0f;
+	float pitch = 1.0f;
+	float rate = 1.0f;
+	float volume = 1.0f;
+	int quality = 1;
+
+	stream = sonicCreateStream(sampleRate, numChannels);
+	sonicSetSpeed(stream, speed);
+	sonicSetPitch(stream, pitch);
+	sonicSetRate(stream, rate);
+	sonicSetVolume(stream, volume);
+	sonicSetQuality(stream, quality);
+	//sonicSetChordPitch(stream, 1);
+
+	int nState = 0;
+	int nStepNum = 0;
+
+	FILE * lpInPCM = NULL;
+	FILE * lpOutPCM = NULL;
+	int    input_frames = FRAME_SAMPLES;
+	short  sInFrame[FRAME_SAMPLES];
+	short  sOutFrame[FRAME_SAMPLES*3];
+	char   szOutFName[MAX_PATH] = { 0 };
+	char * lpInFName = "F:\\MP4\\PCM\\src_16000_1_16.pcm";
+	sprintf(szOutFName, "F:\\MP4\\PCM\\dst_16000_1_16_%.1f.pcm", speed);
+	do {
+		// 打开原始音频文件...
+		if ((lpInPCM = fopen(lpInFName, "rb")) == NULL)
+			break;
+		// 创建降处理后的文件...
+		if ((lpOutPCM = fopen(szOutFName, "wb")) == NULL)
+			break;
+		float fTotalTime = 0.0f;
+		int   samplesReaded = 0;
+		int   samplesWritten = 0;
+		while (true) {
+			// 读取指定长度的噪声音频文件内容...
+			samplesReaded = fread(sInFrame, sizeof(short), input_frames, lpInPCM);
+			if (samplesReaded <= 0) {
+				// 读取到末尾，刷新残留...
+				sonicFlushStream(stream);
+				// 读取最后的残留数据内容...
+				samplesWritten = sonicReadShortFromStream(stream, sOutFrame, FRAME_SAMPLES * 3);
+				if (samplesWritten > 0) { fwrite(sOutFrame, sizeof(short), samplesWritten, lpOutPCM); fflush(lpOutPCM); }
+				fTotalTime += samplesWritten / (sampleRate * 1.0f);
+				break;
+			}
+			// 加速X个包，再恢复X个包，然后再减速X个包，往复循环...
+			if (nState == 0) {
+				if (nStepNum++ >= JUMP_NUM) {
+					// 变速调整...
+					speed = 1.0;
+					// 变速发生变化时，刷新残留 => 由于会填充空白数据，不要轻易使用...
+					//if (sonicGetSpeed(stream) != speed) {
+					//	sonicFlushStream(stream);
+					//	samplesWritten = sonicReadShortFromStream(stream, sOutFrame, FRAME_SAMPLES * 3);
+					//	if (samplesWritten > 0) { fwrite(sOutFrame, sizeof(short), samplesWritten, lpOutPCM); fflush(lpOutPCM); }
+					//}
+					// 设定新的状态和变速...
+					nState = 1; nStepNum = 0;
+					sonicSetSpeed(stream, speed);
+				}
+			} else if (nState == 1) {
+				if (nStepNum++ >= JUMP_NUM) {
+					// 变速调整...
+					speed = 0.5;
+					// 变速发生变化时，刷新残留 => 由于会填充空白数据，不要轻易使用...
+					//if (sonicGetSpeed(stream) != speed) {
+					//	sonicFlushStream(stream);
+					//	samplesWritten = sonicReadShortFromStream(stream, sOutFrame, FRAME_SAMPLES * 3);
+					//	if (samplesWritten > 0) { fwrite(sOutFrame, sizeof(short), samplesWritten, lpOutPCM); fflush(lpOutPCM); }
+					//}
+					// 设定新的状态和变速...
+					nState = 2; nStepNum = 0;
+					sonicSetSpeed(stream, speed);
+				}
+			} else if (nState == 2) {
+				if (nStepNum++ >= JUMP_NUM) {
+					// 变速调整...
+					speed = 2.0;
+					// 变速发生变化时，刷新残留 => 由于会填充空白数据，不要轻易使用...
+					//if (sonicGetSpeed(stream) != speed) {
+					//	sonicFlushStream(stream);
+					//	samplesWritten = sonicReadShortFromStream(stream, sOutFrame, FRAME_SAMPLES * 3);
+					//	if (samplesWritten > 0) { fwrite(sOutFrame, sizeof(short), samplesWritten, lpOutPCM); fflush(lpOutPCM); }
+					//}
+					// 设定新的状态和变速...
+					nState = 0; nStepNum = 0;
+					sonicSetSpeed(stream, speed);
+				}
+			}
+			// 写入新的原始音频数据，必须保证在相同速度下没有其它速度残留...
+			sonicWriteShortToStream(stream, sInFrame, samplesReaded);
+			samplesWritten = sonicReadShortFromStream(stream, sOutFrame, FRAME_SAMPLES*3);
+			if (samplesWritten > 0) { fwrite(sOutFrame, sizeof(short), samplesWritten, lpOutPCM); fflush(lpOutPCM); }
+			fTotalTime += samplesWritten / (sampleRate * 1.0f);
+		}
+	} while (false);
+	if (stream != NULL) {
+		sonicDestroyStream(stream);
+	}
+	if (lpInPCM != NULL) {
+		fclose(lpInPCM);
+	}
+	if (lpOutPCM != NULL) {
+		fclose(lpOutPCM);
+	}
+	return 0;
+}*/
+
 int main(int argc, char *argv[])
 {
 	// 进行webrtc的aed测试...
@@ -694,6 +875,10 @@ int main(int argc, char *argv[])
 	//if ((argc > 1 && stricmp(argv[1], "-upload") == 0) ||
 	//	(argc > 2 && stricmp(argv[2], "-upload") == 0) )
 	//	return doTestMd5();
+	// 进行音频频率转换的测试...
+	//return doTestAudioConvert();
+	// 进行音频速度的整体测试...
+	//return doTestAudioSpeed();
 
 	// 初始化网络套接字...
 	WSADATA	wsData = { 0 };

@@ -43,6 +43,9 @@
     <Filter Include="rtp Files">
       <UniqueIdentifier>{aa8db552-e07d-480f-99e7-9f60b7a5f53c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Sonic Files">
+      <UniqueIdentifier>{8921e40a-0166-4cb1-a155-b843b26a987a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="window-login-base.cpp">
@@ -191,6 +194,9 @@
     </ClCompile>
     <ClCompile Include="window-login-mini.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libsonic\sonic.c">
+      <Filter>Sonic Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -452,6 +458,9 @@
     </ClInclude>
     <ClInclude Include="common\HYCommon.h">
       <Filter>Common Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libsonic\sonic.h">
+      <Filter>Sonic Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
