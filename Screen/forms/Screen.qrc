@@ -1,0 +1,13 @@
+<RCC>
+  <qresource prefix="/res">
+    <file>images/screen.png</file>
+    <file>../Screen.ico</file>
+  </qresource>
+  <qresource prefix="/mini">
+    <file>css/LoginMini.css</file>
+    <file>images/mini/min.png</file>
+    <file>images/mini/close.png</file>
+    <file>images/mini/loading.gif</file>
+    <file>images/mini/scan.png</file>
+  </qresource>
+</RCC>

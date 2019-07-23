@@ -137,12 +137,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="platform-windows.cpp" />
     <ClCompile Include="qt-wrappers.cpp" />
     <ClCompile Include="screen-app.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <QtUic Include="Screen.ui" />
-  </ItemGroup>
-  <ItemGroup>
-    <QtRcc Include="Screen.qrc" />
+    <ClCompile Include="window-login-mini.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="screen-app.h">
@@ -168,6 +163,30 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="HYDefine.h" />
     <ClInclude Include="platform.hpp" />
     <ClInclude Include="qt-wrappers.hpp" />
+    <ClInclude Include="resource.h" />
+    <QtMoc Include="window-login-mini.h">
+      <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.;.\GeneratedFiles;.\..\Student\json;.\..\Student\common;.\..\Student\obs-frontend-api;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets</IncludePath>
+      <IncludePath Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets</IncludePath>
+    </QtMoc>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="forms\images\screen.png">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </Image>
+    <Image Include="Screen.ico">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <QtRcc Include="forms\Screen.qrc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Screen.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtUic Include="forms\LoginMini.ui" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

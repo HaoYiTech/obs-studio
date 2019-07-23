@@ -35,6 +35,7 @@ public:
 	virtual QString translate(const char *context, const char *sourceText, const char *disambiguation, int n) const override;
 };
 
+class CLoginMini;
 class CScreenApp : public QApplication {
 	Q_OBJECT
 public:
@@ -42,9 +43,12 @@ public:
 	~CScreenApp();
 public:
 	void AppInit();
+	void doLoginInit();
 	void doProcessCmdLine(int argc, char * argv[]);
 public:
 	static string getJsonString(Json::Value & inValue);
+public slots:
+	void onTriggerMiniSuccess();
 public:
 	string & GetWebClass() { return m_strWebClass; }
 	string & GetWebCenter() { return m_strWebCenter; }
@@ -62,12 +66,12 @@ private:
 	bool	InitGlobalConfigDefaults();
 private:
 	std::deque<obs_frontend_translate_ui_cb> translatorHooks;
+	QPointer<CLoginMini>       m_LoginMini;                 // 小程序登录窗口
 	ConfigFile                 m_globalConfig;              // 全局配置对象...
 	TextLookup                 m_textLookup;                // 文字翻译对象...
 	string                     m_strWebCenter;              // 访问中心网站地址...
 	string                     m_strWebClass;				// 访问云教室网站地址...
-
-	bool                m_bIsDebugMode;                 // 是否是调试模式 => 挂载到调试服务器...
+	bool                       m_bIsDebugMode;              // 是否是调试模式 => 挂载到调试服务器...
 };
 
 inline CScreenApp *App() { return static_cast<CScreenApp*>(qApp); }

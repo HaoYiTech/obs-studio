@@ -18,7 +18,10 @@
 #include "OSThread.h"
 #include "SocketUtils.h"
 
+#include "window-login-mini.h"
+
 #define DEFAULT_LANG "zh-CN"
+
 static log_handler_t def_log_handler;
 static string currentLogFile;
 static string lastLogFile;
@@ -494,10 +497,9 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		// 读取命令行各字段内容信息...
 		program.doProcessCmdLine(argc, argv);
 		// 初始化登录窗口...
-		//program.doLoginInit();
+		program.doLoginInit();
 		// 执行主循环操作...
-		//return program.exec();
-		return 0;
+		return program.exec();
 	}
 	catch (const char *error) {
 		blog(LOG_ERROR, "%s", error);
@@ -696,4 +698,21 @@ bool CScreenApp::InitGlobalConfigDefaults()
 	config_set_default_uint(m_globalConfig, "General", "EnableAutoUpdates", true);
 	config_set_default_uint(m_globalConfig, "General", "MaxLogs", 10);
 	return true;
+}
+
+// 创建并初始化登录窗口...
+void CScreenApp::doLoginInit()
+{
+	// 创建小程序二维码登录窗口...
+	m_LoginMini = new CLoginMini();
+	m_LoginMini->show();
+	// 建立登录窗口与应用对象的信号槽关联函数...
+	connect(m_LoginMini, SIGNAL(doTriggerMiniSuccess()), this, SLOT(onTriggerMiniSuccess()));
+	// 关联网络信号槽反馈结果事件...
+	//connect(&m_objNetManager, SIGNAL(finished(QNetworkReply *)), this, SLOT(onReplyFinished(QNetworkReply *)));
+}
+
+// 处理小程序登录成功之后的信号槽事件...
+void CScreenApp::onTriggerMiniSuccess()
+{
 }
