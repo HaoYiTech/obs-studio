@@ -182,7 +182,7 @@ RunOnceMutex &RunOnceMutex::operator=(RunOnceMutex &&rom)
 
 RunOnceMutex GetRunOnceMutex(bool &already_running)
 {
-	string name = "OBSStudentCore";
+	string name = "OBSScreenCore";
 
 	BPtr<wchar_t> wname;
 	os_utf8_to_wcs_ptr(name.c_str(), name.size(), &wname);

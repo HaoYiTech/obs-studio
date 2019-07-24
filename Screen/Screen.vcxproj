@@ -160,6 +160,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="..\Student\json\reader.h" />
     <ClInclude Include="..\Student\json\value.h" />
     <ClInclude Include="..\Student\json\writer.h" />
+    <ClInclude Include="GeneratedFiles\ui_LoginMini.h" />
     <ClInclude Include="HYDefine.h" />
     <ClInclude Include="platform.hpp" />
     <ClInclude Include="qt-wrappers.hpp" />

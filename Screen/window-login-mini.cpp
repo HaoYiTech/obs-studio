@@ -3,6 +3,7 @@
 #include "screen-app.h"
 #include <QDesktopWidget>
 #include <QMouseEvent>
+#include <QLineEdit>
 #include <QPainter>
 #include <QBitmap>
 #include <QMovie>
@@ -128,10 +129,21 @@ void CLoginMini::initWindow()
 	this->setAttribute(Qt::WA_DeleteOnClose);
 	// 重新设定窗口大小...
 	this->resize(360, 440);
-	// 加载PTZ窗口的层叠显示样式表...
+	// 加载窗口的层叠显示样式表...
 	this->loadStyleSheet(":/mini/css/LoginMini.css");
 	// 设置窗口图标...
 	this->setWindowIcon(QIcon(":/res/images/screen.png"));
+	// 暗注释，设置学生姓名...
+	ui->loginUser->setPlaceholderText(QTStr("MINI.Window.UserHolderText"));
+	ui->loginUser->setMaxLength(10);
+	// 暗注释，并限定输入数字的范围...
+	ui->loginRoom->setPlaceholderText(QTStr("MINI.Window.RoomHolderText"));
+	ui->loginRoom->setValidator(new QIntValidator(0, 999999999, this));
+	ui->loginRoom->setMaxLength(10);
+	// 暗注释，并限定输入数字的范围...
+	ui->loginPass->setPlaceholderText(QTStr("MINI.Window.PassHolderText"));
+	ui->loginPass->setValidator(new QIntValidator(0, 999999, this));
+	ui->loginPass->setMaxLength(6);
 	// 初始化版本文字信息...
 	m_strVer = QString("V%1").arg(OBS_VERSION);
 	// 设置背景动画图片 => gif
