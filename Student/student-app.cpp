@@ -7,6 +7,7 @@
 #include <util/bmem.h>
 #include <util/dstr.h>
 #include <util/platform.h>
+#include <util/profiler.hpp>
 #include <curl.h>
 #include <jansson.h>
 
@@ -474,11 +475,62 @@ static void create_log_file(fstream &logFile)
 	}
 }
 
+static auto ProfilerNameStoreRelease = [](profiler_name_store_t *store)
+{
+	profiler_name_store_free(store);
+};
+
+using ProfilerNameStore = std::unique_ptr<profiler_name_store_t, decltype(ProfilerNameStoreRelease)>;
+
+ProfilerNameStore CreateNameStore()
+{
+	return ProfilerNameStore{ profiler_name_store_create(),	ProfilerNameStoreRelease };
+}
+
+static auto SnapshotRelease = [](profiler_snapshot_t *snap)
+{
+	profile_snapshot_free(snap);
+};
+
+using ProfilerSnapshot = std::unique_ptr<profiler_snapshot_t, decltype(SnapshotRelease)>;
+
+ProfilerSnapshot GetSnapshot()
+{
+	return ProfilerSnapshot{ profile_snapshot_create(), SnapshotRelease };
+}
+
+static auto ProfilerFree = [](void *)
+{
+	profiler_stop();
+
+	auto snap = GetSnapshot();
+
+	profiler_print(snap.get());
+	profiler_print_time_between_calls(snap.get());
+
+	//屏蔽存盘操作，不直观，存放到日志文件...
+	//SaveProfilerData(snap);
+
+	profiler_free();
+};
+
+static const char *run_program_init = "run_program_init";
 static int run_program(fstream &logFile, int argc, char *argv[])
 {
 	int ret = -1;
+
+	auto profilerNameStore = CreateNameStore();
+
+	std::unique_ptr<void, decltype(ProfilerFree)>
+		prof_release(static_cast<void*>(&ProfilerFree),	ProfilerFree);
+
+	profiler_start();
+	profile_register_root(run_program_init, 0);
+
+	ScopeProfiler prof{ run_program_init };
 	QCoreApplication::addLibraryPath(".");
-	CStudentApp program(argc, argv);
+	CStudentApp program(argc, argv, profilerNameStore.get());
+
 	try {
 		// 初始化应用程序...
 		program.AppInit();
@@ -510,6 +562,7 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		program.doProcessCmdLine(argc, argv);
 		// 初始化登录窗口...
 		program.doLoginInit();
+		prof.Stop();
 		// 执行主循环操作...
 		return program.exec();
 	} catch (const char *error) {
@@ -1024,8 +1077,9 @@ void CStudentApp::doProcessCmdLine(int argc, char * argv[])
 	}
 }
 
-CStudentApp::CStudentApp(int &argc, char **argv)
+CStudentApp::CStudentApp(int &argc, char **argv, profiler_name_store_t *store)
   : QApplication(argc, argv)
+  , profilerNameStore(store)
   , m_lpWebThread(NULL)
   , m_lpFocusDisplay(NULL)
   , m_bSaveAECSample(false)

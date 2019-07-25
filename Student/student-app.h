@@ -44,7 +44,7 @@ class CWebThread;
 class CStudentApp : public QApplication {
 	Q_OBJECT
 public:
-	CStudentApp(int &argc, char **argv);
+	CStudentApp(int &argc, char **argv, profiler_name_store_t *store);
 	~CStudentApp();
 signals:
 	void msgFromWebThread(int nMessageID, int nWParam, int nLParam);
@@ -169,18 +169,16 @@ public:
 	inline CLoginMini *GetLoginMini() const { return m_LoginMini.data(); }
 	inline config_t *GlobalConfig() const { return m_globalConfig; }
 	inline lookup_t *GetTextLookup() const { return m_textLookup; }
-	inline const char *GetString(const char *lookupVal) const
-	{
+	profiler_name_store_t *GetProfilerNameStore() const {
+		return profilerNameStore;
+	}
+	inline const char *GetString(const char *lookupVal) const {
 		return m_textLookup.GetString(lookupVal);
 	}
-
-	inline void PushUITranslation(obs_frontend_translate_ui_cb cb)
-	{
+	inline void PushUITranslation(obs_frontend_translate_ui_cb cb) {
 		translatorHooks.emplace_front(cb);
 	}
-
-	inline void PopUITranslation()
-	{
+	inline void PopUITranslation() {
 		translatorHooks.pop_front();
 	}
 protected:
@@ -197,6 +195,7 @@ private:
 	bool	InitMacIPAddr();
 private:
 	std::deque<obs_frontend_translate_ui_cb> translatorHooks;
+	profiler_name_store_t   *  profilerNameStore = nullptr;
 	QPointer<CRemoteSession>   m_RemoteSession;             // For UDP-Server
 	QPointer<StudentWindow>    m_studentWindow;             // 主窗口对象
 	QPointer<CLoginMini>       m_LoginMini;                 // 小程序登录窗口
