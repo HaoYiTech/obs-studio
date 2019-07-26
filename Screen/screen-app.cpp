@@ -692,7 +692,6 @@ void CScreenApp::doProcessCmdLine(int argc, char * argv[])
 
 CScreenApp::CScreenApp(int &argc, char **argv, profiler_name_store_t *store)
   : QApplication(argc, argv)
-  , m_bIsDebugMode(false)
   , profilerNameStore(store)
   , m_strWebCenter(DEF_WEB_CENTER)
   , m_strWebClass(DEF_WEB_CLASS)
@@ -815,9 +814,179 @@ bool CScreenApp::OBSInit()
 	// 第一个版本暂时屏蔽预览...
 	//this->doCreateDisplay();
 
+	// 不设定初始时间戳可以立即截图...
+	//m_start_time_ns = os_gettime_ns();
+	// 挂载原始YUV数据的回调接口，便于进行相关的JPG转换操作...
+	obs_add_raw_video_callback(nullptr, CScreenApp::ReceiveRawVideo, this);
+
 	// 打印所有挂载资源...
 	this->LogScenes();
 
+	return true;
+}
+
+void CScreenApp::ReceiveRawVideo(void *param, struct video_data *frame)
+{
+	CScreenApp * theApp = reinterpret_cast<CScreenApp*>(param);
+	theApp->doSaveMemJpg(frame);
+}
+
+extern "C"
+{
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libswscale/swscale.h>
+#include <libavutil/imgutils.h>
+};
+
+static inline enum AVPixelFormat obs_to_ffmpeg_video_format(enum video_format format)
+{
+	switch (format) {
+	case VIDEO_FORMAT_NONE: return AV_PIX_FMT_NONE;
+	case VIDEO_FORMAT_I444: return AV_PIX_FMT_YUV444P;
+	case VIDEO_FORMAT_I420: return AV_PIX_FMT_YUV420P;
+	case VIDEO_FORMAT_NV12: return AV_PIX_FMT_NV12;
+	case VIDEO_FORMAT_YVYU: return AV_PIX_FMT_NONE;
+	case VIDEO_FORMAT_YUY2: return AV_PIX_FMT_YUYV422;
+	case VIDEO_FORMAT_UYVY: return AV_PIX_FMT_UYVY422;
+	case VIDEO_FORMAT_RGBA: return AV_PIX_FMT_RGBA;
+	case VIDEO_FORMAT_BGRA: return AV_PIX_FMT_BGRA;
+	case VIDEO_FORMAT_BGRX: return AV_PIX_FMT_BGRA;
+	case VIDEO_FORMAT_Y800: return AV_PIX_FMT_GRAY8;
+	}
+	return AV_PIX_FMT_NONE;
+}
+
+bool CScreenApp::doSaveMemJpg(video_data * frame)
+{
+	// 计算已经流逝的时间 => 秒数...
+	uint64_t cur_time_ns = os_gettime_ns();
+	int seconds_value = (int)((cur_time_ns - m_start_time_ns) / 1000000 / 1000);
+	// 如果没有达到指定的间隔，直接返回...
+	if (m_snap_second > seconds_value)
+		return false;
+	// 记录新的启动时间戳和压缩质量...
+	m_start_time_ns = cur_time_ns;
+	float qCompress = this->m_qCompress;
+	// 获取系统设定的图像格式信息...
+	struct obs_video_info ovi = { 0 };
+	if (!obs_get_video_info(&ovi))
+		return false;
+	/////////////////////////////////////////////////////////////////////////
+	// 注意：input->conversion 是需要变换的格式，
+	// 因此，应该从 video->info 当中获取原始数据信息...
+	// 同时，sws_getContext 需要AVPixelFormat而不是video_format格式...
+	/////////////////////////////////////////////////////////////////////////
+	// 设置ffmpeg的日志回调函数...
+	//av_log_set_level(AV_LOG_VERBOSE);
+	//av_log_set_callback(my_av_logoutput);
+	// 统一数据源输入格式，找到压缩器需要的像素格式 => 必须是 AV_PIX_FMT_YUVJ420P 格式...
+	enum AVPixelFormat nDestFormat = AV_PIX_FMT_YUVJ420P; //AV_PIX_FMT_YUV420P
+	enum AVPixelFormat nSrcFormat = obs_to_ffmpeg_video_format(ovi.output_format);
+	int nSrcWidth = ovi.output_width;
+	int nSrcHeight = ovi.output_height;
+	// 注意：长宽必须是4的整数倍，否则sws_scale崩溃...
+	int nDstWidth = nSrcWidth / 4 * 4;
+	int nDstHeight = nSrcHeight / 4 * 4;
+	// 不管什么格式，都需要进行像素格式的转换...
+	AVFrame * pDestFrame = av_frame_alloc();
+	int nDestBufSize = av_image_get_buffer_size(nDestFormat, nDstWidth, nDstHeight, 1);
+	uint8_t * pDestOutBuf = (uint8_t *)av_malloc(nDestBufSize);
+	av_image_fill_arrays(pDestFrame->data, pDestFrame->linesize, pDestOutBuf, nDestFormat, nDstWidth, nDstHeight, 1);
+
+	//nv12_to_yuv420p((const uint8_t* const*)frame->data, pDestOutBuf, nDstWidth, nDstHeight);
+	// 注意：这里不用libyuv的原因是，使用sws更简单，不用根据不同像素格式调用不同接口...
+	// ffmpeg自带的sws_scale转换也是没有问题的，之前有问题是由于sws_getContext的输入源需要格式AVPixelFormat，写成了video_format，造成的格式错位问题...
+	// 注意：目的像素格式必须为AV_PIX_FMT_YUVJ420P，如果用AV_PIX_FMT_YUV420P格式，生成的JPG有色差，而且图像偏灰色...
+	struct SwsContext * img_convert_ctx = sws_getContext(nSrcWidth, nSrcHeight, nSrcFormat, nDstWidth, nDstHeight, nDestFormat, SWS_BICUBIC, NULL, NULL, NULL);
+	int nReturn = sws_scale(img_convert_ctx, (const uint8_t* const*)frame->data, (const int*)frame->linesize, 0, nSrcHeight, pDestFrame->data, pDestFrame->linesize);
+	sws_freeContext(img_convert_ctx);
+
+	// 设置转换后的数据帧内容...
+	pDestFrame->width = nDstWidth;
+	pDestFrame->height = nDstHeight;
+	pDestFrame->format = nDestFormat;
+
+	// 将转换后的 YUV 数据存盘成 jpg 文件...
+	AVCodecContext * pOutCodecCtx = NULL;
+	bool bRetSave = false;
+	do {
+		// 预先查找jpeg压缩器需要的输入数据格式...
+		AVOutputFormat * avOutputFormat = av_guess_format("mjpeg", NULL, NULL); //av_guess_format(0, lpszJpgName, 0);
+		AVCodec * pOutAVCodec = avcodec_find_encoder(avOutputFormat->video_codec);
+		if (pOutAVCodec == NULL)
+			break;
+		// 创建ffmpeg压缩器的场景对象...
+		pOutCodecCtx = avcodec_alloc_context3(pOutAVCodec);
+		if (pOutCodecCtx == NULL)
+			break;
+		// 准备数据结构需要的参数...
+		pOutCodecCtx->bit_rate = 200000;
+		pOutCodecCtx->width = nDstWidth;
+		pOutCodecCtx->height = nDstHeight;
+		// 注意：没有使用适配方式，适配出来格式有可能不是YUVJ420P，造成压缩器崩溃，因为传递的数据已经固定成YUV420P...
+		// 注意：输入像素是YUV420P格式，压缩器像素是YUVJ420P格式...
+		pOutCodecCtx->pix_fmt = avcodec_find_best_pix_fmt_of_list(pOutAVCodec->pix_fmts, (AVPixelFormat)-1, 1, 0); //AV_PIX_FMT_YUVJ420P;
+		pOutCodecCtx->codec_id = avOutputFormat->video_codec; //AV_CODEC_ID_MJPEG;  
+		pOutCodecCtx->codec_type = AVMEDIA_TYPE_VIDEO;
+		pOutCodecCtx->time_base.num = 1;
+		pOutCodecCtx->time_base.den = 25;
+		// 打开 ffmpeg 压缩器...
+		if (avcodec_open2(pOutCodecCtx, pOutAVCodec, 0) < 0)
+			break;
+		// 设置图像质量，默认是0.5，修改为0.8(图片太大,0.5刚刚好)...
+		pOutCodecCtx->qcompress = qCompress;
+		// 准备接收缓存，开始压缩jpg数据...
+		int got_pic = 0;
+		int nResult = 0;
+		AVPacket pkt = { 0 };
+		// 采用新的压缩函数...
+		nResult = avcodec_encode_video2(pOutCodecCtx, &pkt, pDestFrame, &got_pic);
+		// 解码失败或没有得到完整图像，继续解析...
+		if (nResult < 0 || !got_pic)
+			break;
+		// 进行JPG的内存保存 => 后续需要加互斥保护...
+		m_strJPGData.assign((char*)pkt.data, pkt.size);
+		// 进行JPG的存盘操作 => 这是可选的操作...
+		this->doSaveFileJpg(pkt.data, pkt.size);
+		// 释放分配数据块的空间...
+		av_packet_unref(&pkt);
+		// 返回保存成功标志...
+		bRetSave = true;
+	} while (false);
+	// 清理中间产生的对象...
+	if (pOutCodecCtx != NULL) {
+		avcodec_close(pOutCodecCtx);
+		av_free(pOutCodecCtx);
+	}
+
+	// 释放临时分配的数据空间...
+	av_frame_free(&pDestFrame);
+	av_free(pDestOutBuf);
+
+	return bRetSave;
+}
+
+bool CScreenApp::doSaveFileJpg(uint8_t * inData, int nSize)
+{
+	// 如果无需保存 或 输入参数无效，直接返回...
+	if (!m_bIsSaveFile || inData == NULL || nSize <= 0)
+		return false;
+	// 获取存盘需要的配置信息 => 路径和文件名...
+	char szSaveFile[100] = { 0 };
+	char szSavePath[300] = { 0 };
+	sprintf(szSaveFile, "obs-screen/live_%d.jpg", 200002);
+	if (os_get_config_path(szSavePath, sizeof(szSavePath), szSaveFile) <= 0) {
+		blog(LOG_ERROR, "doSaveFileJpg: save path error!");
+		return false;
+	}
+	// 打开jpg文件句柄...
+	FILE * pFile = fopen(szSavePath, "wb");
+	if (pFile == NULL) return false;
+	// 保存到磁盘，并释放资源...
+	fwrite(inData, 1, nSize, pFile);
+	// 释放文件句柄，返回成功...
+	fclose(pFile); pFile = NULL;
 	return true;
 }
 
@@ -1044,6 +1213,8 @@ void CScreenApp::ClearSceneData()
 		obs_display_remove_draw_callback(m_preview->GetDisplay(), CScreenApp::RenderMain, this);
 		delete this->m_preview; this->m_preview = nullptr;
 	}
+
+	obs_remove_raw_video_callback(CScreenApp::ReceiveRawVideo, this);
 
 	obs_set_output_source(0, nullptr);
 	
