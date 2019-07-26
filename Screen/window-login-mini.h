@@ -17,7 +17,7 @@
 using namespace std;
 
 class CCenterSession;
-class CLoginMini : public QDialog
+class CLoginMini : public QWidget
 {
     Q_OBJECT
 public:

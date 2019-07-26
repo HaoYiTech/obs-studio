@@ -7,18 +7,34 @@
 #include <util/bmem.h>
 #include <util/dstr.h>
 #include <util/platform.h>
+#include <util/profiler.hpp>
 
 #include <QScreen>
 
 #include "qt-wrappers.hpp"
+#include "qt-display.hpp"
 #include "platform.hpp"
 #include "screen-app.h"
 #include "getopt.h"
 #include "windows.h"
 #include "OSThread.h"
 #include "SocketUtils.h"
+#include "display-helpers.hpp"
 
 #include "window-login-mini.h"
+#include <graphics/vec4.h>
+#include <graphics/matrix4.h>
+
+#define STARTUP_SEPARATOR   "==== Startup complete ==============================================="
+#define SHUTDOWN_SEPARATOR 	"==== Shutting down =================================================="
+
+#define UNSUPPORTED_ERROR \
+	"Failed to initialize video:\n\nRequired graphics API functionality " \
+	"not found.  Your GPU may not be supported."
+
+#define UNKNOWN_ERROR \
+	"Failed to initialize video.  Your GPU may not be supported, " \
+	"or your graphics drivers may need to be updated."
 
 #define DEFAULT_LANG "zh-CN"
 
@@ -103,6 +119,11 @@ static bool MakeUserDirs()
 {
 	char path[512] = { 0 };
 
+	/*if (GetConfigPath(path, sizeof(path), "obs-screen/basic") <= 0)
+		return false;
+	if (!do_mkdir(path))
+		return false;*/
+
 	if (GetConfigPath(path, sizeof(path), "obs-screen/logs") <= 0)
 		return false;
 	if (!do_mkdir(path))
@@ -119,6 +140,11 @@ static bool MakeUserDirs()
 	if (!do_mkdir(path))
 		return false;
 #endif
+
+	if (GetConfigPath(path, sizeof(path), "obs-screen/plugin_config") <= 0)
+		return false;
+	if (!do_mkdir(path))
+		return false;
 
 	return true;
 }
@@ -462,11 +488,62 @@ static void create_log_file(fstream &logFile)
 	}
 }
 
+static auto ProfilerNameStoreRelease = [](profiler_name_store_t *store)
+{
+	profiler_name_store_free(store);
+};
+
+using ProfilerNameStore = std::unique_ptr<profiler_name_store_t, decltype(ProfilerNameStoreRelease)>;
+
+ProfilerNameStore CreateNameStore()
+{
+	return ProfilerNameStore{ profiler_name_store_create(),	ProfilerNameStoreRelease };
+}
+
+static auto SnapshotRelease = [](profiler_snapshot_t *snap)
+{
+	profile_snapshot_free(snap);
+};
+
+using ProfilerSnapshot = std::unique_ptr<profiler_snapshot_t, decltype(SnapshotRelease)>;
+
+ProfilerSnapshot GetSnapshot()
+{
+	return ProfilerSnapshot{ profile_snapshot_create(), SnapshotRelease };
+}
+
+static auto ProfilerFree = [](void *)
+{
+	profiler_stop();
+
+	auto snap = GetSnapshot();
+
+	profiler_print(snap.get());
+	profiler_print_time_between_calls(snap.get());
+
+	//屏蔽存盘操作，不直观，存放到日志文件...
+	//SaveProfilerData(snap);
+
+	profiler_free();
+};
+
+static const char *run_program_init = "run_program_init";
 static int run_program(fstream &logFile, int argc, char *argv[])
 {
 	int ret = -1;
+
+	auto profilerNameStore = CreateNameStore();
+
+	std::unique_ptr<void, decltype(ProfilerFree)>
+		prof_release(static_cast<void*>(&ProfilerFree), ProfilerFree);
+
+	profiler_start();
+	profile_register_root(run_program_init, 0);
+
+	ScopeProfiler prof{ run_program_init };
 	QCoreApplication::addLibraryPath(".");
-	CScreenApp program(argc, argv);
+	CScreenApp program(argc, argv, profilerNameStore.get());
+
 	try {
 		// 初始化应用程序...
 		program.AppInit();
@@ -498,6 +575,7 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		program.doProcessCmdLine(argc, argv);
 		// 初始化登录窗口...
 		program.doLoginInit();
+		prof.Stop();
 		// 执行主循环操作...
 		return program.exec();
 	}
@@ -612,9 +690,10 @@ void CScreenApp::doProcessCmdLine(int argc, char * argv[])
 	}
 }
 
-CScreenApp::CScreenApp(int &argc, char **argv)
+CScreenApp::CScreenApp(int &argc, char **argv, profiler_name_store_t *store)
   : QApplication(argc, argv)
   , m_bIsDebugMode(false)
+  , profilerNameStore(store)
   , m_strWebCenter(DEF_WEB_CENTER)
   , m_strWebClass(DEF_WEB_CLASS)
 {
@@ -623,20 +702,367 @@ CScreenApp::CScreenApp(int &argc, char **argv)
 
 CScreenApp::~CScreenApp()
 {
-	// 释放Com系统对象...
-	//CoUninitialize();
+	// 释放并打印关闭日志...
+	this->ClearSceneData();
+	blog(LOG_INFO, SHUTDOWN_SEPARATOR);
 }
 
 void CScreenApp::AppInit()
 {
-	//if (!this->InitMacIPAddr())
-	//	throw "Failed to get MAC or IP address";
 	if (!MakeUserDirs())
 		throw "Failed to create required user directories";
 	if (!InitGlobalConfig())
 		throw "Failed to initialize global config";
 	if (!InitLocale())
 		throw "Failed to load locale";
+}
+
+void CScreenApp::RenderMain(void *data, uint32_t cx, uint32_t cy)
+{
+	CScreenApp *window = static_cast<CScreenApp*>(data);
+
+	obs_video_info ovi = { 0 };
+	obs_get_video_info(&ovi);
+
+	window->previewCX = int(window->previewScale * float(ovi.base_width));
+	window->previewCY = int(window->previewScale * float(ovi.base_height));
+
+	gs_viewport_push();
+	gs_projection_push();
+
+	gs_ortho(0.0f, float(ovi.base_width), 0.0f, float(ovi.base_height),	-100.0f, 100.0f);
+	gs_set_viewport(window->previewX, window->previewY,	window->previewCX, window->previewCY);
+	
+	obs_render_main_texture();
+
+	gs_projection_pop();
+	gs_viewport_pop();
+
+	UNUSED_PARAMETER(cx);
+	UNUSED_PARAMETER(cy);
+}
+
+// 创建并初始化登录窗口...
+void CScreenApp::doLoginInit()
+{
+	// 创建小程序二维码登录窗口...
+	m_LoginMini = new CLoginMini();
+	m_LoginMini->show();
+	// 建立登录窗口与应用对象的信号槽关联函数...
+	connect(m_LoginMini, SIGNAL(doTriggerMiniSuccess()), this, SLOT(onTriggerMiniSuccess()));
+	// 关联网络信号槽反馈结果事件...
+	//connect(&m_objNetManager, SIGNAL(finished(QNetworkReply *)), this, SLOT(onReplyFinished(QNetworkReply *)));
+
+	// 模拟登录成功之后的事件通知...
+	emit m_LoginMini->doTriggerMiniSuccess();
+}
+
+// 处理小程序登录成功之后的信号槽事件...
+void CScreenApp::onTriggerMiniSuccess()
+{
+	if (!this->OBSInit())
+		return;
+}
+
+bool CScreenApp::OBSInit()
+{
+	char path[512] = { 0 };
+	// 这个目录必须创建，屏幕捕获插件会用到这个目录...
+	if (GetConfigPath(path, sizeof(path), "obs-screen/plugin_config") <= 0)
+		return false;
+	// 初始化obs核心 => 必须输入外部profiler_name_store_t，否则无法正常显示...
+	if (!obs_startup(m_strLocale.c_str(), path, GetProfilerNameStore()))
+		return false;
+
+	// 重置底层视频资源...
+	int ret = this->ResetVideo();
+
+	switch (ret) {
+	case OBS_VIDEO_MODULE_NOT_FOUND:
+		throw "Failed to initialize video:  Graphics module not found";
+	case OBS_VIDEO_NOT_SUPPORTED:
+		throw UNSUPPORTED_ERROR;
+	case OBS_VIDEO_INVALID_PARAM:
+		throw "Failed to initialize video:  Invalid parameters";
+	default:
+		if (ret != OBS_VIDEO_SUCCESS)
+			throw UNKNOWN_ERROR;
+	}
+	// 加载所有相关的模块...
+	blog(LOG_INFO, "---------------------------------");
+	obs_load_all_modules();
+	// 打印模块加载日志...
+	blog(LOG_INFO, "---------------------------------");
+	obs_log_loaded_modules();
+	// 处理延迟加载的模块...
+	blog(LOG_INFO, "---------------------------------");
+	obs_post_load_modules();
+	// 打印启动完毕信息...
+	blog(LOG_INFO, STARTUP_SEPARATOR);
+
+	// 直接创建桌面数据源，默认第0个...
+	const char * id = "monitor_capture";
+	const char * name = obs_source_get_display_name(id);
+	m_obsSource = obs_source_create(id, name, NULL, nullptr);
+
+	// 创建场景对象，并将桌面数据源挂载上去...
+	m_obsScene = obs_scene_create(Str("Basic.Scene"));
+	this->AddSceneItem(m_obsScene, m_obsSource);
+
+	/* set the scene as the primary draw source and go */
+	obs_set_output_source(0, obs_scene_get_source(m_obsScene));
+
+	// 第一个版本暂时屏蔽预览...
+	//this->doCreateDisplay();
+
+	// 打印所有挂载资源...
+	this->LogScenes();
+
+	return true;
+}
+
+static void LogFilter(obs_source_t*, obs_source_t *filter, void *v_val)
+{
+	const char *name = obs_source_get_name(filter);
+	const char *id = obs_source_get_id(filter);
+	int val = (int)(intptr_t)v_val;
+	string indent;
+
+	for (int i = 0; i < val; i++)
+		indent += "    ";
+
+	blog(LOG_INFO, "%s- filter: '%s' (%s)", indent.c_str(), name, id);
+}
+
+static bool LogSceneItem(obs_scene_t*, obs_sceneitem_t *item, void*)
+{
+	obs_source_t *source = obs_sceneitem_get_source(item);
+	const char *name = obs_source_get_name(source);
+	const char *id = obs_source_get_id(source);
+
+	blog(LOG_INFO, "    - source: '%s' (%s)", name, id);
+
+	obs_monitoring_type monitoring_type = obs_source_get_monitoring_type(source);
+
+	if (monitoring_type != OBS_MONITORING_TYPE_NONE) {
+		const char * type = (monitoring_type == OBS_MONITORING_TYPE_MONITOR_ONLY)
+			? "monitor only"
+			: "monitor and output";
+
+		blog(LOG_INFO, "        - monitoring: %s", type);
+	}
+
+	obs_source_enum_filters(source, LogFilter, (void*)(intptr_t)2);
+	return true;
+}
+
+void CScreenApp::LogScenes()
+{
+	blog(LOG_INFO, "------------------------------------------------");
+	blog(LOG_INFO, "Loaded scenes:");
+
+	OBSScene scene = m_obsScene;
+
+	obs_source_t *source = obs_scene_get_source(scene);
+	const char *name = obs_source_get_name(source);
+
+	blog(LOG_INFO, "- scene '%s':", name);
+	obs_scene_enum_items(scene, LogSceneItem, nullptr);
+	obs_source_enum_filters(source, LogFilter, (void*)(intptr_t)1);
+
+	blog(LOG_INFO, "------------------------------------------------");
+}
+
+void CScreenApp::doCreateDisplay()
+{
+	// 注意：由于主窗口是FramelessWindowHint，随后创建的窗口会受到影响...
+	// 注意：造成预览窗口无法进行拉伸和全屏操作，主窗口FramelessWindowHint造成的...
+	m_preview = new OBSBasicPreview(nullptr);
+
+	auto addDisplay = [this](OBSQTDisplay *window) {
+		obs_display_add_draw_callback(window->GetDisplay(), CScreenApp::RenderMain, this);
+		struct obs_video_info ovi;
+		if (obs_get_video_info(&ovi)) {
+			this->ResizePreview(ovi.base_width, ovi.base_height);
+		}
+	};
+
+	auto displayResize = [this]() {
+		struct obs_video_info ovi;
+		if (obs_get_video_info(&ovi)) {
+			this->ResizePreview(ovi.base_width, ovi.base_height);
+		}
+	};
+
+	connect(m_preview, &OBSQTDisplay::DisplayCreated, addDisplay);
+	connect(m_preview, &OBSQTDisplay::DisplayResized, displayResize);
+}
+
+#define PREVIEW_EDGE_SIZE	0	// 预览窗口边框间距
+
+void CScreenApp::ResizePreview(uint32_t cx, uint32_t cy)
+{
+	QSize  targetSize = GetPixelSize(this->m_preview);
+	GetScaleAndCenterPos(int(cx), int(cy),
+		targetSize.width() - PREVIEW_EDGE_SIZE * 2,
+		targetSize.height() - PREVIEW_EDGE_SIZE * 2,
+		previewX, previewY, previewScale);
+	previewX += float(PREVIEW_EDGE_SIZE);
+	previewY += float(PREVIEW_EDGE_SIZE);
+}
+
+void CScreenApp::AddSceneItem(obs_scene_t *scene, obs_source_t *source)
+{
+	obs_sceneitem_t * item = nullptr;
+	item = obs_scene_add(scene, source);
+	obs_sceneitem_set_visible(item, true);
+}
+
+#ifdef _WIN32
+#define IS_WIN32 1
+#else
+#define IS_WIN32 0
+#endif
+
+static inline int AttemptToResetVideo(struct obs_video_info *ovi)
+{
+	return obs_reset_video(ovi);
+}
+
+static inline enum obs_scale_type GetScaleType(const char *scaleTypeStr)
+{
+	if (astrcmpi(scaleTypeStr, "bilinear") == 0)
+		return OBS_SCALE_BILINEAR;
+	else if (astrcmpi(scaleTypeStr, "lanczos") == 0)
+		return OBS_SCALE_LANCZOS;
+	else
+		return OBS_SCALE_BICUBIC;
+}
+
+static inline enum video_format GetVideoFormatFromName(const char *name)
+{
+	if (astrcmpi(name, "I420") == 0)
+		return VIDEO_FORMAT_I420;
+	else if (astrcmpi(name, "NV12") == 0)
+		return VIDEO_FORMAT_NV12;
+	else if (astrcmpi(name, "I444") == 0)
+		return VIDEO_FORMAT_I444;
+#if 0 //currently unsupported
+	else if (astrcmpi(name, "YVYU") == 0)
+		return VIDEO_FORMAT_YVYU;
+	else if (astrcmpi(name, "YUY2") == 0)
+		return VIDEO_FORMAT_YUY2;
+	else if (astrcmpi(name, "UYVY") == 0)
+		return VIDEO_FORMAT_UYVY;
+#endif
+	else
+		return VIDEO_FORMAT_RGBA;
+}
+
+const char *CScreenApp::GetRenderModule() const
+{
+	const char *renderer = config_get_string(m_globalConfig, "Video", "Renderer");
+	return (astrcmpi(renderer, "Direct3D 11") == 0) ? DL_D3D11 : DL_OPENGL;
+}
+
+int CScreenApp::ResetVideo()
+{
+	ProfileScope("CScreenApp::ResetVideo");
+
+	QList<QScreen*> screens = QGuiApplication::screens();
+
+	if (!screens.size()) {
+		OBSErrorBox(NULL, "There appears to be no monitors.  Er, this "
+			"technically shouldn't be possible.");
+		return false;
+	}
+
+	QScreen *primaryScreen = QGuiApplication::primaryScreen();
+	uint32_t cx = primaryScreen->size().width();
+	uint32_t cy = primaryScreen->size().height();
+	/* use 1920x1080 for new default base res if main monitor is above
+	* 1920x1080, but don't apply for people from older builds -- only to
+	* new users */
+	if ((cx * cy) > (1920 * 1080)) {
+		cx = 1920; cy = 1080;
+	}
+
+	struct obs_video_info ovi = { 0 };
+
+	// 设定颜色空间...
+	const char *colorFormat = "NV12";
+	const char *colorSpace = "601";
+	const char *colorRange = "Partial";
+	const char *scaleTypeStr = "bicubic";
+
+	// 设定每秒帧率 => 尽量降低CPU使用率...
+	ovi.fps_num = m_nFPS;
+	ovi.fps_den = 1;
+	
+	ovi.graphics_module = App()->GetRenderModule();
+	ovi.base_width = ovi.output_width = cx;
+	ovi.base_height = ovi.output_height = cy;
+	ovi.output_format = GetVideoFormatFromName(colorFormat);
+	ovi.colorspace = astrcmpi(colorSpace, "601") == 0 ?	VIDEO_CS_601 : VIDEO_CS_709;
+	ovi.range = astrcmpi(colorRange, "Full") == 0 ? VIDEO_RANGE_FULL : VIDEO_RANGE_PARTIAL;
+	ovi.adapter = 0;
+	ovi.gpu_conversion = true;
+	ovi.screen_mode = true;
+	ovi.scale_type = GetScaleType(scaleTypeStr);
+
+	int ret = AttemptToResetVideo(&ovi);
+
+	if (IS_WIN32 && ret != OBS_VIDEO_SUCCESS) {
+		if (ret == OBS_VIDEO_CURRENTLY_ACTIVE) {
+			blog(LOG_WARNING, "Tried to reset when already active");
+			return ret;
+		}
+		/* Try OpenGL if DirectX fails on windows */
+		if (astrcmpi(ovi.graphics_module, DL_OPENGL) != 0) {
+			blog(LOG_WARNING, "Failed to initialize obs video (%d) "
+				"with graphics_module='%s', retrying "
+				"with graphics_module='%s'",
+				ret, ovi.graphics_module,
+				DL_OPENGL);
+			ovi.graphics_module = DL_OPENGL;
+			ret = AttemptToResetVideo(&ovi);
+		}
+	}
+	if (ret == OBS_VIDEO_SUCCESS) {
+		video_t *video = obs_get_video();
+		uint32_t first_encoded = video_output_get_total_frames(video);
+		uint32_t first_skipped = video_output_get_skipped_frames(video);
+		uint32_t first_rendered = obs_get_total_frames();
+		uint32_t first_lagged = obs_get_lagged_frames();
+	}
+	return ret;
+}
+
+void CScreenApp::ClearSceneData()
+{
+	if (this->m_preview != nullptr) {
+		obs_display_remove_draw_callback(m_preview->GetDisplay(), CScreenApp::RenderMain, this);
+		delete this->m_preview; this->m_preview = nullptr;
+	}
+
+	obs_set_output_source(0, nullptr);
+	
+	auto cb = [](void *unused, obs_source_t *source) {
+		obs_source_remove(source);
+		UNUSED_PARAMETER(unused);
+		return true;
+	};
+
+	// remove 只是设置标志，并没有删除...
+	obs_enum_sources(cb, nullptr);
+
+	obs_source_release(m_obsSource);
+	obs_scene_release(m_obsScene);
+	m_obsSource = nullptr;
+	m_obsScene = nullptr;
+
+	blog(LOG_INFO, "All scene data cleared");
+	blog(LOG_INFO, "------------------------------------------------");
 }
 
 bool CScreenApp::InitLocale()
@@ -653,6 +1079,8 @@ bool CScreenApp::InitLocale()
 		OBSErrorBox(NULL, "Failed to create locale from file '%s'", defaultLangPath.c_str());
 		return false;
 	}
+	// 保存本地化 => zh-CN环境...
+	m_strLocale = DEFAULT_LANG;
 	return true;
 }
 
@@ -697,22 +1125,12 @@ bool CScreenApp::InitGlobalConfigDefaults()
 	config_set_default_string(m_globalConfig, "General", "Language", DEFAULT_LANG);
 	config_set_default_uint(m_globalConfig, "General", "EnableAutoUpdates", true);
 	config_set_default_uint(m_globalConfig, "General", "MaxLogs", 10);
+
+#if _WIN32
+	config_set_default_string(m_globalConfig, "Video", "Renderer", "Direct3D 11");
+#else
+	config_set_default_string(m_globalConfig, "Video", "Renderer", "OpenGL");
+#endif
+
 	return true;
-}
-
-// 创建并初始化登录窗口...
-void CScreenApp::doLoginInit()
-{
-	// 创建小程序二维码登录窗口...
-	m_LoginMini = new CLoginMini();
-	m_LoginMini->show();
-	// 建立登录窗口与应用对象的信号槽关联函数...
-	connect(m_LoginMini, SIGNAL(doTriggerMiniSuccess()), this, SLOT(onTriggerMiniSuccess()));
-	// 关联网络信号槽反馈结果事件...
-	//connect(&m_objNetManager, SIGNAL(finished(QNetworkReply *)), this, SLOT(onReplyFinished(QNetworkReply *)));
-}
-
-// 处理小程序登录成功之后的信号槽事件...
-void CScreenApp::onTriggerMiniSuccess()
-{
 }

@@ -10,9 +10,6 @@
 #include <QTimer>
 #include <time.h>
 
-#define STARTUP_SEPARATOR   "==== Startup complete ==============================================="
-#define SHUTDOWN_SEPARATOR 	"==== Shutting down =================================================="
-
 #define UPDATE_CHECK_INTERVAL (60*60*24*4) /* 4 days */
 
 void CLoginMini::TimedCheckForUpdates()
@@ -48,7 +45,7 @@ void CLoginMini::CheckForUpdates(bool manualUpdate)
 }
 
 CLoginMini::CLoginMini(QWidget *parent)
-  : QDialog(parent)
+  : QWidget(parent)
   , ui(new Ui::LoginMini)
 {
 	ui->setupUi(this);
@@ -73,12 +70,13 @@ void CLoginMini::closeEvent(QCloseEvent *event)
 	QWidget::closeEvent(event);
 	if (!event->isAccepted())
 		return;
-	// 打印关闭日志...
-	blog(LOG_INFO, SHUTDOWN_SEPARATOR);
 	// 等待自动检查升级线程的退出...
 	//if (updateCheckThread != NULL) {
 	//	updateCheckThread->wait();
 	//}
+	
+	App()->ClearSceneData();
+
 	// 调用退出事件通知...
 	//App()->doLogoutEvent();
 	// 调用关闭退出接口...
@@ -118,7 +116,6 @@ void CLoginMini::paintEvent(QPaintEvent *event)
 
 void CLoginMini::initWindow()
 {
-	blog(LOG_INFO, STARTUP_SEPARATOR);
 	// FramelessWindowHint属性设置窗口去除边框;
 	// WindowMinimizeButtonHint 属性设置在窗口最小化时，点击任务栏窗口可以显示出原窗口;
 	//Qt::WindowFlags flag = this->windowFlags();

@@ -54,7 +54,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PreprocessorDefinitions>UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;DL_OPENGL="libobs-opengl.dll";DL_D3D9="";DL_D3D11="libobs-d3d11.dll";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;.\GeneratedFiles;..\Student\json;..\Student\common;..\Student\obs-frontend-api;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -73,7 +73,7 @@
       <OutputFile>.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</OutputFile>
       <ExecutionDescription>Moc'ing %(Identity)...</ExecutionDescription>
       <IncludePath>.;.\GeneratedFiles;..\Student\json;..\Student\common;..\Student\obs-frontend-api;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;%(AdditionalIncludeDirectories)</IncludePath>
-      <Define>UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;%(PreprocessorDefinitions)</Define>
+      <Define>UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;DL_OPENGL="libobs-opengl.dll";DL_D3D9="";DL_D3D11="libobs-d3d11.dll";%(PreprocessorDefinitions)</Define>
     </QtMoc>
     <QtUic>
       <ExecutionDescription>Uic'ing %(Identity)...</ExecutionDescription>
@@ -98,7 +98,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PreprocessorDefinitions>UNICODE;WIN32;WIN64;QT_DLL;QT_NO_DEBUG;NDEBUG;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNICODE;WIN32;WIN64;QT_DLL;QT_NO_DEBUG;NDEBUG;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;DL_OPENGL="libobs-opengl.dll";DL_D3D9="";DL_D3D11="libobs-d3d11.dll";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat />
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -115,7 +115,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <OutputFile>.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</OutputFile>
       <ExecutionDescription>Moc'ing %(Identity)...</ExecutionDescription>
       <IncludePath>.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;%(AdditionalIncludeDirectories)</IncludePath>
-      <Define>UNICODE;WIN32;WIN64;QT_DLL;QT_NO_DEBUG;NDEBUG;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;%(PreprocessorDefinitions)</Define>
+      <Define>UNICODE;WIN32;WIN64;QT_DLL;QT_NO_DEBUG;NDEBUG;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;DL_OPENGL="libobs-opengl.dll";DL_D3D9="";DL_D3D11="libobs-d3d11.dll";%(PreprocessorDefinitions)</Define>
     </QtMoc>
     <QtUic>
       <ExecutionDescription>Uic'ing %(Identity)...</ExecutionDescription>
@@ -135,6 +135,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="..\Student\json\json_value.cpp" />
     <ClCompile Include="..\Student\json\json_writer.cpp" />
     <ClCompile Include="platform-windows.cpp" />
+    <ClCompile Include="qt-display.cpp" />
     <ClCompile Include="qt-wrappers.cpp" />
     <ClCompile Include="screen-app.cpp" />
     <ClCompile Include="window-login-mini.cpp" />
@@ -160,9 +161,14 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="..\Student\json\reader.h" />
     <ClInclude Include="..\Student\json\value.h" />
     <ClInclude Include="..\Student\json\writer.h" />
+    <ClInclude Include="display-helpers.hpp" />
     <ClInclude Include="GeneratedFiles\ui_LoginMini.h" />
     <ClInclude Include="HYDefine.h" />
     <ClInclude Include="platform.hpp" />
+    <QtMoc Include="qt-display.hpp">
+      <Define Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;DL_OPENGL=libobs-opengl.dll;DL_D3D9= -DDL_D3D11=libobs-d3d11.dll -D%(PreprocessorDefinitions)  -I. -I.\GeneratedFiles -I.\..\Student\json -I.\..\Student\common -I.\..\Student\obs-frontend-api -IE:\obs-studio\libobs -IE:\obs-studio\vsbuild\config -I.\GeneratedFiles\$(ConfigurationName) -I$(QTDIR)\include -I$(QTDIR)\include\QtCore -I$(QTDIR)\include\QtGui -I$(QTDIR)\include\QtANGLE -I$(QTDIR)\include\QtWidgets</Define>
+      <Define Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_NO_DEBUG;NDEBUG;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;DL_OPENGL=libobs-opengl.dll;DL_D3D9= -DDL_D3D11=libobs-d3d11.dll -D%(PreprocessorDefinitions)  -I.\GeneratedFiles -I. -I$(QTDIR)\include -I.\GeneratedFiles\$(ConfigurationName) -I$(QTDIR)\include\QtCore -I$(QTDIR)\include\QtGui -I$(QTDIR)\include\QtANGLE -I$(QTDIR)\include\QtWidgets</Define>
+    </QtMoc>
     <ClInclude Include="qt-wrappers.hpp" />
     <ClInclude Include="resource.h" />
     <QtMoc Include="window-login-mini.h">
