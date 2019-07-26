@@ -1253,6 +1253,151 @@ bool OBSBasic::InitBasicConfig()
 	return InitBasicConfigDefaults();
 }
 
+/*extern "C"
+{
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libswscale/swscale.h>
+#include <libavutil/imgutils.h>
+};
+
+static inline enum AVPixelFormat obs_to_ffmpeg_video_format(enum video_format format)
+{
+	switch (format) {
+	case VIDEO_FORMAT_NONE: return AV_PIX_FMT_NONE;
+	case VIDEO_FORMAT_I444: return AV_PIX_FMT_YUV444P;
+	case VIDEO_FORMAT_I420: return AV_PIX_FMT_YUV420P;
+	case VIDEO_FORMAT_NV12: return AV_PIX_FMT_NV12;
+	case VIDEO_FORMAT_YVYU: return AV_PIX_FMT_NONE;
+	case VIDEO_FORMAT_YUY2: return AV_PIX_FMT_YUYV422;
+	case VIDEO_FORMAT_UYVY: return AV_PIX_FMT_UYVY422;
+	case VIDEO_FORMAT_RGBA: return AV_PIX_FMT_RGBA;
+	case VIDEO_FORMAT_BGRA: return AV_PIX_FMT_BGRA;
+	case VIDEO_FORMAT_BGRX: return AV_PIX_FMT_BGRA;
+	case VIDEO_FORMAT_Y800: return AV_PIX_FMT_GRAY8;
+	}
+	return AV_PIX_FMT_NONE;
+}
+
+static bool DoProcSaveJpeg(struct video_data * frame)
+{
+	// 获取存盘需要的配置信息 => 路径和文件名...
+	char szSaveFile[100] = { 0 };
+	char szSavePath[300] = { 0 };
+	sprintf(szSaveFile, "obs-teacher/live_%d.jpg", 200002);
+	if (os_get_config_path(szSavePath, sizeof(szSavePath), szSaveFile) <= 0) {
+		blog(LOG_ERROR, "DoProcSaveJpeg: save path error!");
+		return false;
+	}
+	struct obs_video_info ovi = { 0 };
+	if (!obs_get_video_info(&ovi))
+		return false;
+	/////////////////////////////////////////////////////////////////////////
+	// 注意：input->conversion 是需要变换的格式，
+	// 因此，应该从 video->info 当中获取原始数据信息...
+	// 同时，sws_getContext 需要AVPixelFormat而不是video_format格式...
+	/////////////////////////////////////////////////////////////////////////
+	// 设置ffmpeg的日志回调函数...
+	//av_log_set_level(AV_LOG_VERBOSE);
+	//av_log_set_callback(my_av_logoutput);
+	// 统一数据源输入格式，找到压缩器需要的像素格式 => 必须是 AV_PIX_FMT_YUVJ420P 格式...
+	enum AVPixelFormat nDestFormat = AV_PIX_FMT_YUVJ420P; //AV_PIX_FMT_YUV420P
+	enum AVPixelFormat nSrcFormat = obs_to_ffmpeg_video_format(ovi.output_format);
+	int nSrcWidth = ovi.output_width;
+	int nSrcHeight = ovi.output_height;
+	// 注意：长宽必须是4的整数倍，否则sws_scale崩溃...
+	int nDstWidth = nSrcWidth / 4 * 4;
+	int nDstHeight = nSrcHeight / 4 * 4;
+	// 不管什么格式，都需要进行像素格式的转换...
+	AVFrame * pDestFrame = av_frame_alloc();
+	int nDestBufSize = av_image_get_buffer_size(nDestFormat, nDstWidth, nDstHeight, 1);
+	uint8_t * pDestOutBuf = (uint8_t *)av_malloc(nDestBufSize);
+	av_image_fill_arrays(pDestFrame->data, pDestFrame->linesize, pDestOutBuf, nDestFormat, nDstWidth, nDstHeight, 1);
+
+	//nv12_to_yuv420p((const uint8_t* const*)frame->data, pDestOutBuf, nDstWidth, nDstHeight);
+	// 注意：这里不用libyuv的原因是，使用sws更简单，不用根据不同像素格式调用不同接口...
+	// ffmpeg自带的sws_scale转换也是没有问题的，之前有问题是由于sws_getContext的输入源需要格式AVPixelFormat，写成了video_format，造成的格式错位问题...
+	// 注意：目的像素格式必须为AV_PIX_FMT_YUVJ420P，如果用AV_PIX_FMT_YUV420P格式，生成的JPG有色差，而且图像偏灰色...
+	struct SwsContext * img_convert_ctx = sws_getContext(nSrcWidth, nSrcHeight, nSrcFormat, nDstWidth, nDstHeight, nDestFormat, SWS_BICUBIC, NULL, NULL, NULL);
+	int nReturn = sws_scale(img_convert_ctx, (const uint8_t* const*)frame->data, (const int*)frame->linesize, 0, nSrcHeight, pDestFrame->data, pDestFrame->linesize);
+	sws_freeContext(img_convert_ctx);
+
+	// 设置转换后的数据帧内容...
+	pDestFrame->width = nDstWidth;
+	pDestFrame->height = nDstHeight;
+	pDestFrame->format = nDestFormat;
+
+	// 将转换后的 YUV 数据存盘成 jpg 文件...
+	AVCodecContext * pOutCodecCtx = NULL;
+	bool bRetSave = false;
+	do {
+		// 预先查找jpeg压缩器需要的输入数据格式...
+		AVOutputFormat * avOutputFormat = av_guess_format("mjpeg", NULL, NULL); //av_guess_format(0, lpszJpgName, 0);
+		AVCodec * pOutAVCodec = avcodec_find_encoder(avOutputFormat->video_codec);
+		if (pOutAVCodec == NULL)
+			break;
+		// 创建ffmpeg压缩器的场景对象...
+		pOutCodecCtx = avcodec_alloc_context3(pOutAVCodec);
+		if (pOutCodecCtx == NULL)
+			break;
+		// 准备数据结构需要的参数...
+		pOutCodecCtx->bit_rate = 200000;
+		pOutCodecCtx->width = nDstWidth;
+		pOutCodecCtx->height = nDstHeight;
+		// 注意：没有使用适配方式，适配出来格式有可能不是YUVJ420P，造成压缩器崩溃，因为传递的数据已经固定成YUV420P...
+		// 注意：输入像素是YUV420P格式，压缩器像素是YUVJ420P格式...
+		pOutCodecCtx->pix_fmt = avcodec_find_best_pix_fmt_of_list(pOutAVCodec->pix_fmts, (AVPixelFormat)-1, 1, 0); //AV_PIX_FMT_YUVJ420P;
+		pOutCodecCtx->codec_id = avOutputFormat->video_codec; //AV_CODEC_ID_MJPEG;  
+		pOutCodecCtx->codec_type = AVMEDIA_TYPE_VIDEO;
+		pOutCodecCtx->time_base.num = 1;
+		pOutCodecCtx->time_base.den = 25;
+		// 打开 ffmpeg 压缩器...
+		if (avcodec_open2(pOutCodecCtx, pOutAVCodec, 0) < 0)
+			break;
+		// 设置图像质量，默认是0.5，修改为0.8(图片太大,0.5刚刚好)...
+		pOutCodecCtx->qcompress = 0.5f;
+		// 准备接收缓存，开始压缩jpg数据...
+		int got_pic = 0;
+		int nResult = 0;
+		AVPacket pkt = { 0 };
+		// 采用新的压缩函数...
+		nResult = avcodec_encode_video2(pOutCodecCtx, &pkt, pDestFrame, &got_pic);
+		// 解码失败或没有得到完整图像，继续解析...
+		if (nResult < 0 || !got_pic)
+			break;
+		// 打开jpg文件句柄...
+		FILE * pFile = fopen(szSavePath, "wb");
+		// 打开jpg失败，注意释放资源...
+		if (pFile == NULL) {
+			av_packet_unref(&pkt);
+			break;
+		}
+		// 保存到磁盘，并释放资源...
+		fwrite(pkt.data, 1, pkt.size, pFile);
+		av_packet_unref(&pkt);
+		// 释放文件句柄，返回成功...
+		fclose(pFile); pFile = NULL;
+		bRetSave = true;
+	} while (false);
+	// 清理中间产生的对象...
+	if (pOutCodecCtx != NULL) {
+		avcodec_close(pOutCodecCtx);
+		av_free(pOutCodecCtx);
+	}
+
+	// 释放临时分配的数据空间...
+	av_frame_free(&pDestFrame);
+	av_free(pDestOutBuf);
+
+	return bRetSave;
+}
+
+static void receive_raw_video(void *param, struct video_data *frame)
+{
+	OBSBasic *main = reinterpret_cast<OBSBasic*>(param);
+	DoProcSaveJpeg(frame);
+}*/
+
 void OBSBasic::InitOBSCallbacks()
 {
 	ProfileScope("OBSBasic::InitOBSCallbacks");
@@ -1270,6 +1415,8 @@ void OBSBasic::InitOBSCallbacks()
 			OBSBasic::SourceMonitoring, this);
 	signalHandlers.emplace_back(obs_get_signal_handler(), "source_updated",
 			OBSBasic::SourceUpdated, this);
+
+	//obs_add_raw_video_callback(NULL, receive_raw_video, this);
 }
 
 void OBSBasic::InitPrimitives()
@@ -1998,6 +2145,8 @@ OBSBasic::~OBSBasic()
 
 	obs_display_remove_draw_callback(ui->preview->GetDisplay(),
 			OBSBasic::RenderMain, this);
+
+	//obs_remove_raw_video_callback(receive_raw_video, this);
 
 	obs_enter_graphics();
 	gs_vertexbuffer_destroy(box);
@@ -3167,8 +3316,8 @@ int OBSBasic::ResetVideo()
 
 	ProfileScope("OBSBasic::ResetVideo");
 
-	struct obs_video_info ovi;
-	int ret;
+	struct obs_video_info ovi = { 0 };
+	int ret = -1;
 
 	GetConfigFPS(ovi.fps_num, ovi.fps_den);
 
@@ -3196,6 +3345,7 @@ int OBSBasic::ResetVideo()
 	ovi.adapter        = config_get_uint(App()->GlobalConfig(),
 			"Video", "AdapterIdx");
 	ovi.gpu_conversion = true;
+	ovi.screen_mode    = false;
 	ovi.scale_type     = GetScaleType(basicConfig);
 
 	if (ovi.base_width == 0 || ovi.base_height == 0) {
