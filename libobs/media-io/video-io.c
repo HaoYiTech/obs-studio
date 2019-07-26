@@ -32,8 +32,6 @@
 extern struct obs_core * obs;
 extern profiler_name_store_t *obs_get_profiler_name_store(void);
 
-uint64_t g_time_start = 0;
-
 #define MAX_SNAP_SECONDS 120
 #define MAX_CONVERT_BUFFERS 3
 #define MAX_CACHE_SIZE 16
@@ -117,10 +115,12 @@ static inline bool scale_video_output(struct video_input *input,
 	return success;
 }
 
-#include <libavformat/avformat.h>
+/*#include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
 #include <libavutil/imgutils.h>
+
+//uint64_t g_time_start = 0;
 
 static inline enum AVPixelFormat obs_to_ffmpeg_video_format(enum video_format format)
 {
@@ -138,7 +138,7 @@ static inline enum AVPixelFormat obs_to_ffmpeg_video_format(enum video_format fo
 	case VIDEO_FORMAT_Y800: return AV_PIX_FMT_GRAY8;
 	}
 	return AV_PIX_FMT_NONE;
-}
+}*/
 
 /*void nv12_to_yuv420p(unsigned char* nv12, unsigned char* yuv420p, int width, int height)
 {
@@ -162,7 +162,7 @@ static inline enum AVPixelFormat obs_to_ffmpeg_video_format(enum video_format fo
 	}
 }*/
 
-static bool DoProcSaveJpeg(struct video_output * video, struct video_data * frame)
+/*static bool DoProcSaveJpeg(struct video_output * video, struct video_data * frame)
 {
 	int seconds_value = 0;
 	uint64_t cur_time_ns = os_gettime_ns();
@@ -181,13 +181,6 @@ static bool DoProcSaveJpeg(struct video_output * video, struct video_data * fram
 	// 获取存盘需要的配置信息 => 路径和文件名...
 	char szSaveFile[100] = { 0 };
 	char szSavePath[300] = { 0 };
-	/*struct obs_service * lpService = obs->data.first_service;
-	const char * lpKey = lpService->info.get_key(lpService->context.data);
-	if (lpKey == NULL || strnicmp(lpKey, "live", strlen("live")) != 0) {
-		blog(LOG_ERROR, "DoProcSaveJpeg: service key error!");
-		return false;
-	}
-	sprintf(szSaveFile, "obs-teacher/live_%s.jpg", lpKey + 4);*/
 	sprintf(szSaveFile, "obs-teacher/live_%d.jpg", obs_get_room_id());
 	if (os_get_config_path(szSavePath, sizeof(szSavePath), szSaveFile) <= 0) {
 		blog(LOG_ERROR, "DoProcSaveJpeg: save path error!");
@@ -201,8 +194,8 @@ static bool DoProcSaveJpeg(struct video_output * video, struct video_data * fram
 	// 设置ffmpeg的日志回调函数...
 	//av_log_set_level(AV_LOG_VERBOSE);
 	//av_log_set_callback(my_av_logoutput);
-	// 统一数据源输入格式，找到压缩器需要的像素格式...
-	enum AVPixelFormat nDestFormat = AV_PIX_FMT_YUV420P;
+	// 统一数据源输入格式，找到压缩器需要的像素格式 => 必须是 AV_PIX_FMT_YUVJ420P 格式...
+	enum AVPixelFormat nDestFormat = AV_PIX_FMT_YUVJ420P; //AV_PIX_FMT_YUV420P
 	enum AVPixelFormat nSrcFormat = obs_to_ffmpeg_video_format(video->info.format);
 	int nSrcWidth = video->info.width;
 	int nSrcHeight = video->info.height;
@@ -218,7 +211,7 @@ static bool DoProcSaveJpeg(struct video_output * video, struct video_data * fram
 	//nv12_to_yuv420p((const uint8_t* const*)frame->data, pDestOutBuf, nDstWidth, nDstHeight);
 	// 注意：这里不用libyuv的原因是，使用sws更简单，不用根据不同像素格式调用不同接口...
 	// ffmpeg自带的sws_scale转换也是没有问题的，之前有问题是由于sws_getContext的输入源需要格式AVPixelFormat，写成了video_format，造成的格式错位问题...
-	// 注意：目的像素格式不能为AV_PIX_FMT_YUVJ420P，会提示警告信息，但并不影响格式转换，因此，还是使用不会警告的AV_PIX_FMT_YUV420P格式...
+	// 注意：目的像素格式必须为AV_PIX_FMT_YUVJ420P，如果用AV_PIX_FMT_YUV420P格式，生成的JPG有色差，而且图像偏灰色...
 	struct SwsContext * img_convert_ctx = sws_getContext(nSrcWidth, nSrcHeight, nSrcFormat, nDstWidth, nDstHeight, nDestFormat, SWS_BICUBIC, NULL, NULL, NULL);
 	int nReturn = sws_scale(img_convert_ctx, (const uint8_t* const*)frame->data, frame->linesize, 0, nSrcHeight, pDestFrame->data, pDestFrame->linesize);
 	sws_freeContext(img_convert_ctx);
@@ -291,7 +284,7 @@ static bool DoProcSaveJpeg(struct video_output * video, struct video_data * fram
 	av_free(pDestOutBuf);
 
 	return bRetSave;
-}
+}*/
 
 /*static bool YUVToJpeg(AVCodecContext * pOrigCodecCtx, AVFrame * pOrigFrame, char * lpszJpgName)
 {
@@ -377,8 +370,9 @@ static inline bool video_output_cur_frame(struct video_output *video)
 		struct video_input *input = video->inputs.array+i;
 		struct video_data frame = frame_info->frame;
 
-		// 将原始数据存盘成JPEG文件...
-		DoProcSaveJpeg(video, &frame);
+		// 注意：改成了更规范的obs_add_raw_video_callback模式...
+		// 注意：交给上层去将原始数据存盘成JPEG文件的模式...
+		//DoProcSaveJpeg(video, &frame);
 
 		if (scale_video_output(input, &frame))
 			input->callback(input->param, &frame);
@@ -541,8 +535,6 @@ static size_t video_get_input_idx(const video_t *video,
 static inline bool video_input_init(struct video_input *input,
 		struct video_output *video)
 {
-	// 将时间复位...
-	g_time_start = 0;
 
 	if (input->conversion.width  != video->info.width ||
 	    input->conversion.height != video->info.height ||

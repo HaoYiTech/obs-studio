@@ -374,6 +374,9 @@ static inline void render_export_source(struct vec2 *pos, struct vec2 *bounds, o
 static const char *render_export_texture_name = "render_export_texture";
 static inline void render_export_texture(struct obs_core_video *video, int cur_texture)
 {
+	// 如果是屏幕模式，直接返回...
+	if (video->ovi.screen_mode)
+		return;
 	// 开始记录执行函数的名称...
 	profile_start(render_export_texture_name);
 	// 找到第一个0点数据源和第一个浮动数据源...
@@ -485,7 +488,8 @@ static inline void render_output_texture(struct obs_core_video *video,
 	profile_start(render_output_texture_name);
 
 	// 注意：这里改用了专门特定的输出纹理对象 => 只渲染第一个0点位置的数据源...
-	gs_texture_t *texture = video->export_textures[prev_texture];
+	bool bIsCanUse = video->ovi.screen_mode ? video->textures_rendered[prev_texture] : video->textures_exported[prev_texture];
+	gs_texture_t *texture = video->ovi.screen_mode ? video->render_textures[prev_texture] : video->export_textures[prev_texture];
 	gs_texture_t *target  = video->output_textures[cur_texture];
 	uint32_t     width   = gs_texture_get_width(target);
 	uint32_t     height  = gs_texture_get_height(target);
@@ -502,7 +506,7 @@ static inline void render_output_texture(struct obs_core_video *video,
 	gs_eparam_t    *bres_i  = gs_effect_get_param_by_name(effect, "base_dimension_i");
 	size_t      passes, i;
 
-	if (!video->textures_exported[prev_texture])
+	if (!bIsCanUse)
 		goto end;
 
 	gs_set_render_target(target, NULL);
@@ -834,7 +838,7 @@ static inline void video_sleep(struct obs_core_video *video, bool active,
 
 	vframe_info.timestamp = cur_time;
 	vframe_info.count = count;
-	if (active)
+	if (active && !video->ovi.screen_mode)
 		circlebuf_push_back(&video->vframe_info_buffer, &vframe_info,
 				sizeof(vframe_info));
 }
