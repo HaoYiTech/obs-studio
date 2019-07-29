@@ -427,6 +427,7 @@ public slots:
 	void onTriggerCameraLiveStop(int nDBCameraID);
 	void onTriggerUdpLogout(int tmTag, int idTag, int nDBCameraID);
 	void onTriggerRtpSource(int nDBCameraID, bool bIsCameraOnLine);
+	void onTriggerScreenFinish(int nScreenID, QString strQUser, QString strQFile);
 private slots:
 	void AddSceneItem(OBSSceneItem item);
 	void RemoveSceneItem(OBSSceneItem item);

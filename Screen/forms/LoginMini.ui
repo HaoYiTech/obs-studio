@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>LoginMini</class>
- <widget class="QWidget" name="LoginMini">
+ <widget class="QDialog" name="LoginMini">
   <property name="windowModality">
    <enum>Qt::ApplicationModal</enum>
   </property>
@@ -203,7 +203,7 @@
        <property name="sizeHint" stdset="0">
         <size>
          <width>20</width>
-         <height>40</height>
+         <height>80</height>
         </size>
        </property>
       </spacer>
@@ -312,7 +312,7 @@
        <property name="sizeHint" stdset="0">
         <size>
          <width>20</width>
-         <height>30</height>
+         <height>20</height>
         </size>
        </property>
       </spacer>
@@ -331,11 +331,51 @@
          <height>32</height>
         </size>
        </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
        <property name="focusPolicy">
         <enum>Qt::NoFocus</enum>
        </property>
        <property name="text">
-        <string>MINI.Window.LoginBtnTitle</string>
+        <string>MINI.Window.LoginInTitle</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+       <property name="default">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item alignment="Qt::AlignHCenter|Qt::AlignVCenter">
+      <widget class="QPushButton" name="logoutButton">
+       <property name="minimumSize">
+        <size>
+         <width>220</width>
+         <height>32</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>220</width>
+         <height>32</height>
+        </size>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="text">
+        <string>MINI.Window.LoginOutTitle</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+       <property name="default">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
@@ -347,7 +387,7 @@
        <property name="sizeHint" stdset="0">
         <size>
          <width>20</width>
-         <height>40</height>
+         <height>20</height>
         </size>
        </property>
       </spacer>

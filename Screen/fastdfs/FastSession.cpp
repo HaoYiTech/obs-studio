@@ -1,10 +1,7 @@
 
-#include "obs-app.hpp"
+#include "screen-app.h"
 #include "FastSession.h"
-#include <winsock2.h>
-#include <QFile>
-
-#pragma comment(lib, "WS2_32.Lib")
+#include "WinSock2.h"
 
 void long2buff(int64_t n, char *buff)
 {
@@ -385,7 +382,7 @@ void CStorageSession::onReadyRead()
 	// 关闭上传文件句柄...
 	this->CloseUpFile();
 	// 向网站汇报并保存FDFS文件记录...
-	App()->doWebSaveFDFS((char*)m_strFilePath.c_str(), szFileFDFS, m_llFileSize);
+	//App()->doWebSaveFDFS((char*)m_strFilePath.c_str(), szFileFDFS, m_llFileSize);
 	// 打印上传结果，删除已上传文件...
 	blog(LOG_INFO, "Local = %s, Remote = %s, Size = %I64d\n", m_strFilePath.c_str(), szFileFDFS, m_llFileSize);
 	if (os_unlink(m_strFilePath.c_str()) != 0) {
@@ -512,13 +509,9 @@ void CRemoteSession::onReadyRead()
 		bool bResult = false;
 		switch(lpCmdHeader->m_cmd)
 		{
-		case kCmd_UDP_Logout:        bResult = this->doCmdUdpLogout(lpDataPtr, lpCmdHeader->m_pkg_len); break;
-		case kCmd_Teacher_Login:     bResult = this->doCmdTeacherLogin(lpDataPtr, lpCmdHeader->m_pkg_len); break;
-		case kCmd_Teacher_OnLine:    bResult = this->doCmdTeacherOnLine(lpDataPtr, lpCmdHeader->m_pkg_len); break;
-		case kCmd_Camera_LiveStop:   bResult = this->doCmdTeacherCameraLiveStop(lpDataPtr, lpCmdHeader->m_pkg_len); break;
-		case kCmd_Camera_OnLineList: bResult = this->doCmdTeacherCameraList(lpDataPtr, lpCmdHeader->m_pkg_len); break;
-		case kCmd_Screen_Packet:     bResult = this->doCmdScreenPacket(lpDataPtr, lpCmdHeader); break;
-		case kCmd_Screen_Finish:     bResult = this->doCmdScreenFinish(lpDataPtr, lpCmdHeader); break;
+		case kCmd_Screen_Login:    bResult = this->doCmdScreenLogin(lpDataPtr, lpCmdHeader->m_pkg_len); break;
+		case kCmd_Screen_OnLine:   bResult = this->doCmdScreenOnLine(lpDataPtr, lpCmdHeader->m_pkg_len); break;
+		case kCmd_Screen_Packet:   bResult = this->doCmdScreenPacket(lpDataPtr, lpCmdHeader->m_pkg_len); break;
 		}
 		// 删除已经处理完毕的数据 => Header + pkg_len...
 		m_strRecv.erase(0, lpCmdHeader->m_pkg_len + sizeof(Cmd_Header));
@@ -526,66 +519,8 @@ void CRemoteSession::onReadyRead()
 	}
 }
 
-bool CRemoteSession::doCmdScreenPacket(const char * lpData, Cmd_Header * lpCmdHeader)
-{
-	if (lpData == NULL || lpCmdHeader == NULL)
-		return false;
-	int nScreenID = lpCmdHeader->m_sock;
-	int nDataSize = lpCmdHeader->m_pkg_len;
-	// 如果通过屏幕编号，找到了对应的数据块，直接追加更新...
-	GM_MapScreen::iterator itorItem = m_MapScreen.find(nScreenID);
-	if (itorItem != m_MapScreen.end()) {
-		string & strData = itorItem->second;
-		strData.append(lpData, nDataSize);
-		return true;
-	}
-	// 如果没有找到，增加一条新纪录...
-	string strValue(lpData, nDataSize);
-	m_MapScreen[nScreenID] = strValue;
-	return true;
-}
-
-bool CRemoteSession::doCmdScreenFinish(const char * lpData, Cmd_Header * lpCmdHeader)
-{
-	if (lpData == NULL || lpCmdHeader == NULL)
-		return false;
-	int nDataSize = lpCmdHeader->m_pkg_len;
-	Json::Value value;
-	// 进行Json数据包的内容解析...
-	if (!this->doParseJson(lpData, nDataSize, value)) {
-		blog(LOG_INFO, "CRemoteSession::doParseJson Error!");
-		return false;
-	}
-	// 获取服务器发送过来的数据信息...
-	int nScreenID = atoi(OBSApp::getJsonString(value["screen_id"]).c_str());
-	string strUserName = OBSApp::getJsonString(value["user_name"]);
-	// 在数据集合中查找需要的屏幕编号，没有找到，直接返回...
-	GM_MapScreen::iterator itorItem = m_MapScreen.find(nScreenID);
-	if (itorItem == m_MapScreen.end())
-		return false;
-	// 将数据拷贝出来之后，立即删除对应元素...
-	string strData = itorItem->second;
-	m_MapScreen.erase(nScreenID);
-	// 将获取到的图像数据直接进行存盘操作...
-	char path[512] = { 0 };
-	if (GetConfigPath(path, sizeof(path), "obs-teacher/screen") <= 0)
-		return false;
-	// 构造jpg存盘文件全路径...
-	QString strQFileName = QString("%1/%2_%3.jpg").arg(path).arg(strUserName.c_str()).arg(nScreenID);
-	QFile theFile(strQFileName);
-	// 打开jpg文件句柄 => 失败，直接返回...
-	if (!theFile.open(QIODevice::WriteOnly))
-		return false;
-	// 直接存盘，然后关闭 => QFile的文件名不会乱码...
-	theFile.write(strData.c_str(), strData.size());
-	theFile.close();
-	// 需要通过信号槽，通知界面层，更新学生屏幕分享数据源...
-	emit doTriggerScreenFinish(nScreenID, QString("%1").arg(strUserName.c_str()), strQFileName);
-	return true;
-}
-
-// 处理由服务器返回的学生端指定通道停止推流成功的事件通知...
-bool CRemoteSession::doCmdTeacherCameraLiveStop(const char * lpData, int nSize)
+// 处理中转服务器反馈的学生端登录成功之后的信息...
+bool CRemoteSession::doCmdScreenLogin(const char * lpData, int nSize)
 {
 	Json::Value value;
 	// 进行Json数据包的内容解析...
@@ -593,86 +528,26 @@ bool CRemoteSession::doCmdTeacherCameraLiveStop(const char * lpData, int nSize)
 		blog(LOG_INFO, "CRemoteSession::doParseJson Error!");
 		return false;
 	}
-	// 获取服务器发送过来的数据信息...
-	int nDBCameraID = atoi(OBSApp::getJsonString(value["camera_id"]).c_str());
-	// 通知主窗口界面层，停止指定通道成功完成...
-	emit this->doTriggerCameraLiveStop(nDBCameraID);
+	// 保存TCP套接字编号并设定已经成功登录标志...
+	m_nRemoteTCPSocketFD = atoi(CScreenApp::getJsonString(value["tcp_socket"]).c_str());
+	m_bHasLogin = true;
+	// 向外层通知获取tcp_socket状态成功...
+	emit this->doTriggerConnected();
 	return true;
 }
 
-// 处理由服务器返回的讲师端所在房间的在线摄像头列表...
-bool CRemoteSession::doCmdTeacherCameraList(const char * lpData, int nSize)
-{
-	Json::Value value;
-	// 进行Json数据包的内容解析...
-	if (!this->doParseJson(lpData, nSize, value)) {
-		blog(LOG_INFO, "CRemoteSession::doParseJson Error!");
-		return false;
-	}
-	// 进一步解析摄像头列表数组...
-	int nListNum = atoi(OBSApp::getJsonString(value["list_num"]).c_str());
-	if (nListNum <= 0) {
-		blog(LOG_INFO, "=== No OnLine Camera ===");
-		return false;
-	}
-	// 通知主窗口界面，已获取摄像头在线列表成功...
-	emit this->doTriggerCameraList(value["list_data"]);
-	return true;
-}
-
-bool CRemoteSession::doCmdUdpLogout(const char * lpData, int nSize)
-{
-	Json::Value value;
-	// 进行Json数据包的内容解析...
-	if (!this->doParseJson(lpData, nSize, value)) {
-		blog(LOG_INFO, "CRemoteSession::doParseJson Error!");
-		return false;
-	}
-	// 获取服务器发送过来的数据信息...
-	int tmTag = atoi(OBSApp::getJsonString(value["tm_tag"]).c_str());
-	int idTag = atoi(OBSApp::getJsonString(value["id_tag"]).c_str());
-	int nDBCameraID = atoi(OBSApp::getJsonString(value["camera_id"]).c_str());
-	// 通知主窗口界面层，UDP终端发生退出事件...
-	emit this->doTriggerUdpLogout(tmTag, idTag, nDBCameraID);
-	return true;
-}
-
-// 注意：kCmd_Teacher_Login和kCmd_Camera_LiveStart，都会回馈这个命令...
-bool CRemoteSession::doCmdTeacherLogin(const char * lpData, int nSize)
-{
-	Json::Value value;
-	// 进行Json数据包的内容解析...
-	if (!this->doParseJson(lpData, nSize, value)) {
-		blog(LOG_INFO, "CRemoteSession::doParseJson Error!");
-		return false;
-	}
-	// 获取远程连接在服务器端的TCP套接字...
-	//int nSceneItemID = atoi(OBSApp::getJsonString(value["sitem_id"]).c_str());
-	int nTCPSocketFD = atoi(OBSApp::getJsonString(value["tcp_socket"]).c_str());
-	int nDBCameraID = atoi(OBSApp::getJsonString(value["camera_id"]).c_str());
-	bool bIsCameraOnLine = atoi(OBSApp::getJsonString(value["udp_camera"]).c_str());
-	// 将获取的TCP套接字更新到系统变量当中 => 在创建UDP连接时会用到...
-	if (App()->GetRtpTCPSockFD() != nTCPSocketFD) {
-		App()->SetRtpTCPSockFD(nTCPSocketFD);
-	}
-	// 打印命令反馈详情信息 => 只有摄像头通道编号大于0时，才需要反馈给主界面进行拉流或断流操作...
-	blog(LOG_INFO, "[RemoteSession] doCmdTeacherLogin => tcp_socket: %d, CameraID: %d, OnLine: %d", nTCPSocketFD, nDBCameraID, bIsCameraOnLine);
-	// 根据摄像头在线状态，进行rtp_source资源拉流线程的创建或删除...
-	if ( nDBCameraID > 0 ) {
-		emit this->doTriggerRtpSource(nDBCameraID, bIsCameraOnLine);
-	}
-	return true;
-}
-
-bool CRemoteSession::doCmdTeacherOnLine(const char * lpData, int nSize)
+// 处理中转服务器反馈的在线信息 => 不用反馈数据给中转服务器...
+bool CRemoteSession::doCmdScreenOnLine(const char * lpData, int nSize)
 {
 	return true;
 }
 
 void CRemoteSession::onDisConnected()
 {
+	m_bHasLogin = false;
 	m_bCanReBuild = true;
 	m_bIsConnected = false;
+	emit this->doTriggerConnected();
 	blog(LOG_INFO, "[RemoteSession] - onDisConnected");
 }
 
@@ -685,93 +560,70 @@ void CRemoteSession::onError(QAbstractSocket::SocketError nError)
 	m_nErrorCode = nError;
 	m_bCanReBuild = true;
 	m_bIsConnected = false;
+	m_bHasLogin = false;
+	emit this->doTriggerConnected();
 	blog(LOG_INFO, "[RemoteSession] - onError: %d", nError);
 }
 
-// 通过中转服务器向学生端发送停止通道推流工作...
-bool CRemoteSession::doSendCameraLiveStopCmd(int nDBCameraID)
+bool CRemoteSession::doSendScreenSnap(const char * lpData, int nSize)
 {
-	// 没有处于链接状态，直接返回...
-	if (!m_bIsConnected)
+	// 没有登录成功，或者输入参数无效，直接返回...
+	if (!m_bHasLogin || lpData == NULL || nSize <= 0)
 		return false;
-	// 组合命令需要的JSON数据包 => 通道编号|场景资源编号...
-	string strJson;	Json::Value root;
-	char szDataBuf[32] = { 0 };
-	sprintf(szDataBuf, "%d", nDBCameraID);
-	root["camera_id"] = szDataBuf;
-	//sprintf(szDataBuf, "%d", nSceneItemID);
-	//root["sitem_id"] = szDataBuf;
-	strJson = root.toStyledString();
-	// 打印json数据包，测试使用...
-	//blog(LOG_INFO, "Json => %d, %s", strJson.size(), strJson.c_str());
-	// 调用统一的接口进行命令数据的发送操作...
-	return this->doSendCommonCmd(kCmd_Camera_LiveStop, strJson.c_str(), strJson.size());
+	// 如果截图缓存还没有发送完毕，直接返回...
+	if (m_strSnapJpg.size() > 0)
+		return false;
+	// 将新的缓存更新到截图缓存当中...
+	m_strSnapJpg.assign(lpData, nSize);
+	// 必须通过信号槽的形式投递...
+	QMetaObject::invokeMethod(this, "DeferredSend", Qt::QueuedConnection);
+	return true;
 }
 
-// 通过中转服务器向学生端发送开启通道推流工作...
-bool CRemoteSession::doSendCameraLiveStartCmd(int nDBCameraID)
+void CRemoteSession::DeferredSend()
 {
-	// 没有处于链接状态，直接返回...
-	if (!m_bIsConnected)
-		return false;
-	// 组合命令需要的JSON数据包 => 通道编号|场景资源编号...
-	string strJson;	Json::Value root;
-	char szDataBuf[32] = { 0 };
-	sprintf(szDataBuf, "%d", nDBCameraID);
-	root["camera_id"] = szDataBuf;
-	//sprintf(szDataBuf, "%d", nSceneItemID);
-	//root["sitem_id"] = szDataBuf;
-	strJson = root.toStyledString();
-	// 调用统一的接口进行命令数据的发送操作...
-	return this->doSendCommonCmd(kCmd_Camera_LiveStart, strJson.c_str(), strJson.size());
+	this->doSendOnePacket();
 }
 
-bool CRemoteSession::doSendCameraPTZCmd(int nDBCameraID, int nCmdID, int nSpeedVal)
+bool CRemoteSession::doSendOnePacket()
 {
-	// 没有处于链接状态，直接返回...
-	if (!m_bIsConnected)
+	if (m_strSnapJpg.size() <= 0)
 		return false;
-	// 组合命令需要的JSON数据包 => 通道编号|场景资源编号...
-	string strJson;	Json::Value root;
-	char szDataBuf[32] = { 0 };
-	sprintf(szDataBuf, "%d", nDBCameraID);
-	root["camera_id"] = szDataBuf;
-	sprintf(szDataBuf, "%d", nCmdID);
-	root["cmd_id"] = szDataBuf;
-	sprintf(szDataBuf, "%d", nSpeedVal);
-	root["speed_val"] = szDataBuf;
-	strJson = root.toStyledString();
-	// 调用统一的接口进行命令数据的发送操作...
-	return this->doSendCommonCmd(kCmd_Camera_PTZCommand, strJson.c_str(), strJson.size());
+	ASSERT(m_strSnapJpg.size() > 0);
+	int nBufSize = m_strSnapJpg.size();
+	const char * lpData = m_strSnapJpg.c_str();
+	int nDataSize = (nBufSize <= kPackSize) ? nBufSize : kPackSize;
+	return this->doSendCommonCmd(kCmd_Screen_Packet, lpData, nDataSize);
 }
 
-bool CRemoteSession::doSendCameraPusherIDCmd(int nDBCameraID)
+bool CRemoteSession::doCmdScreenPacket(const char * lpData, int nSize)
 {
-	// 没有处于链接状态，直接返回...
-	if (!m_bIsConnected)
+	Json::Value value;
+	// 进行Json数据包的内容解析...
+	if (!this->doParseJson(lpData, nSize, value)) {
+		blog(LOG_INFO, "CRemoteSession::doParseJson Error!");
 		return false;
-	// 组合命令需要的JSON数据包 => 通道编号|场景资源编号...
-	string strJson;	Json::Value root;
-	char szDataBuf[32] = { 0 };
-	sprintf(szDataBuf, "%d", nDBCameraID);
-	root["camera_id"] = szDataBuf;
-	strJson = root.toStyledString();
-	// 调用统一的接口进行命令数据的发送操作...
-	return this->doSendCommonCmd(kCmd_Camera_PusherID, strJson.c_str(), strJson.size());
-}
-
-// 获取讲师端所在房间的所有在线摄像头列表...
-bool CRemoteSession::doSendCameraOnLineListCmd()
-{
-	// 没有处于链接状态，直接返回...
-	if (!m_bIsConnected)
+	}
+	// 解析服务器已经收到的数据包大小...
+	int nPackSize = atoi(CScreenApp::getJsonString(value["pack_size"]).c_str());
+	// 小于或等于0，说明讲师端不在线 => 清空缓存，等待下次投递...
+	if (nPackSize <= 0) {
+		m_strSnapJpg.clear();
 		return false;
-	ASSERT(m_bIsConnected);
-	// 调用统一的接口进行命令数据的发送操作...
-	return this->doSendCommonCmd(kCmd_Camera_OnLineList);
+	}
+	// 服务器已经正确接收到了有效数据...
+	int nBufSize = m_strSnapJpg.size();
+	int nEarseSize = ((nBufSize >= nPackSize) ? nPackSize : nBufSize);
+	m_strSnapJpg.erase(0, nEarseSize);
+	// 如果屏幕缓存为空，发送结束包...
+	if (m_strSnapJpg.size() <= 0) {
+		return this->doSendCommonCmd(kCmd_Screen_Finish);
+	}
+	// 继续调用接口发送一个数据包...
+	return this->doSendOnePacket();
 }
-
-// 每隔30秒发送在线命令包...
+//
+// 每隔30秒发送获取在线通道列表命令...
 bool CRemoteSession::doSendOnLineCmd()
 {
 	// 没有处于链接状态，直接返回...
@@ -779,30 +631,25 @@ bool CRemoteSession::doSendOnLineCmd()
 		return false;
 	ASSERT(m_bIsConnected);
 	// 调用统一的接口进行命令数据的发送操作...
-	return this->doSendCommonCmd(kCmd_Teacher_OnLine);
+	return this->doSendCommonCmd(kCmd_Screen_OnLine);
 }
-
-// 链接成功之后，发送登录命令...
+//
+// 链接成功之后，发送登录命令... 
 bool CRemoteSession::SendLoginCmd()
 {
 	// 没有处于链接状态，直接返回...
 	if (!m_bIsConnected)
 		return false;
-	// 组合Login命令需要的JSON数据包...
-	char szDataBuf[32] = { 0 };
+	// 组合Login命令需要的JSON数据包 => 用采集端的MAC地址作为唯一标识...
 	string strJson;	Json::Value root;
-	// 填充流量编号|mac地址|ip地址|房间编号|机器名称...
-	sprintf(szDataBuf, "%d", App()->GetDBFlowID());
-	root["flow_id"] = szDataBuf;
-	root["mac_addr"] = App()->GetLocalMacAddr();
-	root["ip_addr"] = App()->GetLocalIPAddr();
 	root["room_id"] = App()->GetRoomIDStr();
-	root["pc_name"] = OBSApp::GetServerDNSName();
+	root["user_name"] = App()->GetUserNameStr();
 	strJson = root.toStyledString();
+	ASSERT(strJson.size() > 0);
 	// 调用统一的接口进行命令数据的发送操作...
-	return this->doSendCommonCmd(kCmd_Teacher_Login, strJson.c_str(), strJson.size());
+	return this->doSendCommonCmd(kCmd_Screen_Login, strJson.c_str(), strJson.size());
 }
-
+//
 // 通用的命令发送接口...
 bool CRemoteSession::doSendCommonCmd(int nCmdID, const char * lpJsonPtr/* = NULL*/, int nJsonSize/* = 0*/)
 {
@@ -826,168 +673,6 @@ bool CRemoteSession::doSendCommonCmd(int nCmdID, const char * lpJsonPtr/* = NULL
 
 // 统一的发送接口...
 bool CRemoteSession::SendData(const char * lpDataPtr, int nDataSize)
-{
-	int nReturn = m_TCPSocket->write(lpDataPtr, nDataSize);
-	return ((nReturn > 0) ? true : false);
-}
-
-CCenterSession::CCenterSession()
-{
-	m_nCenterTcpSocketFD = -1;
-	m_uCenterTcpTimeID = 0;
-}
-
-CCenterSession::~CCenterSession()
-{
-	blog(LOG_INFO, "[~CCenterSession] - Exit");
-}
-
-void CCenterSession::onConnected()
-{
-	// 设置链接成功标志...
-	m_bIsConnected = true;
-	// 链接成功，立即发送登录命令 => 返回tcp_socket...
-	this->doSendCommonCmd(kCmd_Teacher_Login);
-}
-
-void CCenterSession::onReadyRead()
-{
-	// 从网络层读取所有的缓冲区，并将缓冲区连接起来...
-	QByteArray theBuffer = m_TCPSocket->readAll();
-	m_strRecv.append(theBuffer.toStdString());
-	// 这里网络数据会发生粘滞现象，因此，需要循环执行...
-	while (m_strRecv.size() > 0) {
-		// 得到的数据长度不够，直接返回，等待新数据...
-		int nCmdLength = sizeof(Cmd_Header);
-		if (m_strRecv.size() < nCmdLength)
-			return;
-		ASSERT(m_strRecv.size() >= nCmdLength);
-		Cmd_Header * lpCmdHeader = (Cmd_Header*)m_strRecv.c_str();
-		const char * lpDataPtr = m_strRecv.c_str() + sizeof(Cmd_Header);
-		int nDataSize = m_strRecv.size() - sizeof(Cmd_Header);
-		// 已获取的数据长度不够，直接返回，等待新数据...
-		if (nDataSize < lpCmdHeader->m_pkg_len)
-			return;
-		ASSERT(nDataSize >= lpCmdHeader->m_pkg_len);
-		// 打印远程控制会话对象接收到的TCP网络命令信息...
-		blog(LOG_INFO, "[CenterSession] Command-Recv: %s", get_command_name(lpCmdHeader->m_cmd));
-		// 开始处理中转服务器发来的命令...
-		bool bResult = false;
-		switch (lpCmdHeader->m_cmd)
-		{
-		case kCmd_Teacher_Login:     bResult = this->doCmdTeacherLogin(lpDataPtr, lpCmdHeader->m_pkg_len); break;
-		case kCmd_Teacher_OnLine:    bResult = this->doCmdTeacherOnLine(lpDataPtr, lpCmdHeader->m_pkg_len); break;
-		case kCmd_PHP_Bind_Mini:     bResult = this->doCmdPHPBindMini(lpDataPtr, lpCmdHeader->m_pkg_len); break;
-		}
-		// 删除已经处理完毕的数据 => Header + pkg_len...
-		m_strRecv.erase(0, lpCmdHeader->m_pkg_len + sizeof(Cmd_Header));
-		// 如果还有数据，则继续解析命令...
-	}
-}
-
-bool CCenterSession::doCmdPHPBindMini(const char * lpData, int nSize)
-{
-	Json::Value value;
-	// 进行Json数据包的内容解析...
-	if (!this->doParseJson(lpData, nSize, value)) {
-		blog(LOG_INFO, "CCenterSession::doParseJson Error!");
-		return false;
-	}
-	// 获取绑定命令的子命令 => 1(Scan),2(Save),3(Cancel)
-	int nUserID = atoi(OBSApp::getJsonString(value["user_id"]).c_str());
-	int nRoomID = atoi(OBSApp::getJsonString(value["room_id"]).c_str());
-	int nBindCmd = atoi(OBSApp::getJsonString(value["bind_cmd"]).c_str());
-	blog(LOG_INFO, "[CenterSession] doCmdPHPBindMini => user_id: %d, bind_cmd: %d, room_id: %d", nUserID, nBindCmd, nRoomID);
-	// 向外层通知小程序通过PHP转发反馈的扫描绑定登录命令...
-	emit this->doTriggerBindMini(nUserID, nBindCmd, nRoomID);
-	return true;
-}
-
-bool CCenterSession::doCmdTeacherLogin(const char * lpData, int nSize)
-{
-	Json::Value value;
-	// 进行Json数据包的内容解析...
-	if (!this->doParseJson(lpData, nSize, value)) {
-		blog(LOG_INFO, "CCenterSession::doParseJson Error!");
-		return false;
-	}
-	// 获取远程连接在服务器端的TCP套接字，并打印出来...
-	m_nCenterTcpSocketFD = atoi(OBSApp::getJsonString(value["tcp_socket"]).c_str());
-	m_uCenterTcpTimeID = (uint32_t)atoi(OBSApp::getJsonString(value["tcp_time"]).c_str());
-	blog(LOG_INFO, "[CenterSession] doCmdTeacherLogin => tcp_socket: %d, tcp_time: %lu", m_nCenterTcpSocketFD, m_uCenterTcpTimeID);
-	// 向外层通知获取tcp_socket状态成功...
-	emit this->doTriggerTcpConnect();
-	return true;
-}
-
-bool CCenterSession::doCmdTeacherOnLine(const char * lpData, int nSize)
-{
-	return true;
-}
-
-bool CCenterSession::doParseJson(const char * lpData, int nSize, Json::Value & outValue)
-{
-	if (nSize <= 0 || lpData == NULL)
-		return false;
-	string strUTF8Data;
-	Json::Reader reader;
-	strUTF8Data.assign(lpData, nSize);
-	return reader.parse(strUTF8Data, outValue);
-}
-
-void CCenterSession::onDisConnected()
-{
-	m_bIsConnected = false;
-	emit this->doTriggerTcpConnect();
-	blog(LOG_INFO, "[CCenterSession] - onDisConnected");
-}
-
-void CCenterSession::onBytesWritten(qint64 nBytes)
-{
-}
-
-void CCenterSession::onError(QAbstractSocket::SocketError nError)
-{
-	m_nErrorCode = nError;
-	m_bIsConnected = false;
-	emit this->doTriggerTcpConnect();
-	blog(LOG_INFO, "[CCenterSession] - onError: %d", nError);
-}
-
-// 每隔30秒发送在线命令包...
-bool CCenterSession::doSendOnLineCmd()
-{
-	// 没有处于链接状态，直接返回...
-	if (!m_bIsConnected)
-		return false;
-	ASSERT(m_bIsConnected);
-	// 调用统一的接口进行命令数据的发送操作...
-	return this->doSendCommonCmd(kCmd_Teacher_OnLine);
-}
-
-// 通用的命令发送接口...
-bool CCenterSession::doSendCommonCmd(int nCmdID, const char * lpJsonPtr/* = NULL*/, int nJsonSize/* = 0*/)
-{
-	// 打印远程控制会话对象发送的TCP网络命令信息...
-	blog(LOG_INFO, "[CenterSession] Command-Send: %s", get_command_name(nCmdID));
-	// 组合命令包头 => 数据长度 | 终端类型 | 命令编号
-	string     strBuffer;
-	Cmd_Header theHeader = { 0 };
-	theHeader.m_pkg_len = ((lpJsonPtr != NULL) ? nJsonSize : 0);
-	theHeader.m_type = App()->GetClientType();
-	theHeader.m_cmd = nCmdID;
-	// 追加命令包头和命令数据包内容...
-	strBuffer.append((char*)&theHeader, sizeof(theHeader));
-	// 如果传入的数据内容有效，才进行数据的填充...
-	if (lpJsonPtr != NULL && nJsonSize > 0) {
-		strBuffer.append(lpJsonPtr, nJsonSize);
-	}
-	// 调用统一的发送接口...
-	return this->SendData(strBuffer.c_str(), strBuffer.size());
-}
-
-// 统一的发送接口...
-bool CCenterSession::SendData(const char * lpDataPtr, int nDataSize)
 {
 	int nReturn = m_TCPSocket->write(lpDataPtr, nDataSize);
 	return ((nReturn > 0) ? true : false);

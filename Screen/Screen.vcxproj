@@ -55,7 +55,7 @@
     <ClCompile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <PreprocessorDefinitions>UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;DL_OPENGL="libobs-opengl.dll";DL_D3D9="";DL_D3D11="libobs-d3d11.dll";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>.;.\GeneratedFiles;..\Student\json;..\Student\common;..\Student\obs-frontend-api;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;fastdfs;.\GeneratedFiles;..\Student\json;..\Student\common;..\Student\obs-frontend-api;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -67,13 +67,13 @@
       <OutputFile>$(OutDir)\$(ProjectName).exe</OutputFile>
       <AdditionalLibraryDirectories>$(QTDIR)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Ws2_32.lib;qtmaind.lib;Qt5Cored.lib;Qt5Guid.lib;Qt5Widgetsd.lib;E:\obs-deps\win32\bin\avutil.lib;E:\obs-deps\win32\bin\swscale.lib;E:\obs-deps\win32\bin\avcodec.lib;E:\obs-deps\win32\bin\avformat.lib;E:\obs-deps\win32\bin\swresample.lib;E:\obs-studio\vsbuild\libobs\Debug\obs.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Ws2_32.lib;qtmaind.lib;Qt5Cored.lib;Qt5Guid.lib;Qt5Widgetsd.lib;Qt5Networkd.lib;E:\obs-deps\win32\bin\avutil.lib;E:\obs-deps\win32\bin\swscale.lib;E:\obs-deps\win32\bin\avcodec.lib;E:\obs-deps\win32\bin\avformat.lib;E:\obs-deps\win32\bin\swresample.lib;E:\obs-studio\vsbuild\libobs\Debug\obs.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <QtMoc>
       <OutputFile>.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</OutputFile>
       <ExecutionDescription>Moc'ing %(Identity)...</ExecutionDescription>
-      <IncludePath>.;.\GeneratedFiles;..\Student\json;..\Student\common;..\Student\obs-frontend-api;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;%(AdditionalIncludeDirectories)</IncludePath>
+      <IncludePath>.;fastdfs;.\GeneratedFiles;..\Student\json;..\Student\common;..\Student\obs-frontend-api;E:\obs-deps\win32\include;E:\obs-studio\libobs;E:\obs-studio\vsbuild\config;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets;$(QTDIR)\include\QtNetwork;%(AdditionalIncludeDirectories)</IncludePath>
       <Define>UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;DL_OPENGL="libobs-opengl.dll";DL_D3D9="";DL_D3D11="libobs-d3d11.dll";%(PreprocessorDefinitions)</Define>
     </QtMoc>
     <QtUic>
@@ -136,6 +136,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="..\Student\json\json_reader.cpp" />
     <ClCompile Include="..\Student\json\json_value.cpp" />
     <ClCompile Include="..\Student\json\json_writer.cpp" />
+    <ClCompile Include="fastdfs\FastSession.cpp" />
     <ClCompile Include="platform-windows.cpp" />
     <ClCompile Include="qt-display.cpp" />
     <ClCompile Include="qt-wrappers.cpp" />
@@ -164,6 +165,11 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="..\Student\json\value.h" />
     <ClInclude Include="..\Student\json\writer.h" />
     <ClInclude Include="display-helpers.hpp" />
+    <ClInclude Include="fastdfs\fastdfs.h" />
+    <QtMoc Include="fastdfs\FastSession.h">
+      <Define Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;DL_OPENGL=libobs-opengl.dll;DL_D3D9= -DDL_D3D11=libobs-d3d11.dll -D%(PreprocessorDefinitions)  -I. -I.\fastdfs -I.\GeneratedFiles -I.\..\Student\json -I.\..\Student\common -I.\..\Student\obs-frontend-api -IE:\obs-deps\win32\include -IE:\obs-studio\libobs -IE:\obs-studio\vsbuild\config -I.\GeneratedFiles\$(ConfigurationName) -I$(QTDIR)\include -I$(QTDIR)\include\QtCore -I$(QTDIR)\include\QtGui -I$(QTDIR)\include\QtANGLE -I$(QTDIR)\include\QtWidgets -I$(QTDIR)\include\QtNetwork</Define>
+      <Define Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">UNICODE;WIN32;WIN64;QT_DLL;QT_NO_DEBUG;NDEBUG;QT_CORE_LIB;QT_GUI_LIB;QT_WIDGETS_LIB;DL_OPENGL=libobs-opengl.dll;DL_D3D9= -DDL_D3D11=libobs-d3d11.dll -D%(PreprocessorDefinitions)  -I. -I.\GeneratedFiles -I.\..\Student\json -I.\..\Student\common -I.\..\Student\obs-frontend-api -IE:\obs-studio\libobs -IE:\obs-deps\win32\include -IE:\obs-studio\vsbuild\config -I.\GeneratedFiles\$(ConfigurationName) -I$(QTDIR)\include -I$(QTDIR)\include\QtCore -I$(QTDIR)\include\QtGui -I$(QTDIR)\include\QtANGLE -I$(QTDIR)\include\QtWidgets</Define>
+    </QtMoc>
     <ClInclude Include="GeneratedFiles\ui_LoginMini.h" />
     <ClInclude Include="HYDefine.h" />
     <ClInclude Include="platform.hpp" />

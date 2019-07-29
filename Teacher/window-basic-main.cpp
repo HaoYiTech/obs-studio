@@ -2494,7 +2494,7 @@ void OBSBasic::RemoveSceneItem(OBSSceneItem item)
 	if (m_lpZeroSceneItem == item) {
 		ui->preview->DispBtnPrev(false);
 		ui->preview->DispBtnNext(false);
-		ui->preview->DispBtnFoot(false,0,0);
+		ui->preview->DispBtnFoot(false,0,0,NULL);
 		m_lpZeroSceneItem = NULL;
 	}
 }
@@ -4361,7 +4361,14 @@ void OBSBasic::on_scenes_itemDoubleClicked(QListWidgetItem *witem)
 void OBSBasic::AddSource(const char *id)
 {
 	if (id && *id) {
-		OBSBasicSourceSelect sourceSelect(this, id);
+		bool bIsScreen = false;
+		const char * lpNewID = id;
+		// 这里需要对slide_screen特殊处理...
+		if (strcmp(id, "slide_screen") == 0) {
+			lpNewID = "slideshow";
+			bIsScreen = true;
+		}
+		OBSBasicSourceSelect sourceSelect(this, lpNewID, bIsScreen);
 		sourceSelect.exec();
 		if (sourceSelect.newSource)
 			CreatePropertiesWindow(sourceSelect.newSource);
@@ -4436,6 +4443,8 @@ QMenu *OBSBasic::CreateAddSourcePopupMenu()
 		}
 		foundValues = true;
 	}
+	// 直接新增 学生屏幕分享 菜单 => 使用一个特殊标志 => AddSource()...
+	addSource(popup, "slide_screen", Str("Basic.Student.Screen"));
 
 	// 去掉场景叠加功能，只用数据源的组合功能...
 	//addSource(popup, "scene", Str("Basic.Scene"));
@@ -5390,6 +5399,35 @@ void OBSBasic::on_statsButton_clicked()
 	on_stats_triggered();
 }
 
+// 响应学生屏幕分享存盘变化事件更新通知...
+void OBSBasic::onTriggerScreenFinish(int nScreenID, QString strQUser, QString strQFile)
+{
+	// 不能通过唯一的名称查找，有可能会发生改名字的情况...
+	for (int i = 0; i < ui->sources->count(); i++) {
+		QListWidgetItem * lpListItem = ui->sources->item(i);
+		OBSSceneItem theSceneItem = this->GetSceneItem(lpListItem);
+		obs_source_t * lpFindSource = obs_sceneitem_get_source(theSceneItem);
+		const char * id = obs_source_get_id(lpFindSource);
+		// 如果当前数据源不是幻灯片，继续查找...
+		if (astrcmpi(id, "slideshow") != 0)
+			continue;
+		// 如果数据源不是 学生屏幕分享 对象，继续查找...
+		obs_data_t * lpSettings = obs_source_get_settings(lpFindSource);
+		if (!obs_data_get_bool(lpSettings, "screen_slide")) {
+			obs_data_release(lpSettings);
+			continue;
+		}
+		// 将最新配置更新到设置当中，并激发更新操作...
+		obs_data_set_bool(lpSettings, "screen_change", true);
+		obs_data_set_int(lpSettings, "screen_id", nScreenID);
+		obs_data_set_string(lpSettings, "screen_user", QT_TO_UTF8(strQUser));
+		obs_data_set_string(lpSettings, "screen_file", QT_TO_UTF8(strQFile));
+		obs_source_update(lpFindSource, lpSettings);
+		obs_data_release(lpSettings);
+		break;
+	}
+}
+
 // 响应服务器发送的rtp_source重建事件通知...
 void OBSBasic::onTriggerRtpSource(int nDBCameraID, bool bIsCameraOnLine)
 {
@@ -6283,11 +6321,12 @@ void OBSBasic::doBtnPrevNext(bool bIsPrev)
 	obs_hotkey_trigger_routed_callback(click_hotkey, true);
 	// 重新读取被幻灯片改变后的配置...
 	lpSettings = obs_source_get_settings(lpSource);
+	const char * lpName = obs_data_get_string(lpSettings, "item_name");
 	int nCurItem = obs_data_get_int(lpSettings, "cur_item");
 	int nFileNum = obs_data_get_int(lpSettings, "file_num");
 	obs_data_release(lpSettings);
 	// 将读取到的幻灯片数据，直接更新到预览界面当中...
-	ui->preview->DispBtnFoot(true, nCurItem, nFileNum);
+	ui->preview->DispBtnFoot(true, nCurItem, nFileNum, lpName);
 }
 
 // 所有第二行数据源窗口向右移动一格...
@@ -6414,8 +6453,10 @@ void OBSBasic::doCheckPPTSource(obs_source_t * source)
 	const char * lpSrcID = obs_source_get_id(source);
 	bool bIsSlideShow = ((astrcmpi(lpSrcID, "slideshow") == 0) ? true : false);
 	int nCurItem = 0; int nFileNum = 0;
+	const char * lpName = NULL;
 	if (bIsSlideShow) {
 		obs_data_t * settings = obs_source_get_settings(source);
+		lpName = obs_data_get_string(settings, "item_name");
 		nCurItem = obs_data_get_int(settings, "cur_item");
 		nFileNum = obs_data_get_int(settings, "file_num");
 		obs_data_release(settings);
@@ -6424,7 +6465,7 @@ void OBSBasic::doCheckPPTSource(obs_source_t * source)
 	ui->preview->DispBtnPrev(bIsSlideShow);
 	ui->preview->DispBtnNext(bIsSlideShow);
 	// 页码栏需要当前播放编号和总幻灯片个数...
-	ui->preview->DispBtnFoot(bIsSlideShow, nCurItem, nFileNum);
+	ui->preview->DispBtnFoot(bIsSlideShow, nCurItem, nFileNum, lpName);
 }
 
 // 将当前场景资源设置为第一个显示资源，重新计算显示坐标...

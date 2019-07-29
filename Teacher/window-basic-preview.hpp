@@ -97,7 +97,7 @@ public:
 	void DispBtnLeft(bool bIsShow);
 	void DispBtnPrev(bool bIsShow);
 	void DispBtnNext(bool bIsShow);
-	void DispBtnFoot(bool bIsShow, int nCurItem, int nFileNum);
+	void DispBtnFoot(bool bIsShow, int nCurItem, int nFileNum, const char * lpName);
 	void BindBtnClickEvent();
 
 	virtual void keyPressEvent(QKeyEvent *event) override;

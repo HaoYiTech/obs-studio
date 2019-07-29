@@ -459,6 +459,26 @@ static bool MakeUserDirs()
 		return false;
 	if (!do_mkdir(path))
 		return false;
+	
+	if (GetConfigPath(path, sizeof(path), "obs-teacher/screen") <= 0)
+		return false;
+	// 注意：os_rmdir只能删除空目录...
+	// 先删除学生屏幕分享图片目录下的所有文件...
+	os_glob_t *glob = NULL;
+	char screenPath[512] = { 0 };
+	sprintf(screenPath, "%s/*", path);
+	if (os_glob(screenPath, 0, &glob) == 0) {
+		for (size_t i = 0; i < glob->gl_pathc; i++) {
+			const char *filePath = glob->gl_pathv[i].path;
+			if (glob->gl_pathv[i].directory)
+				continue;
+			os_unlink(filePath);
+		}
+		os_globfree(glob);
+	}
+	// 再重建学生屏幕分享图片目录...
+	if (!do_mkdir(path))
+		return false;
 
 	return true;
 }
@@ -1362,6 +1382,7 @@ void OBSApp::doCheckRemote()
 	this->connect(m_RemoteSession, SIGNAL(doTriggerCameraList(Json::Value&)), lpBasicWnd, SLOT(onTriggerCameraList(Json::Value&)));
 	this->connect(m_RemoteSession, SIGNAL(doTriggerRtpSource(int, bool)), lpBasicWnd, SLOT(onTriggerRtpSource(int, bool)));
 	this->connect(m_RemoteSession, SIGNAL(doTriggerCameraLiveStop(int)), lpBasicWnd, SLOT(onTriggerCameraLiveStop(int)));
+	this->connect(m_RemoteSession, SIGNAL(doTriggerScreenFinish(int, QString, QString)), lpBasicWnd, SLOT(onTriggerScreenFinish(int, QString, QString)), Qt::QueuedConnection);
 }
 
 // 获取0点位置的数据源对象的学生端推流摄像头编号...

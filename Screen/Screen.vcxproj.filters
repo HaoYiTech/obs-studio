@@ -34,6 +34,9 @@
     <Filter Include="Json Files">
       <UniqueIdentifier>{3fca2760-ee5d-4591-ba88-22683566ca13}</UniqueIdentifier>
     </Filter>
+    <Filter Include="FastDFS Files">
+      <UniqueIdentifier>{1c8bdaf8-c958-4405-8d77-23f499ad807b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="screen-app.cpp">
@@ -72,6 +75,9 @@
     <ClCompile Include="qt-display.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="fastdfs\FastSession.cpp">
+      <Filter>FastDFS Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="screen-app.h">
@@ -82,6 +88,9 @@
     </QtMoc>
     <QtMoc Include="qt-display.hpp">
       <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="fastdfs\FastSession.h">
+      <Filter>FastDFS Files</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
@@ -144,6 +153,9 @@
     </ClInclude>
     <ClInclude Include="display-helpers.hpp">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="fastdfs\fastdfs.h">
+      <Filter>FastDFS Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

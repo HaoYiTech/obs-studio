@@ -59,8 +59,8 @@ QPushButton * OBSBasicPreview::CreateBtnFoot()
 		"QPushButton{ background:transparent; border-image:url(:/res/images/%1.png);}").arg(strBtnName);
 	lpObjButton->setStyleSheet(strStyle);
 	lpObjButton->setObjectName(strBtnName);
-	lpObjButton->setMinimumSize(QSize(50, 30));
-	lpObjButton->setMaximumSize(QSize(50, 30));
+	lpObjButton->setMinimumSize(QSize(100, 30));
+	lpObjButton->setMaximumSize(QSize(100, 30));
 	// 进行按钮图片的透明化处理...
 	QPalette myPalette;
 	QPixmap  myPixmap(QString(":/res/images/%1.png").arg(strBtnName));
@@ -139,7 +139,7 @@ void OBSBasicPreview::ResizeBtnPPT(int nPosY, int nPreviewY)
 	m_btnPrev->setGeometry(nPosLeftX, nPosY, 40, 50);
 	m_btnNext->setGeometry(nPosRightX, nPosY, 40, 50);
 	nPosLeftX = targetSize.width() / 2 - 25;
-	m_btnFoot->setGeometry(nPosLeftX, nPreviewY, 50, 30);
+	m_btnFoot->setGeometry(nPosLeftX, nPreviewY, 100, 30);
 }
 
 void OBSBasicPreview::DispBtnRight(bool bIsShow)
@@ -166,11 +166,15 @@ void OBSBasicPreview::DispBtnNext(bool bIsShow)
 	(bIsShow ? m_btnNext->show() : m_btnNext->hide());
 }
 
-void OBSBasicPreview::DispBtnFoot(bool bIsShow, int nCurItem, int nFileNum)
+void OBSBasicPreview::DispBtnFoot(bool bIsShow, int nCurItem, int nFileNum, const char * lpName)
 {
 	if (m_btnFoot == NULL) return;
 	(bIsShow ? m_btnFoot->show() : m_btnFoot->hide());
-	m_btnFoot->setText(QString("%1/%2").arg(nCurItem+1).arg(nFileNum));
+	if (lpName != NULL) {
+		m_btnFoot->setText(QString("%1 %2/%3").arg(lpName).arg(nCurItem + 1).arg(nFileNum));
+	} else {
+		m_btnFoot->setText(QString("%1/%2").arg(nCurItem + 1).arg(nFileNum));
+	}
 }
 
 vec2 OBSBasicPreview::GetMouseEventPos(QMouseEvent *event)

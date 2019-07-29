@@ -65,6 +65,7 @@ define('kClientPHP',          1);
 define('kClientStudent',      2);
 define('kClientTeacher',      3);
 define('kClientUdpServer',    4);
+define('kClientScreen',       5);
 
 // 定义绑定登录子命令...
 define('BIND_SCAN',           1);
@@ -108,6 +109,10 @@ define('kCmd_PHP_GetPlayerList',     22);
 define('kCmd_PHP_Bind_Mini',         23);
 define('kCmd_PHP_GetRoomFlow',       24);
 define('kCmd_Camera_PusherID',       25);
+define('kCmd_Screen_Login',          26);
+define('kCmd_Screen_OnLine',         27);
+define('kCmd_Screen_Packet',         28);
+define('kCmd_Screen_Finish',         29);
 
 //////////////////////////////////////////////////////
 // 定义一组通用的公用函数列表...

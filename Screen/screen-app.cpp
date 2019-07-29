@@ -747,20 +747,20 @@ void CScreenApp::doLoginInit()
 	// 创建小程序二维码登录窗口...
 	m_LoginMini = new CLoginMini();
 	m_LoginMini->show();
-	// 建立登录窗口与应用对象的信号槽关联函数...
-	connect(m_LoginMini, SIGNAL(doTriggerMiniSuccess()), this, SLOT(onTriggerMiniSuccess()));
-	// 关联网络信号槽反馈结果事件...
-	//connect(&m_objNetManager, SIGNAL(finished(QNetworkReply *)), this, SLOT(onReplyFinished(QNetworkReply *)));
-
-	// 模拟登录成功之后的事件通知...
-	emit m_LoginMini->doTriggerMiniSuccess();
+	// 建立登录窗口与应用对象的信号槽关联函数 => 采用异步投递模式...
+	connect(m_LoginMini, SIGNAL(doTriggerMiniSuccess()), this, SLOT(onTriggerMiniSuccess()), Qt::QueuedConnection);
 }
 
 // 处理小程序登录成功之后的信号槽事件...
 void CScreenApp::onTriggerMiniSuccess()
 {
-	if (!this->OBSInit())
-		return;
+	// 只初始化一次OBS...
+	if (!m_bIsObsInit) {
+		this->OBSInit();
+		m_bIsObsInit = true;
+	}
+	// 初始化OBS成功过，显示信息...
+	m_LoginMini->doSuccessOBS();
 }
 
 bool CScreenApp::OBSInit()
@@ -768,10 +768,10 @@ bool CScreenApp::OBSInit()
 	char path[512] = { 0 };
 	// 这个目录必须创建，屏幕捕获插件会用到这个目录...
 	if (GetConfigPath(path, sizeof(path), "obs-screen/plugin_config") <= 0)
-		return false;
+		throw "Failed to create obs-screen/plugin_config directory.";
 	// 初始化obs核心 => 必须输入外部profiler_name_store_t，否则无法正常显示...
 	if (!obs_startup(m_strLocale.c_str(), path, GetProfilerNameStore()))
-		return false;
+		throw "Failed to startup obs core.";
 
 	// 重置底层视频资源...
 	int ret = this->ResetVideo();
@@ -945,8 +945,8 @@ bool CScreenApp::doSaveMemJpg(video_data * frame)
 		// 解码失败或没有得到完整图像，继续解析...
 		if (nResult < 0 || !got_pic)
 			break;
-		// 进行JPG的内存保存 => 后续需要加互斥保护...
-		m_strJPGData.assign((char*)pkt.data, pkt.size);
+		// 进行JPG的网络数据投递...
+		this->doSendScreenSnap(pkt.data, pkt.size);
 		// 进行JPG的存盘操作 => 这是可选的操作...
 		this->doSaveFileJpg(pkt.data, pkt.size);
 		// 释放分配数据块的空间...
@@ -988,6 +988,13 @@ bool CScreenApp::doSaveFileJpg(uint8_t * inData, int nSize)
 	// 释放文件句柄，返回成功...
 	fclose(pFile); pFile = NULL;
 	return true;
+}
+
+bool CScreenApp::doSendScreenSnap(uint8_t * inData, int nSize)
+{
+	if (m_LoginMini == NULL || inData == NULL || nSize <= 0)
+		return false;
+	return m_LoginMini->doSendScreenSnap(inData, nSize);
 }
 
 static void LogFilter(obs_source_t*, obs_source_t *filter, void *v_val)
@@ -1227,10 +1234,14 @@ void CScreenApp::ClearSceneData()
 	// remove 只是设置标志，并没有删除...
 	obs_enum_sources(cb, nullptr);
 
-	obs_source_release(m_obsSource);
-	obs_scene_release(m_obsScene);
-	m_obsSource = nullptr;
-	m_obsScene = nullptr;
+	if (m_obsSource != nullptr) {
+		obs_source_release(m_obsSource);
+		m_obsSource = nullptr;
+	}
+	if (m_obsScene != nullptr) {
+		obs_scene_release(m_obsScene);
+		m_obsScene = nullptr;
+	}
 
 	blog(LOG_INFO, "All scene data cleared");
 	blog(LOG_INFO, "------------------------------------------------");

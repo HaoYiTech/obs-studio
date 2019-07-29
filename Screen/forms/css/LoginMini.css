@@ -112,3 +112,22 @@ QPushButton#loginButton:pressed {
     padding-left:3px;
     padding-top:3px;
 }
+
+QPushButton#logoutButton {
+    color:white;
+    background-color:rgb(255 , 84 , 84);
+    border-radius:5px;
+    font-size:14px;
+}
+
+QPushButton#logoutButton:hover {
+    color:white;
+    background-color:rgb(255 , 102 , 102);
+}
+
+QPushButton#logoutButton:pressed {
+    color:white;
+    background-color:rgb(255 , 153 , 102);
+    padding-left:3px;
+    padding-top:3px;
+}

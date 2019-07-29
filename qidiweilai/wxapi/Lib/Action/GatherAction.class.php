@@ -454,7 +454,7 @@ class GatherAction extends Action
       }
       // 验证云教室是否存在...
       $condition['room_id'] = $nRoomID;
-      $dbRoom = D('room')->where($condition)->field('room_id')->find();
+      $dbRoom = D('room')->where($condition)->field('room_id,room_pass')->find();
       if( !isset($dbRoom['room_id']) ) {
         $arrErr['err_code'] = true;
         $arrErr['err_msg'] = '没有找到指定的云教室号码，请确认后重新输入！';
@@ -462,9 +462,15 @@ class GatherAction extends Action
       }
       // 验证发送的终端类型是否正确...
       $nClientType = intval($arrPost['type_id']);
-      if(($nClientType != kClientStudent) && ($nClientType != kClientTeacher)) {
+      if(($nClientType != kClientStudent) && ($nClientType != kClientTeacher) && ($nClientType != kClientScreen)) {
         $arrErr['err_code'] = true;
-        $arrErr['err_msg'] = '不是合法的终端类型，请确认后重新登录';
+        $arrErr['err_msg'] = '不是合法的终端类型，请确认后重新登录！';
+        break;
+      }
+      // 如果是屏幕终端，需要判断密码是否正确...
+      if(($nClientType == kClientScreen) && ($arrPost['room_pass'] != $dbRoom['room_pass'])) {
+        $arrErr['err_code'] = true;
+        $arrErr['err_msg'] = '房间密码错误，请确认后重新登录！';
         break;
       }
       // 读取系统配置数据库记录...

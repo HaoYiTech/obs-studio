@@ -16,6 +16,7 @@ enum {
 	kClientStudent    = 2,
 	kClientTeacher    = 3,
 	kClientUdpServer  = 4,
+	kClientScreen     = 5,
 };
 
 enum AUTH_STATE
@@ -65,6 +66,10 @@ enum {
 	kCmd_PHP_Bind_Mini        = 23,
 	kCmd_PHP_GetRoomFlow      = 24,
 	kCmd_Camera_PusherID      = 25,
+	kCmd_Screen_Login         = 26,
+	kCmd_Screen_OnLine        = 27,
+	kCmd_Screen_Packet        = 28,
+	kCmd_Screen_Finish        = 29,
 };
 
 // define IPC ISAPI command...

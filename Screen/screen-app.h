@@ -12,6 +12,7 @@
 #include <deque>
 
 #include "json.h"
+#include "HYCommon.h"
 
 using namespace std;
 
@@ -54,8 +55,26 @@ public:
 public slots:
 	void onTriggerMiniSuccess();
 public:
+	void	 SetUserNameStr(const string & strUser) { m_strUserName = strUser; }
+	void	 SetRoomIDStr(const string & strRoom) { m_strRoomID = strRoom; }
+	void	 SetUdpAddr(const string & strAddr) { m_strUdpAddr = strAddr; }
+	void     SetUdpPort(int nPort) { m_nUdpPort = nPort; }
+	void	 SetRemoteAddr(const string & strAddr) { m_strRemoteAddr = strAddr; }
+	void     SetRemotePort(int nPort) { m_nRemotePort = nPort; }
+	void	 SetTrackerAddr(const string & strAddr) { m_strTrackerAddr = strAddr; }
+	void     SetTrackerPort(int nPort) { m_nTrackerPort = nPort; }
+	string & GetUdpAddr() { return m_strUdpAddr; }
+	int		 GetUdpPort() { return m_nUdpPort; }
+	string & GetRemoteAddr() { return m_strRemoteAddr; }
+	int		 GetRemotePort() { return m_nRemotePort; }
+	string & GetTrackerAddr() { return m_strTrackerAddr; }
+	int		 GetTrackerPort() { return m_nTrackerPort; }
 	string & GetWebClass() { return m_strWebClass; }
 	string & GetWebCenter() { return m_strWebCenter; }
+	int      GetClientType() { return kClientScreen; }
+	string & GetRoomIDStr() { return m_strRoomID; }
+	string & GetUserNameStr() { return m_strUserName; }
+	bool     IsDebugMode() { return m_bIsDebugMode; }
 public:
 	const char *GetRenderModule() const;
 	std::string GetVersionString() const;
@@ -79,6 +98,7 @@ private:
 	bool	doSaveMemJpg(video_data * frame);
 	void    ResizePreview(uint32_t cx, uint32_t cy);
 	bool    doSaveFileJpg(uint8_t * inData, int nSize);
+	bool    doSendScreenSnap(uint8_t * inData, int nSize);
 	void    AddSceneItem(obs_scene_t *scene, obs_source_t *source);
 private:
 	std::deque<obs_frontend_translate_ui_cb> translatorHooks;
@@ -93,9 +113,9 @@ private:
 	string          m_strWebCenter;               // 访问中心网站地址...
 	string          m_strWebClass;				  // 访问云教室网站地址...
 	string          m_strLocale;                  // 本地语言 => zh-CN
-	string          m_strJPGData;                 // JPG内存数据区 => 会被刷新...
 	bool            m_bIsDebugMode = false;       // 是否是调试模式 => 挂载到调试服务器...
 	bool            m_bIsSaveFile = false;        // 是否存放JPG文件标志 => 默认False...
+	bool            m_bIsObsInit = false;         // 是否已经初始化完毕OBS标志...
 	int             m_nFPS = 5;                   // 每秒帧率，降低CPU使用率...
 	int             m_snap_second = 5;            // 截图间隔时间(秒)...
 	float           m_qCompress = 0.5f;           // JPG压缩质量...
@@ -103,6 +123,15 @@ private:
 	float           previewScale = 0.0f;          // 预览缩放率...
 	int             previewX = 0, previewY = 0;   // 预览位置...
 	int             previewCX = 0, previewCY = 0; // 预览大小...
+
+	string			m_strTrackerAddr;				// FDFS-Tracker的IP地址...
+	int				m_nTrackerPort = 0;				// FDFS-Tracker的端口地址...
+	string			m_strRemoteAddr;				// 远程中转服务器的IP地址...
+	int				m_nRemotePort = 0;				// 远程中转服务器的端口地址...
+	string			m_strUdpAddr;					// 远程UDP服务器的IP地址...
+	int				m_nUdpPort = 0;					// 远程UDP服务器的端口地址...
+	string          m_strUserName;
+	string          m_strRoomID;
 
 	friend class CLoginMini;
 };

@@ -60,6 +60,7 @@
 
 struct image_file_data {
 	char * path;
+	char * name;
 	int    slide_id;
 	obs_source_t * source;
 };
@@ -160,6 +161,7 @@ static void free_files(struct darray *array)
 
 	for (size_t i = 0; i < files.num; i++) {
 		bfree(files.array[i].path);
+		bfree(files.array[i].name);
 		obs_source_release(files.array[i].source);
 	}
 
@@ -177,6 +179,16 @@ static const char *ss_getname(void *unused)
 {
 	UNUSED_PARAMETER(unused);
 	return obs_module_text("SlideShow");
+}
+
+static const char * get_cur_item_name(struct slideshow *ss)
+{
+	// 总数有效，并且当前编号小于总数，直接返回元素名称...
+	if (ss->files.num > 0 && ss->cur_item < ss->files.num) {
+		return ss->files.array[ss->cur_item].name;
+	}
+	// 其它无效情况，直接返回默认元素名称...
+	return obs_module_text("SlideShow.ItemName");
 }
 
 static int8_t sDigitMask[] =
@@ -261,6 +273,7 @@ static void add_file(struct slideshow *ss, struct darray *array,
 		uint32_t new_cx = obs_source_get_width(new_source);
 		uint32_t new_cy = obs_source_get_height(new_source);
 
+		data.name = bstrdup(obs_module_text("SlideShow.ItemName"));
 		data.path = bstrdup(path);
 		data.source = new_source;
 		data.slide_id = slide_id;
@@ -312,6 +325,78 @@ static void do_transition(void *data, bool to_null)
 				NULL);
 }
 
+static void do_update_size(void *data)
+{
+	struct slideshow *ss = data;
+	pthread_mutex_lock(&ss->mutex);
+	uint32_t cx = 0; uint32_t cy = 0;
+	for (size_t i = 0; i < ss->files.num; i++) {
+		obs_source_t * source = ss->files.array[i].source;
+		uint32_t new_cx = obs_source_get_width(source);
+		uint32_t new_cy = obs_source_get_height(source);
+		if (new_cx > cx) cx = new_cx;
+		if (new_cy > cy) cy = new_cy;
+	}
+	// 保存遍历后的最大尺寸...
+	ss->cx = cx; ss->cy = cy;
+	obs_transition_set_size(ss->transition, cx, cy);
+	pthread_mutex_unlock(&ss->mutex);
+}
+
+static void do_screen_change(void *data, obs_data_t *settings)
+{
+	struct slideshow *ss = data;
+	int nScreenID = (int)obs_data_get_int(settings, "screen_id");
+	const char * lpUser = obs_data_get_string(settings, "screen_user");
+	const char * lpFile = obs_data_get_string(settings, "screen_file");
+
+	obs_data_set_bool(settings, "screen_change", false);
+	
+	obs_source_t * new_source = NULL;
+	pthread_mutex_lock(&ss->mutex);
+	// 用文件路径查找图片对象，注意释放引用计数器...
+	new_source = get_source(&ss->files.da, lpFile);
+	obs_source_release(new_source);
+	pthread_mutex_unlock(&ss->mutex);
+	// 强制更新已经存在的图片数据源...
+	if (new_source != NULL) {
+		obs_data_t * lpImageSettings = obs_source_get_settings(new_source);
+		obs_data_set_string(lpImageSettings, "file", lpFile);
+		obs_data_set_bool(lpImageSettings, "unload", false);
+		obs_source_update(new_source, lpImageSettings);
+		obs_data_release(lpImageSettings);
+		// 寻找最大尺寸更新到幻灯对象当中...
+		do_update_size(data);
+		return;
+	}
+	// 如果当前更新文件没有在文件队列当中，需要新建...
+	struct image_file_data item;
+	new_source = create_source_from_file(lpFile);
+	if (new_source == NULL) return;
+	assert(new_source != NULL);
+	// 新建图像追加到列表末尾...
+	item.name = bstrdup(lpUser);
+	item.path = bstrdup(lpFile);
+	item.source = new_source;
+	item.slide_id = nScreenID;
+	da_push_back(ss->files, &item);
+	// 对读取到的文件列表，进行排序，依据slide_id排序 => 从小到大...
+	qsort(ss->files.array, ss->files.num, sizeof(struct image_file_data), file_slide_compare);
+	// 寻找最大尺寸更新到幻灯对象当中...
+	do_update_size(data);
+	// 只有一个文件，强制显示...
+	if (ss->files.num == 1) {
+		ss->cur_item = 0;
+		do_transition(ss, false);
+	}
+	// 保存当前编号和总数到配置当中 => 方便外层界面使用...
+	obs_data_set_string(settings, "item_name", get_cur_item_name(ss));
+	obs_data_set_int(settings, "cur_item", ss->cur_item);
+	obs_data_set_int(settings, "file_num", ss->files.num);
+	// 进行数据源的上层通知，幻灯片已经完全加载更新完毕...
+	obs_source_updated(ss->source);
+}
+
 static void ss_update(void *data, obs_data_t *settings)
 {
 	DARRAY(struct image_file_data) new_files;
@@ -332,6 +417,14 @@ static void ss_update(void *data, obs_data_t *settings)
 
 	/* ------------------------------------- */
 	/* get settings data */
+
+	// 对学生屏幕分享进行拦截操作...
+	bool bIsScreen = obs_data_get_bool(settings, "screen_slide");
+	bool bIsChanged = obs_data_get_bool(settings, "screen_change");
+	if (bIsChanged && bIsChanged) {
+		do_screen_change(data, settings);
+		return;
+	}
 
 	ppt_file = obs_data_get_string(settings, S_PPT_FILE);
 	if (ss->ppt_file) {
@@ -515,6 +608,7 @@ static void ss_update(void *data, obs_data_t *settings)
 	obs_data_array_release(array);
 
 	// 保存当前编号和总数到配置当中 => 方便外层界面使用...
+	obs_data_set_string(settings, "item_name", get_cur_item_name(ss));
 	obs_data_set_int(settings, "cur_item", ss->cur_item);
 	obs_data_set_int(settings, "file_num", ss->files.num);
 	// 进行数据源的上层通知，幻灯片已经完全加载更新完毕...
@@ -568,6 +662,7 @@ static void ss_next_slide(void *data)
 	// 保存当前编号和总数到配置当中 => 方便外层界面使用...
 	if (ss->source != NULL) {
 		obs_data_t * settings = obs_source_get_settings(ss->source);
+		obs_data_set_string(settings, "item_name", get_cur_item_name(ss));
 		obs_data_set_int(settings, "cur_item", ss->cur_item);
 		obs_data_set_int(settings, "file_num", ss->files.num);
 		obs_data_release(settings);
@@ -600,6 +695,7 @@ static void ss_previous_slide(void *data)
 	// 保存当前编号和总数到配置当中 => 方便外层界面使用...
 	if (ss->source != NULL) {
 		obs_data_t * settings = obs_source_get_settings(ss->source);
+		obs_data_set_string(settings, "item_name", get_cur_item_name(ss));
 		obs_data_set_int(settings, "cur_item", ss->cur_item);
 		obs_data_set_int(settings, "file_num", ss->files.num);
 		obs_data_release(settings);
@@ -826,6 +922,7 @@ static void ss_video_tick(void *data, float seconds)
 	// 保存当前编号和总数到配置当中 => 方便外层界面使用...
 	if (ss->source != NULL) {
 		obs_data_t * settings = obs_source_get_settings(ss->source);
+		obs_data_set_string(settings, "item_name", get_cur_item_name(ss));
 		obs_data_set_int(settings, "cur_item", ss->cur_item);
 		obs_data_set_int(settings, "file_num", ss->files.num);
 		obs_data_release(settings);
@@ -915,6 +1012,7 @@ static void ss_defaults(obs_data_t *settings)
 	obs_data_set_default_string(settings, S_BEHAVIOR, S_BEHAVIOR_ALWAYS_PLAY); //S_BEHAVIOR_PAUSE_UNPAUSE
 	obs_data_set_default_string(settings, S_MODE, S_MODE_MANUAL); //S_MODE_AUTO
 	obs_data_set_default_bool(settings, S_LOOP, true);
+	obs_data_set_default_bool(settings, "screen_slide", false);
 }
 
 //static const char *file_filter =
@@ -936,7 +1034,6 @@ static obs_properties_t *ss_properties(void *data)
 {
 	obs_properties_t *ppts = obs_properties_create();
 	struct slideshow *ss = data;
-	struct dstr path = {0};
 	//struct obs_video_info ovi;
 	obs_property_t *p;
 	//int cx;
@@ -950,21 +1047,29 @@ static obs_properties_t *ss_properties(void *data)
 
 	/* ----------------- */
 
-	// 读取 PPT文件 路径，设定为默认路径...
-	if (ss && ss->ppt_file && *ss->ppt_file) {
-		const char *slash;
-		dstr_copy(&path, ss->ppt_file);
-		dstr_replace(&path, "\\", "/");
-		slash = strrchr(path.array, '/');
-		if (slash) {
-			dstr_resize(&path, slash - path.array + 1);
+	obs_data_t * settings = obs_source_get_settings(ss->source);
+	bool bIsScreenSlide = obs_data_get_bool(settings, "screen_slide");
+	obs_data_release(settings);
+
+	// 如果不是学生屏幕分享，才显示PPT文件名称...
+	if (!bIsScreenSlide) {
+		struct dstr path = { 0 };
+		// 读取 PPT文件 路径，设定为默认路径...
+		if (ss && ss->ppt_file && *ss->ppt_file) {
+			const char *slash;
+			dstr_copy(&path, ss->ppt_file);
+			dstr_replace(&path, "\\", "/");
+			slash = strrchr(path.array, '/');
+			if (slash) {
+				dstr_resize(&path, slash - path.array + 1);
+			}
 		}
+		// 追加 PPT文件 属性配置栏...
+		obs_properties_add_path(ppts, S_PPT_FILE, ss_getname(NULL),
+			OBS_PATH_FILE, file_filter, path.array);
+		// 释放PPT路径...
+		dstr_free(&path);
 	}
-	// 追加 PPT文件 属性配置栏...
-	obs_properties_add_path(ppts, S_PPT_FILE, ss_getname(NULL),
-		OBS_PATH_FILE, file_filter, path.array);
-	// 释放PPT路径...
-	dstr_free(&path);
 
 	// 隐藏 可见性的行为 属性配置栏...
 	/*p = obs_properties_add_list(ppts, S_BEHAVIOR, T_BEHAVIOR,
