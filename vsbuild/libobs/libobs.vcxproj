@@ -168,6 +168,15 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
 setlocal
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy_directory E:/obs-studio/libobs/data E:/obs-studio/vsbuild/screen/Debug/data/libobs
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -DCONFIG=Debug -DTARGET_CONFIGS=ALL -DINPUT=E:/obs-studio/additional_install_files/misc/ -DOUTPUT=E:/obs-studio/vsbuild/rundir/Debug/ -P E:/obs-studio/cmake/copy_helper.cmake
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
@@ -335,6 +344,15 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd
 setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy_directory E:/obs-studio/libobs/data E:/obs-studio/vsbuild/rundir/Release/data/libobs
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy_directory E:/obs-studio/libobs/data E:/obs-studio/vsbuild/screen/Release/data/libobs
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone

@@ -122,6 +122,15 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
 setlocal
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/plugins/win-capture/Debug/win-capture.dll E:/obs-studio/vsbuild/screen/Debug/obs-plugins/32bit/win-capture.dll
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -DCONFIG=Debug -DFNAME=win-capture.dll -DINPUT=E:/obs-studio/vsbuild/plugins/win-capture/Debug -DOUTPUT=E:/obs-studio/vsbuild/plugins/win-capture/pdbs -P E:/obs-studio/cmake/copy_on_debug_helper.cmake
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
@@ -141,6 +150,15 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd
 setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy_directory E:/obs-studio/plugins/win-capture/data E:/obs-studio/vsbuild/rundir/Debug/data/obs-plugins/win-capture
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy_directory E:/obs-studio/plugins/win-capture/data E:/obs-studio/vsbuild/screen/Debug/data/obs-plugins/win-capture
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -206,6 +224,15 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
 setlocal
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy E:/obs-studio/vsbuild/plugins/win-capture/Release/win-capture.dll E:/obs-studio/vsbuild/screen/Release/obs-plugins/32bit/win-capture.dll
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -DCONFIG=Release -DFNAME=win-capture.dll -DINPUT=E:/obs-studio/vsbuild/plugins/win-capture/Release -DOUTPUT=E:/obs-studio/vsbuild/plugins/win-capture/pdbs -P E:/obs-studio/cmake/copy_on_debug_helper.cmake
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
@@ -225,6 +252,15 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd
 setlocal
 E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy_directory E:/obs-studio/plugins/win-capture/data E:/obs-studio/vsbuild/rundir/Release/data/obs-plugins/win-capture
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+E:\cmake-3.11.1-win32-x86\bin\cmake.exe -E copy_directory E:/obs-studio/plugins/win-capture/data E:/obs-studio/vsbuild/screen/Release/data/obs-plugins/win-capture
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone

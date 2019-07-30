@@ -36,6 +36,7 @@ using namespace std;
 #define DEF_UPDATE_URL    L"https://" DEF_WEB_CLASS L"/update_studio"
 #define DEF_TEACHER_DATA  L"obs-teacher"
 #define DEF_STUDENT_DATA  L"obs-student"
+#define DEF_SCREEN_DATA   L"obs-screen"
 
 enum RUN_MODE {
 	kDefaultUnknown     = 0,
@@ -43,11 +44,14 @@ enum RUN_MODE {
 	kTeacherBuildJson   = 2,
 	kStudentUpdater     = 3,
 	kStudentBuildJson   = 4,
+	kScreenUpdater      = 5,
+	kScreenBuildJson    = 6,
 };
 
 static LPWSTR g_cmd_type[] = {
 	L"teacher", L"json_teacher",
 	L"student", L"json_student",
+	L"screen",  L"json_screen",
 };
 
 /* ----------------------------------------------------------------------- */
@@ -645,8 +649,8 @@ static inline DWORD WaitIfOBS(DWORD id, const wchar_t *expected)
 static bool WaitForParent()
 {
 	Status(L"正在等待父进程退出...");
-	// 只处理讲师端或学生端的外部升级指令...
-	if (g_run_mode != kTeacherUpdater && g_run_mode != kStudentUpdater)
+	// 只处理讲师端|学生端|屏幕端的外部升级指令...
+	if (g_run_mode != kTeacherUpdater && g_run_mode != kStudentUpdater && g_run_mode != kScreenUpdater)
 		return true;
 	// 获取需要查找的进程名称标识符号...
 	DWORD proc_ids[1024], needed, count;
@@ -1176,8 +1180,25 @@ static bool doUpdateBuildJson()
 	// 计算工作目录，并设定为升级进程的当前工作目录...
 	GetCurrentDirectory(_countof(lpJsonPath), lpJsonPath);
 	StringCbCopy(lpBasePath, sizeof(lpBasePath), lpJsonPath);
-	StringCbCat(lpBasePath, sizeof(lpBasePath), (g_run_mode == kTeacherBuildJson) ? L"\\..\\rundir\\Release" : L"\\..\\student\\Release");
-	StringCbCat(lpJsonPath, sizeof(lpJsonPath), (g_run_mode == kTeacherBuildJson) ? L"\\teacher" : L"\\student");
+
+	LPCWSTR lpwBaseRoot = NULL;
+	switch (g_run_mode) {
+	case kTeacherBuildJson: lpwBaseRoot = L"\\..\\rundir\\Release"; break;
+	case kStudentBuildJson: lpwBaseRoot = L"\\..\\student\\Release"; break;
+	case kScreenBuildJson:  lpwBaseRoot = L"\\..\\screen\\Release"; break;
+	default:                lpwBaseRoot = L"\\..\\rundir\\Release"; break;
+	}
+	StringCbCat(lpBasePath, sizeof(lpBasePath), lpwBaseRoot);
+
+	LPCWSTR lpwJsonRoot = NULL;
+	switch (g_run_mode) {
+	case kTeacherBuildJson: lpwJsonRoot = L"\\teacher"; break;
+	case kStudentBuildJson: lpwJsonRoot = L"\\student"; break;
+	case kScreenBuildJson:  lpwJsonRoot = L"\\screen";  break;
+	default:                lpwJsonRoot = L"\\teacher"; break;
+	}
+	StringCbCat(lpJsonPath, sizeof(lpJsonPath), lpwJsonRoot);
+
 	StringCbCopy(lpLogPath, sizeof(lpLogPath), lpJsonPath);
 	StringCbCat(lpLogPath, sizeof(lpLogPath), L"\\changelog.txt");
 	StringCbCat(lpJsonPath, sizeof(lpJsonPath), L"\\manifest.json");
@@ -1251,11 +1272,13 @@ static void ParseCmdLine(wchar_t *cmdLine)
 {
 	Status(L"正在解析外部升级指令...");
 
-	// 改进检查命令机制，产生四种命令如下：
+	// 改进检查命令机制，产生六种命令如下：
 	// kTeacherUpdater   => 讲师端升级模式
 	// kTeacherBuildJson => 讲师端创建升级json
 	// kStudentUpdater   => 学生端升级模式
 	// kStudentBuildJson => 学生端创建升级json
+	// kScreenUpdater    => 屏幕端升级模式
+	// kScreenBuildJson  => 屏幕端创建升级json
 
 	g_run_mode = kDefaultUnknown;
 	LPWSTR *argv = NULL;
@@ -1287,8 +1310,10 @@ static void ParseCmdLine(wchar_t *cmdLine)
 	{
 	case kTeacherBuildJson: StringCbCat(wWndTitle, MAX_PATH, L" - 讲师端 - 重建脚本..."); break;
 	case kStudentBuildJson: StringCbCat(wWndTitle, MAX_PATH, L" - 学生端 - 重建脚本..."); break;
+	case kScreenBuildJson:  StringCbCat(wWndTitle, MAX_PATH, L" - 屏幕端 - 重建脚本..."); break;
 	case kTeacherUpdater:   StringCbCat(wWndTitle, MAX_PATH, L" - 讲师端 - 正在升级..."); break;
 	case kStudentUpdater:   StringCbCat(wWndTitle, MAX_PATH, L" - 学生端 - 正在升级..."); break;
+	case kScreenUpdater:    StringCbCat(wWndTitle, MAX_PATH, L" - 屏幕端 - 正在升级..."); break;
 	default:                StringCbCat(wWndTitle, MAX_PATH, L" - 错误命令"); break;
 	}
 	// 设定更新后的窗口标题名称内容...
@@ -1335,16 +1360,22 @@ static bool Update(wchar_t *cmdLine)
 	/* ------------------------------------- */
 
 	// 如果解析外部命令失败，显示信息并返回...
-	if (g_run_mode <= kDefaultUnknown || g_run_mode > kStudentBuildJson) {
-		Status(L"升级失败：解析外部指令错误 => {teacher,json_teacher,student,json_student}");
+	if (g_run_mode <= kDefaultUnknown || g_run_mode > kScreenBuildJson) {
+		Status(L"升级失败：解析外部指令错误 => {teacher,json_teacher,student,json_student,screen,json_screen}");
 		return false;
 	}
 	// 如果是创建json文件命令，进行跳转分发...
-	if (g_run_mode == kTeacherBuildJson || g_run_mode == kStudentBuildJson) {
+	if (g_run_mode == kTeacherBuildJson || g_run_mode == kStudentBuildJson || g_run_mode == kScreenBuildJson) {
 		return doUpdateBuildJson();
 	}
 	// 如果是升级命令操作，进行数据配置根目录路径名称的设定，分为讲师端和学生端，配置根目录会有所不同...
-	LPCWSTR lpwDataRoot = ((g_run_mode == kTeacherUpdater) ? DEF_TEACHER_DATA : DEF_STUDENT_DATA);
+	LPCWSTR lpwDataRoot = NULL;
+	switch (g_run_mode) {
+	case kTeacherUpdater: lpwDataRoot = DEF_TEACHER_DATA; break;
+	case kStudentUpdater: lpwDataRoot = DEF_STUDENT_DATA; break;
+	case kScreenUpdater:  lpwDataRoot = DEF_SCREEN_DATA;  break;
+	default:              lpwDataRoot = DEF_TEACHER_DATA; break;
+	}
 
 	Status(L"正在加载并解析 manifest.json 升级脚本...");
 
@@ -1867,7 +1898,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
 #endif // _DEBUG*/
 
 		// 如果是创建json文件命令，执行完毕，直接返回...
-		if (g_run_mode == kTeacherBuildJson || g_run_mode == kStudentBuildJson) {
+		if (g_run_mode == kTeacherBuildJson || g_run_mode == kStudentBuildJson || g_run_mode == kScreenBuildJson) {
 			return (int)msg.wParam;
 		}
 
