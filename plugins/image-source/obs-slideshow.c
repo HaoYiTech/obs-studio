@@ -325,6 +325,29 @@ static void do_transition(void *data, bool to_null)
 				NULL);
 }
 
+static void do_update_user(void *data, obs_data_t *settings, const char * lpFile, const char * lpUser)
+{
+	int nIndexItem = -1;
+	struct slideshow *ss = data;
+	pthread_mutex_lock(&ss->mutex);
+	for (size_t i = 0; i < ss->files.num; i++) {
+		const char *cur_path = ss->files.array[i].path;
+		if (strcmp(lpFile, cur_path) == 0) {
+			bfree(ss->files.array[i].name);
+			ss->files.array[i].name = bstrdup(lpUser);
+			nIndexItem = i;
+			break;
+		}
+	}
+	pthread_mutex_unlock(&ss->mutex);
+	// 更新用户名称到配置当中，并通知上层数据源发生变化...
+	if (nIndexItem >= 0 && ss->cur_item == nIndexItem) {
+		const char *cur_name = ss->files.array[nIndexItem].name;
+		obs_data_set_string(settings, "item_name", cur_name);
+		obs_source_updated(ss->source);
+	}
+}
+
 static void do_update_size(void *data)
 {
 	struct slideshow *ss = data;
@@ -367,6 +390,10 @@ static void do_screen_change(void *data, obs_data_t *settings)
 		obs_data_release(lpImageSettings);
 		// 寻找最大尺寸更新到幻灯对象当中...
 		do_update_size(data);
+		// 找到指定的文件名，更新用户名称...
+		if (lpFile != NULL && lpUser != NULL) {
+			do_update_user(data, settings, lpFile, lpUser);
+		}
 		return;
 	}
 	// 如果当前更新文件没有在文件队列当中，需要新建...
