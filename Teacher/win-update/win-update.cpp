@@ -1,12 +1,10 @@
 
 #include "win-update-helpers.hpp"
-#include "window-basic-main.hpp"
 #include "update-window.hpp"
 #include "remote-text.hpp"
 #include "qt-wrappers.hpp"
 #include "win-update.hpp"
-#include "obs-app.hpp"
-#include "HYDefine.h"
+#include "update-app.h"
 
 #include <QMessageBox>
 
@@ -25,12 +23,6 @@
 using namespace std;
 
 /* ------------------------------------------------------------------------ */
-
-#define WIN_MANIFEST_URL    DEF_WEB_CLASS "/update_studio/teacher/manifest.json"
-#define WIN_UPDATER_URL     DEF_WEB_CLASS "/update_studio/updater.exe"
-#define APP_MANIFEST_PATH   "obs-teacher\\updates\\manifest.json"
-#define APP_UPDATER_PATH    "obs-teacher\\updates\\updater.exe"
-#define APP_NAME            L"teacher"
 
 static HCRYPTPROV provider = 0;
 
@@ -387,11 +379,12 @@ try {
 		extraHeaders.push_back(move(header));
 	}*/
 
+	string version = App()->GetVersionString();
 	string signature;
 	string error;
 	string data;
 
-	bool success = GetRemoteFile(url, data, error, &responseCode,
+	bool success = GetRemoteFile(url, data, error, version, &responseCode,
 			nullptr, nullptr, extraHeaders, &signature);
 
 	if (!success || (responseCode != 200 && responseCode != 304)) {
@@ -542,6 +535,7 @@ try {
 	CryptProvider  localProvider;
 	bool           success = false;
 	bool           updatesAvailable = false;
+	string         version = App()->GetVersionString();
 
 	struct FinishedTrigger {
 		inline ~FinishedTrigger() {
@@ -633,7 +627,7 @@ try {
 
 	// 注意：text返回的是升级脚本的具体内容...
 	// 从服务器获取升级脚本文件，Nginx服务器返回ETag标记...
-	success = GetRemoteFile(WIN_MANIFEST_URL, text, error, &responseCode,
+	success = GetRemoteFile(WIN_MANIFEST_URL, text, error, version, &responseCode,
 							nullptr, nullptr, extraHeaders, &signature);
 	// 从服务器获取升级脚本失败，抛出异常，打印信息...
 	if (!success || (responseCode != 200 && responseCode != 304)) {
@@ -786,17 +780,7 @@ try {
 	config_remove_value(GetGlobalConfig(), "General", "WebClass");
 
 	// 这里需要告诉主窗口不要弹出询问框，直接退出主进程就可以了...
-	OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
-	CLoginMini * mini = reinterpret_cast<CLoginMini*>(App()->GetLoginMini());
-	if (main != NULL) {
-		// 设置主窗口沉默退出...
-		main->SetSlientClose(true);
-		// 向主窗口发送退出信号...
-		QMetaObject::invokeMethod(main, "close");
-	} else if (mini != NULL) {
-		// 向主窗口发送退出信号...
-		QMetaObject::invokeMethod(mini, "close");
-	}
+	doCloseMainWindow();
 
 } catch (string text) {
 	blog(LOG_WARNING, "%s: %s", __FUNCTION__, text.c_str());

@@ -34,6 +34,9 @@
     <Filter Include="Json Files">
       <UniqueIdentifier>{73c50a8c-39d1-48c4-a5cf-13ba8d2cb88e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Update Files">
+      <UniqueIdentifier>{0f56e3dc-d53e-4261-9719-638012f01dce}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="obs-app.cpp">
@@ -165,31 +168,10 @@
     <ClCompile Include="adv-audio-control.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="json\json_reader.cpp">
-      <Filter>Json Files</Filter>
-    </ClCompile>
-    <ClCompile Include="json\json_value.cpp">
-      <Filter>Json Files</Filter>
-    </ClCompile>
-    <ClCompile Include="json\json_writer.cpp">
-      <Filter>Json Files</Filter>
-    </ClCompile>
     <ClCompile Include="window-basic-filters.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="focus-list.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="remote-text.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="win-update\update-window.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="win-update\win-update.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="win-update\win-update-helpers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="getopt.cpp">
@@ -206,6 +188,30 @@
     </ClCompile>
     <ClCompile Include="window-wait-ppt.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Student\json\json_reader.cpp">
+      <Filter>Json Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Student\json\json_value.cpp">
+      <Filter>Json Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Student\json\json_writer.cpp">
+      <Filter>Json Files</Filter>
+    </ClCompile>
+    <ClCompile Include="win-update\win-update-helpers.cpp">
+      <Filter>Update Files</Filter>
+    </ClCompile>
+    <ClCompile Include="win-update\win-update.cpp">
+      <Filter>Update Files</Filter>
+    </ClCompile>
+    <ClCompile Include="win-update\update-window.cpp">
+      <Filter>Update Files</Filter>
+    </ClCompile>
+    <ClCompile Include="win-update\remote-text.cpp">
+      <Filter>Update Files</Filter>
+    </ClCompile>
+    <ClCompile Include="update-app.cpp">
+      <Filter>Update Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -317,15 +323,6 @@
     <QtMoc Include="focus-list.hpp">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="remote-text.hpp">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="win-update\update-window.hpp">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="win-update\win-update.hpp">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <QtMoc Include="window-view-ptz.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -334,6 +331,15 @@
     </QtMoc>
     <QtMoc Include="window-wait-ppt.hpp">
       <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="win-update\update-window.hpp">
+      <Filter>Update Files</Filter>
+    </QtMoc>
+    <QtMoc Include="win-update\win-update.hpp">
+      <Filter>Update Files</Filter>
+    </QtMoc>
+    <QtMoc Include="win-update\remote-text.hpp">
+      <Filter>Update Files</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
@@ -379,38 +385,47 @@
     <ClInclude Include="HYDefine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="json\autolink.h">
-      <Filter>Json Files</Filter>
-    </ClInclude>
-    <ClInclude Include="json\config.h">
-      <Filter>Json Files</Filter>
-    </ClInclude>
-    <ClInclude Include="json\features.h">
-      <Filter>Json Files</Filter>
-    </ClInclude>
-    <ClInclude Include="json\forwards.h">
-      <Filter>Json Files</Filter>
-    </ClInclude>
-    <ClInclude Include="json\json.h">
-      <Filter>Json Files</Filter>
-    </ClInclude>
-    <ClInclude Include="json\reader.h">
-      <Filter>Json Files</Filter>
-    </ClInclude>
-    <ClInclude Include="json\value.h">
-      <Filter>Json Files</Filter>
-    </ClInclude>
-    <ClInclude Include="json\writer.h">
-      <Filter>Json Files</Filter>
-    </ClInclude>
-    <ClInclude Include="win-update\win-update-helpers.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="getopt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="md5.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Student\json\autolink.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Student\json\config.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Student\json\features.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Student\json\forwards.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Student\json\json.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Student\json\json_batchallocator.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Student\json\json_tool.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Student\json\reader.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Student\json\value.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Student\json\writer.h">
+      <Filter>Json Files</Filter>
+    </ClInclude>
+    <ClInclude Include="win-update\win-update-helpers.hpp">
+      <Filter>Update Files</Filter>
+    </ClInclude>
+    <ClInclude Include="update-app.h">
+      <Filter>Update Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

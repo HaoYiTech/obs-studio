@@ -13,6 +13,7 @@
 
 #include "json.h"
 #include "HYCommon.h"
+#include "window-login-mini.h"
 
 using namespace std;
 
@@ -81,6 +82,8 @@ public:
 	bool TranslateString(const char *lookupVal, const char **out) const;
 	inline config_t *GlobalConfig() const { return m_globalConfig; }
 	inline lookup_t *GetTextLookup() const { return m_textLookup; }
+	inline CLoginMini *GetLoginMini() const { return m_LoginMini.data(); }
+	inline QWidget *GetMainWindow() const { return NULL; }
 	inline const char *GetString(const char *lookupVal) const {
 		return m_textLookup.GetString(lookupVal);
 	}

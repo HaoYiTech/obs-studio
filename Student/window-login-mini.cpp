@@ -70,8 +70,14 @@ CLoginMini::CLoginMini(QWidget *parent)
 
 CLoginMini::~CLoginMini()
 {
-	this->killTimer(m_nCenterTimer);
-	this->killTimer(m_nOnLineTimer);
+	if (m_nCenterTimer >= 0) {
+		this->killTimer(m_nCenterTimer);
+		m_nCenterTimer = -1;
+	}
+	if (m_nOnLineTimer >= 0) {
+		this->killTimer(m_nOnLineTimer);
+		m_nOnLineTimer = -1;
+	}
 	if (m_lpMovieGif != NULL) {
 		delete m_lpMovieGif;
 		m_lpMovieGif = NULL;

@@ -16,7 +16,6 @@
 ******************************************************************************/
 
 #include <curl/curl.h>
-#include "obs-app.hpp"
 #include "qt-wrappers.hpp"
 #include "remote-text.hpp"
 
@@ -40,7 +39,7 @@ void RemoteTextThread::run()
 	CURLcode code;
 
 	string versionString("User-Agent: obs-basic ");
-	versionString += App()->GetVersionString();
+	versionString += version;
 
 	string contentTypeString;
 	if (!contentType.empty()) {
@@ -110,6 +109,7 @@ bool GetRemoteFile(
 	const char *url,
 	std::string &str,
 	std::string &error,
+	std::string &version,
 	long *responseCode,
 	const char *contentType,
 	const char *postData,
@@ -123,7 +123,7 @@ bool GetRemoteFile(
 	error_in[0] = 0;
 
 	string versionString("User-Agent: obs-basic ");
-	versionString += App()->GetVersionString();
+	versionString += version;
 
 	string contentTypeString;
 	if (contentType) {

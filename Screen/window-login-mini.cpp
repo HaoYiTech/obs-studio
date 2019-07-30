@@ -1,6 +1,7 @@
 
 #include "window-login-mini.h"
 #include "qt-wrappers.hpp"
+#include "win-update.hpp"
 #include "FastSession.h"
 #include "screen-app.h"
 #include <QDesktopWidget>
@@ -41,11 +42,11 @@ void CLoginMini::TimedCheckForUpdates()
 void CLoginMini::CheckForUpdates(bool manualUpdate)
 {
 	// 屏蔽升级操作菜单，避免在升级过程中重复升级...
-	/*if (updateCheckThread && updateCheckThread->isRunning())
+	if (updateCheckThread && updateCheckThread->isRunning())
 		return;
 	// 创建升级线程，并启动之 => 可以手动直接升级...
 	updateCheckThread = new AutoUpdateThread(manualUpdate);
-	updateCheckThread->start();*/
+	updateCheckThread->start();
 }
 
 CLoginMini::CLoginMini(QWidget *parent)
@@ -60,7 +61,10 @@ CLoginMini::CLoginMini(QWidget *parent)
 
 CLoginMini::~CLoginMini()
 {
-	this->killTimer(m_nOnLineTimer);
+	if (m_nOnLineTimer >= 0) {
+		this->killTimer(m_nOnLineTimer);
+		m_nOnLineTimer = -1;
+	}
 	if (m_lpMovieGif != NULL) {
 		delete m_lpMovieGif;
 		m_lpMovieGif = NULL;
@@ -74,14 +78,14 @@ CLoginMini::~CLoginMini()
 		m_RemoteSession = NULL;
 	}
 	// 窗口退出时，需要保证升级线程已经完全退出了...
-	/*if (updateCheckThread && updateCheckThread->isRunning()) {
+	if (updateCheckThread && updateCheckThread->isRunning()) {
 		updateCheckThread->wait();
 	}
 	// 这里需要显示删除升级线程对象...
 	if (updateCheckThread) {
 		delete updateCheckThread;
 		updateCheckThread = NULL;
-	}*/
+	}
 	// 将发生变化的配置信息存入配置文件 => 主要存放global.ini文件...
 	config_save_safe(GetGlobalConfig(), "tmp", nullptr);
 }
@@ -99,15 +103,12 @@ void CLoginMini::closeEvent(QCloseEvent *event)
 			"BasicWindow", "geometry",
 			saveGeometry().toBase64().constData());
 	}*/
+	
 	// 执行close事件...
 	QWidget::closeEvent(event);
 	if (!event->isAccepted())
 		return;
-	// 等待自动检查升级线程的退出...
-	//if (updateCheckThread != NULL) {
-	//	updateCheckThread->wait();
-	//}
-	
+	// 释放OBS相关的场景资源...
 	App()->ClearSceneData();
 
 	// 调用退出事件通知...
@@ -205,8 +206,6 @@ void CLoginMini::initWindow()
 	//connect(ui->loginPass, SIGNAL(returnPressed()), this, SLOT(onClickLoginButton()));
 	// 关联网络信号槽反馈结果事件...
 	connect(&m_objNetManager, SIGNAL(finished(QNetworkReply *)), this, SLOT(onReplyFinished(QNetworkReply *)));
-	// 只进行一次更新状态检测...
-	//this->TimedCheckForUpdates();
 
 	// 开启右下角任务栏图标...
 	this->SystemTray(true);
@@ -221,6 +220,9 @@ void CLoginMini::initWindow()
 	ui->loginUser->setText(m_strUser);
 	ui->loginRoom->setText(m_strRoom);
 	ui->loginPass->setText(m_strPass);
+
+	// 只进行一次更新状态检测...
+	this->TimedCheckForUpdates();
 
 	// 恢复窗口坐标位置...
 	/*const char *geometry = config_get_string(App()->GlobalConfig(), "BasicWindow", "geometry");

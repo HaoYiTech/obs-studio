@@ -25,6 +25,7 @@ class RemoteTextThread : public QThread {
 	Q_OBJECT
 
 	std::string url;
+	std::string version;
 	std::string contentType;
 	std::string postData;
 
@@ -36,9 +37,10 @@ signals:
 public:
 	inline RemoteTextThread(
 			std::string url_,
+			std::string version_,
 			std::string contentType_ = std::string(),
 			std::string postData_ = std::string())
-		: url(url_), contentType(contentType_), postData(postData_)
+		: url(url_), version(version_), contentType(contentType_), postData(postData_)
 	{}
 };
 
@@ -46,6 +48,7 @@ bool GetRemoteFile(
 	const char *url,
 	std::string &str,
 	std::string &error,
+	std::string &version,
 	long *responseCode = nullptr,
 	const char *contentType = nullptr,
 	const char *postData = nullptr,

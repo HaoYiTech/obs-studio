@@ -53,7 +53,6 @@
 #include "qt-wrappers.hpp"
 #include "display-helpers.hpp"
 #include "volume-control.hpp"
-//#include "remote-text.hpp"
 
 #include "../Student/common/rtp.h"
 #include "window-view-ptz.h"

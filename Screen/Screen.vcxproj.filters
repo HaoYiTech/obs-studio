@@ -37,6 +37,9 @@
     <Filter Include="FastDFS Files">
       <UniqueIdentifier>{1c8bdaf8-c958-4405-8d77-23f499ad807b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Update Files">
+      <UniqueIdentifier>{4fb2b938-cc87-4632-adef-b0811cfe3c8b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="screen-app.cpp">
@@ -78,6 +81,21 @@
     <ClCompile Include="fastdfs\FastSession.cpp">
       <Filter>FastDFS Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\Teacher\win-update\remote-text.cpp">
+      <Filter>Update Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Teacher\win-update\update-window.cpp">
+      <Filter>Update Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Teacher\win-update\win-update.cpp">
+      <Filter>Update Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Teacher\win-update\win-update-helpers.cpp">
+      <Filter>Update Files</Filter>
+    </ClCompile>
+    <ClCompile Include="update-app.cpp">
+      <Filter>Update Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="screen-app.h">
@@ -91,6 +109,15 @@
     </QtMoc>
     <QtMoc Include="fastdfs\FastSession.h">
       <Filter>FastDFS Files</Filter>
+    </QtMoc>
+    <QtMoc Include="..\Teacher\win-update\remote-text.hpp">
+      <Filter>Update Files</Filter>
+    </QtMoc>
+    <QtMoc Include="..\Teacher\win-update\update-window.hpp">
+      <Filter>Update Files</Filter>
+    </QtMoc>
+    <QtMoc Include="..\Teacher\win-update\win-update.hpp">
+      <Filter>Update Files</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
@@ -157,6 +184,12 @@
     <ClInclude Include="fastdfs\fastdfs.h">
       <Filter>FastDFS Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\Teacher\win-update\win-update-helpers.hpp">
+      <Filter>Update Files</Filter>
+    </ClInclude>
+    <ClInclude Include="update-app.h">
+      <Filter>Update Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Screen.ico">
@@ -178,6 +211,9 @@
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="forms\LoginMini.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="forms\OBSUpdate.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>
