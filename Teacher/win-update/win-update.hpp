@@ -20,4 +20,6 @@ private slots:
 
 public:
 	AutoUpdateThread(bool manualUpdate_) : manualUpdate(manualUpdate_) {}
+public:
+	static void doLaunchDXWebSetup();
 };

@@ -353,24 +353,23 @@ try {
 
 /* ------------------------------------------------------------------------ */
 
-static bool FetchUpdaterModule(const char *url)
+static bool FetchItemModule(const char *inUrl, const char *inPath, const char * inETag)
 try {
 	long     responseCode;
 	vector<string> extraHeaders;
-
-	BPtr<char> updateFilePath = GetConfigPathPtr(APP_UPDATER_PATH);
+	BPtr<char> saveFilePath = GetConfigPathPtr(inPath);
 
 	// 通过 Nginx 服务器生成的 ETag 来判断文件是否发生变化...
-	const char *pETagUpdater = config_get_string(GetGlobalConfig(), "General", "ETagUpdater");
-	if (pETagUpdater != NULL) {
+	const char *pETagItem = config_get_string(GetGlobalConfig(), "General", inETag);
+	if (pETagItem != NULL) {
 		string header = "If-None-Match: ";
-		header += pETagUpdater;
+		header += pETagItem;
 		extraHeaders.push_back(move(header));
 	}
 	// 这里是通过计算MD5的方式判断文件是否发生变化...
 	// 由于Nginx的ETag不是通过MD5计算的，放弃这种方式...
 	//uint8_t updateFileHash[BLAKE2_HASH_LENGTH];
-	/*if (CalculateFileHash(updateFilePath, updateFileHash)) {
+	/*if (CalculateFileHash(saveFilePath, updateFileHash)) {
 		char hashString[BLAKE2_HASH_STR_LENGTH];
 		HashToString(updateFileHash, hashString);
 
@@ -379,39 +378,123 @@ try {
 		extraHeaders.push_back(move(header));
 	}*/
 
+	string signature, error, data;
 	string version = App()->GetVersionString();
-	string signature;
-	string error;
-	string data;
-
-	bool success = GetRemoteFile(url, data, error, version, &responseCode,
+	bool success = GetRemoteFile(inUrl, data, error, version, &responseCode,
 			nullptr, nullptr, extraHeaders, &signature);
 
 	if (!success || (responseCode != 200 && responseCode != 304)) {
 		if (responseCode == 404) {
 			error = "404 not find.";
 		}
-		throw strprintf("Could not fetch '%s': %s", url, error.c_str());
+		throw strprintf("Could not fetch '%s': %s", inUrl, error.c_str());
 	}
-
 	/* A new file must be digitally signed */
 	if (responseCode == 200) {
 		//2018.12.04 - by jackey => disabled for simple...
 		//bool valid = CheckDataSignature(data, url, signature.data(), signature.size());
 		//if (!valid) throw string("Invalid updater module signature");
-		// 保存Updater的ETag内容...
+		// 保存指定的ETag内容...
 		if (signature.size() > 0) {
-			config_set_string(GetGlobalConfig(), "General", "ETagUpdater", signature.c_str());
+			config_set_string(GetGlobalConfig(), "General", inETag, signature.c_str());
 		}
-		if (!QuickWriteFile(updateFilePath, data.data(), data.size()))
+		if (!QuickWriteFile(saveFilePath, data.data(), data.size()))
 			return false;
 	}
-
 	return true;
-
 } catch (string text) {
 	blog(LOG_WARNING, "%s: %s", __FUNCTION__, text.c_str());
 	return false;
+}
+
+static string FetchMainFestJson(const char *inUrl, const char *inPath, const char * inETag)
+{
+	// 获取讲师端本地升级脚本存放的完整路径地址...
+	long  responseCode;
+	vector<string> extraHeaders;
+	BPtr<char> manifestPath = GetConfigPathPtr(inPath);
+
+	// avoid downloading manifest again...
+	// 通过 Nginx 服务器生成的 ETag 来判断文件是否发生变化 => 更新时间发生变化也会重新下载...
+	const char *pETagManifest = config_get_string(GetGlobalConfig(), "General", inETag);
+	if (pETagManifest != NULL) {
+		string header = "If-None-Match: ";
+		header += pETagManifest;
+		extraHeaders.push_back(move(header));
+	}
+	// 注意：这里是通过计算MD5的方式判断文件是否发生变化...
+	// 注意：由于Nginx的ETag不是通过MD5计算的，放弃这种方式...
+	//BYTE manifestHash[BLAKE2_HASH_LENGTH];
+	/*if (CalculateFileHash(manifestPath, manifestHash)) {
+		char hashString[BLAKE2_HASH_STR_LENGTH];
+		HashToString(manifestHash, hashString);
+
+		string header = "If-None-Match: ";
+		header += hashString;
+		extraHeaders.push_back(move(header));
+	}*/
+
+	/* ----------------------------------- *
+	 * get current install GUID            */
+
+	/* NOTE: this is an arbitrary random number that we use to count the
+	 * number of unique OBS installations and is not associated with any
+	 * kind of identifiable information */
+	/*const char *pguid = config_get_string(GetGlobalConfig(), "General", "InstallGUID");
+	string guid;
+	if (pguid) guid = pguid;
+	if (guid.empty()) {
+		GenerateGUID(guid);
+		if (!guid.empty()) {
+			config_set_string(GetGlobalConfig(), "General", "InstallGUID", guid.c_str());
+		}
+	}
+	if (!guid.empty()) {
+		string header = "X-OBS2-GUID: ";
+		header += guid;
+		extraHeaders.push_back(move(header));
+	}*/
+	string text, error, signature;
+	string version = App()->GetVersionString();
+	// 注意：text返回的是升级脚本的具体内容...
+	// 从服务器获取升级脚本文件，Nginx服务器返回ETag标记...
+	bool success = GetRemoteFile(inUrl, text, error, version, &responseCode,
+								 nullptr, nullptr, extraHeaders, &signature);
+	// 从服务器获取升级脚本失败，抛出异常，打印信息...
+	if (!success || (responseCode != 200 && responseCode != 304)) {
+		if (responseCode == 404) {
+			error = "404 not find.";
+		}
+		throw strprintf("Failed to fetch manifest file: %s", error.c_str());
+	}
+	// verify file signature...
+	// 如果是完整请求，并且包含ETag字段，存放到全局配置当中...
+	if (responseCode == 200 && signature.size() > 0) {
+		config_set_string(GetGlobalConfig(), "General", inETag, signature.c_str());
+	}
+
+	//2018.12.04 - by jackey => disabled for simple...
+	/* a new file must be digitally signed */
+	/*if (responseCode == 200) {
+	success = CheckDataSignature(text, "manifest", signature.data(), signature.size());
+	if (!success) throw string("Invalid manifest signature");
+	}*/
+
+	// write or load manifest...
+	if (responseCode == 200) {
+		// 如果从服务器读取成功，写入文件...
+		if (!QuickWriteFile(manifestPath, text.data(), text.size())) {
+			throw strprintf("Could not write file '%s'", manifestPath.Get());
+		}
+	}
+	else {
+		// 如果没有从服务器获取，从本地读取脚本...
+		if (!QuickReadFile(manifestPath, text)) {
+			throw strprintf("Could not read file '%s'", manifestPath.Get());
+		}
+	}
+	// 返回json数据...
+	return text;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -527,15 +610,6 @@ static bool IsGameCaptureInUse()
 
 void AutoUpdateThread::run()
 try {
-	long           responseCode;
-	vector<string> extraHeaders;
-	string         text;
-	string         error;
-	string         signature;
-	CryptProvider  localProvider;
-	bool           success = false;
-	bool           updatesAvailable = false;
-	string         version = App()->GetVersionString();
 
 	struct FinishedTrigger {
 		inline ~FinishedTrigger() {
@@ -572,107 +646,25 @@ try {
 	/* ----------------------------------- *
 	 * create signature provider           */
 
+	CryptProvider  localProvider;
 	if (!CryptAcquireContext(&localProvider, nullptr, MS_ENH_RSA_AES_PROV, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
 		throw strprintf("CryptAcquireContext failed: %lu", GetLastError());
 	}
 	provider = localProvider;
 
-	// 获取讲师端本地升级脚本存放的完整路径地址...
-	BPtr<char> manifestPath = GetConfigPathPtr(APP_MANIFEST_PATH);
+	// 先把D3D升级模块 dxwebsetup.exe 下载下来...
+	if (!FetchItemModule(WIN_DXSETUP_URL, APP_DXSETUP_PATH, "ETagDXSetup"))
+		return;
 
-	/* ----------------------------------- *
-	 * avoid downloading manifest again    */
-	// 通过 Nginx 服务器生成的 ETag 来判断文件是否发生变化 => 更新时间发生变化也会重新下载...
-	const char *pETagManifest = config_get_string(GetGlobalConfig(), "General", "ETagManifest");
-	if (pETagManifest != NULL) {
-		string header = "If-None-Match: ";
-		header += pETagManifest;
-		extraHeaders.push_back(move(header));
-	}
-	// 注意：这里是通过计算MD5的方式判断文件是否发生变化...
-	// 注意：由于Nginx的ETag不是通过MD5计算的，放弃这种方式...
-	//BYTE manifestHash[BLAKE2_HASH_LENGTH];
-	/*if (CalculateFileHash(manifestPath, manifestHash)) {
-		char hashString[BLAKE2_HASH_STR_LENGTH];
-		HashToString(manifestHash, hashString);
-
-		string header = "If-None-Match: ";
-		header += hashString;
-		extraHeaders.push_back(move(header));
-	}*/
-
-	/* ----------------------------------- *
-	 * get current install GUID            */
-
-	/* NOTE: this is an arbitrary random number that we use to count the
-	 * number of unique OBS installations and is not associated with any
-	 * kind of identifiable information */
-	/*const char *pguid = config_get_string(GetGlobalConfig(), "General", "InstallGUID");
-	string guid;
-	if (pguid) guid = pguid;
-	if (guid.empty()) {
-		GenerateGUID(guid);
-		if (!guid.empty()) {
-			config_set_string(GetGlobalConfig(), "General", "InstallGUID", guid.c_str());
-		}
-	}
-	if (!guid.empty()) {
-		string header = "X-OBS2-GUID: ";
-		header += guid;
-		extraHeaders.push_back(move(header));
-	}*/
-
-	/* ----------------------------------- *
-	 * get manifest from server            */
-
-	// 注意：text返回的是升级脚本的具体内容...
-	// 从服务器获取升级脚本文件，Nginx服务器返回ETag标记...
-	success = GetRemoteFile(WIN_MANIFEST_URL, text, error, version, &responseCode,
-							nullptr, nullptr, extraHeaders, &signature);
-	// 从服务器获取升级脚本失败，抛出异常，打印信息...
-	if (!success || (responseCode != 200 && responseCode != 304)) {
-		if (responseCode == 404) {
-			error = "404 not find.";
-		}
-		throw strprintf("Failed to fetch manifest file: %s", error.c_str());
-	}
-
-	/* ----------------------------------- *
-	 * verify file signature               */
-	// 如果是完整请求，并且包含ETag字段，存放到全局配置当中...
-	if (responseCode == 200 && signature.size() > 0) {
-		config_set_string(GetGlobalConfig(), "General", "ETagManifest", signature.c_str());
-	}
-	//2018.12.04 - by jackey => disabled for simple...
-	/* a new file must be digitally signed */
-	/*if (responseCode == 200) {
-		success = CheckDataSignature(text, "manifest", signature.data(), signature.size());
-		if (!success) throw string("Invalid manifest signature");
-	}*/
-
-	/* ----------------------------------- *
-	 * write or load manifest              */
-
-	if (responseCode == 200) {
-		// 如果从服务器读取成功，写入文件...
-		if (!QuickWriteFile(manifestPath, text.data(), text.size())) {
-			throw strprintf("Could not write file '%s'", manifestPath.Get());
-		}
-	} else {
-		// 如果没有从服务器获取，从本地读取脚本...
-		if (!QuickReadFile(manifestPath, text)) {
-			throw strprintf("Could not read file '%s'", manifestPath.Get());
-		}
-	}
-
-	/* ----------------------------------- *
-	 * check manifest for update           */
+	// 再读取 mainfest.json 升级脚本文件...
+	string text = FetchMainFestJson(WIN_MANIFEST_URL, APP_MANIFEST_PATH, "ETagManifest");
 
 	string notes;
 	int updateVer = 0;
+	bool updatesAvailable = false;
 
 	// 解析获取到的manifest.json，脚本版本 > 当前版本才能升级...
-	success = ParseUpdateManifest(text.c_str(), &updatesAvailable, notes, updateVer);
+	bool success = ParseUpdateManifest(text.c_str(), &updatesAvailable, notes, updateVer);
 	if (!success) throw string("Failed to parse manifest.json");
 
 	// 如果不能升级，并且是手动模式，弹出提示框...
@@ -703,7 +695,7 @@ try {
 	/* ----------------------------------- *
 	 * fetch updater module                */
 
-	if (!FetchUpdaterModule(WIN_UPDATER_URL))
+	if (!FetchItemModule(WIN_UPDATER_URL, APP_UPDATER_PATH, "ETagUpdater"))
 		return;
 
 	/* ----------------------------------- *
@@ -784,4 +776,28 @@ try {
 
 } catch (string text) {
 	blog(LOG_WARNING, "%s: %s", __FUNCTION__, text.c_str());
+}
+
+void AutoUpdateThread::doLaunchDXWebSetup()
+{
+	do {
+		// 获取执行程序的完整路径...
+		BPtr<wchar_t> wSetupFilePath;
+		BPtr<char> dxSetupFilePath = GetConfigPathPtr(APP_DXSETUP_PATH);
+		if (0 >= os_utf8_to_wcs_ptr(dxSetupFilePath, 0, &wSetupFilePath)) {
+			blog(LOG_INFO, "Could not convert dxSetupFilePath to wide.");
+			break;
+		}
+		// 启动外部进程，组合各种参数...
+		SHELLEXECUTEINFO execInfo = {};
+		execInfo.cbSize = sizeof(execInfo);
+		execInfo.lpFile = wSetupFilePath;
+		execInfo.nShow = SW_SHOWNORMAL;
+		if (!ShellExecuteEx(&execInfo)) {
+			blog(LOG_INFO, "Can't launch dxwebsetup '%s': %d", dxSetupFilePath.Get(), GetLastError());
+			break;
+		}
+	} while (false);
+	// 任何情况都要退出...
+	doCloseMainWindow();
 }
