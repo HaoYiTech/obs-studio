@@ -33,6 +33,7 @@ private:
 	virtual void mouseMoveEvent(QMouseEvent *event);
 	virtual void mouseReleaseEvent(QMouseEvent *event);
 private slots:
+	void updateCheckFinished();
 	void onTriggerTcpConnect();
 	void onButtonMinClicked();
 	void onButtonCloseClicked();

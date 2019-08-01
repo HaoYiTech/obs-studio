@@ -47,6 +47,10 @@ void CLoginMini::CheckForUpdates(bool manualUpdate)
 	UNUSED_PARAMETER(manualUpdate);
 }
 
+void CLoginMini::updateCheckFinished()
+{
+}
+
 CLoginMini::CLoginMini(QWidget *parent)
   : QDialog(parent)
   , m_nDBUserID(-1)
