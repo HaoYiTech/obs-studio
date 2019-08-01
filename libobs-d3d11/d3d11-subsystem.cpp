@@ -200,7 +200,7 @@ void gs_device::InitCompiler()
 	}
 
 	throw "Could not find any D3DCompiler libraries. Make sure you've "
-		"installed the <a href=\"https://obsproject.com/go/dxwebsetup\">"
+		"installed the <a href=\"https://www.qidiweilai.com/update_studio/dxwebsetup.exe\">"
 		"DirectX components</a> that OBS Studio requires.";
 }
 
@@ -630,8 +630,10 @@ int device_create(gs_device_t **p_device, uint32_t adapter)
 		blog(LOG_ERROR, "device_create (D3D11): %s (%08lX)", error.str,
 				error.hr);
 		errorcode = GS_ERROR_FAIL;
+	} catch (const char *error) {
+		blog(LOG_ERROR, "device_create (D3D11): %s ", error);
+		errorcode = GS_ERROR_FAIL;
 	}
-
 	*p_device = device;
 	return errorcode;
 }
