@@ -91,6 +91,7 @@ public:
 		return profilerNameStore;
 	}
 private:
+	int		doD3DSetup();
 	void    LogScenes();
 	int     ResetVideo();
 	bool	InitLocale();

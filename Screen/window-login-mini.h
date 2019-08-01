@@ -40,6 +40,7 @@ private:
 	virtual void mouseReleaseEvent(QMouseEvent *event);
 private slots:
 	void ToggleShowHide();
+	void updateCheckFinished();
 	void onTriggerConnected();
 	void onClickLoginButton();
 	void onClickLogoutButton();

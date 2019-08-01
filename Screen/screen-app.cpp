@@ -21,9 +21,11 @@
 #include "SocketUtils.h"
 #include "display-helpers.hpp"
 
-#include "window-login-mini.h"
 #include <graphics/vec4.h>
 #include <graphics/matrix4.h>
+
+#include "win-update.hpp"
+#include "window-login-mini.h"
 
 #define STARTUP_SEPARATOR   "==== Startup complete ==============================================="
 #define SHUTDOWN_SEPARATOR 	"==== Shutting down =================================================="
@@ -763,6 +765,15 @@ void CScreenApp::onTriggerMiniSuccess()
 	m_LoginMini->doSuccessOBS();
 }
 
+#define OBS_D3D_INSTALL -1000
+
+// 返回一个特殊错误号，避免发送异常...
+int CScreenApp::doD3DSetup()
+{
+	AutoUpdateThread::doLaunchDXWebSetup();
+	return OBS_D3D_INSTALL;
+}
+
 bool CScreenApp::OBSInit()
 {
 	char path[512] = { 0 };
@@ -775,6 +786,10 @@ bool CScreenApp::OBSInit()
 
 	// 重置底层视频资源...
 	int ret = this->ResetVideo();
+
+	// 针对D3D做特殊拦截操作...
+	if (ret == OBS_D3D_INSTALL)
+		return false;
 
 	switch (ret) {
 	case OBS_VIDEO_MODULE_NOT_FOUND:
@@ -1192,6 +1207,13 @@ int CScreenApp::ResetVideo()
 		if (ret == OBS_VIDEO_CURRENTLY_ACTIVE) {
 			blog(LOG_WARNING, "Tried to reset when already active");
 			return ret;
+		}
+		// 弹框询问是否安装D3D或者使用OpenGL => 父窗口设定为空，否则无法居中显示...
+		QMessageBox::StandardButton button = OBSMessageBox::question(
+			m_LoginMini, QTStr("ConfirmD3D.Title"), QTStr("ConfirmD3D.Text"),
+			QMessageBox::Yes | QMessageBox::No);
+		if (button == QMessageBox::Yes) {
+			return this->doD3DSetup();
 		}
 		/* Try OpenGL if DirectX fails on windows */
 		if (astrcmpi(ovi.graphics_module, DL_OPENGL) != 0) {

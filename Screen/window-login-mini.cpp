@@ -49,6 +49,10 @@ void CLoginMini::CheckForUpdates(bool manualUpdate)
 	updateCheckThread->start();
 }
 
+void CLoginMini::updateCheckFinished()
+{
+}
+
 CLoginMini::CLoginMini(QWidget *parent)
   : QDialog(parent)
   , ui(new Ui::LoginMini)
