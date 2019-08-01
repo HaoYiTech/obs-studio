@@ -763,6 +763,7 @@ public slots:
 	void onPageRightClicked();
 	void on_actionResetTransform_triggered();
 private:
+	int  doD3DSetup();
 	void doBtnPrevNext(bool bIsPrev);
 	void doBtnLeftRight(bool bIsLeft);
 public:

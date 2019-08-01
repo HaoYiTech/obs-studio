@@ -1524,6 +1524,15 @@ extern obs_frontend_callbacks *InitializeAPIInterface(OBSBasic *main);
 	"Failed to initialize video.  Your GPU may not be supported, " \
 	"or your graphics drivers may need to be updated."
 
+#define OBS_D3D_INSTALL -1000
+
+// 返回一个特殊错误号，避免发送异常...
+int OBSBasic::doD3DSetup()
+{
+	AutoUpdateThread::doLaunchDXWebSetup();
+	return OBS_D3D_INSTALL;
+}
+
 void OBSBasic::OBSInit()
 {
 	ProfileScope("OBSBasic::OBSInit");
@@ -1552,6 +1561,10 @@ void OBSBasic::OBSInit()
 		throw "Failed to initialize audio";
 
 	ret = ResetVideo();
+
+	// 针对D3D做特殊拦截操作...
+	if (ret == OBS_D3D_INSTALL)
+		return;
 
 	switch (ret) {
 	case OBS_VIDEO_MODULE_NOT_FOUND:
@@ -2108,9 +2121,14 @@ OBSBasic::~OBSBasic()
 		delete logUploadThread;
 		logUploadThread = NULL;
 	}
-
-	delete programOptions;
-	delete program;
+	if (programOptions) {
+		delete programOptions;
+		programOptions = NULL;
+	}
+	if (program) {
+		delete program;
+		program = NULL;
+	}
 
 	/* XXX: any obs data must be released before calling obs_shutdown.
 	 * currently, we can't automate this with C++ RAII because of the
@@ -2118,7 +2136,10 @@ OBSBasic::~OBSBasic()
 	 * can be freed, and we have no control over the destruction order of
 	 * the Qt UI stuff, so we have to manually clear any references to
 	 * libobs. */
-	delete cpuUsageTimer;
+	if (cpuUsageTimer) {
+		delete cpuUsageTimer;
+		cpuUsageTimer = NULL;
+	}
 	os_cpu_usage_info_destroy(cpuUsageInfo);
 
 	obs_hotkey_set_callback_routing_func(nullptr, nullptr);
@@ -3370,7 +3391,13 @@ int OBSBasic::ResetVideo()
 			                  "already active");
 			return ret;
 		}
-
+		// 弹框询问是否安装D3D或者使用OpenGL => 父窗口设定为空，否则无法居中显示...
+		QMessageBox::StandardButton button = OBSMessageBox::question(
+			NULL, QTStr("ConfirmD3D.Title"), QTStr("ConfirmD3D.Text"),
+			QMessageBox::Yes | QMessageBox::No);
+		if (button == QMessageBox::Yes) {
+			return this->doD3DSetup();
+		}
 		/* Try OpenGL if DirectX fails on windows */
 		if (astrcmpi(ovi.graphics_module, DL_OPENGL) != 0) {
 			blog(LOG_WARNING, "Failed to initialize obs video (%d) "
@@ -3387,9 +3414,9 @@ int OBSBasic::ResetVideo()
 			ResizeProgram(ovi.base_width, ovi.base_height);
 	}
 
-	if (ret == OBS_VIDEO_SUCCESS)
+	if (ret == OBS_VIDEO_SUCCESS) {
 		OBSBasicStats::InitializeValues();
-
+	}
 	return ret;
 }
 
@@ -3604,16 +3631,17 @@ void OBSBasic::closeEvent(QCloseEvent *event)
 			event->ignore();
 			return;
 		}
-	}
-	// 如果窗口可见，需要保持坐标...
-	if (this->isVisible()) {
+		// 如果窗口可见，需要保持坐标...
+		if (this->isVisible()) {
+			config_set_string(App()->GlobalConfig(),
+				"BasicWindow", "geometry",
+				saveGeometry().toBase64().constData());
+		}
+		// 保存各个Docker的状态信息...
 		config_set_string(App()->GlobalConfig(),
-			"BasicWindow", "geometry",
-			saveGeometry().toBase64().constData());
+				"BasicWindow", "DockState",
+				saveState().toBase64().constData());
 	}
-	config_set_string(App()->GlobalConfig(),
-			"BasicWindow", "DockState",
-			saveState().toBase64().constData());
 	// 如果不是沉默退出，并且正在推流，需要弹出停止推流询问框...
 	if (!this->m_bIsSlientClose && outputHandler && outputHandler->Active()) {
 		this->SetShowing(true);

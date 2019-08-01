@@ -2073,8 +2073,7 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 
 		prof.Stop();
 		return program.exec();
-	}
-	catch (const char *error) {
+	} catch (const char *error) {
 		blog(LOG_ERROR, "%s", error);
 		OBSErrorBox(nullptr, "%s", error);
 	}
