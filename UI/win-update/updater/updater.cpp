@@ -1030,6 +1030,27 @@ static wchar_t g_tempPath[MAX_PATH] = {};
 
 static bool UpdateVS2015Redists(json_t *root)
 {
+	json_t *redistJson = json_object_get(root, is32bit ? "vc2015_x86" : "vc2015_x64");
+	json_t *jsonFile = json_array_get(redistJson, 0);
+	json_t *jsonName = json_object_get(jsonFile, "name");
+	json_t *jsonHash = json_object_get(jsonFile, "hash");
+	json_t *jsonSize = json_object_get(jsonFile, "size");
+	const char *nameUTF8 = json_string_value(jsonName);
+	const char *hashUTF8 = json_string_value(jsonHash);
+	int fileSize = (int)json_integer_value(jsonSize);
+
+	// 判断文件名是否有效...
+	if (nameUTF8 == NULL || hashUTF8 == NULL || fileSize <= 0) {
+		Status(L"Update failed: Could not parse VC2015 redist json");
+		return false;
+	}
+	// 将文件名转换成宽字符形式...
+	wchar_t wFileName[512] = { 0 };
+	if (!UTF8ToWideBuf(wFileName, nameUTF8)) {
+		Status(L"Update failed: UTF8 to WideBuf error.");
+		return false;
+	}
+
 	/* ------------------------------------------ *
 	 * Initialize session                         */
 
@@ -1065,18 +1086,21 @@ static bool UpdateVS2015Redists(json_t *root)
 
 	Status(L"Downloading %s", L"Visual C++ 2015 Redistributable");
 
-	const wchar_t *file = (is32bit) ? L"vc_redist.x86.exe" : L"vc_redist.x64.exe";
-
 	wstring sourceURL;
 	sourceURL += DEF_UPDATE_URL;
 	sourceURL += L"/";
-	sourceURL += file;
+	sourceURL += wFileName;
 
 	wstring destPath;
 	destPath += g_tempPath;
 	destPath += L"\\";
-	destPath += file;
+	destPath += wFileName;
 
+	// 重置文件总长度，更新完毕之后再恢复过去...
+	int nSaveTotalFileSize = totalFileSize;
+	totalFileSize = fileSize;
+	completedFileSize = 0;
+	// 从服务器上下载Visual C++ 2015 Redistributable，并更新进度条...
 	if (!HTTPGetFile(hConnect, sourceURL.c_str(), destPath.c_str(), L"Accept-Encoding: gzip", &responseCode)) {
 		DeleteFile(destPath.c_str());
 		Status(L"Update failed: Could not download "
@@ -1085,17 +1109,14 @@ static bool UpdateVS2015Redists(json_t *root)
 		       responseCode);
 		return false;
 	}
+	// 下载完毕，恢复文件总长度和已下载文件长度...
+	totalFileSize = nSaveTotalFileSize;
+	completedFileSize = 0;
 
 	/* ------------------------------------------ *
 	 * Get expected hash                          */
 
-	/*json_t *redistJson = json_object_get(root, is32bit ? "vc_redist_x86" : "vc_redist_x64");
-	if (!redistJson) {
-		Status(L"Update failed: Could not parse VC2015 redist json");
-		return false;
-	}
-
-	const char *expectedHashUTF8 = json_string_value(redistJson);
+	const char *expectedHashUTF8 = hashUTF8;
 	wchar_t expectedHashWide[BLAKE2_HASH_STR_LENGTH];
 	BYTE expectedHash[BLAKE2_HASH_LENGTH];
 
@@ -1108,26 +1129,26 @@ static bool UpdateVS2015Redists(json_t *root)
 	StringToHash(expectedHashWide, expectedHash);
 
 	wchar_t downloadHashWide[BLAKE2_HASH_STR_LENGTH];
-	BYTE downloadHash[BLAKE2_HASH_LENGTH];*/
+	BYTE downloadHash[BLAKE2_HASH_LENGTH];
 
 	/* ------------------------------------------ *
 	 * Get download hash                          */
 
-	/*if (!CalculateFileHash(destPath.c_str(), downloadHash)) {
+	if (!CalculateFileHash(destPath.c_str(), downloadHash)) {
 		DeleteFile(destPath.c_str());
 		Status(L"Update failed: Couldn't verify integrity of %s", L"Visual C++ 2015 Redistributable");
 		return false;
-	}*/
+	}
 
 	/* ------------------------------------------ *
 	 * If hashes do not match, integrity failed   */
 
-	/*HashToString(downloadHash, downloadHashWide);
+	HashToString(downloadHash, downloadHashWide);
 	if (wcscmp(expectedHashWide, downloadHashWide) != 0) {
 		DeleteFile(destPath.c_str());
 		Status(L"Update failed: Couldn't verify integrity of %s", L"Visual C++ 2015 Redistributable");
 		return false;
-	}*/
+	}
 
 	/* ------------------------------------------ *
 	 * If hashes match, install redist            */
@@ -1225,17 +1246,25 @@ static bool doUpdateBuildJson()
 	SendDlgItemMessage(hwndMain, IDC_PROGRESS, PBM_SETPOS, 0, 0);
 	// json_decref => 靠引用计数删除，非常重要...
 	// 遍历对应的发行目录所有文件列表 => 需要递归读取...
-	json_t * lpJsonPack = json_array();
-	json_t * lpJsonFile = json_array();
-	QuickAllFiles(lpRootPath, NULL, lpJsonFile);
+	json_t * lpJsonCoreFile = json_array();
+	QuickAllFiles(lpRootPath, NULL, lpJsonCoreFile);
+	// 计算vc扩展运行库的哈希并存入json对象...
+	json_t * lpJsonX86File = json_array();
+	json_t * lpJsonX64File = json_array();
+	GetCurrentDirectory(_countof(lpRootPath), lpRootPath);
+	StringCbCat(lpRootPath, sizeof(lpRootPath), is32bit ? L"\\bin\\32bit" : L"\\bin\\64bit");
+	QuickCalcFileHash(lpRootPath, L"vc2015_redist.x86.exe", lpJsonX86File);
+	QuickCalcFileHash(lpRootPath, L"vc2015_redist.x64.exe", lpJsonX64File);
+	// 最终设定进度条的位置 => 100%...
 	SendDlgItemMessage(hwndMain, IDC_PROGRESS, PBM_SETPOS, 100, 0);
 
 	// 注意：json_decref => 靠引用计数删除，非常重要...
 	// json_object_set_new不会增加引用计数...
-	json_t * lpObjPack = json_object();
-	json_object_set_new(lpObjPack, "name", json_string("core"));
-	json_object_set_new(lpObjPack, "files", lpJsonFile);
-	json_array_append_new(lpJsonPack, lpObjPack);
+	json_t * lpJsonPack = json_array();
+	json_t * lpObjCore = json_object();
+	json_object_set_new(lpObjCore, "name", json_string("core"));
+	json_object_set_new(lpObjCore, "files", lpJsonCoreFile);
+	json_array_append_new(lpJsonPack, lpObjCore);
 
 	// 注意：json_decref => 靠引用计数删除，非常重要...
 	// 注意：OBSJson会自动析构，保证所有关联都会自动被删除...
@@ -1245,6 +1274,8 @@ static bool doUpdateBuildJson()
 	json_object_set_new(maniFest, "notes", lpLogUTF8);
 	// 追加需要升级的文件列表 => 字符串必须是UTF8格式...
 	json_object_set_new(maniFest, "packages", lpJsonPack);
+	json_object_set_new(maniFest, "vc2015_x86", lpJsonX86File);
+	json_object_set_new(maniFest, "vc2015_x64", lpJsonX64File);
 	// 追加版本号码，总共三个版本信息...
 	json_object_set_new(maniFest, "version_major", json_integer(LIBOBS_API_MAJOR_VER));
 	json_object_set_new(maniFest, "version_minor", json_integer(LIBOBS_API_MINOR_VER));
@@ -1469,12 +1500,13 @@ static bool Update(wchar_t *cmdLine)
 
 	/* ------------------------------------- *
 	 * Check for VS2015 redistributables     */
-	// 不进行哈希比对，只进行vs2015的检测比对...
-	/*if (!HasVS2015Redist()) {
+
+	// 先下载，然后进行哈希校验...
+	if (!HasVS2015Redist()) {
 		if (!UpdateVS2015Redists(root)) {
 			return false;
 		}
-	}*/
+	}
 
 	/* ------------------------------------- *
 	 * Generate file hash json               */
