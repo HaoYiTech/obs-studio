@@ -1208,7 +1208,7 @@ int CScreenApp::ResetVideo()
 			blog(LOG_WARNING, "Tried to reset when already active");
 			return ret;
 		}
-		// 弹框询问是否安装D3D或者使用OpenGL => 父窗口设定为空，否则无法居中显示...
+		// 弹框询问是否安装D3D或者使用OpenGL => 父窗口设定登录窗口...
 		QMessageBox::StandardButton button = OBSMessageBox::question(
 			m_LoginMini, QTStr("ConfirmD3D.Title"), QTStr("ConfirmD3D.Text"),
 			QMessageBox::Yes | QMessageBox::No);

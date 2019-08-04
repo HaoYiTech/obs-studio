@@ -54,6 +54,7 @@ QMessageBox::StandardButton OBSMessageBox::question(
 	QMessageBox mb(QMessageBox::Question,
 			title, text, buttons,
 			parent);
+	mb.setWindowIcon(QIcon(":/res/images/obs.png"));
 	mb.setDefaultButton(defaultButton);
 	if (buttons & QMessageBox::Ok) \
 		mb.setButtonText(QMessageBox::Ok, QTStr("OK"));
