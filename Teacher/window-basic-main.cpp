@@ -1857,13 +1857,14 @@ void OBSBasic::DeferredLoad(const QString &file, int requeueCount)
 	// 判断是否显示箭头 => 第一次保存0点数据源...
 	this->doCheckBtnPage(true);
 	// 这里还需补充创建监视器，有可能source在重建时，scene还没有创建...
-	this->doSceneCreateMonitor();
+	//this->doSceneCreateMonitor();
 }
 
 // 当source的监视发生变化，需要重建场景的监视器，播放轨道3音频...
 void OBSBasic::MonitoringSourceChanged(OBSSource source)
 {
-	this->doSceneCreateMonitor();
+	//this->doSceneDestoryMonitor();
+	//this->doSceneCreateMonitor();
 }
 
 void OBSBasic::doSceneCreateMonitor()
