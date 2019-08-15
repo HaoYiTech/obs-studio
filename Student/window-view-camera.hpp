@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "tinyxml.h"
 #include "HYDefine.h"
 #include "OSThread.h"
 #include <QMouseEvent>
@@ -13,10 +14,11 @@ class CViewCamera;
 class CCmdItem
 {
 public:
-	CCmdItem(CViewCamera * lpViewCamera, CMD_ISAPI inCmdISAPI, int inSpeedVal);
+	CCmdItem(CViewCamera * lpViewCamera, CMD_ISAPI inCmdISAPI, int inSpeedVal = 0);
 	~CCmdItem();
 public:
 	void            doUpdateCmdRequest();
+	void            SetContentVal(string & inContent) { m_strContentVal = QString("%1").arg(inContent.c_str()); }
 	void            SetNetReply(QNetworkReply * lpNetReply) { m_lpNetReply = lpNetReply; }
 	QNetworkReply * GetNetReply() { return m_lpNetReply; }
 	CMD_ISAPI       GetCmdISAPI() { return m_nCmdISAPI; }
@@ -52,6 +54,7 @@ public:
 	virtual ~CViewCamera();
 protected slots:
 	void		onTriggerReadyToRecvFrame();
+	void        onServerRttTrend(float inFloatDelta);
 	void		onReplyFinished(QNetworkReply *reply);
 	void        onAuthRequest(QNetworkReply *reply, QAuthenticator *authenticator);
 public:
@@ -63,6 +66,7 @@ public:
 	bool        IsCameraLoginISAPI() { return m_bIsLoginISAPI; }
 	string   &  GetImageFilpVal() { return m_ImageFilpEnableVal; }
 	int			GetDBCameraID() { return m_nDBCameraID; }
+	int         GetChannelID();
 public:
 	bool        doPTZCmd(CMD_ISAPI inCMD, int inSpeedVal);
 	void        doEchoCancel(void * lpBufData, int nBufSize, int nSampleRate, int nChannelNum, int msInSndCardBuf);
@@ -136,6 +140,11 @@ private:
 	string              m_ImageFilpStyle;
 	string              m_ImageFilpEnableVal;
 	string              m_ImageFilpEnableOpt;
+	string              m_strVideoQualityType;    // CBR or VBR...
+	int                 m_nMaxVideoKbps = 1024;   // 当前摄像头配置的最高码率...
+	int                 m_nCBRVideoKbps = 1024;   // 当前摄像头配置的固定码率...
+	int                 m_nVBRVideoKbps = 1024;   // 当前摄像头配置的动态码率...
+	TiXmlDocument       m_XmlChannelDoc;          // 用来动态改变通道配置信息...
 
 	bool                   m_bIsNetRunning = false;		// 是否正在执行命令
 	GM_DeqCmd              m_deqCmd;					// 名列队列对象...

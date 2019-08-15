@@ -14,7 +14,6 @@
 #include "window-view-render.hpp"
 #include "window-view-camera.hpp"
 #include "StringParser.h"
-#include "tinyxml.h"
 #include <curl.h>
 #include <md5.h>
 
@@ -34,7 +33,7 @@
 #define DEF_WWW_AUTH			"Digest"
 #define XML_DECLARE_UTF8		"<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
 
-CCmdItem::CCmdItem(CViewCamera * lpViewCamera, CMD_ISAPI inCmdISAPI, int inSpeedVal)
+CCmdItem::CCmdItem(CViewCamera * lpViewCamera, CMD_ISAPI inCmdISAPI, int inSpeedVal/* = 0*/)
   : m_lpViewCamera(lpViewCamera)
   , m_nSpeedVal(inSpeedVal)
   , m_nCmdISAPI(inCmdISAPI)
@@ -55,6 +54,13 @@ CCmdItem::CCmdItem(CViewCamera * lpViewCamera, CMD_ISAPI inCmdISAPI, int inSpeed
 		m_strRequestURL = QString("http://%1%2")
 			.arg(theMapData["device_ip"].c_str())
 			.arg("/ISAPI/PTZCtrl/channels/1/capabilities");
+		return;
+	}
+	// 如果是流通道能力查询，构造后直接返回...
+	if (inCmdISAPI == kCHANNEL_CAPABILITY) {
+		m_strRequestURL = QString("http://%1/ISAPI/Streaming/channels/%2")
+			.arg(theMapData["device_ip"].c_str())
+			.arg(m_lpViewCamera->GetChannelID());
 		return;
 	}
 	// 改进后的逻辑：只要有其它命令包，一定是已经成功登录...
@@ -113,6 +119,10 @@ void CCmdItem::doUpdateCmdRequest()
 			m_strContentVal = QString("%1<ImageFlip><enabled>true</enabled><ImageFlipStyle>CENTER</ImageFlipStyle></ImageFlip>\r\n").arg(XML_DECLARE_UTF8);
 		}
 		m_strRequestURL = QString("http://%1%2").arg(theMapData["device_ip"].c_str()).arg("/ISAPI/Image/channels/1/imageFlip");
+		break;
+	case kCHANNEL_SAVE:
+		m_strRequestURL = QString("http://%1/ISAPI/Streaming/channels/%2")
+			.arg(theMapData["device_ip"].c_str()).arg(m_lpViewCamera->GetChannelID());
 		break;
 	}
 }
@@ -232,7 +242,7 @@ void CViewCamera::onReplyFinished(QNetworkReply *reply)
 		if (reply->error() != QNetworkReply::NoError) {
 			blog(LOG_INFO, "QT error => %d, %s", reply->error(), reply->errorString().toStdString().c_str());
 			// 如果是能力查询，需要终止对能力查询的周期调用功能...
-			if (nCurCmd == kIMAGE_CAPABILITY || nCurCmd == kPTZ_CAPABILITY) {
+			if (nCurCmd == kCHANNEL_CAPABILITY || nCurCmd == kIMAGE_CAPABILITY || nCurCmd == kPTZ_CAPABILITY) {
 				m_bIsLoginISAPI = true;
 			}
 			break;
@@ -245,7 +255,7 @@ void CViewCamera::onReplyFinished(QNetworkReply *reply)
 		blog(LOG_INFO, "QT Status Code => %d", nStatusCode);
 		blog(LOG_DEBUG,"QT Reply Data => %s", strData.c_str());
 		// 如果状态码不是有效的，并且是能力查询，需要终止对能力查询的周期调用功能...
-		if ((nStatusCode != 200) && (nCurCmd == kIMAGE_CAPABILITY || nCurCmd == kPTZ_CAPABILITY)) {
+		if ((nStatusCode != 200) && (nCurCmd == kCHANNEL_CAPABILITY || nCurCmd == kIMAGE_CAPABILITY || nCurCmd == kPTZ_CAPABILITY)) {
 			m_bIsLoginISAPI = true;
 			break;
 		}
@@ -273,6 +283,19 @@ void CViewCamera::doParseResult(CCmdItem * lpCmdItem, string & inXmlData)
 	if (theXmlDoc.Error() || lpRootElem == NULL) {
 		blog(LOG_INFO, "xml error => %s", theXmlDoc.ErrorDesc());
 		return;
+	}
+	// 如果是对CHANNEL能力查询结果反馈，需要进一步解析...
+	if (lpCmdItem->GetCmdISAPI() == kCHANNEL_CAPABILITY) {
+		TiXmlElement * lpVideoElem = lpRootElem->FirstChildElement("Video");
+		TiXmlElement * lpCBRateElem = (lpVideoElem != NULL) ? lpVideoElem->FirstChildElement("constantBitRate") : NULL;
+		TiXmlElement * lpVBRateElem = (lpVideoElem != NULL) ? lpVideoElem->FirstChildElement("vbrUpperCap") : NULL;
+		TiXmlElement * lpVCTypeElem = (lpVideoElem != NULL) ? lpVideoElem->FirstChildElement("videoQualityControlType") : NULL; 
+		// 保存通道的CBR码流和VBR码流，同时，保存具体的视频码流类型标识符号 => CBR|VBR...
+		m_nCBRVideoKbps = atoi((lpCBRateElem != NULL) ? lpCBRateElem->FirstChild()->ToText()->Value() : "");
+		m_nVBRVideoKbps = atoi((lpVBRateElem != NULL) ? lpVBRateElem->FirstChild()->ToText()->Value() : "");
+		m_strVideoQualityType = ((lpVCTypeElem != NULL) ? lpVCTypeElem->FirstChild()->ToText()->Value() : "");
+		// 保存整个DOC，用来动态修改视频码流...
+		m_XmlChannelDoc = theXmlDoc;
 	}
 	// 如果是对IMAGE能力查询结果反馈，需要进一步解析...
 	if (lpCmdItem->GetCmdISAPI() == kIMAGE_CAPABILITY) {
@@ -320,6 +343,53 @@ void CViewCamera::doParsePTZRange(TiXmlElement * lpXmlElem, POINT & outRange)
 	}
 }
 
+void CViewCamera::onServerRttTrend(float inFloatDelta)
+{
+	// 是否已经成功获取当前IPC的网络视频参数配置信息...
+	TiXmlElement * lpRootElem = m_XmlChannelDoc.RootElement();
+	if (m_XmlChannelDoc.Error() || lpRootElem == NULL) {
+		blog(LOG_INFO, "xml error => %s", m_XmlChannelDoc.ErrorDesc());
+		return;
+	}
+	// 如果延时增大的趋势大于或等于+5 => 表示连续5秒都在增大延时，需要降低码流50% => 降低码流要迅速...
+	// 如果延时增大的趋势小于或等于-5 => 标识连续5秒都在减小延时，需要增加码流10% => 增加码流要缓慢...
+	int nNewCBRVideoKbps = m_nCBRVideoKbps * (1.0f + inFloatDelta);
+	int nNewVBRVideoKbps = m_nVBRVideoKbps * (1.0f + inFloatDelta);
+	// 限定CBR与VBR的码率最高上限和最低上限...
+	nNewCBRVideoKbps = min(nNewCBRVideoKbps, m_nMaxVideoKbps);
+	nNewVBRVideoKbps = min(nNewVBRVideoKbps, m_nMaxVideoKbps);
+	nNewCBRVideoKbps = max(nNewCBRVideoKbps, 32);
+	nNewVBRVideoKbps = max(nNewVBRVideoKbps, 32);
+	// 如果计算后发现新码率与旧码率相同，直接返回...
+	if (nNewCBRVideoKbps == m_nCBRVideoKbps && nNewVBRVideoKbps == m_nVBRVideoKbps)
+		return;
+	// 保存新的CBR|VBR计算码率，并设置到IPC当中...
+	m_nCBRVideoKbps = nNewCBRVideoKbps;
+	m_nVBRVideoKbps = nNewVBRVideoKbps;
+	// 打印调试信息 => IPC的视频码率上限被修改了...
+	blog(LOG_INFO, "IPC-ID: %d, Delta: %.2f, CBR-VideoKbps: %d, VBR-VideoKbps: %d", 
+		 m_nDBCameraID, inFloatDelta, m_nCBRVideoKbps, m_nVBRVideoKbps);
+	// 获已经得到的IPC网络视频配置参数 => 最高码流上限...
+	TiXmlElement * lpVideoElem = lpRootElem->FirstChildElement("Video");
+	TiXmlElement * lpCBRateElem = (lpVideoElem != NULL) ? lpVideoElem->FirstChildElement("constantBitRate") : NULL;
+	TiXmlElement * lpVBRateElem = (lpVideoElem != NULL) ? lpVideoElem->FirstChildElement("vbrUpperCap") : NULL;
+	if (lpCBRateElem != NULL) {
+		lpCBRateElem->FirstChild()->ToText()->SetValue(QString("%1").arg(m_nCBRVideoKbps).toStdString());
+	}
+	if (lpVBRateElem != NULL) {
+		lpVBRateElem->FirstChild()->ToText()->SetValue(QString("%1").arg(m_nVBRVideoKbps).toStdString());
+	}
+	// 提取XML字符串...
+	string strContent;
+	strContent << m_XmlChannelDoc;
+	// 创建一条新命令 => 修改视频码流...
+	CCmdItem * lpNewCmdItem = new CCmdItem(this, kCHANNEL_SAVE);
+	lpNewCmdItem->SetContentVal(strContent);
+	m_deqCmd.push_back(lpNewCmdItem);
+	// 从队列中提起第一个命令并执行...
+	this->doFirstCmdItem();
+}
+
 // 初始化登录ISAPI，成功之前doPTZCmd都会失败...
 void CViewCamera::doCameraLoginISAPI()
 {
@@ -337,13 +407,23 @@ void CViewCamera::doCameraLoginISAPI()
 	CCmdItem * lpCmdItem = NULL;
 	m_bIsNetRunning = false;
 	// 发起图像能力查询命令...
-	lpCmdItem = new CCmdItem(this, kIMAGE_CAPABILITY, 0);
+	lpCmdItem = new CCmdItem(this, kIMAGE_CAPABILITY);
 	m_deqCmd.push_back(lpCmdItem);
 	// 发起PTZ能力查询命令...
-	lpCmdItem = new CCmdItem(this, kPTZ_CAPABILITY, 0);
+	lpCmdItem = new CCmdItem(this, kPTZ_CAPABILITY);
 	m_deqCmd.push_back(lpCmdItem);
+	// 发起当前通道对应的音视频配置信息...
+	if (this->GetChannelID() > 0) {
+		lpCmdItem = new CCmdItem(this, kCHANNEL_CAPABILITY);
+		m_deqCmd.push_back(lpCmdItem);
+	}
 	// 从队列中提起第一个命令并执行...
 	this->doFirstCmdItem();
+}
+
+int CViewCamera::GetChannelID()
+{
+	return ((m_lpDataThread != NULL) ? m_lpDataThread->GetChannelID() : 0);
 }
 
 void CViewCamera::onAuthRequest(QNetworkReply *reply, QAuthenticator *authenticator)
@@ -760,7 +840,7 @@ void CViewCamera::BuildSendThread()
 	string & strUdpAddr = App()->GetUdpAddr();
 	int nUdpPort = App()->GetUdpPort();
 	int nDBCameraID = m_nDBCameraID;
-	m_lpUDPSendThread = new CUDPSendThread(m_lpDataThread, nRoomID, nDBCameraID);
+	m_lpUDPSendThread = new CUDPSendThread(this, m_lpDataThread, nRoomID, nDBCameraID);
 	// 如果初始化UDP推流线程失败，删除已经创建的对象...
 	if (!m_lpUDPSendThread->InitThread(strUdpAddr, nUdpPort, nAudioRateIndex, nAudioChannelNum)) {
 		delete m_lpUDPSendThread;
