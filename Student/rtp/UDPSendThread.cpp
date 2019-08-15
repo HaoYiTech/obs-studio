@@ -4,9 +4,11 @@
 #include "UDPSocket.h"
 #include "SocketUtils.h"
 #include "UDPSendThread.h"
+#include "window-view-camera.hpp"
 
-CUDPSendThread::CUDPSendThread(CDataThread * lpDataThread, int nDBRoomID, int nDBCameraID)
+CUDPSendThread::CUDPSendThread(CViewCamera * lpViewCamera, CDataThread * lpDataThread, int nDBRoomID, int nDBCameraID)
   : m_lpDataThread(lpDataThread)
+  , m_lpViewCamera(lpViewCamera)
   , m_total_output_bytes(0)
   , m_audio_output_bytes(0)
   , m_video_output_bytes(0)
@@ -33,7 +35,9 @@ CUDPSendThread::CUDPSendThread(CDataThread * lpDataThread, int nDBRoomID, int nD
   , m_nVideoCurSendSeq(0)
   , m_server_rtt_var_ms(-1)
   , m_server_rtt_ms(-1)
+  , m_server_rtt_trend(0)
 {
+	ASSERT(m_lpViewCamera != NULL);
 	ASSERT(m_lpDataThread != NULL);
 	// 初始化发包路线 => 服务器方向...
 	m_dt_to_dir = DT_TO_SERVER;
@@ -1102,11 +1106,29 @@ void CUDPSendThread::doTagDetectProcess(char * lpBuffer, int inRecvLen)
 		uint32_t cur_time_ms = (uint32_t)(os_gettime_ns() / 1000000);
 		int keep_rtt = cur_time_ms - rtpDetect.tsSrc;
 		// 防止网络突发延迟增大, 借鉴 TCP 的 RTT 遗忘衰减的算法...
-		if (m_server_rtt_ms < 0) { m_server_rtt_ms = keep_rtt; }
-		else { m_server_rtt_ms = (7 * m_server_rtt_ms + keep_rtt) / 8; }
+		if (m_server_rtt_ms < 0) {
+			m_server_rtt_ms = keep_rtt;
+		} else {
+			int rtt_ms_src = m_server_rtt_ms;
+			m_server_rtt_ms = (7 * m_server_rtt_ms + keep_rtt) / 8;
+			// 计算网络延时的趋势 => 大于0延时在增大，小于或等于0延时在降低...
+			m_server_rtt_trend += ((m_server_rtt_ms - rtt_ms_src) > 0 ? 1 : -1);
+			// 如果延时增大的趋势大于或等于+5 => 表示连续5秒都在增大延时，需要降低码流50% => 降低码流要迅速...
+			// 如果延时增大的趋势小于或等于-5 => 标识连续5秒都在减小延时，需要增加码流10% => 增加码流要缓慢...
+			if (m_server_rtt_trend >= 5 || m_server_rtt_trend <= -5) {
+				float fDelta = ((m_server_rtt_trend >= 5) ? -0.5f : +0.1f);
+				// 注意：这里必须使用信号槽的调用方式，否则会出现线程冲突，造成无法投递网络命令的问题...
+				//QMetaObject::invokeMethod(m_lpViewCamera, "onServerRttTrend", Q_ARG(float, fDelta));
+				// 还原延时趋势计数器，要不然会出故障...
+				m_server_rtt_trend = 0;
+			}
+		}
 		// 计算网络抖动的时间差值 => RTT的修正值...
-		if (m_server_rtt_var_ms < 0) { m_server_rtt_var_ms = abs(m_server_rtt_ms - keep_rtt); }
-		else { m_server_rtt_var_ms = (m_server_rtt_var_ms * 3 + abs(m_server_rtt_ms - keep_rtt)) / 4; }
+		if (m_server_rtt_var_ms < 0) {
+			m_server_rtt_var_ms = abs(m_server_rtt_ms - keep_rtt);
+		} else {
+			m_server_rtt_var_ms = (m_server_rtt_var_ms * 3 + abs(m_server_rtt_ms - keep_rtt)) / 4;
+		}
 		// 打印探测结果 => 探测序号 | 网络延时(毫秒)...
 		blog(LOG_INFO, "%s Recv Detect => Live: %d, Dir: %d, dtNum: %d, rtt: %d ms, rtt_var: %d ms", TM_SEND_NAME,
 			 m_rtp_create.liveID, rtpDetect.dtDir, rtpDetect.dtNum, m_server_rtt_ms, m_server_rtt_var_ms);

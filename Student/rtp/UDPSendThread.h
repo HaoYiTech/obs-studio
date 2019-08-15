@@ -10,7 +10,7 @@ class CDataThread;
 class CUDPSendThread : public OSThread
 {
 public:
-	CUDPSendThread(CDataThread * lpDataThread, int nDBRoomID, int nDBCameraID);
+	CUDPSendThread(CViewCamera * lpViewCamera, CDataThread * lpDataThread, int nDBRoomID, int nDBCameraID);
 	virtual ~CUDPSendThread();
 	virtual void Entry();
 public:
@@ -58,6 +58,7 @@ private:
 	string			m_strSPS;				// 视频sps
 	string			m_strPPS;				// 视频pps
 
+	CViewCamera *   m_lpViewCamera;         // 摄像头窗口对象
 	UDPSocket	*	m_lpUDPSocket;			// UDP对象
 	CDataThread *   m_lpDataThread;         // 推流管理
 	pthread_mutex_t m_Mutex;                // 互斥对象 => 保护环形队列...
@@ -72,6 +73,7 @@ private:
 	int				m_dt_to_dir;			// 发包路线方向 => TO_SERVER | TO_P2P
 	int				m_server_rtt_ms;		// Server => 网络往返延迟值 => 毫秒
 	int				m_server_rtt_var_ms;	// Server => 网络抖动时间差 => 毫秒
+	int             m_server_rtt_trend;     // 推流者与服务器之间的网络延时趋势 => 为正数延时增大，为负数延时减少
 
 	rtp_detect_t	m_rtp_detect;			// RTP探测命令结构体
 	rtp_create_t	m_rtp_create;			// RTP创建房间和直播结构体
