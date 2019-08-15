@@ -167,6 +167,7 @@ CRtspThread::CRtspThread(CViewCamera * lpViewCamera)
   : CDataThread(lpViewCamera)
 {
 	m_env_ = NULL;
+	m_nChannelID = 0;
 	m_scheduler_ = NULL;
 	m_rtspClient_ = NULL;
 	m_rtspEventLoopWatchVariable = 0;
@@ -183,6 +184,15 @@ CRtspThread::~CRtspThread()
 	this->StopAndWaitForThread();
 
 	blog(LOG_INFO, "== [~CRtspThread Thread] - Exit End ==");
+}
+
+int rfind(const char*source, const char* match)
+{
+	for (int i = strlen(source) - strlen(match) - 1; i >= 0; i--) {
+		if (source[i] == match[0] && strncmp(source + i, match, strlen(match)) == 0)
+			return i;
+	}
+	return -1;
 }
 
 bool CRtspThread::InitThread()
@@ -206,6 +216,13 @@ bool CRtspThread::InitThread()
 		return false;
 	// 保存后续需要的参数内容...
 	m_strRtspUrl = strStreamUrl;
+	// 查找最后一个反斜杠的位置...
+	const char * lpMatch = "/";
+	const char * lpSource = m_strRtspUrl.c_str();
+	int nPosChannel = rfind(lpSource, lpMatch);
+	if (nPosChannel > 0) {
+		m_nChannelID = atoi(lpSource + nPosChannel + 1);
+	}
 	// 创建rtsp链接环境...
 	m_scheduler_ = BasicTaskScheduler::createNew();
 	m_env_ = BasicUsageEnvironment::createNew(*m_scheduler_);

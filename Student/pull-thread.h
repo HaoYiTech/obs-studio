@@ -10,6 +10,7 @@ public:
 	CDataThread(CViewCamera * lpViewCamera);
 	virtual ~CDataThread();
 public:
+	virtual int     GetChannelID() = 0;
 	virtual bool	InitThread() = 0;
 	virtual void	ResetEventLoop() = 0;
 public:
@@ -55,10 +56,12 @@ public:
 	virtual ~CRtspThread();
 public:
 	virtual bool    InitThread();
+	virtual int     GetChannelID() { return m_nChannelID; }
 	virtual void	ResetEventLoop() { m_rtspEventLoopWatchVariable = 1; }
 private:
 	virtual void	Entry();
 private:
+	int             m_nChannelID;           // rtsp频道编号
 	string			m_strRtspUrl;           // rtsp链接地址
 	TaskScheduler * m_scheduler_;			// rtsp需要的任务对象
 	UsageEnvironment * m_env_;				// rtsp需要的环境
