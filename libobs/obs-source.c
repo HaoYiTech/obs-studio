@@ -1305,13 +1305,13 @@ static void source_output_audio_data(obs_source_t *source,
 		source->last_sync_offset = sync_offset;
 	}
 
-	// 注意：这里是控制音频数据是否继续对外输出的开关，由于本地播放的调整，需要总是对外输出...
-	//if (source->monitoring_type != OBS_MONITORING_TYPE_MONITOR_ONLY) {
+	// 注意：这里进行了还原，因为，不能靠输出的音频去本地播放，而是需要靠数据源进行直接的本地播放...
+	if (source->monitoring_type != OBS_MONITORING_TYPE_MONITOR_ONLY) {
 		if (push_back && source->audio_ts)
 			source_output_audio_push_back(source, &in);
 		else
 			source_output_audio_place(source, &in);
-	//}
+	}
 
 	pthread_mutex_unlock(&source->audio_buf_mutex);
 
@@ -3961,6 +3961,7 @@ static inline void process_audio_source_tick(obs_source_t *source,
 	}
 
 	// 将当前数据源的音频放入第1个输出缓存...
+	// 这样做的目的是避免长时间占用输入缓存...
 	for (size_t ch = 0; ch < channels; ch++)
 		circlebuf_peek_front(&source->audio_input_buf[ch],
 				source->audio_output_buf[0][ch],
@@ -4153,7 +4154,8 @@ void obs_source_set_monitoring_type(obs_source_t *source,
 		return;
 	if (source->monitoring_type == type)
 		return;
-	/*// 不要针对每个source进行单独的监听回放，而是统一使用obs_scene_t在轨道3上输出...
+	// 注意：这里进行了还原，不能用输出音频来进行本地播放，必须用数据源自身的本地播放...
+	// 不要针对每个source进行单独的监听回放，而是统一使用obs_scene_t在轨道3上输出...
 	bool was_on = source->monitoring_type != OBS_MONITORING_TYPE_NONE;
 	bool now_on = type != OBS_MONITORING_TYPE_NONE;
 	if (was_on != now_on) {
@@ -4163,11 +4165,12 @@ void obs_source_set_monitoring_type(obs_source_t *source,
 			audio_monitor_destroy(source->monitor);
 			source->monitor = NULL;
 		}
-	}*/
+	}
 	// 直接更新监视状态到当前数据源当中...
 	source->monitoring_type = type;
+	// 注意：这里进行了还原，不能用输出音频来进行本地播放，必须用数据源自身的本地播放...
 	// 进行数据源的上层通知，再反过来调用obs_scene_create_monitor重建监视器...
-	obs_source_dosignal(source, "source_monitoring", NULL);
+	//obs_source_dosignal(source, "source_monitoring", NULL);
 }
 
 enum obs_monitoring_type obs_source_get_monitoring_type(
