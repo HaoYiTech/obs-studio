@@ -75,14 +75,16 @@ enum {
 // define IPC ISAPI command...
 const long ISAPI_LINE_START = __LINE__ + 2;
 enum CMD_ISAPI {
-	kIMAGE_CAPABILITY = __LINE__ - ISAPI_LINE_START,     // Image 能力查询命令
-	kPTZ_CAPABILITY   = __LINE__ - ISAPI_LINE_START,     // PTZ 能力查询命令
-	kPTZ_X_PAN        = __LINE__ - ISAPI_LINE_START,     // PTZ X轴向右(+)向左(-)
-	kPTZ_Y_TILT       = __LINE__ - ISAPI_LINE_START,     // PTZ Y轴向上(+)向下(-)
-	kPTZ_Z_ZOOM       = __LINE__ - ISAPI_LINE_START,     // PTZ Z轴放大(+)缩小(-)
-	kPTZ_F_FOCUS      = __LINE__ - ISAPI_LINE_START,     // PTZ 焦距放大(+)缩小(-)
-	kPTZ_I_IRIS       = __LINE__ - ISAPI_LINE_START,     // PTZ 光圈放大(+)缩小(-)
-	kIMAGE_FLIP       = __LINE__ - ISAPI_LINE_START,     // 图像画面翻转命令
+	kCHANNEL_CAPABILITY = __LINE__ - ISAPI_LINE_START,     // 流通道能力查询命令
+	kIMAGE_CAPABILITY   = __LINE__ - ISAPI_LINE_START,     // Image 能力查询命令
+	kPTZ_CAPABILITY     = __LINE__ - ISAPI_LINE_START,     // PTZ 能力查询命令
+	kPTZ_X_PAN          = __LINE__ - ISAPI_LINE_START,     // PTZ X轴向右(+)向左(-)
+	kPTZ_Y_TILT         = __LINE__ - ISAPI_LINE_START,     // PTZ Y轴向上(+)向下(-)
+	kPTZ_Z_ZOOM         = __LINE__ - ISAPI_LINE_START,     // PTZ Z轴放大(+)缩小(-)
+	kPTZ_F_FOCUS        = __LINE__ - ISAPI_LINE_START,     // PTZ 焦距放大(+)缩小(-)
+	kPTZ_I_IRIS         = __LINE__ - ISAPI_LINE_START,     // PTZ 光圈放大(+)缩小(-)
+	kIMAGE_FLIP         = __LINE__ - ISAPI_LINE_START,     // 图像画面翻转命令
+	kCHANNEL_SAVE       = __LINE__ - ISAPI_LINE_START,     // 保存通道配置命令
 };
 
 // define the command header...
