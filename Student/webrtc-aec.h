@@ -24,6 +24,8 @@ public:
 	BOOL    PushMicFrame(FMS_FRAME & inFrame);
 	BOOL    onUdpRecvThreadStop();
 private:
+	void    doPushToMic(int64_t inPTS, uint8_t * lpData, int nSize);
+private:
 	void    doEchoMic();
 	void    doEchoCancel();
 	void    doEchoEncode();
@@ -55,12 +57,12 @@ private:
 	float           *   m_pDMicBufNN;       // 麦克风原始数据 => float
 	float           *   m_pDHornBufNN;      // 扬声器原始数据 => float
 	float           *   m_pDEchoBufNN;      // 回音消除后数据 => float
+	string              m_strRemainMic;     // 麦克风解码剩余数据...
+	string              m_strRemainEcho;    // 每次AAC压缩剩余数据...
 
 	circlebuf           m_circle_mic;		// PCM环形队列 => 只存放麦克风解码后的音频数据
 	circlebuf           m_circle_horn;      // PCM环形队列 => 只存放扬声器解码后的音频数据
 	circlebuf           m_circle_echo;      // PCM环形队列 => 只存放回音消除之后的音频数据
-
-	int64_t             m_mic_aac_ms_zero;  // 麦克风输入第一个AAC数据帧的PTS(毫秒) => 0点时间，便于压缩后的PTS计算，默认-1
 
 	CViewCamera     *   m_lpViewCamera;     // 通道对象...
 	AVCodec         *   m_lpDecCodec;		// 解码器...
