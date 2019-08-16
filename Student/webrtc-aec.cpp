@@ -532,8 +532,6 @@ BOOL CWebrtcAEC::PushMicFrame(FMS_FRAME & inFrame)
 		this->doPushToMic(theNewPacket.pts, output_data[0], cur_data_size);
 		// 发起信号量变化通知，可以进行回音消除操作了...
 		((m_lpAECSem != NULL) ? os_sem_post(m_lpAECSem) : NULL);
-		// 将转换后的麦克风数据直接存盘检验 => 存放格式是回音消除需要的格式...
-		//this->doSaveAudioPCM((void*)output_data[0], cur_data_size, m_echo_sample_info.samples_per_sec, 1, 0);
 	}
 	// 释放AVPacket数据包...
 	av_free_packet(&theNewPacket);
@@ -602,8 +600,6 @@ void CWebrtcAEC::doEchoMic()
 		WebRtcNsx_Process(m_lpNsxInst, &m_lpMicBufNN, m_out_channel_num, &m_lpEchoBufNN);
 		memcpy(m_lpMicBufNN, m_lpEchoBufNN, nNeedBufBytes);
 	}
-	// 将降噪后的麦克风数据直接存盘检验 => 存放格式是回音消除需要的格式...
-	//this->doSaveAudioPCM((void*)m_lpMicBufNN, nNeedBufBytes, m_echo_sample_info.samples_per_sec, 2, 0);
 	// 对数据进行直接转换...
 	uint64_t  ts_offset = 0;
 	uint32_t  output_frames = 0;
@@ -614,11 +610,8 @@ void CWebrtcAEC::doEchoMic()
 		// 对降噪后的数据放入AAC压缩打包处理环形队列当中，进行下一步的压缩打包投递处理 => 注意，这里不需要用互斥对象...
 		int cur_data_size = get_audio_size(m_aac_sample_info.format, m_aac_sample_info.speakers, output_frames);
 		circlebuf_push_back(&m_circle_echo, &frame_pts_ms, sizeof(int64_t));
-		circlebuf_push_back(&m_circle_echo, &cur_data_size, sizeof(int));
 		circlebuf_push_back(&m_circle_echo, output_data[0], cur_data_size);
 		//blog(LOG_INFO, "Echo-Block => PTS: %I64d, Size: %d", frame_pts_ms, cur_data_size);
-		// 将转换后的AAC压缩器需要的音频格式进行存盘检验 => 32位浮点数...
-		//this->doSaveAudioPCM((void*)output_data[0], cur_data_size, m_aac_sample_info.samples_per_sec, 3, 0);
 	}
 	// 如果麦克风环形队列里面还有足够的数据块需要进行处理，发起信号量变化事件...
 	if (m_circle_mic.size > nNeedBufBytes) {
@@ -634,11 +627,13 @@ void CWebrtcAEC::doEchoCancel()
 		return;
 	// 麦克风和扬声器都必须大于一个处理单元 => 样本数 * 每个样本占用字节数 => AV_SAMPLE_FMT_S16
 	int nNeedBufBytes = m_nWebrtcNN * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
-	if (m_circle_mic.size < nNeedBufBytes || m_circle_horn.size < nNeedBufBytes)
+	if (m_circle_mic.size < (nNeedBufBytes + sizeof(int64_t)) || m_circle_horn.size < nNeedBufBytes)
 		return;
 	int err_code = 0;
+	int64_t frame_pts_ms = 0;
 	// 从麦克风和扬声器环形队列中同时读取数据...
 	pthread_mutex_lock(&m_AECMutex);
+	circlebuf_pop_front(&m_circle_mic, &frame_pts_ms, sizeof(int64_t));
 	circlebuf_pop_front(&m_circle_mic, m_lpMicBufNN, nNeedBufBytes);
 	circlebuf_pop_front(&m_circle_horn, m_lpHornBufNN, nNeedBufBytes);
 	pthread_mutex_unlock(&m_AECMutex);
@@ -681,11 +676,12 @@ void CWebrtcAEC::doEchoCancel()
 	if (audio_resampler_resample(m_echo_resampler, output_data, &output_frames, &ts_offset, (const uint8_t *const *)&m_lpEchoBufNN, input_frames)) {
 		// 对回音消除后的数据放入AAC压缩打包处理环形队列当中，进行下一步的压缩打包投递处理 => 注意，这里不需要用互斥对象...
 		int cur_data_size = get_audio_size(m_aac_sample_info.format, m_aac_sample_info.speakers, output_frames);
+		circlebuf_push_back(&m_circle_echo, &frame_pts_ms, sizeof(int64_t));
 		circlebuf_push_back(&m_circle_echo, output_data[0], cur_data_size);
 	}
 
 	// 如果麦克风和扬声器环形队列里面还有足够的数据块需要进行回音消除，发起信号量变化事件...
-	if (m_circle_mic.size >= nNeedBufBytes && m_circle_horn.size >= nNeedBufBytes) {
+	if (m_circle_mic.size > nNeedBufBytes && m_circle_horn.size >= nNeedBufBytes) {
 		((m_lpAECSem != NULL) ? os_sem_post(m_lpAECSem) : NULL);
 	}
 }
@@ -697,14 +693,12 @@ void CWebrtcAEC::doEchoEncode()
 	// 回音缓存数据必须大于一个处理单元 => 样本数 * 每个样本占用字节数 => AV_SAMPLE_FMT_FLTP
 	int nPerSampleByte = av_get_bytes_per_sample(AV_SAMPLE_FMT_FLTP);
 	int nNeedBufBytes = nb_samples * nPerSampleByte;
-	int nMinBytes = nNeedBufBytes + sizeof(int64_t) + sizeof(int);
-	if (m_circle_echo.size < nMinBytes)
+	if (m_circle_echo.size < (nNeedBufBytes + sizeof(int64_t)))
 		return;
-	int cur_frame_size = 0;
 	int64_t frame_pts_ms = 0;
+	int cur_frame_size = nNeedBufBytes;
 	// 从回音消除后的队列中取出一个10毫秒音频数据...
 	circlebuf_pop_front(&m_circle_echo, &frame_pts_ms, sizeof(int64_t));
-	circlebuf_pop_front(&m_circle_echo, &cur_frame_size, sizeof(int));
 	circlebuf_pop_front(&m_circle_echo, m_aac_frame_ptr, cur_frame_size);
 	ASSERT(cur_frame_size < m_aac_frame_size);
 	// 计算当前剩余缓存数据可以持续播放的毫秒数 => 剩余总字节数 / (每毫秒样本数 * 每样本字节数)
