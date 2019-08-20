@@ -129,6 +129,7 @@ static bool process_audio_delay(struct audio_monitor *monitor,
 			continue;
 		}
 
+		// 注意：这种直接丢帧方式需要优化，应该采用加速播放或减速播放的方式，而不是直接丢帧...
 		// 播放内部遗留缓存超过 75 毫秒，就不能继续投递数据，直接丢弃，继续使用已投递播放缓存里面的数据...
 		int64_t pad_ns_buff = (uint64_t)pad * 1000000000ULL / (uint64_t)monitor->sample_rate;
 		if (pad_ns_buff >= 75 * 1000000) {
