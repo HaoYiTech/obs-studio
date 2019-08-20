@@ -281,7 +281,6 @@ void OBSBasicSourceSelect::on_buttonBox_accepted()
 		// 如果新添加资源是互动教室 => 需要监视并输出，开启本地监视，添加噪音抑制过滤器...
 		// 轨道1 => 输出给直播使用，始终屏蔽互动教室的声音...
 		// 轨道2 => 输出给录像使用，当互动教室处于焦点状态时录制声音...
-		// 轨道3 => 输出给本地播放，数据源大于OBS_MONITORING_TYPE_NONE时，才进行混音处理...
 		if (bIsNewRtpSource) {
 			obs_source_set_monitoring_type(newSource, OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT);
 			blog(LOG_INFO, "User changed audio monitoring for source '%s' to: %s", obs_source_get_name(newSource), "monitor and output");
@@ -294,9 +293,9 @@ void OBSBasicSourceSelect::on_buttonBox_accepted()
 		}
 	}
 
-	// 轨道3 => 输出给本地播放，数据源大于OBS_MONITORING_TYPE_NONE时，才进行混音处理...
-	OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
-	main->doLocalPlayAudioMixer(newSource);
+	// 思路错误 => 轨道3 => 输出给本地播放，数据源大于OBS_MONITORING_TYPE_NONE时，才进行混音处理...
+	//OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	//main->doLocalPlayAudioMixer(newSource);
 
 	done(DialogCode::Accepted);
 }

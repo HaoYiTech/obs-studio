@@ -331,9 +331,9 @@ void OBSAdvAudioCtrl::monitoringTypeChanged(int index)
 	blog(LOG_INFO, "User changed audio monitoring for source '%s' to: %s",
 			obs_source_get_name(source), type);
 
-	// 轨道3 => 输出给本地播放，数据源大于OBS_MONITORING_TYPE_NONE时，才进行混音处理...
-	bool enabled = ((mt > OBS_MONITORING_TYPE_NONE) ? true : false);
-	setMixer(source, 2, enabled);
+	// 思路错误 => 轨道3 => 输出给本地播放，数据源大于OBS_MONITORING_TYPE_NONE时，才进行混音处理...
+	//bool enabled = ((mt > OBS_MONITORING_TYPE_NONE) ? true : false);
+	//setMixer(source, 2, enabled);
 }
 
 void OBSAdvAudioCtrl::mixer1Changed(bool checked)

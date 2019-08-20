@@ -1082,7 +1082,7 @@ bool OBSBasic::InitBasicConfigDefaults()
 
 	// 这是针对 Simple 输出模式的配置 => 目前用的高级输出模式...
 	config_set_default_string(basicConfig, "SimpleOutput", "FilePath", GetDefaultVideoSavePath().c_str());
-	config_set_default_string(basicConfig, "SimpleOutput", "RecFormat",	"flv");
+	config_set_default_string(basicConfig, "SimpleOutput", "RecFormat",	"mp4");
 	config_set_default_uint  (basicConfig, "SimpleOutput", "VBitrate", 1024); //2500
 	config_set_default_string(basicConfig, "SimpleOutput", "StreamEncoder", SIMPLE_ENCODER_X264);
 	config_set_default_uint  (basicConfig, "SimpleOutput", "ABitrate", 64); //160
@@ -1107,7 +1107,7 @@ bool OBSBasic::InitBasicConfigDefaults()
 
 	// Standard标准录像模式的参数配置 => 音频可以支持多轨道录像 => 目前使用这些配置...
 	config_set_default_string(basicConfig, "AdvOut", "RecFilePath", GetDefaultVideoSavePath().c_str());
-	config_set_default_string(basicConfig, "AdvOut", "RecFormat", "flv");
+	config_set_default_string(basicConfig, "AdvOut", "RecFormat", "mp4");
 	config_set_default_bool  (basicConfig, "AdvOut", "RecUseRescale", false);
 	config_set_default_bool  (basicConfig, "AdvOut", "RecFileNameWithoutSpace", true); //标准录像文件名不包含空格
 	config_set_default_uint  (basicConfig, "AdvOut", "RecTracks", (2<<0)); //标准录像用轨道2(索引编号是1) => 支持多音轨录像
@@ -1860,7 +1860,7 @@ void OBSBasic::DeferredLoad(const QString &file, int requeueCount)
 	//this->doSceneCreateMonitor();
 }
 
-// 当source的监视发生变化，需要重建场景的监视器，播放轨道3音频...
+// 思路错误：当source的监视发生变化，需要重建场景的监视器，播放轨道3音频...
 void OBSBasic::MonitoringSourceChanged(OBSSource source)
 {
 	//this->doSceneDestoryMonitor();
@@ -3479,12 +3479,12 @@ void OBSBasic::ResetAudioDevice(const char *sourceId, const char *deviceId,	cons
 		obs_data_release(settings);
 		obs_set_output_source(channel, source);
 		obs_source_release(source);
-		// 注意：第三轨道混音(索引编号是2)专门用来本地统一播放使用的混音通道...
 		// 如果是音频输入设备，自动加入噪音抑制过滤器|自动屏蔽第三轨道混音...
 		if (strcmp(sourceId, App()->InputAudioSource()) == 0) {
 			OBSBasicSourceSelect::AddFilterToSourceByID(source, App()->GetNSFilter());
-			uint32_t new_mixers = obs_source_get_audio_mixers(source) & (~(1 << 2));
-			obs_source_set_audio_mixers(source, new_mixers);
+			// 思路错误 => 轨道3(索引编号是2)专门用来本地统一播放使用的混音通道...
+			//uint32_t new_mixers = obs_source_get_audio_mixers(source) & (~(1 << 2));
+			//obs_source_set_audio_mixers(source, new_mixers);
 		}
 		// 如果是音频输出设备，自动设置为静音状态，避免发生多次叠加啸叫...
 		if (strcmp(sourceId, App()->OutputAudioSource()) == 0) {
@@ -6559,7 +6559,7 @@ void OBSBasic::doHideDShowAudioMixer(obs_sceneitem_t * scene_item)
 	}
 }
 
-// 轨道3 => 输出给本地播放，数据源大于OBS_MONITORING_TYPE_NONE时，才进行混音处理...
+// 思路错误 => 轨道3 => 输出给本地播放，数据源大于OBS_MONITORING_TYPE_NONE时，才进行混音处理...
 void OBSBasic::doLocalPlayAudioMixer(obs_source_t * source)
 {
 	bool enabled = ((obs_source_get_monitoring_type(source) > OBS_MONITORING_TYPE_NONE) ? true : false);
