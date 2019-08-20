@@ -89,6 +89,9 @@ int sonicWriteUnsignedCharToStream(sonicStream stream, unsigned char* samples,
    will be available, and zero is returned, which is not an error condition. */
 int sonicReadFloatFromStream(sonicStream stream, float* samples,
                              int maxSamples);
+/* Read input remain data */
+int sonicReadFloatFromInput(sonicStream stream, float* samples,
+                             int maxSamples);
 /* Use this to read 16-bit data out of the stream.  Sometimes no data will
    be available, and zero is returned, which is not an error condition. */
 int sonicReadShortFromStream(sonicStream stream, short* samples,
@@ -103,6 +106,12 @@ int sonicReadUnsignedCharFromStream(sonicStream stream, unsigned char* samples,
 int sonicFlushStream(sonicStream stream);
 /* Return the number of samples in the output buffer */
 int sonicSamplesAvailable(sonicStream stream);
+/* Return the number of samples in the input buffer */
+int sonicSamplesInputNum(sonicStream stream);
+/* Return the number of MaxRequired */
+int sonicGetMaxRequired(sonicStream stream);
+/* Empty input and pitch buffers */
+void sonicResetStream(sonicStream stream);
 /* Get the speed of the stream. */
 float sonicGetSpeed(sonicStream stream);
 /* Set the speed of the stream. */

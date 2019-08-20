@@ -466,6 +466,34 @@ static int copyInputToOutput(sonicStream stream, int position) {
   return numSamples;
 }
 
+/* Read input remain data */
+int sonicReadFloatFromInput(sonicStream stream, float* samples, int maxSamples)
+{
+	int numSamples = stream->numInputSamples;
+	int remainingSamples = 0;
+	short* buffer;
+	int count;
+	if (numSamples == 0) {
+		return 0;
+	}
+	if (numSamples > maxSamples) {
+		remainingSamples = numSamples - maxSamples;
+		numSamples = maxSamples;
+	}
+	buffer = stream->inputBuffer;
+	count = numSamples * stream->numChannels;
+	while (count--) {
+		*samples++ = (*buffer++) / 32767.0f;
+	}
+	if (remainingSamples > 0) {
+		memmove(stream->inputBuffer,
+			stream->inputBuffer + numSamples * stream->numChannels,
+			remainingSamples * sizeof(short) * stream->numChannels);
+	}
+	stream->numInputSamples = remainingSamples;
+	return numSamples;
+}
+
 /* Read data out of the stream.  Sometimes no data will be available, and zero
    is returned, which is not an error condition. */
 int sonicReadFloatFromStream(sonicStream stream, float* samples,
@@ -587,6 +615,24 @@ int sonicFlushStream(sonicStream stream) {
 /* Return the number of samples in the output buffer */
 int sonicSamplesAvailable(sonicStream stream) {
   return stream->numOutputSamples;
+}
+
+/* Return the number of samples in the output buffer */
+int sonicSamplesInputNum(sonicStream stream) {
+	return stream->numInputSamples;
+}
+
+/* Return the number of MaxRequired */
+int sonicGetMaxRequired(sonicStream stream) {
+	return stream->maxRequired;
+}
+
+/* Empty input and pitch buffers */
+void sonicResetStream(sonicStream stream) {
+	stream->numOutputSamples = 0;
+	stream->numInputSamples = 0;
+	stream->remainingInputToCopy = 0;
+	stream->numPitchSamples = 0;
 }
 
 /* If skip is greater than one, average skip samples together and write them to
