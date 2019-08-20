@@ -1,13 +1,14 @@
 
 #pragma once
 
-#include "OSThread.h"
+#include <media-io/audio-resampler.h>
 #include <util/threading.h>
 #include <mmdeviceapi.h>
 #include <audioclient.h>
+#include "OSThread.h"
+#include "sonic.h"
 
-extern "C"
-{
+extern "C" {
 #include "libavcodec/avcodec.h"
 #include "libavformat/avformat.h"
 #include "libswscale/swscale.h"
@@ -83,10 +84,12 @@ public:
 	void	doFillPacket(string & inData, int inPTS, bool bIsKeyFrame, int inOffset);
 	int     GetCircleSize() { return m_frame_num; }
 private:
-	void	doConvertAudio(int64_t in_pts_ms, AVFrame * lpDFrame);
+	void    doRenderAudio(uint8_t * lpAudioPtr, int nAudioSize);
+	void    doReBuildMaxBuffer(int inMaxBufSize);
 	void	doDecodeFrame();
 	void	doDisplaySDL();
 	void    doMonitorFree();
+	void    doSonicFree();
 private:
 	bool                m_bIsExAudio;          // 扩展音频标志
 	int					m_in_rate_index;       // 输入采样索引
@@ -94,11 +97,10 @@ private:
 	int				    m_in_sample_rate;      // 输入采样率
 	int                 m_out_channel_num;     // 输出声道数
 	int                 m_out_sample_rate;     // 输出采样率
-	int                 m_out_frame_bytes;     // 输出每帧占用字节数
-	int					m_out_frame_duration;  // 输出每帧持续时间(ms)
 	AVSampleFormat		m_out_sample_fmt;      // 输出采样格式 => SDL需要的是AV_SAMPLE_FMT_S16，WASAPI需要的是AV_SAMPLE_FMT_FLT...
+	resample_info       m_horn_sample_info;    // 扬声器需要的音频样本格式
+	audio_resampler_t * m_horn_resampler;      // 扬声器转换样本格式 => decode 转 horn
 
-	SwrContext   *		m_out_convert_ctx;	   // 音频格式转换
 	uint8_t		 *		m_max_buffer_ptr;	   // 单帧最大输出空间
 	int					m_max_buffer_size;	   // 单帧最大输出大小
 
@@ -110,6 +112,7 @@ private:
 	IMMDevice          *m_device;              // WASAPI设备接口
 	IAudioClient       *m_client;              // WASAPI客户端
 	IAudioRenderClient *m_render;              // WASAPI渲染器
+	sonicStream         m_sonic;               // 音频加减速对象
 };
 
 class CPlaySDL

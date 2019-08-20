@@ -9,8 +9,7 @@
 
 using namespace webrtc;
 
-extern "C"
-{
+extern "C" {
 #include "libavcodec/avcodec.h"
 #include "libavformat/avformat.h"
 #include "libswscale/swscale.h"
@@ -161,38 +160,6 @@ CWebrtcAEC::~CWebrtcAEC()
 	}
 	// 释放回音消除互斥对象...
 	pthread_mutex_destroy(&m_AECMutex);
-}
-
-static inline enum audio_format convert_sample_format(int f)
-{
-	switch (f) {
-	case AV_SAMPLE_FMT_U8:   return AUDIO_FORMAT_U8BIT;
-	case AV_SAMPLE_FMT_S16:  return AUDIO_FORMAT_16BIT;
-	case AV_SAMPLE_FMT_S32:  return AUDIO_FORMAT_32BIT;
-	case AV_SAMPLE_FMT_FLT:  return AUDIO_FORMAT_FLOAT;
-	case AV_SAMPLE_FMT_U8P:  return AUDIO_FORMAT_U8BIT_PLANAR;
-	case AV_SAMPLE_FMT_S16P: return AUDIO_FORMAT_16BIT_PLANAR;
-	case AV_SAMPLE_FMT_S32P: return AUDIO_FORMAT_32BIT_PLANAR;
-	case AV_SAMPLE_FMT_FLTP: return AUDIO_FORMAT_FLOAT_PLANAR;
-	default:;
-	}
-
-	return AUDIO_FORMAT_UNKNOWN;
-}
-
-static inline enum speaker_layout convert_speaker_layout(uint8_t channels)
-{
-	switch (channels) {
-	case 0:     return SPEAKERS_UNKNOWN;
-	case 1:     return SPEAKERS_MONO;
-	case 2:     return SPEAKERS_STEREO;
-	case 3:     return SPEAKERS_2POINT1;
-	case 4:     return SPEAKERS_4POINT0;
-	case 5:     return SPEAKERS_4POINT1;
-	case 6:     return SPEAKERS_5POINT1;
-	case 8:     return SPEAKERS_7POINT1;
-	default:    return SPEAKERS_UNKNOWN;
-	}
 }
 
 // 处理右侧播放线程已经停止通知...
@@ -366,16 +333,16 @@ BOOL CWebrtcAEC::InitWebrtc(int nInRateIndex, int nInChannelNum, int nOutSampleR
 	// 设置麦克风输入的音频格式...
 	resample_info micInfo = { 0 };
 	micInfo.samples_per_sec = m_in_sample_rate;
-	micInfo.speakers = convert_speaker_layout(nInChannelNum);
-	micInfo.format = convert_sample_format(m_lpDecContext->sample_fmt);
+	micInfo.speakers = CStudentApp::convert_speaker_layout(nInChannelNum);
+	micInfo.format = CStudentApp::convert_sample_format(m_lpDecContext->sample_fmt);
 	// 设置AAC压缩需要的音频格式...
 	m_aac_sample_info.samples_per_sec = nOutSampleRate;
-	m_aac_sample_info.speakers = convert_speaker_layout(nOutChannelNum);
-	m_aac_sample_info.format = convert_sample_format(aac_sample_fmt);
+	m_aac_sample_info.speakers = CStudentApp::convert_speaker_layout(nOutChannelNum);
+	m_aac_sample_info.format = CStudentApp::convert_sample_format(aac_sample_fmt);
 	// 设置回音消除之后的音频格式...
 	m_echo_sample_info.samples_per_sec = nOutSampleRate;
-	m_echo_sample_info.speakers = convert_speaker_layout(nOutChannelNum);
-	m_echo_sample_info.format = convert_sample_format(echo_sample_fmt);
+	m_echo_sample_info.speakers = CStudentApp::convert_speaker_layout(nOutChannelNum);
+	m_echo_sample_info.format = CStudentApp::convert_sample_format(echo_sample_fmt);
 	// 创建麦克风原始数据的重采样对象，将麦克风采集到的数据样本转换成回音消除需要的样本格式...
 	m_mic_resampler = audio_resampler_create(&m_echo_sample_info, &micInfo);
 	// 创建AAC压缩原始数据的重采样对象，将回音消除采集到的数据样本转换成AAC压缩需要的样本格式...
@@ -424,8 +391,8 @@ BOOL CWebrtcAEC::PushHornPCM(void * lpBufData, int nBufSize, int nSampleRate, in
 		resample_info hornInfo = { 0 };
 		// 注意WSAPI扬声器音频是固定的float格式...
 		hornInfo.samples_per_sec = nSampleRate;
-		hornInfo.speakers = convert_speaker_layout(nChannelNum);
-		hornInfo.format = convert_sample_format(AV_SAMPLE_FMT_FLT);
+		hornInfo.speakers = CStudentApp::convert_speaker_layout(nChannelNum);
+		hornInfo.format = CStudentApp::convert_sample_format(AV_SAMPLE_FMT_FLT);
 		// 创建扬声器原始数据的重采样对象，将扬声器采集到的数据样本转换成回音消除需要的样本格式...
 		m_horn_resampler = audio_resampler_create(&m_echo_sample_info, &hornInfo);
 		// 如果创建转换对象失败，直接返回...
@@ -627,15 +594,22 @@ void CWebrtcAEC::doEchoCancel()
 		return;
 	// 麦克风和扬声器都必须大于一个处理单元 => 样本数 * 每个样本占用字节数 => AV_SAMPLE_FMT_S16
 	int nNeedBufBytes = m_nWebrtcNN * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
-	if (m_circle_mic.size < (nNeedBufBytes + sizeof(int64_t)) || m_circle_horn.size < nNeedBufBytes)
+	// 注意：AEC的关键是麦克风与扬声器的声音对齐，麦克风相对持续稳定，扬声器相对不稳定...
+	// 注意：必须以麦克风为对齐标准，因为麦克风相对更稳定，延迟低，扬声器来自广域网，延迟大...
+	if (m_circle_mic.size < (nNeedBufBytes + sizeof(int64_t)))
 		return;
 	int err_code = 0;
 	int64_t frame_pts_ms = 0;
-	// 从麦克风和扬声器环形队列中同时读取数据...
 	pthread_mutex_lock(&m_AECMutex);
+	// 先从麦克风环形队列中读取数据，麦克风队列必然有效...
 	circlebuf_pop_front(&m_circle_mic, &frame_pts_ms, sizeof(int64_t));
 	circlebuf_pop_front(&m_circle_mic, m_lpMicBufNN, nNeedBufBytes);
-	circlebuf_pop_front(&m_circle_horn, m_lpHornBufNN, nNeedBufBytes);
+	// 扬声器队列不一定有效，先将扬声器缓存置空...
+	memset(m_lpHornBufNN, 0, nNeedBufBytes);
+	// 如果扬声器环形队列有效，读取指定长度的数据...
+	if (m_circle_horn.size >= nNeedBufBytes) {
+		circlebuf_pop_front(&m_circle_horn, m_lpHornBufNN, nNeedBufBytes);
+	}
 	pthread_mutex_unlock(&m_AECMutex);
 	// 将short数据格式转换成float数据格式...
 	for (int i = 0; i < m_nWebrtcNN; ++i) {
@@ -680,8 +654,9 @@ void CWebrtcAEC::doEchoCancel()
 		circlebuf_push_back(&m_circle_echo, output_data[0], cur_data_size);
 	}
 
-	// 如果麦克风和扬声器环形队列里面还有足够的数据块需要进行回音消除，发起信号量变化事件...
-	if (m_circle_mic.size > nNeedBufBytes && m_circle_horn.size >= nNeedBufBytes) {
+	// 注意：必须以麦克风为对齐标准，因为麦克风相对更稳定，延迟低，扬声器来自广域网，延迟大...
+	// 只要麦克风环形队列里面还有足够的数据块需要进行回音消除，发起信号量变化事件...
+	if (m_circle_mic.size > nNeedBufBytes ) {
 		((m_lpAECSem != NULL) ? os_sem_post(m_lpAECSem) : NULL);
 	}
 }

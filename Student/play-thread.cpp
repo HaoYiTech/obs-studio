@@ -1,6 +1,7 @@
 
-#include "play-thread.h"
 #include "BitWritter.h"
+#include "student-app.h"
+#include "play-thread.h"
 #include "window-view-render.hpp"
 #include "window-view-camera.hpp"
 
@@ -432,38 +433,6 @@ void CVideoPlay::Entry()
 	}
 }
 
-static inline enum audio_format convert_sample_format(int f)
-{
-	switch (f) {
-	case AV_SAMPLE_FMT_U8:   return AUDIO_FORMAT_U8BIT;
-	case AV_SAMPLE_FMT_S16:  return AUDIO_FORMAT_16BIT;
-	case AV_SAMPLE_FMT_S32:  return AUDIO_FORMAT_32BIT;
-	case AV_SAMPLE_FMT_FLT:  return AUDIO_FORMAT_FLOAT;
-	case AV_SAMPLE_FMT_U8P:  return AUDIO_FORMAT_U8BIT_PLANAR;
-	case AV_SAMPLE_FMT_S16P: return AUDIO_FORMAT_16BIT_PLANAR;
-	case AV_SAMPLE_FMT_S32P: return AUDIO_FORMAT_32BIT_PLANAR;
-	case AV_SAMPLE_FMT_FLTP: return AUDIO_FORMAT_FLOAT_PLANAR;
-	default:;
-	}
-
-	return AUDIO_FORMAT_UNKNOWN;
-}
-
-static inline enum speaker_layout convert_speaker_layout(uint8_t channels)
-{
-	switch (channels) {
-	case 0:     return SPEAKERS_UNKNOWN;
-	case 1:     return SPEAKERS_MONO;
-	case 2:     return SPEAKERS_STEREO;
-	case 3:     return SPEAKERS_2POINT1;
-	case 4:     return SPEAKERS_4POINT0;
-	case 5:     return SPEAKERS_4POINT1;
-	case 6:     return SPEAKERS_5POINT1;
-	case 8:     return SPEAKERS_7POINT1;
-	default:    return SPEAKERS_UNKNOWN;
-	}
-}
-
 CAudioPlay::CAudioPlay(CViewCamera * lpViewCamera, int64_t inSysZeroNS)
   : m_lpViewCamera(lpViewCamera)
   , m_sys_zero_ns(inSysZeroNS)
@@ -650,12 +619,12 @@ bool CAudioPlay::doInitAudio(int nInRateIndex, int nInChannelNum)
 	// 设置解码后的音频格式...
 	resample_info decInfo = { 0 };
 	decInfo.samples_per_sec = m_in_sample_rate;
-	decInfo.speakers = convert_speaker_layout(m_in_channel_num);
-	decInfo.format = convert_sample_format(m_in_sample_fmt);
+	decInfo.speakers = CStudentApp::convert_speaker_layout(m_in_channel_num);
+	decInfo.format = CStudentApp::convert_sample_format(m_in_sample_fmt);
 	// 设置音频输出到扬声器(WASAPI)需要的格式...
 	m_horn_sample_info.samples_per_sec = m_out_sample_rate;
-	m_horn_sample_info.speakers = convert_speaker_layout(m_out_channel_num);
-	m_horn_sample_info.format = convert_sample_format(m_out_sample_fmt);
+	m_horn_sample_info.speakers = CStudentApp::convert_speaker_layout(m_out_channel_num);
+	m_horn_sample_info.format = CStudentApp::convert_sample_format(m_out_sample_fmt);
 	// 创建扬声器回放的重采样对象，解码后的音频数据要进行一次适配扬声器的重采样...
 	m_horn_resampler = audio_resampler_create(&m_horn_sample_info, &decInfo);
 	// 创建重采样对象失败，打印错误返回...

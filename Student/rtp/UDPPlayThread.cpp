@@ -505,6 +505,7 @@ ACTUALLY_DEFINE_GUID(IID_IAudioRenderClient, 0xF294ACFC, 0x3146, 0x4483, 0xA7, 0
 
 CAudioThread::CAudioThread(CPlaySDL * lpPlaySDL, bool bIsExAudio/* = false*/)
 {
+	m_sonic = NULL;
 	m_device = NULL;
 	m_client = NULL;
 	m_render = NULL;
@@ -514,14 +515,12 @@ CAudioThread::CAudioThread(CPlaySDL * lpPlaySDL, bool bIsExAudio/* = false*/)
 	m_in_rate_index = 0;
 	m_in_sample_rate = 0;
 	m_in_channel_num = 0;
-	m_max_buffer_size = 0;
+	m_horn_resampler = NULL;
 	m_max_buffer_ptr = NULL;
-	m_out_convert_ctx = NULL;
+	m_max_buffer_size = 0;
 	// 默认输出声道、输出采样率...
 	m_out_channel_num = 1;
 	m_out_sample_rate = 8000;
-	m_out_frame_bytes = 0;
-	m_out_frame_duration = 0;
 	// SDL需要的是AV_SAMPLE_FMT_S16，WSAPI需要的是AV_SAMPLE_FMT_FLT...
 	m_out_sample_fmt = AV_SAMPLE_FMT_FLT;
 	// 初始化PCM数据环形队列...
@@ -535,10 +534,10 @@ CAudioThread::~CAudioThread()
 {
 	// 等待线程退出...
 	this->StopAndWaitForThread();
-	// 关闭音频转换对象...
-	if (m_out_convert_ctx != NULL) {
-		swr_free(&m_out_convert_ctx);
-		m_out_convert_ctx = NULL;
+	// 释放扬声器音频格式转换器...
+	if (m_horn_resampler != nullptr) {
+		audio_resampler_destroy(m_horn_resampler);
+		m_horn_resampler = nullptr;
 	}
 	// 关闭单帧最大缓冲区...
 	if (m_max_buffer_ptr != NULL) {
@@ -551,6 +550,9 @@ CAudioThread::~CAudioThread()
 
 	// 关闭音频监听设备...
 	this->doMonitorFree();
+
+	// 释放音频加减速对象...
+	this->doSonicFree();
 
 	/*// 关闭音频设备...
 	SDL_CloseAudio();
@@ -615,15 +617,27 @@ void CAudioThread::doDecodeFrame()
 	// 这样，一旦由于解码失败造成的数据中断，也不会造成音频播放的延迟问题...
 	////////////////////////////////////////////////////////////////////////////////////////////
 	int64_t frame_pts_ms = thePacket.pts;
-	// 对解码后的音频进行格式转换...
-	this->doConvertAudio(frame_pts_ms, m_lpDFrame);
+	// 对解码后的音频格式转换...
+	uint64_t  ts_offset = 0;
+	uint32_t  output_frames = 0;
+	uint8_t * output_data[MAX_AV_PLANES] = { 0 };
+	// 直接对解码后的音频样本格式，转换成扬声器需要的音频样本格式，转换成功放入环形队列，采样率发生变化，AV_SAMPLE_FMT_FLT => AV_SAMPLE_FMT_FLTP...
+	if (audio_resampler_resample(m_horn_resampler, output_data, &output_frames, &ts_offset, m_lpDFrame->data, m_lpDFrame->nb_samples)) {
+		// 将获取到缓存放入缓冲队列当中 => PTS|Size|Data => 从最大单帧空间中抽取本次转换的有效数据内容...
+		int cur_data_size = get_audio_size(m_horn_sample_info.format, m_horn_sample_info.speakers, output_frames);
+		circlebuf_push_back(&m_circle, &frame_pts_ms, sizeof(int64_t));
+		circlebuf_push_back(&m_circle, &cur_data_size, sizeof(int));
+		circlebuf_push_back(&m_circle, output_data[0], cur_data_size);
+		// 累加环形队列中有效数据帧的个数...
+		++m_frame_num;
+	}
 	// 这里需要释放AVPacket的缓存...
 	av_free_packet(&thePacket);
 	// 修改休息状态 => 已经有播放，不能休息...
 	m_bNeedSleep = false;
 }
 
-void CAudioThread::doConvertAudio(int64_t in_pts_ms, AVFrame * lpDFrame)
+/*void CAudioThread::doConvertAudio(int64_t in_pts_ms, AVFrame * lpDFrame)
 {
 	// 输入声道和输出声道 => 转换成单声道...
 	int in_audio_channel_num = m_in_channel_num;
@@ -667,7 +681,7 @@ void CAudioThread::doConvertAudio(int64_t in_pts_ms, AVFrame * lpDFrame)
 #ifdef DEBUG_AEC
 	DoSaveTeacherPCM(m_max_buffer_ptr, cur_data_size, m_out_sample_rate, m_out_channel_num);
 #endif // DEBUG_AEC
-}
+}*/
 
 void CAudioThread::doDisplaySDL()
 {
@@ -711,10 +725,11 @@ void CAudioThread::doDisplaySDL()
 	circlebuf_pop_front(&m_circle, NULL, sizeof(int64_t));
 	// 从环形队列当中，取出音频数据帧内容，动态长度...
 	circlebuf_pop_front(&m_circle, &out_buffer_size, sizeof(int));
-	// 当前数据帧长度一定小于或等于最大单帧输出空间...
+	// 如果新需要的空间大于了当前单帧最大空间，需要重建空间...
+	this->doReBuildMaxBuffer(out_buffer_size);
 	ASSERT(m_max_buffer_size >= out_buffer_size);
-	// 从环形队列读取当前帧内容，因为是顺序执行，可以再次使用单帧最大输出空间...
-	circlebuf_peek_front(&m_circle, m_max_buffer_ptr, out_buffer_size);
+	// 从环形队列读取并删除当前帧，顺序执行，可以再次使用单帧最大输出空间...
+	circlebuf_pop_front(&m_circle, m_max_buffer_ptr, out_buffer_size);
 	
 	// 计算当前数据块包含的有效采样个数...
 	int nPerFrameSize = (m_out_channel_num * sizeof(float));
@@ -729,38 +744,26 @@ void CAudioThread::doDisplaySDL()
 			*(cur++) *= vol;
 		}
 	}
-
-	////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// 注意：必须对音频播放内部的缓存做定期伐值清理 => CPU过高时，DirectSound会堆积缓存...
-	// 投递数据前，先查看正在排队的音频数据 => 缓存超过500毫秒就清理 => 计算出500毫秒包含的总帧数(总字节数)...
-	////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//int nQueueBytes = SDL_GetQueuedAudioSize(m_nDeviceID);
-	/*int nAllowQueueSize = (int)(500.0f / m_out_frame_duration * m_out_frame_bytes);
-	// 清理之后，立即继续灌音频数据，避免数据进一步堆积...
-	if( nQueueBytes > nAllowQueueSize ) {
-		blog(LOG_INFO, "%s [Audio] Clear Audio Buffer, QueueBytes: %d, AVPacket: %d, AVFrame: %d", TM_RECV_NAME, nQueueBytes, m_MapPacket.size(), m_frame_num);
-		SDL_ClearQueuedAudio(m_nDeviceID);
-	}
-	//blog(LOG_INFO, "[Audio] Delay: %d ms", nQueueBytes / 16);
-	// 注意：失败也不要返回，继续执行，目的是移除缓存...
-	// 将音频解码后的数据帧投递给音频设备...
-	if( SDL_QueueAudio(m_nDeviceID, m_max_buffer_ptr, out_buffer_size) < 0 ) {
-		blog(LOG_INFO, "%s [Audio] Failed to queue audio: %s", TM_RECV_NAME, SDL_GetError());
-	}*/
 	
-	HRESULT hr = S_OK;
-	BYTE * output = NULL;
-	UINT32 nCurPadFrame = 0;
-	UINT32 nAllowQueueFrame = 0;
-	int    msInSndCardBuf = 0;
-	// 获取当前声卡已缓存的帧数量...
-	hr = m_client->GetCurrentPadding(&nCurPadFrame);
+	// 注意：目前的播放控制是通过音视频自带的原始时间戳决定的，没有采用时间周期的方式...
+	// 注意：这种方式在网络抖动时，会造成音频数据先卡顿后堆积，这样就会造成AEC无法对齐...
+	// 注意：卡顿时AEC通过填充空数据解决，堆积时采用加速播放解决，这样在网络抖动下的AEC效果很好...
+	// 注意：加速条件是当声卡缓存超过300毫秒，加速工具sonic有最小包限制，还有数据残留，在处理时需要特别小心...
+	this->doRenderAudio(m_max_buffer_ptr, out_buffer_size);
+
+	/*HRESULT   hr = S_OK;
+	BYTE  *   output = NULL;
+	UINT32    nCurPadFrame = 0;
+	int       msInSndCardBuf = 0;
 	// 计算在声卡中已缓存的毫秒数 => 向下取整...
-	msInSndCardBuf = (int)((nCurPadFrame * 1.0f * nPerFrameSize / m_out_frame_bytes) * m_out_frame_duration + 0.5f);
-	// 将400毫秒的声卡缓存，转换成帧数量...
-	nAllowQueueFrame = (300.0f / m_out_frame_duration * m_out_frame_bytes) / nPerFrameSize;
+	hr = m_client->GetCurrentPadding(&nCurPadFrame);
+	msInSndCardBuf = nCurPadFrame * 1000.0f / m_out_sample_rate;
+	//msInSndCardBuf = (int)((nCurPadFrame * 1.0f * nPerFrameSize / m_out_frame_bytes) * m_out_frame_duration + 0.5f);
+	// 将300毫秒的声卡缓存，转换成帧数量...
+	//nAllowQueueFrame = (300.0f / m_out_frame_duration * m_out_frame_bytes) / nPerFrameSize;
 	// 只有当声卡缓存小于300毫秒时，才进行数据投递，大于300毫秒，直接丢弃...
-	if (nCurPadFrame <= nAllowQueueFrame) {
+	//if (nCurPadFrame <= nAllowQueueFrame) {
+	if (msInSndCardBuf < 300) {
 		// 得到需要填充的声卡缓存指针 => 已经计算出要填充的帧数...
 		hr = m_render->GetBuffer(resample_frames, &output);
 		if (SUCCEEDED(hr) && output != NULL) {
@@ -777,17 +780,106 @@ void CAudioThread::doDisplaySDL()
 		// 声卡缓存大于300毫秒，重置静音，打印调试信息...
 		memset(m_max_buffer_ptr, out_buffer_size, 0);
 		// 不是扩展音频才能进行回音消除...
-		if (!m_bIsExAudio) {
-			App()->doEchoCancel(m_max_buffer_ptr, out_buffer_size, m_out_sample_rate, m_out_channel_num, msInSndCardBuf);
-		}
+		//if (!m_bIsExAudio) {
+		//	App()->doEchoCancel(m_max_buffer_ptr, out_buffer_size, m_out_sample_rate, m_out_channel_num, msInSndCardBuf);
+		//}
 		blog(LOG_INFO, "%s [Audio] Delayed, Padding: %u, AVPacket: %d, AVFrame: %d", TM_RECV_NAME, nCurPadFrame, m_MapPacket.size(), m_frame_num);
-	}
-	// 删除已经使用的音频数据 => 从环形队列中移除...
-	circlebuf_pop_front(&m_circle, NULL, out_buffer_size);
+	}*/
+
 	// 减少环形队列中有效数据帧的个数...
 	--m_frame_num;
 	// 修改休息状态 => 已经有播放，不能休息...
 	m_bNeedSleep = false;
+}
+
+void CAudioThread::doReBuildMaxBuffer(int inMaxBufSize)
+{
+	if (inMaxBufSize > m_max_buffer_size) {
+		// 删除之前分配的单帧最大空间...
+		if (m_max_buffer_ptr != NULL) {
+			av_free(m_max_buffer_ptr);
+			m_max_buffer_ptr = NULL;
+		}
+		// 重新分配最新的单帧最大空间...
+		m_max_buffer_size = inMaxBufSize;
+		m_max_buffer_ptr = (uint8_t *)av_malloc(inMaxBufSize);
+	}
+}
+
+void CAudioThread::doRenderAudio(uint8_t * lpAudioPtr, int nAudioSize)
+{
+	ASSERT(m_sonic != NULL);
+	HRESULT   hr = S_OK;
+	BYTE  *   output = NULL;
+	UINT32    nCurPadFrame = 0;
+	int       msInSndCardBuf = 0;
+	string    strSonicOutput;
+	// 计算当前数据块包含的有效采样个数 => float格式...
+	int nPerFrameSize = (m_out_channel_num * sizeof(float));
+	uint32_t resample_frames = nAudioSize / nPerFrameSize;
+	// 获取当前声卡已缓存的帧数量...
+	hr = m_client->GetCurrentPadding(&nCurPadFrame);
+	// 计算在声卡中已缓存的毫秒数 => 向下取整...
+	msInSndCardBuf = nCurPadFrame * 1000.0f / m_out_sample_rate;
+	// 如果声卡缓存已经等于或超过300毫秒，需要对新投递数据进行加速处理...
+	int samplesWritten, samplesRemain, samplesReaded, samplesMaxRequired;
+	if (msInSndCardBuf >= 300) {
+		// 设定快进速度 => 1.5倍速度...
+		sonicSetSpeed(m_sonic, 1.5f);
+		samplesMaxRequired = sonicGetMaxRequired(m_sonic);
+		// 输入全部的有效播放音频数据块 => 从已经缓存的输入对象中获取...
+		sonicWriteFloatToStream(m_sonic, (float*)lpAudioPtr, resample_frames);
+		// 获取有效块个数和剩余块个数...
+		samplesWritten = sonicSamplesAvailable(m_sonic);
+		samplesRemain = sonicSamplesInputNum(m_sonic);
+		// 如果没有有效块，返回等待...
+		if (samplesWritten <= 0)
+			return;
+		// 分配需要的空间，并读取有效块到临时缓存当中...
+		strSonicOutput.resize((samplesWritten + samplesRemain) * nPerFrameSize);
+		const char * lpOutBufPtr = strSonicOutput.c_str();
+		// 先读取已经被加速过的数据块内容...
+		samplesReaded = sonicReadFloatFromStream(m_sonic, (float*)lpOutBufPtr, samplesWritten);
+		ASSERT(samplesReaded == samplesWritten);
+		// 如果输入数据块还有剩余，这部分数据不用加速，直接追加到临时缓存的末尾就可以了...
+		if (samplesRemain > 0) {
+			lpOutBufPtr += (samplesWritten * nPerFrameSize);
+			samplesReaded = sonicReadFloatFromInput(m_sonic, (float*)lpOutBufPtr, samplesRemain);
+			ASSERT(samplesReaded == samplesRemain);
+		}
+		// 重置加速器的内部变量，不能用Flush模式，残留数据不用加速...
+		sonicResetStream(m_sonic);
+		// 打印音频被加速提示信息...
+		blog(LOG_INFO, "%s [Audio] Sonic, Written: %d, Remain: %d, Padding: %d ms", TM_RECV_NAME, samplesWritten, samplesRemain, msInSndCardBuf);
+	} else {
+		// 获取sonic剩余的未被处理的数据块个数...
+		samplesRemain = sonicSamplesInputNum(m_sonic);
+		// 剩余数据块有效，需要读取到临时缓存当中...
+		if (samplesRemain > 0) {
+			strSonicOutput.resize(samplesRemain * nPerFrameSize);
+			samplesReaded = sonicReadFloatFromInput(m_sonic, (float*)strSonicOutput.c_str(), samplesRemain);
+			ASSERT(samplesReaded == samplesRemain);
+		}
+		// 追加新音频数据到临时缓存区的末尾当中...
+		strSonicOutput.append((char*)lpAudioPtr, nAudioSize);
+		// 重置sonic对象 => 等待下次加速使用...
+		sonicResetStream(m_sonic);
+	}
+	// 重新计算可以被填充到声卡的数据块个数...
+	resample_frames = strSonicOutput.size() / nPerFrameSize;
+	// 得到需要填充的声卡缓存指针 => 已经计算出要填充的帧数...
+	hr = m_render->GetBuffer(resample_frames, &output);
+	if (FAILED(hr) || output == NULL)
+		return;
+	// 获取声卡缓存必须成功，缓存必须有效...
+	ASSERT(SUCCEEDED(hr) && output != NULL);
+	// 将数据填充到指定的缓存，并投递到声卡播放，然后释放声卡缓存...
+	memcpy(output, strSonicOutput.c_str(), strSonicOutput.size());
+	hr = m_render->ReleaseBuffer(resample_frames, 0);
+	// 不是扩展音频才能进行回音消除 => 无论怎样加速都需要投递声音给回音消除模块...
+	if (!m_bIsExAudio) {
+		App()->doEchoCancel((void*)strSonicOutput.c_str(), strSonicOutput.size(), m_out_sample_rate, m_out_channel_num, msInSndCardBuf);
+	}
 }
 
 BOOL CAudioThread::InitAudio(int nInRateIndex, int nInChannelNum)
@@ -863,9 +955,6 @@ BOOL CAudioThread::InitAudio(int nInRateIndex, int nInChannelNum)
 	// 保存输入采样率索引和声道...
 	m_in_rate_index = nInRateIndex;
 	m_in_channel_num = nInChannelNum;
-	// 保存输出采样率和输出声道...
-	//m_out_sample_rate = nOutSampleRate;
-	//m_out_channel_num = nOutChannelNum;
 	// 初始化ffmpeg解码器...
 	av_register_all();
 	// 准备一些特定的参数...
@@ -874,12 +963,31 @@ BOOL CAudioThread::InitAudio(int nInRateIndex, int nInChannelNum)
 	m_lpCodec = avcodec_find_decoder(src_codec_id);
 	m_lpDecoder = avcodec_alloc_context3(m_lpCodec);
 	// 打开获取到的解码器...
-	if( avcodec_open2(m_lpDecoder, m_lpCodec, NULL) != 0 )
+	if (avcodec_open2(m_lpDecoder, m_lpCodec, NULL) != 0) {
+		blog(LOG_INFO, "Error => avcodec_open2");
 		return false;
+	}
 	// 准备一个全局的解码结构体 => 解码数据帧是相互关联的...
 	m_lpDFrame = av_frame_alloc();
 	ASSERT(m_lpDFrame != NULL);
-	// 输入声道和输出声道 => 转换成单声道...
+
+	// 设置转换器需要的输入格式 => AAC解码后的格式...
+	resample_info srcInfo = { 0 };
+	srcInfo.samples_per_sec = m_in_sample_rate;
+	srcInfo.speakers = CStudentApp::convert_speaker_layout(m_in_channel_num);
+	srcInfo.format = CStudentApp::convert_sample_format(m_lpDecoder->sample_fmt); // => AV_SAMPLE_FMT_FLTP
+	// 设置转换器需要的输出格式 => 扬声器需要的格式...
+	m_horn_sample_info.samples_per_sec = m_out_sample_rate;
+	m_horn_sample_info.speakers = CStudentApp::convert_speaker_layout(m_out_channel_num);
+	m_horn_sample_info.format = CStudentApp::convert_sample_format(m_out_sample_fmt); // => AV_SAMPLE_FMT_FLT;
+	// 创建扬声器需要的音频格式转换器对象...
+	m_horn_resampler = audio_resampler_create(&m_horn_sample_info, &srcInfo);
+	if (m_horn_resampler == NULL ) {
+		blog(LOG_INFO, "Error => audio_resampler_create");
+		return false;
+	}
+
+	/*// 输入声道和输出声道 => 转换成单声道...
 	int in_audio_channel_num = m_in_channel_num;
 	int out_audio_channel_num = m_out_channel_num;
 	int64_t in_channel_layout = av_get_default_channel_layout(in_audio_channel_num);
@@ -899,17 +1007,21 @@ BOOL CAudioThread::InitAudio(int nInRateIndex, int nInChannelNum)
 		blog(LOG_INFO, "error => swr_init");
 		return false;
 	}
-
 	// 输入输出音频采样个数 => AAC-1024 | MP3-1152
 	// 注意：还没有开始转换，swr_get_delay()返回0，out_nb_samples是正常的样本数，不会变...
 	int in_nb_samples = swr_get_delay(m_out_convert_ctx, in_sample_rate) + 1024;
 	int out_nb_samples = av_rescale_rnd(in_nb_samples, out_sample_rate, in_sample_rate, AV_ROUND_UP);
 	// 计算输出每帧持续时间(毫秒)，每帧字节数 => 只需要计算一次就够了...
 	m_out_frame_duration = out_nb_samples * 1000 / out_sample_rate;
-	m_out_frame_bytes = av_samples_get_buffer_size(NULL, out_audio_channel_num, out_nb_samples, out_sample_fmt, 1);
+	m_out_frame_bytes = av_samples_get_buffer_size(NULL, out_audio_channel_num, out_nb_samples, out_sample_fmt, 1);*/
+
+	// 如果sonic有效，先释放...
+	this->doSonicFree();
+	// 创建音频加减速对象 => 使用sonic默认参数...
+	m_sonic = sonicCreateStream(m_out_sample_rate, m_out_channel_num);
 
 	////////////////////////////////////////////////////////////////////////////////
-	// 不能在这时就设定扬声器状态，会造成AEC消除问题...
+	// 不能在这时就设定是否有扬声器状态标志，会造成AEC消除问题...
 	// 必须在正式投递扬声器消除数据时，才进行标志设定，就能避免网络延迟对AEC的影响...
 	////////////////////////////////////////////////////////////////////////////////
 
@@ -937,6 +1049,14 @@ BOOL CAudioThread::InitAudio(int nInRateIndex, int nInChannelNum)
 	// 启动线程...
 	this->Start();
 	return true;
+}
+
+void CAudioThread::doSonicFree()
+{
+	if (m_sonic != NULL) {
+		sonicDestroyStream(m_sonic);
+		m_sonic = NULL;
+	}
 }
 
 void CAudioThread::doMonitorFree()

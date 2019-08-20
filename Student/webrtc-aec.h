@@ -3,7 +3,6 @@
 #include "OSThread.h"
 #include "HYDefine.h"
 #include <util/threading.h>
-#include <media-io/audio-io.h>
 #include <media-io/audio-resampler.h>
 #include "noise_suppression_x.h"
 

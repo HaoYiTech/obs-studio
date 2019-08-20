@@ -70,6 +70,8 @@ public:
 	static string getJsonString(Json::Value & inValue);
 	static string UTF8_ANSI(const char * lpUValue);
 	static string ANSI_UTF8(const char * lpSValue);
+	static enum audio_format convert_sample_format(int f);
+	static enum speaker_layout convert_speaker_layout(uint8_t channels);
 public slots:
 	void onTriggerMiniSuccess();
 	void onReplyFinished(QNetworkReply *reply);

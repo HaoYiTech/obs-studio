@@ -28,9 +28,15 @@
 #include <IPHlpApi.h>
 #include <atlconv.h>
 #include "SDL2/SDL.h"
+#include <media-io/audio-io.h>
+#include <media-io/audio-resampler.h>
 
 #include "window-view-camera.hpp"
 #include "window-view-teacher.hpp"
+
+extern "C" {
+#include "libavutil/samplefmt.h"
+};
 
 #pragma comment(lib, "iphlpapi.lib")
 
@@ -802,17 +808,17 @@ int doTestAudioConvert()
 /*// 进行音频速度的整体测试...
 #include "sonic.h"
 #define JUMP_NUM       1
-#define FRAME_SAMPLES  1024
+#define FRAME_SAMPLES  6780
 int doTestAudioSpeed()
 {
 	sonicStream stream;
 	int sampleRate = 16000;
 	int numChannels = 1;
-	float speed = 2.0f;
+	float speed = 1.5f;
 	float pitch = 1.0f;
 	float rate = 1.0f;
 	float volume = 1.0f;
-	int quality = 1;
+	int quality = 0;
 
 	stream = sonicCreateStream(sampleRate, numChannels);
 	sonicSetSpeed(stream, speed);
@@ -1691,4 +1697,36 @@ string CStudentApp::ANSI_UTF8(const char * lpSValue)
 	delete[] lpWValue;
 
 	return strUValue;
+}
+
+enum audio_format CStudentApp::convert_sample_format(int f)
+{
+	switch (f) {
+	case AV_SAMPLE_FMT_U8:   return AUDIO_FORMAT_U8BIT;
+	case AV_SAMPLE_FMT_S16:  return AUDIO_FORMAT_16BIT;
+	case AV_SAMPLE_FMT_S32:  return AUDIO_FORMAT_32BIT;
+	case AV_SAMPLE_FMT_FLT:  return AUDIO_FORMAT_FLOAT;
+	case AV_SAMPLE_FMT_U8P:  return AUDIO_FORMAT_U8BIT_PLANAR;
+	case AV_SAMPLE_FMT_S16P: return AUDIO_FORMAT_16BIT_PLANAR;
+	case AV_SAMPLE_FMT_S32P: return AUDIO_FORMAT_32BIT_PLANAR;
+	case AV_SAMPLE_FMT_FLTP: return AUDIO_FORMAT_FLOAT_PLANAR;
+	default:;
+	}
+
+	return AUDIO_FORMAT_UNKNOWN;
+}
+
+enum speaker_layout CStudentApp::convert_speaker_layout(uint8_t channels)
+{
+	switch (channels) {
+	case 0:     return SPEAKERS_UNKNOWN;
+	case 1:     return SPEAKERS_MONO;
+	case 2:     return SPEAKERS_STEREO;
+	case 3:     return SPEAKERS_2POINT1;
+	case 4:     return SPEAKERS_4POINT0;
+	case 5:     return SPEAKERS_4POINT1;
+	case 6:     return SPEAKERS_5POINT1;
+	case 8:     return SPEAKERS_7POINT1;
+	default:    return SPEAKERS_UNKNOWN;
+	}
 }
