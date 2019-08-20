@@ -4155,7 +4155,6 @@ void obs_source_set_monitoring_type(obs_source_t *source,
 	if (source->monitoring_type == type)
 		return;
 	// 注意：这里进行了还原，不能用输出音频来进行本地播放，必须用数据源自身的本地播放...
-	// 不要针对每个source进行单独的监听回放，而是统一使用obs_scene_t在轨道3上输出...
 	bool was_on = source->monitoring_type != OBS_MONITORING_TYPE_NONE;
 	bool now_on = type != OBS_MONITORING_TYPE_NONE;
 	if (was_on != now_on) {
