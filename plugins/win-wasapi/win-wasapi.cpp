@@ -86,7 +86,7 @@ class WASAPISource {
 	static DWORD WINAPI ReconnectThread(LPVOID param);
 	static DWORD WINAPI CaptureThread(LPVOID param);
 
-	void doEchoMic(UINT64 ts, uint8_t * lpFrameData, uint32_t nFrameSize);
+	void doEchoMic(UINT64 ts, uint8_t * lpFrameData, uint32_t nFrameNum);
 	void doEchoCancel(UINT64 ts);
 
 	bool ProcessCaptureData();
@@ -670,8 +670,8 @@ bool WASAPISource::ProcessCaptureData()
 	return true;
 }
 
-// 只有麦克风数据，没有扬声器数据的处理...
-void WASAPISource::doEchoMic(UINT64 ts, uint8_t * lpFrameData, uint32_t nFrameSize)
+// 只有麦克风数据，没有扬声器数据的处理 => 不是缓存长度，而是数据帧个数...
+void WASAPISource::doEchoMic(UINT64 ts, uint8_t * lpFrameData, uint32_t nFrameNum)
 {
 	// 先删除之前创建的扬声器转换器对象...
 	if (m_horn_resampler != nullptr) {
@@ -686,14 +686,14 @@ void WASAPISource::doEchoMic(UINT64 ts, uint8_t * lpFrameData, uint32_t nFrameSi
 	// 构造需要向上层投递的音频数据...
 	obs_source_audio data = {};
 	data.data[0] = lpFrameData;
-	data.frames = nFrameSize;
+	data.frames = nFrameNum;
 	data.speakers = m_echo_sample_info.speakers;
 	data.samples_per_sec = m_echo_sample_info.samples_per_sec;
 	data.format = m_echo_sample_info.format;
 	data.timestamp = useDeviceTiming ? ts * 100 : os_gettime_ns();
-	// 系统计时需要一个加速...?
+	// 注意：数据帧个数不能包含声道数，同时，采样率应该以转换后的采样率为基准...
 	if (!useDeviceTiming) {
-		data.timestamp -= (uint64_t)m_nWebrtcNN * 1000000000ULL / (uint64_t)m_mic_sample_info.samples_per_sec;
+		data.timestamp -= (uint64_t)nFrameNum * 1000000000ULL / (uint64_t)m_echo_sample_info.samples_per_sec;
 	}
 	// 向obs上层进行数据的传递工作...
 	obs_source_output_audio(source, &data);
@@ -702,7 +702,7 @@ void WASAPISource::doEchoMic(UINT64 ts, uint8_t * lpFrameData, uint32_t nFrameSi
 // 既有麦克风数据，又有扬声器数据的处理...
 void WASAPISource::doEchoCancel(UINT64 ts)
 {
-	int err_code = 0;
+	int err_code = 0, nCountNum = 0;
 	// 注意：这里并不考虑扬声器数据是否足够，尽最大可能降低麦克风延时...
 	// 计算处理单元 => 样本数 * 每个样本占用字节数...
 	size_t nNeedBufBytes = m_nWebrtcNN * sizeof(short);
@@ -711,35 +711,33 @@ void WASAPISource::doEchoCancel(UINT64 ts)
 		// 麦克风数据数据长度不够，终止回音消除...
 		if (m_circle_mic.size < nNeedBufBytes)
 			return;
+		pthread_mutex_lock(&m_AECMutex);
 		// 读取麦克风需要的处理样本内容 => 注意是读取字节数，不是样本数...
 		circlebuf_pop_front(&m_circle_mic, m_lpMicBufNN, nNeedBufBytes);
+		// 扬声器队列不一定有效，先将扬声器缓存置空...
+		memset(m_lpHornBufNN, 0, nNeedBufBytes);
 		// 如果扬声器数据足够，读取扬声器数据到待处理样本缓存当中..
 		if (m_circle_horn.size >= nNeedBufBytes) {
-			// 从扬声器环形队列当中读取数据，这里需要线程互斥...
-			pthread_mutex_lock(&m_AECMutex);
 			circlebuf_pop_front(&m_circle_horn, m_lpHornBufNN, nNeedBufBytes);
-			pthread_mutex_unlock(&m_AECMutex);
-			// 将short数据格式转换成float数据格式...
-			for (int i = 0; i < m_nWebrtcNN; ++i) {
-				m_pDMicBufNN[i] = (float)m_lpMicBufNN[i];
-				m_pDHornBufNN[i] = (float)m_lpHornBufNN[i];
-			}
-			// 注意：使用自动计算延时模式，可以将msInSndCardBuf参数设置为0...
-			// 先将扬声器数据进行远端投递，再投递麦克风数据进行回音消除 => 投递样本个数...
-			err_code = WebRtcAec_BufferFarend(m_hAEC, m_pDHornBufNN, m_nWebrtcNN);
-			err_code = WebRtcAec_Process(m_hAEC, &m_pDMicBufNN, m_out_channel_num, &m_pDEchoBufNN, m_nWebrtcNN, 0, 0);
-			// 将float数据格式转换成short数据格式...
-			for (int i = 0; i < m_nWebrtcNN; ++i) {
-				m_lpEchoBufNN[i] = (short)m_pDEchoBufNN[i];
-			}
-			// 将扬声器的PCM数据进行存盘处理 => 必须用二进制方式打开文件...
-			//doSaveAudioPCM((uint8_t*)m_lpHornBufNN, nNeedBufBytes, m_out_sample_rate, 0);
-		} else {
-			// 扬声器数据不够，把麦克风样本数据直接当成回音消除后的样本数据...
-			memcpy(m_lpEchoBufNN, m_lpMicBufNN, nNeedBufBytes);
+		}
+		pthread_mutex_unlock(&m_AECMutex);
+		// 将short数据格式转换成float数据格式...
+		for (int i = 0; i < m_nWebrtcNN; ++i) {
+			m_pDMicBufNN[i] = (float)m_lpMicBufNN[i];
+			m_pDHornBufNN[i] = (float)m_lpHornBufNN[i];
+		}
+		// 注意：使用自动计算延时模式，可以将msInSndCardBuf参数设置为0...
+		// 先将扬声器数据进行远端投递，再投递麦克风数据进行回音消除 => 投递样本个数...
+		err_code = WebRtcAec_BufferFarend(m_hAEC, m_pDHornBufNN, m_nWebrtcNN);
+		err_code = WebRtcAec_Process(m_hAEC, &m_pDMicBufNN, m_out_channel_num, &m_pDEchoBufNN, m_nWebrtcNN, 0, 0);
+		// 将float数据格式转换成short数据格式...
+		for (int i = 0; i < m_nWebrtcNN; ++i) {
+			m_lpEchoBufNN[i] = (short)m_pDEchoBufNN[i];
 		}
 		// 对麦克风原始数据进行存盘处理 => 必须用二进制方式打开文件...
-		//doSaveAudioPCM((uint8_t*)m_lpMicBufNN, nNeedBufBytes, m_out_sample_rate, 1);
+		//doSaveAudioPCM((uint8_t*)m_lpMicBufNN, nNeedBufBytes, m_out_sample_rate, 0);
+		// 将扬声器的PCM数据进行存盘处理 => 必须用二进制方式打开文件...
+		//doSaveAudioPCM((uint8_t*)m_lpHornBufNN, nNeedBufBytes, m_out_sample_rate, 1);
 		// 对回音消除后的数据进行存盘处理 => 必须用二进制方式打开文件...
 		//doSaveAudioPCM((uint8_t*)m_lpEchoBufNN, nNeedBufBytes, m_out_sample_rate, 2);
 		// 对回音消除后的数据进行降噪处理 => short格式...
@@ -756,14 +754,15 @@ void WASAPISource::doEchoCancel(UINT64 ts)
 		// 构造回音消除之后的音频数据...
 		obs_source_audio data = {};
 		data.data[0] = (uint8_t*)m_lpEchoBufNN;
-		data.frames = m_nWebrtcNN;
+		data.frames = m_nWebrtcNN / m_out_channel_num;
 		data.speakers = m_echo_sample_info.speakers;
 		data.samples_per_sec = m_echo_sample_info.samples_per_sec;
 		data.format = m_echo_sample_info.format;
 		data.timestamp = useDeviceTiming ? ts * 100 : os_gettime_ns();
-		// 系统计时需要一个加速...?
+		// 注意：数据帧个数不能包含声道数，同时，采样率应该以转换后的采样率为基准...
 		if (!useDeviceTiming) {
-			data.timestamp -= (uint64_t)m_nWebrtcNN * 1000000000ULL / (uint64_t)m_mic_sample_info.samples_per_sec;
+			uint64_t nTotalFrameNum = (++nCountNum) * data.frames;
+			data.timestamp -= nTotalFrameNum * 1000000000ULL / (uint64_t)m_echo_sample_info.samples_per_sec;
 		}
 		// 向obs上层进行数据的传递工作...
 		obs_source_output_audio(source, &data);
