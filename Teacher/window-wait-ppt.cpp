@@ -4,6 +4,7 @@
 #include "properties-view.hpp"
 #include "qt-wrappers.hpp"
 #include "obs-app.hpp"
+#include <objbase.h>
 #include "md5.h"
 
 CPPTWait::CPPTWait(QWidget *parent, QString & inStrFile)
@@ -129,6 +130,8 @@ void CPPThread::doPPTExportJPG()
 		// 强制覆盖，界面继续更新...
 		m_bIsCanPause = false;
 	}
+	// 线程必须注册到COM套件当中...
+	CoInitialize(nullptr);
 	// 打开PowerPoint软件...
 	QAxObject *_powerPointAxObj = NULL;
 	// 带空格和中文的目录，需要加上引号，否则打开PPT会失败...
@@ -172,10 +175,12 @@ void CPPThread::doPPTExportJPG()
 		_presentation->dynamicCall("Close()");
 	} while (false);
 	// 关闭并删除PowerPoint对象的方法...
-	if (!_powerPointAxObj->isNull()) {
+	if (_powerPointAxObj != NULL) {
 		_powerPointAxObj->dynamicCall("Quit()");
 		delete _powerPointAxObj; _powerPointAxObj = NULL;
 	}
+	// 线程注销COM套件...
+	CoUninitialize();
 }
 
 int CPPThread::doConfirmExist()
