@@ -508,12 +508,12 @@ void CViewCamera::CalcFlowKbps()
 	// 计算实际的接收码率 => Kbps...
 	m_nRecvKbps = (m_nCurRecvByte * 8) / 1024;
 	m_nCurRecvByte = 0;
-	// 如果正在进行本地回放，需要手动更新，但不显示...
-	if (m_lpViewPlayer != NULL) {
-		this->GetRecvPullRate();
-		this->GetSendPushRate();
+	// 更新码流，无效删除...
+	this->GetRecvPullRate();
+	this->GetSendPushRate();
+	// 正在本地回放，不显码流，直接返回...
+	if (m_lpViewPlayer != NULL)
 		return;
-	}
 	// 通道不是离线(正在连接或已连接)，就需要更新界面...
 	if (m_nCameraState != kCameraOffLine) {
 		this->update();
