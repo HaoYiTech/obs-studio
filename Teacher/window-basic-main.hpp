@@ -588,7 +588,7 @@ public:
 	void SystemTray(bool firstStarted);
 
 	void OpenSavedProjectors();
-	
+
 	void doCheckBtnPage(bool bIsFirst = false);
 	void doCheckPPTSource(obs_source_t * source);
 	void doLocalPlayAudioMixer(obs_source_t * source);
@@ -596,10 +596,13 @@ public:
 	void doSceneItemLayout(obs_sceneitem_t * scene_item);
 	void doSceneItemExchangePos(obs_sceneitem_t * select_item);
 	void doSceneItemToFirst(obs_sceneitem_t * select_item);
-	void doSendCameraPusherID(obs_sceneitem_t * select_item);
+	void doSendCameraPusherID(int nDBCameraID);
 	void doUpdatePTZ(int nDBCameraID);
 	void doMovePageX(int nMoveLeftX);
 	bool doCheckCanRecord();
+	
+	void doBuildAllStudentBtnMic();
+	void doBuildStudentBtnMic(obs_sceneitem_t * lpSceneItem);
 protected:
 	virtual void closeEvent(QCloseEvent *event) override;
 	virtual void changeEvent(QEvent *event) override;

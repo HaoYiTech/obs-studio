@@ -114,6 +114,9 @@ static void AddSource(void *_data, obs_scene_t *scene)
 	OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
 	main->doSceneItemLayout(sceneitem);
 
+	// 创建学生端麦克风按钮并重排所有麦克风按钮...
+	main->doBuildStudentBtnMic(sceneitem);
+
 	// 如果新数据源是视频捕捉设备，在混音中隐藏音频数据源...
 	main->doHideDShowAudioMixer(sceneitem);
 }

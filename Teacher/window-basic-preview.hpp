@@ -19,6 +19,8 @@ class QPushButton;
 
 #define ZOOM_SENSITIVITY 1.125f
 
+typedef std::map<obs_sceneitem_t*, QPushButton*> GM_MapBtnMic;
+
 enum class ItemHandle : uint32_t {
 	None         = 0,
 	TopLeft      = ITEM_TOP | ITEM_LEFT,
@@ -48,6 +50,8 @@ private:
 	QPushButton * m_btnPrev  = nullptr;
 	QPushButton * m_btnNext  = nullptr;
 	QPushButton * m_btnFoot  = nullptr;
+
+	GM_MapBtnMic  m_MapBtnMic;
 
 	vec2         startPos;
 	vec2         lastMoveOffset;
@@ -89,16 +93,23 @@ private:
 	QPushButton * CreateBtnPage(bool bIsLeft);
 	QPushButton * CreateBtnPPT(bool bIsPrev);
 	QPushButton * CreateBtnFoot();
+	QPushButton * CreateBtnMic();
+public slots:
+	void onBtnMicClicked();
 public:
 	OBSBasicPreview(QWidget *parent, Qt::WindowFlags flags = 0);
 	~OBSBasicPreview();
 
+	void BindBtnClickEvent();
 	void DispBtnRight(bool bIsShow);
 	void DispBtnLeft(bool bIsShow);
 	void DispBtnPrev(bool bIsShow);
 	void DispBtnNext(bool bIsShow);
 	void DispBtnFoot(bool bIsShow, int nCurItem, int nFileNum, const char * lpName);
-	void BindBtnClickEvent();
+
+	void doDeleteStudentBtnMic(obs_sceneitem_t * lpSceneItem);
+	void doBuildStudentBtnMic(obs_sceneitem_t * lpSceneItem);
+	void doResizeBtnMic(obs_sceneitem_t * lpSceneItem);
 
 	virtual void keyPressEvent(QKeyEvent *event) override;
 	virtual void keyReleaseEvent(QKeyEvent *event) override;
@@ -110,8 +121,9 @@ public:
 	virtual void mouseReleaseEvent(QMouseEvent *event) override;
 	virtual void mouseMoveEvent(QMouseEvent *event) override;
 
-	void ResizeBtnPPT(int nPosY, int nPreviewY);
-	void ResizeBtnPage(int nPosY);
+	void ResizeBtnPage(int baseCY);
+	void ResizeBtnPPT(int baseCY);
+	void ResizeBtnMicAll();
 	void DrawSceneEditing();
 
 	inline void SetLocked(bool newLockedVal) {locked = newLockedVal;}

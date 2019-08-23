@@ -546,7 +546,7 @@ void CLoginMini::onTriggerTcpConnect()
 	
 	/*== 仅供快速测试 ==*/
 	//m_nDBUserID = 1;
-	//m_nDBRoomID = 200002;
+	//m_nDBRoomID = 200005;
 	// 一切正常，开始登录指定的房间...
 	//this->doWebGetMiniLoginRoom();  
 }

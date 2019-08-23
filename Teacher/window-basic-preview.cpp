@@ -4,6 +4,7 @@
 #include <QMouseEvent>
 #include <QScreen>
 #include <QBitmap>
+#include <QVariant>
 
 #include <algorithm>
 #include <cmath>
@@ -40,6 +41,12 @@ OBSBasicPreview::~OBSBasicPreview()
 	if (m_btnPrev != NULL) { delete m_btnPrev; m_btnPrev = NULL; }
 	if (m_btnNext != NULL) { delete m_btnNext; m_btnNext = NULL; }
 	if (m_btnFoot != NULL) { delete m_btnFoot; m_btnFoot = NULL; }
+
+	GM_MapBtnMic::iterator itorItem;
+	for (itorItem = m_MapBtnMic.begin(); itorItem != m_MapBtnMic.end(); ++itorItem) {
+		delete itorItem->second;
+	}
+	m_MapBtnMic.clear();
 }
 
 void OBSBasicPreview::BindBtnClickEvent()
@@ -49,6 +56,169 @@ void OBSBasicPreview::BindBtnClickEvent()
 	this->connect(m_btnRight, SIGNAL(clicked()), main, SLOT(onPageRightClicked()));
 	this->connect(m_btnPrev, SIGNAL(clicked()), main, SLOT(onPagePrevClicked()));
 	this->connect(m_btnNext, SIGNAL(clicked()), main, SLOT(onPageNextClicked()));
+}
+
+void OBSBasicPreview::doDeleteStudentBtnMic(obs_sceneitem_t * lpSceneItem)
+{
+	// 通过数据源对象找到对应的麦克风按钮...
+	GM_MapBtnMic::iterator itorItem = m_MapBtnMic.find(lpSceneItem);
+	if (itorItem == m_MapBtnMic.end())
+		return;
+	// 获取当前学生端数据源的摄像头编号配置信息...
+	OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	obs_source_t * lpSourceItem = obs_sceneitem_get_source(lpSceneItem);
+	obs_data_t * lpSettings = obs_source_get_settings(lpSourceItem);
+	int nDBCameraID = obs_data_get_int(lpSettings, "camera_id");
+	obs_data_release(lpSettings);
+	// 如果摄像头编号有效，并且与当前正在监听的第三方编号一致，需要归零处理...
+	if (nDBCameraID > 0 && main->m_nDBCameraPusherID == nDBCameraID) {
+		main->doSendCameraPusherID(0);
+	}
+	// 删除麦克风按钮，删除索引...
+	delete itorItem->second;
+	m_MapBtnMic.erase(itorItem);
+}
+
+// 通过输入的数据源对象，创建麦克风按钮对象 => 简化外部操作，在这里进行有效性判断...
+void OBSBasicPreview::doBuildStudentBtnMic(obs_sceneitem_t * lpSceneItem)
+{
+	obs_source_t * lpNewSource = obs_sceneitem_get_source(lpSceneItem);
+	uint32_t flags = obs_source_get_output_flags(lpNewSource);
+	const char * lpSrcID = obs_source_get_id(lpNewSource);
+	if (lpSceneItem == NULL || lpNewSource == NULL)
+		return;
+	// 如果没有视频数据源，直接返回...
+	if ((flags & OBS_SOURCE_VIDEO) == 0)
+		return;
+	// 如果不是互动学生端，直接返回...
+	if (astrcmpi(lpSrcID, App()->InteractRtpSource()) != 0)
+		return;
+	// 遍历已经存在的麦克风按钮集合...
+	GM_MapBtnMic::iterator itorItem;
+	for (itorItem = m_MapBtnMic.begin(); itorItem != m_MapBtnMic.end(); ++itorItem) {
+		obs_source_t * lpSrcSource = obs_sceneitem_get_source(itorItem->first);
+		// 如果存在相同的数据源对象，直接返回...
+		if (lpSrcSource == lpNewSource)
+			return;
+		ASSERT(lpSrcSource != lpNewSource);
+	}
+	// 创建一个新的麦克风按钮，放入集合队列当中...
+	QPushButton * lpNewBtnMic = this->CreateBtnMic();
+	m_MapBtnMic[lpSceneItem] = lpNewBtnMic;
+	// 设置麦克风按钮默认的初始风格 => 默认处于第三方静音状态...
+	QString strStyle = QString("QPushButton{ background:transparent; border-image:url(:/res/images/btn_mic.png) 0 30 0 60; }"
+		"QPushButton:hover{border-image:url(:/res/images/btn_mic.png) 0 0 0 90;}"
+		"QPushButton:pressed{border-image:url(:/res/images/btn_mic.png) 0 90 0 0;}");
+	lpNewBtnMic->setStyleSheet(strStyle);
+	// 移动麦克风按钮到数据源窗口的对应位置上...
+	this->doResizeBtnMic(lpSceneItem);
+	// 保存当前麦克风按钮的自定义状态属性 => 非活动状态...
+	lpNewBtnMic->setProperty("is_active", QVariant(false));
+	lpNewBtnMic->setProperty("scene_item", QVariant((qulonglong)lpSceneItem));
+	// 绑定按钮相关的点击事件 => 关联到预览窗口自己身上...
+	this->connect(lpNewBtnMic, SIGNAL(clicked()), this, SLOT(onBtnMicClicked()));
+}
+
+void OBSBasicPreview::onBtnMicClicked()
+{
+	QPushButton * lpBtnMic = reinterpret_cast<QPushButton*>(sender());
+	if (lpBtnMic == NULL)
+		return;
+	obs_sceneitem_t * lpSceneItem = (obs_sceneitem_t*)lpBtnMic->property("scene_item").toULongLong();
+	obs_source_t * lpSourceItem = obs_sceneitem_get_source(lpSceneItem);
+	if (lpSceneItem == NULL || lpSourceItem == NULL)
+		return;
+	// 设置麦克风按钮的活动状态风格 => 活动或非活动...
+	QString strStyleActive = QString("QPushButton{ background:transparent; border-image:url(:/res/images/btn_mic.png) 0 90 0 0; }"
+		"QPushButton:hover{border-image:url(:/res/images/btn_mic.png) 0 60 0 30;}"
+		"QPushButton:pressed{border-image:url(:/res/images/btn_mic.png) 0 30 0 60;}");
+	QString strStyleOffLine = QString("QPushButton{ background:transparent; border-image:url(:/res/images/btn_mic.png) 0 30 0 60; }"
+		"QPushButton:hover{border-image:url(:/res/images/btn_mic.png) 0 0 0 90;}"
+		"QPushButton:pressed{border-image:url(:/res/images/btn_mic.png) 0 90 0 0;}");
+	// 获取当前的麦克风按钮状态和数据源的核心状态...
+	bool isActive = lpBtnMic->property("is_active").toBool();
+	obs_data_t * lpSettings = obs_source_get_settings(lpSourceItem);
+	bool bHasRecvThread = obs_data_get_bool(lpSettings, "recv_thread");
+	int nDBCameraID = obs_data_get_int(lpSettings, "camera_id");
+	obs_data_release(lpSettings);
+	// 先将当前活动状态取反，得到新状态...
+	bool isNewActive = !isActive;
+	// 如果是活动状态，但数据源没有在线，设置为非活动状态...
+	if (isNewActive && (!bHasRecvThread || nDBCameraID <= 0)) {
+		isNewActive = false;
+	}
+	// 向服务器发送第三方监听学生端变化消息通知...
+	OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	int nNewDBCameraID = isNewActive ? nDBCameraID : 0;
+	main->doSendCameraPusherID(nNewDBCameraID);
+	// 设置活动状态属性，设置按钮风格状态图标信息...
+	lpBtnMic->setProperty("is_active", QVariant(isNewActive));
+	lpBtnMic->setStyleSheet(isNewActive ? strStyleActive : strStyleOffLine);
+	lpBtnMic->setToolTip(QTStr(isNewActive ? "Preview.Mic.On" : "Preview.Mic.Off"));
+	// 如果当前按钮处于新的非活动状态，直接返回...
+	if (!isNewActive)
+		return;
+	ASSERT(isNewActive);
+	// 如果当前按钮处于新的活动状态，需要修改其它按钮为非活动状态...
+	QPushButton * lpBtnItem = NULL;
+	GM_MapBtnMic::iterator itorItem;
+	for (itorItem = m_MapBtnMic.begin(); itorItem != m_MapBtnMic.end(); ++itorItem) {
+		lpBtnItem = itorItem->second;
+		if (lpBtnItem == lpBtnMic) continue;
+		lpBtnItem->setStyleSheet(strStyleOffLine);
+	}
+}
+
+void OBSBasicPreview::ResizeBtnMicAll()
+{
+	GM_MapBtnMic::iterator itorItem;
+	for (itorItem = m_MapBtnMic.begin(); itorItem != m_MapBtnMic.end(); ++itorItem) {
+		this->doResizeBtnMic(itorItem->first);
+	}
+}
+
+void OBSBasicPreview::doResizeBtnMic(obs_sceneitem_t * lpSceneItem)
+{
+	OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	if (main == NULL || lpSceneItem == NULL)
+		return;
+	// 通过数据源对象找到麦克风按钮...
+	GM_MapBtnMic::iterator itorItem;
+	itorItem = m_MapBtnMic.find(lpSceneItem);
+	if (itorItem == m_MapBtnMic.end())
+		return;
+	// 判断找到麦克风按钮对象指针是否有效...
+	QPushButton * lpBtnMic = itorItem->second;
+	if (lpBtnMic == NULL)
+		return;
+	// 获取数据源在obs坐标系位置和大小...
+	vec2 vPos = { 0 }, vBounds = { 0 };
+	obs_sceneitem_get_pos(lpSceneItem, &vPos);
+	obs_sceneitem_get_bounds(lpSceneItem, &vBounds);
+	// 先计算居中位置，再计算比例，最后添加预览位置偏移...
+	int nPosNewX = (vPos.x + vBounds.x / 2) * main->previewScale + main->previewX - 15;
+	int nPosNewY = vPos.y * main->previewScale + main->previewY + 1;
+	lpBtnMic->setGeometry(nPosNewX, nPosNewY, 30, 30);
+}
+
+QPushButton * OBSBasicPreview::CreateBtnMic()
+{
+	QPushButton * lpObjButton = new QPushButton(this);
+	QString strBtnName = QStringLiteral("btn_mic");
+	lpObjButton->setObjectName(strBtnName);
+	lpObjButton->setMinimumSize(QSize(30, 30));
+	lpObjButton->setMaximumSize(QSize(30, 30));
+	lpObjButton->setCursor(QCursor(Qt::PointingHandCursor));
+	lpObjButton->setToolTip(QTStr("Preview.Mic.Off"));
+	// 进行按钮图片的透明化处理...
+	QPalette myPalette;
+	QPixmap  myPixmap(QString(":/res/images/%1.png").arg(strBtnName));
+	// 让背景图片适应窗口的大小，在背景图片上做 scaled 操作...
+	myPalette.setBrush(QPalette::Background, QBrush(myPixmap));
+	lpObjButton->setPalette(myPalette);
+	lpObjButton->setMask(myPixmap.mask());
+	lpObjButton->show();
+	return lpObjButton;
 }
 
 QPushButton * OBSBasicPreview::CreateBtnFoot()
@@ -122,24 +292,38 @@ QPushButton * OBSBasicPreview::CreateBtnPage(bool bIsLeft)
 	return lpObjButton;
 }
 
-void OBSBasicPreview::ResizeBtnPage(int nPosY)
+// 第二排数据源左右圆形按钮的位置调整...
+void OBSBasicPreview::ResizeBtnPage(int baseCY)
 {
+	// obs的坐标系投射到预览画面的坐标位置，previewScale是投射比例...
+	// previewScale 对 X 和 Y 都是适合的，详见 GetScaleAndCenterPos()...
+	OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	int nPrevCY = int(main->previewScale * float(baseCY));
+	int nPosY = main->previewY + nPrevCY - nPrevCY / 5 / 2 - 20;
 	QSize targetSize = GetPixelSize(this);
 	int nPosLeftX = 0; int nPosRightX = 0;
 	nPosRightX = targetSize.width() - 40;
+	// 设定左右圆形按钮的位置和大小 => 40*40...
 	m_btnLeft->setGeometry(nPosLeftX, nPosY, 40, 40);
 	m_btnRight->setGeometry(nPosRightX, nPosY, 40, 40);
 }
 
-void OBSBasicPreview::ResizeBtnPPT(int nPosY, int nPreviewY)
+void OBSBasicPreview::ResizeBtnPPT(int baseCY)
 {
+	// obs的坐标系投射到预览画面的坐标位置，previewScale是投射比例...
+	// previewScale 对 X 和 Y 都是适合的，详见 GetScaleAndCenterPos()...
+	OBSBasic * main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	int nPrevCY = int(main->previewScale * float(baseCY));
+	int nPosY = main->previewY + (nPrevCY - nPrevCY / 5) / 2 - 30;
 	QSize targetSize = GetPixelSize(this);
 	int nPosLeftX = 0; int nPosRightX = 0;
 	nPosRightX = targetSize.width() - 40;
+	// 设定左右翻页按钮的位置和大小 => 40*50...
 	m_btnPrev->setGeometry(nPosLeftX, nPosY, 40, 50);
 	m_btnNext->setGeometry(nPosRightX, nPosY, 40, 50);
-	nPosLeftX = targetSize.width() / 2 - 25;
-	m_btnFoot->setGeometry(nPosLeftX, nPreviewY, 100, 30);
+	// 设定顶部信息按钮的位置和大小 => 100*30...
+	nPosLeftX = (targetSize.width() - 100) / 2;
+	m_btnFoot->setGeometry(nPosLeftX, main->previewY, 100, 30);
 }
 
 void OBSBasicPreview::DispBtnRight(bool bIsShow)
@@ -1310,7 +1494,10 @@ void OBSBasicPreview::mouseMoveEvent(QMouseEvent *event)
 	} else if (mouseOverItems) {
 		this->MoveItems(pos);
 	}
+	// 设置移动标志...
 	mouseMoved = true;
+	// 移动这个数据源的麦克风按钮...
+	this->doResizeBtnMic(itemSelect);
 }
 
 static void DrawCircleAtPos(float x, float y, matrix4 &matrix, float previewScale)
@@ -1491,6 +1678,8 @@ void OBSBasicPreview::mouseDoubleClickEvent(QMouseEvent *event)
 		return;
 	// 向主窗口通知，鼠标双击事件，进行位置切换...
 	main->doSceneItemExchangePos(itemSelect);
-	// 向服务器发送当前摄像头推流编号的命令...
-	main->doSendCameraPusherID(itemSelect);
+	// 学生监听状态由讲师手动控制，不再由焦点控制...
+	//main->doSendCameraPusherID(itemSelect);
+	// 将全部麦克风按钮都重置显示位置...
+	this->ResizeBtnMicAll();
 }

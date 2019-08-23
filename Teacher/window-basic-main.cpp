@@ -1856,6 +1856,8 @@ void OBSBasic::DeferredLoad(const QString &file, int requeueCount)
 	ui->preview->BindBtnClickEvent();
 	// 判断是否显示箭头 => 第一次保存0点数据源...
 	this->doCheckBtnPage(true);
+	// 为所有的互动学生端数据源创建第三方麦克风按钮...
+	this->doBuildAllStudentBtnMic();
 	// 这里还需补充创建监视器，有可能source在重建时，scene还没有创建...
 	//this->doSceneCreateMonitor();
 }
@@ -2518,6 +2520,17 @@ void OBSBasic::RemoveSceneItem(OBSSceneItem item)
 		ui->preview->DispBtnFoot(false,0,0,NULL);
 		m_lpZeroSceneItem = NULL;
 	}
+	// 删除预览窗口对应的学生端麦克风按钮...
+	ui->preview->doDeleteStudentBtnMic(item);
+	// 注意：如果互动学生端，并没有调用 doSendCameraLiveStopCmd()，让互动学生端自己超时退出...
+	// 注意：没有立即调用 doSendCameraLiveStopCmd() 的原因，避免关联数据源发生混乱...
+	/*obs_source_t * lpSource = obs_sceneitem_get_source(item);
+	if (astrcmpi(obs_source_get_id(lpSource), App()->InteractRtpSource()) == 0) {
+		obs_data_t * lpSettings = obs_source_get_settings(lpSource);
+		int nDBCameraID = obs_data_get_int(lpSettings, "camera_id");
+		obs_data_release(lpSettings);
+		App()->doSendCameraLiveStopCmd(nDBCameraID);
+	}*/
 }
 
 void OBSBasic::UpdateSceneSelection(OBSSource source)
@@ -3524,12 +3537,9 @@ void OBSBasic::ResizePreview(uint32_t cx, uint32_t cy)
 	previewX += float(PREVIEW_EDGE_SIZE);
 	previewY += float(PREVIEW_EDGE_SIZE);
 	
-	int nPrevCY = int(previewScale * float(ovi.base_height));
-	int nPosY = previewY + nPrevCY - nPrevCY / 5 / 2 - 20;
-	ui->preview->ResizeBtnPage(nPosY);
-
-	nPosY = previewY + (nPrevCY - nPrevCY / 5) / 2 - 30;
-	ui->preview->ResizeBtnPPT(nPosY, previewY);
+	ui->preview->ResizeBtnPage(ovi.base_height);
+	ui->preview->ResizeBtnPPT(ovi.base_height);
+	ui->preview->ResizeBtnMicAll();
 }
 
 void OBSBasic::CloseDialogs()
@@ -4196,6 +4206,8 @@ void OBSBasic::OpenFloatSource()
 	}
 	// 判断是否显示左右箭头...
 	this->doCheckBtnPage();
+	// 将全部麦克风按钮都重置显示位置...
+	ui->preview->ResizeBtnMicAll();
 }
 
 void OBSBasic::ShutFloatSource()
@@ -4208,6 +4220,8 @@ void OBSBasic::ShutFloatSource()
 	// 先关闭浮动，然后给当前浮动对象寻找放置位置...
 	obs_sceneitem_set_floated(curItem, false);
 	this->doSceneItemLayout(curItem);
+	// 将全部麦克风按钮都重置显示位置...
+	ui->preview->ResizeBtnMicAll();
 }
 
 void OBSBasic::CreateSourcePopupMenu(QListWidgetItem *item, bool preview)
@@ -6160,9 +6174,15 @@ static inline void setAudioMixer(obs_sceneitem_t *scene_item, const int mixerIdx
 	obs_data_t * lpSettings = obs_source_get_settings(source);
 	obs_data_set_bool(lpSettings, "focus_mix", enabled);
 	obs_data_release(lpSettings);*/
+	
+	const char * lpSrcID = obs_source_get_id(source);
+	bool bIsRtpSource = ((astrcmpi(lpSrcID, App()->InteractRtpSource()) == 0) ? true : false);
+
+	// 注意：如果是互动教室资源、第二个轨道，用来录像的音频，不用处理，默认始终录像...
+	if (bIsRtpSource && (mixerIdx == 1))
+		return;
 
 	// 注意：如果是互动教室资源、第一个轨道、投递数据，三个条件都满足，就进行强制屏蔽...
-	bool bIsRtpSource = ((astrcmpi(obs_source_get_id(source), App()->InteractRtpSource()) == 0) ? true : false);
 	if (bIsRtpSource && enabled && (mixerIdx == 0)) {
 		enabled = false;
 	}
@@ -6176,9 +6196,6 @@ static inline void setAudioMixer(obs_sceneitem_t *scene_item, const int mixerIdx
 // 响应鼠标双击事件 => 交换0点位置的场景资源...
 void OBSBasic::doSceneItemExchangePos(obs_sceneitem_t * select_item)
 {
-	//////////////////////////////////////////////////////////////////////////////////
-	// 注意：doSendCameraPusherID 会在OBSBasicPreview::mouseDoubleClickEvent调用...
-	//////////////////////////////////////////////////////////////////////////////////
 	// 输入场景资源为空，直接返回...
 	if (select_item == NULL)
 		return;
@@ -6247,8 +6264,8 @@ void OBSBasic::doSceneItemLayout(obs_sceneitem_t * scene_item)
 	if (m_lpZeroSceneItem == NULL) {
 		// 设定选中对象为0点数据源对象...
 		this->doSceneItemToFirst(scene_item);
-		// 向服务器发送当前摄像头推流编号的命令...
-		this->doSendCameraPusherID(scene_item);
+		// 学生监听状态由讲师手动控制，不再由焦点控制...
+		//this->doSendCameraPusherID(scene_item);
 		// 更新场景资源的显示位置信息...
 		m_lpZeroSceneItem = scene_item;
 		return;
@@ -6417,6 +6434,25 @@ void OBSBasic::doMovePageX(int nMoveLeftX)
 	}
 }
 
+// 为所有的互动学生端数据源创建第三方麦克风按钮...
+void OBSBasic::doBuildAllStudentBtnMic()
+{
+	// 遍历所有的数据源对象，找到互动学生端对象，注意关联数据源...
+	for (int i = 0; i < ui->sources->count(); i++) {
+		QListWidgetItem * listItem = ui->sources->item(i);
+		obs_sceneitem_t * item = this->GetSceneItem(listItem);
+		// 创建数据源对应的麦克风按钮 => 需要处理关联数据源...
+		ui->preview->doBuildStudentBtnMic(item);
+	}
+}
+
+// 调用预览窗口创建学生端麦克风按钮，并重排所有麦克风按钮...
+void OBSBasic::doBuildStudentBtnMic(obs_sceneitem_t * lpSceneItem)
+{
+	ui->preview->doBuildStudentBtnMic(lpSceneItem);
+	ui->preview->ResizeBtnMicAll();
+}
+
 // 判断是否显示左右箭头 => 第一次运行时需要保存0点位置数据源...
 void OBSBasic::doCheckBtnPage(bool bIsFirst/* = false*/)
 {
@@ -6531,7 +6567,18 @@ void OBSBasic::doSceneItemToFirst(obs_sceneitem_t * select_item)
 	this->doCheckPPTSource(lpSource);
 }
 
-void OBSBasic::doSendCameraPusherID(obs_sceneitem_t * select_item)
+// 注意：这里是进行第三方监听学生端的变化通知...
+// 交互学生端摄像头编号发生变化，向服务器发送更新命令...
+void OBSBasic::doSendCameraPusherID(int nDBCameraID)
+{
+	if (m_nDBCameraPusherID != nDBCameraID) {
+		App()->doSendCameraPusherIDCmd(nDBCameraID);
+		m_nDBCameraPusherID = nDBCameraID;
+	}
+}
+
+// 第三方学生监听状态由讲师自己手动控制，不再通过焦点状态切换控制...
+/*void OBSBasic::doSendCameraPusherID(obs_sceneitem_t * select_item)
 {
 	int nDBCameraID = 0;
 	obs_source_t * lpSource = obs_sceneitem_get_source(select_item);
@@ -6547,7 +6594,7 @@ void OBSBasic::doSendCameraPusherID(obs_sceneitem_t * select_item)
 		App()->doSendCameraPusherIDCmd(nDBCameraID);
 		m_nDBCameraPusherID = nDBCameraID;
 	}
-}
+}*/
 
 void OBSBasic::doHideDShowAudioMixer(obs_sceneitem_t * scene_item)
 {
