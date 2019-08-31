@@ -716,6 +716,8 @@ void OBSBasic::LogScenes()
 
 void OBSBasic::Load(const char *file)
 {
+	ProfileScope("OBSBasic::Load");
+
 	disableSaving++;
 
 	obs_data_t *data = obs_data_create_from_json_file_safe(file, "bak");
