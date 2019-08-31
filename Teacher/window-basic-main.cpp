@@ -7016,37 +7016,27 @@ void OBSBasic::ToggleShowHide()
 
 void OBSBasic::SystemTrayInit()
 {
-	trayIcon = new QSystemTrayIcon(QIcon(":/res/images/obs.png"),
-			this);
+	ProfileScope("OBSBasic::SystemTrayInit");
+
+	trayIcon = new QSystemTrayIcon(QIcon(":/res/images/obs.png"), this);
 	trayIcon->setToolTip("Teacher");
 
-	showHide = new QAction(QTStr("Basic.SystemTray.Show"),
-			trayIcon);
-	sysTrayStream = new QAction(QTStr("Basic.Main.StartStreaming"),
-			trayIcon);
-	sysTrayRecord = new QAction(QTStr("Basic.Main.StartRecording"),
-			trayIcon);
-	sysTrayReplayBuffer = new QAction(QTStr("Basic.Main.StartReplayBuffer"),
-			trayIcon);
-	exit = new QAction(QTStr("Exit"),
-			trayIcon);
+	showHide = new QAction(QTStr("Basic.SystemTray.Show"), trayIcon);
+	sysTrayStream = new QAction(QTStr("Basic.Main.StartStreaming"), trayIcon);
+	sysTrayRecord = new QAction(QTStr("Basic.Main.StartRecording"), trayIcon);
+	sysTrayReplayBuffer = new QAction(QTStr("Basic.Main.StartReplayBuffer"), trayIcon);
+	exit = new QAction(QTStr("Exit"), trayIcon);
 
 	if (outputHandler && !outputHandler->replayBuffer)
 		sysTrayReplayBuffer->setEnabled(false);
 
 	connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
-			this,
-			SLOT(IconActivated(QSystemTrayIcon::ActivationReason)));
-	connect(showHide, SIGNAL(triggered()),
-			this, SLOT(ToggleShowHide()));
-	connect(sysTrayStream, SIGNAL(triggered()),
-			this, SLOT(on_streamButton_clicked()));
-	connect(sysTrayRecord, SIGNAL(triggered()),
-			this, SLOT(on_recordButton_clicked()));
-	connect(sysTrayReplayBuffer.data(), &QAction::triggered,
-			this, &OBSBasic::ReplayBufferClicked);
-	connect(exit, SIGNAL(triggered()),
-			this, SLOT(close()));
+			this, SLOT(IconActivated(QSystemTrayIcon::ActivationReason)));
+	connect(showHide, SIGNAL(triggered()), this, SLOT(ToggleShowHide()));
+	connect(sysTrayStream, SIGNAL(triggered()), this, SLOT(on_streamButton_clicked()));
+	connect(sysTrayRecord, SIGNAL(triggered()), this, SLOT(on_recordButton_clicked()));
+	connect(sysTrayReplayBuffer.data(), &QAction::triggered, this, &OBSBasic::ReplayBufferClicked);
+	connect(exit, SIGNAL(triggered()), this, SLOT(close()));
 
 	trayMenu = new QMenu;
 }
@@ -7088,6 +7078,8 @@ void OBSBasic::SysTrayNotify(const QString &text,
 
 void OBSBasic::SystemTray(bool firstStarted)
 {
+	ProfileScope("OBSBasic::SystemTray");
+
 	if (!QSystemTrayIcon::isSystemTrayAvailable())
 		return;
 
