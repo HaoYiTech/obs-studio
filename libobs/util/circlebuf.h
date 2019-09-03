@@ -319,7 +319,7 @@ static inline void circlebuf_pop_front(struct circlebuf *cb, void *data,
 static inline void circlebuf_pop_back(struct circlebuf *cb, void *data,
 		size_t size)
 {
-	circlebuf_peek_front(cb, data, size);
+	circlebuf_peek_back(cb, data, size);
 
 	cb->size -= size;
 	if (!cb->size) {
@@ -338,7 +338,7 @@ static inline void *circlebuf_data(struct circlebuf *cb, size_t idx)
 	uint8_t *ptr = (uint8_t*)cb->data;
 	size_t offset = cb->start_pos + idx;
 
-	if (idx > cb->size)
+	if (idx >= cb->size)
 		return NULL;
 
 	if (offset >= cb->capacity)
