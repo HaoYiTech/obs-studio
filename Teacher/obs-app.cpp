@@ -1004,18 +1004,13 @@ void OBSApp::AppInit()
 	if (!InitTheme())
 		throw "Failed to load theme";
 
-	config_set_default_string(globalConfig, "Basic", "Profile",
-		Str("Untitled"));
-	config_set_default_string(globalConfig, "Basic", "ProfileDir",
-		Str("Untitled"));
-	config_set_default_string(globalConfig, "Basic", "SceneCollection",
-		Str("Untitled"));
-	config_set_default_string(globalConfig, "Basic", "SceneCollectionFile",
-		Str("Untitled"));
+	config_set_default_string(globalConfig, "Basic", "Profile", Str("Untitled"));
+	config_set_default_string(globalConfig, "Basic", "ProfileDir", Str("Untitled"));
+	config_set_default_string(globalConfig, "Basic", "SceneCollection", Str("Untitled"));
+	config_set_default_string(globalConfig, "Basic", "SceneCollectionFile", Str("Untitled"));
 
 #ifdef _WIN32
-	bool disableAudioDucking = config_get_bool(globalConfig, "Audio",
-		"DisableAudioDucking");
+	bool disableAudioDucking = config_get_bool(globalConfig, "Audio", "DisableAudioDucking");
 	if (disableAudioDucking)
 		DisableAudioDucking(true);
 #endif
