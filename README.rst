@@ -48,4 +48,4 @@ Contributing
    comes to something that you don't fully know or understand, please
    defer to the official help or official channels.
 
-Testing for Jackey in 2019.11.07
+Jackey in 2019.11.07 for PC-Home...
