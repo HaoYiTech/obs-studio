@@ -169,6 +169,10 @@ Page({
         let theArrAgent = prevPage.data.m_arrAgent;
         theArrAgent = theNewAgent.concat(theArrAgent);
         prevPage.setData({ m_arrAgent: theArrAgent, m_total_num: theArrAgent.length });
+        // 如果自己就是新的机构管理者，需要更新配置...
+        if (that.data.m_curMasterID == g_appData.m_nUserID) {
+          g_appData.m_nMasterAgentID = arrData.agent.agent_id;
+        }
         // 进行页面的更新跳转...
         wx.navigateBack();
       },
@@ -224,6 +228,10 @@ Page({
         thePrevAgent.master_id = that.data.m_curMasterID;
         thePrevAgent.wx_nickname = that.data.m_curMasterName;
         prevPage.setData({ m_arrAgent: theArrAgent });
+        // 如果自己就是新的机构管理者，需要更新配置...
+        if (that.data.m_curMasterID == g_appData.m_nUserID) {
+          g_appData.m_nMasterAgentID = theCurAgent.agent_id;
+        }
         // 进行页面的更新跳转...
         wx.navigateBack();
       },
