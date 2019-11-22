@@ -9,7 +9,7 @@
 ===============================================================================================
 00.（已完成）github.com/flutter | flutter.cn | sifou.com/flutter => 有关 Flutter 的开发社区资源；
    （已完成）F:\Flutter => 放置与Flutter开发相关的资源，相关学习记录等等内容；
-   （未完成）https://www.jianshu.com/p/cda416e2fc0d => Flutter安装文档
+   （不处理）https://www.jianshu.com/p/cda416e2fc0d => Flutter安装文档
    （已完成）https://developer.android.google.cn/
    （已完成）https://blog.csdn.net/xcg8818/article/details/100120840 => AS3.5的安装文档
    （已完成）https://blog.csdn.net/qijingwang/article/details/100113503 => AS3.5新功能说明
