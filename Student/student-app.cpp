@@ -924,8 +924,55 @@ int doTestAudioSpeed()
 	return 0;
 }*/
 
+/*int doSplitAudio()
+{
+	char * url = "F:\\MP4\\PCM\\horn_mp3_2_float.pcm";
+	ifstream infp;
+	infp.open(url, ios::in | ios::binary);
+	ofstream outlefp, outrifp;
+	outlefp.open("F:\\MP4\\PCM\\horn_mp3_outleft.pcm", ios::out | ios::binary);
+	outrifp.open("F:\\MP4\\PCM\\horn_mp3_outright.pcm", ios::out | ios::binary);
+
+	unsigned char* pcmbuf = (unsigned char*)malloc(8);
+	while (!infp.eof())
+	{
+		infp.read((char*)pcmbuf, 8);
+		outlefp.write((const char*)pcmbuf, 4);
+		outrifp.write((const char*)pcmbuf + 4, 4);
+	}
+	free(pcmbuf);
+	infp.close();
+	outlefp.close();
+	outrifp.close();
+	return 0;
+}
+
+int doMixerAudio()
+{
+	ifstream infp1, infp2;
+	infp1.open("F:\\MP4\\PCM\\horn_av1_2_float.pcm", ios::in | ios::binary);
+	infp2.open("F:\\MP4\\PCM\\horn_mp3_2_float.pcm", ios::in | ios::binary);
+	ofstream outlefp;
+	outlefp.open("F:\\MP4\\PCM\\horn_mixer_float.pcm", ios::out | ios::binary);
+	float fIn1, fIn2, fOut;
+	while (!infp1.eof() && !infp2.eof()) {
+		infp1.read((char*)&fIn1, 4);
+		infp2.read((char*)&fIn2, 4);
+		fOut = fIn1 + fIn2;
+		outlefp.write((char*)&fOut, 4);
+	}
+	infp1.close();
+	infp2.close();
+	outlefp.close();
+	return 0;
+}*/
+
 int main(int argc, char *argv[])
 {
+	// 进行左右声道分离测试...
+	//return doSplitAudio();
+	// 进行单声道的混音测试...
+	//return doMixerAudio();
 	// 进行webrtc的aed测试...
 	//return doTestWebrtcAEC();
 	// 进行webrtc的ns测试...

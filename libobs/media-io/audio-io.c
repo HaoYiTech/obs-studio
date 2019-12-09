@@ -26,7 +26,9 @@
 
 #include "audio-io.h"
 #include "audio-resampler.h"
+#include "obs-internal.h"
 
+extern struct obs_core * obs;
 extern profiler_name_store_t *obs_get_profiler_name_store(void);
 
 /* #define DEBUG_AUDIO */
@@ -57,9 +59,12 @@ struct audio_output {
 	size_t                     channels;
 	size_t                     planes;
 
+	pthread_t                  monitor_thread;
+	os_event_t                *monitor_event;
+	bool                       monitor_initialized;
+
 	pthread_t                  thread;
 	os_event_t                 *stop_event;
-
 	bool                       initialized;
 
 	audio_input_callback_t     input_cb;
@@ -236,6 +241,79 @@ static void input_and_output(struct audio_output *audio,
 	/* output */
 	for (size_t i = 0; i < MAX_AUDIO_MIXES; i++)
 		do_audio_output(audio, i, new_ts, AUDIO_OUTPUT_FRAMES);
+}
+
+static bool do_mix_monitor_play()
+{
+	struct obs_core_audio *audio = &obs->audio;
+
+	// 对最大混音缓存进行重置操作...
+	size_t total_size = AUDIO_OUTPUT_FRAMES * MAX_AUDIO_CHANNELS * sizeof(float);
+	memset(audio->monitoring_mix, 0, total_size);
+	// 锁定所有的监视器对象...
+	pthread_mutex_lock(&audio->monitoring_mutex);
+	struct audio_monitor * monitor = NULL;
+	bool bIsCanMixter = false;
+	int  nCanMixCount = 0;
+	// 如果没有监视器，直接返回...
+	if (audio->monitors.num <= 0)
+		goto unlock;
+	// 必须等待所有通道的监视器都有足够混音的数据...
+	for (size_t i = 0; i < audio->monitors.num; ++i) {
+		monitor = audio->monitors.array[i];
+		// 如果当前监视器处于静音状态，下一个...
+		if (audio_monitor_is_muted(monitor))
+			continue;
+		if (!audio_monitor_can_mix(monitor))
+			goto unlock;
+		// 没有静音并且可以混音 => 累加计数器...
+		++nCanMixCount;
+	}
+	// 如果混音计数器无效，直接返回...
+	if (nCanMixCount <= 0)
+		goto unlock;
+	// 设置可以混音标志...
+	bIsCanMixter = true;
+	// 混音数据足够之后，开始逐个混合，放到外部混音缓存...
+	for (size_t i = 0; i < audio->monitors.num; i++) {
+		monitor = audio->monitors.array[i];
+		// 如果当前监视器处于静音状态，直接返回...
+		if (audio_monitor_is_muted(monitor))
+			continue;
+		// 对当前监视器进行正常的混音处理...
+		audio_monitor_mixer(monitor, audio->monitoring_mix);
+	}
+	// 混合完毕，使用最后的监视器进行本地播放...
+	// 注意：所有的监视器都是相同的声道和采样率...
+	audio_monitor_play(monitor, audio->monitoring_mix);
+unlock:
+	pthread_mutex_unlock(&audio->monitoring_mutex);
+	return bIsCanMixter;
+}
+
+static void *monitor_thread(void *param)
+{
+	struct audio_output *audio = param;
+	size_t rate = audio->info.samples_per_sec;
+	uint32_t audio_wait_time = (uint32_t)(audio_frames_to_ns(rate, AUDIO_OUTPUT_FRAMES) / 1000000) / 2;
+	uint32_t audio_sleep_time = audio_wait_time;
+
+	os_set_thread_name("audio-io: monitor thread");
+	const char *monitor_thread_name =
+		profile_store_name(obs_get_profiler_name_store(),
+			"monitor_thread(%s)", audio->info.name);
+
+	while (os_event_try(audio->monitor_event) == EAGAIN) {
+		profile_start(monitor_thread_name);
+		os_sleep_ms(audio_sleep_time);
+
+		// 本地混音并播放 => 混音成功，立即再次混音；失败，等待一个周期...
+		audio_sleep_time = do_mix_monitor_play() ? 0 : audio_wait_time;
+
+		profile_end(monitor_thread_name);
+		profile_reenable_thread();
+	}
+	return NULL;
 }
 
 static void *audio_thread(void *param)
@@ -426,8 +504,14 @@ int audio_output_open(audio_t **audio, struct audio_output_info *info)
 		goto fail;
 	if (pthread_create(&out->thread, NULL, audio_thread, out) != 0)
 		goto fail;
+	if (os_event_init(&out->monitor_event, OS_EVENT_TYPE_MANUAL) != 0)
+		goto fail;
+	if (pthread_create(&out->monitor_thread, NULL, monitor_thread, out) != 0)
+		goto fail;
 
+	out->monitor_initialized = true;
 	out->initialized = true;
+
 	*audio = out;
 	return AUDIO_OUTPUT_SUCCESS;
 
@@ -439,9 +523,15 @@ fail:
 void audio_output_close(audio_t *audio)
 {
 	void *thread_ret;
+	void *monitor_thread_ret;
 
 	if (!audio)
 		return;
+
+	if (audio->monitor_initialized) {
+		os_event_signal(audio->monitor_event);
+		pthread_join(audio->monitor_thread, &monitor_thread_ret);
+	}
 
 	if (audio->initialized) {
 		os_event_signal(audio->stop_event);
@@ -457,6 +547,7 @@ void audio_output_close(audio_t *audio)
 		da_free(mix->inputs);
 	}
 
+	os_event_destroy(audio->monitor_event);
 	os_event_destroy(audio->stop_event);
 	bfree(audio);
 }

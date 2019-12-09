@@ -376,7 +376,7 @@ bool audio_callback(void *param,
 	struct ts_info ts = {start_ts_in, end_ts_in};
 	size_t audio_size;
 	uint64_t min_ts;
-
+	
 	da_resize(audio->render_order, 0);
 	da_resize(audio->root_nodes, 0);
 
@@ -418,8 +418,7 @@ bool audio_callback(void *param,
 	/* render audio data */
 	for (size_t i = 0; i < audio->render_order.num; i++) {
 		obs_source_t *source = audio->render_order.array[i];
-		obs_source_audio_render(source, mixers, channels, sample_rate,
-				audio_size);
+		obs_source_audio_render(source, mixers, channels, sample_rate, audio_size);
 	}
 
 	/* ------------------------------------------------ */
