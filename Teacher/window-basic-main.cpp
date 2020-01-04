@@ -1861,10 +1861,10 @@ void OBSBasic::DeferredLoad(const QString &file, int requeueCount)
 	// 为所有的互动学生端数据源创建第三方麦克风按钮...
 	this->doBuildAllStudentBtnMic();
 	// 这里还需补充创建监视器，有可能source在重建时，scene还没有创建...
-	//this->doSceneCreateMonitor();
+	this->doSceneCreateMonitor();
 }
 
-// 思路错误：当source的监视发生变化，需要重建场景的监视器，播放轨道3音频...
+// 当source的监视发生变化，需要重建场景的监视器，播放轨道3音频...
 void OBSBasic::MonitoringSourceChanged(OBSSource source)
 {
 	//this->doSceneDestoryMonitor();
@@ -1873,18 +1873,16 @@ void OBSBasic::MonitoringSourceChanged(OBSSource source)
 
 void OBSBasic::doSceneCreateMonitor()
 {
-	int mix_idx = 2;
 	OBSScene theCurScene = this->GetCurrentScene();
-	bool bResult = obs_scene_create_monitor(theCurScene, mix_idx);
-	blog(LOG_INFO, "== Scene Create Monitor result: %d, mix: %d ==", bResult, mix_idx);
+	bool bResult = obs_scene_create_monitor(theCurScene);
+	blog(LOG_INFO, "== Scene Create Monitor result: %d ==", bResult);
 }
 
 void OBSBasic::doSceneDestoryMonitor()
 {
-	int mix_idx = 2;
 	OBSScene theCurScene = this->GetCurrentScene();
-	bool bResult = obs_scene_destory_monitor(theCurScene, mix_idx);
-	blog(LOG_INFO, "== Scene Destory Monitor result: %d, mix: %d ==", bResult, mix_idx);
+	bool bResult = obs_scene_destory_monitor(theCurScene);
+	blog(LOG_INFO, "== Scene Destory Monitor result: %d ==", bResult);
 }
 
 void OBSBasic::UpdateMultiviewProjectorMenu()
