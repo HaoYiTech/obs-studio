@@ -828,7 +828,8 @@ void CViewCamera::BuildSendThread()
 	}
 	ASSERT(m_nCameraState == kCameraOnLine);
 	// 这里webrtc的DA-AEC回音消除对象必须有效...
-	if (m_lpWebrtcAEC == NULL) {
+	string strAAC = m_lpDataThread->GetAACHeader();
+	if (strAAC.size() > 0 && m_lpWebrtcAEC == NULL) {
 		blog(LOG_INFO, "== BuildSendThread Error for WebrtcAEC ==");
 		return;
 	}
@@ -866,18 +867,21 @@ void CViewCamera::ReBuildWebrtcAEC()
 		delete m_lpWebrtcAEC;
 		m_lpWebrtcAEC = NULL;
 	}
-	// 获取音频相关的格式头信息，以及回音消除参数...
-	int nInRateIndex = m_lpDataThread->GetAudioRateIndex();
-	int nInChannelNum = m_lpDataThread->GetAudioChannelNum();
-	int nOutSampleRate = App()->GetAudioSampleRate();
-	int nOutChannelNum = App()->GetAudioChannelNum();
-	int nOutBitrateAAC = App()->GetAudioBitrateAAC();
-	// 创建并初始化回音消除对象...
-	m_lpWebrtcAEC = new CWebrtcAEC(this);
-	// 初始化失败，删除回音消除对象...
-	if (!m_lpWebrtcAEC->InitWebrtc(nInRateIndex, nInChannelNum, nOutSampleRate, nOutChannelNum, nOutBitrateAAC)) {
-		delete m_lpWebrtcAEC; m_lpWebrtcAEC = NULL;
-		blog(LOG_INFO, "== CWebrtcAEC::InitWebrtc() => Error ==");
+	// 音频有效才需要建立回音消除对象...
+	if (m_lpDataThread->GetAACHeader().size() > 0) {
+		// 获取音频相关的格式头信息，以及回音消除参数...
+		int nInRateIndex = m_lpDataThread->GetAudioRateIndex();
+		int nInChannelNum = m_lpDataThread->GetAudioChannelNum();
+		int nOutSampleRate = App()->GetAudioSampleRate();
+		int nOutChannelNum = App()->GetAudioChannelNum();
+		int nOutBitrateAAC = App()->GetAudioBitrateAAC();
+		// 创建并初始化回音消除对象...
+		m_lpWebrtcAEC = new CWebrtcAEC(this);
+		// 初始化失败，删除回音消除对象...
+		if (!m_lpWebrtcAEC->InitWebrtc(nInRateIndex, nInChannelNum, nOutSampleRate, nOutChannelNum, nOutBitrateAAC)) {
+			delete m_lpWebrtcAEC; m_lpWebrtcAEC = NULL;
+			blog(LOG_INFO, "== CWebrtcAEC::InitWebrtc() => Error ==");
+		}
 	}
 	// 退出互斥保护对象...
 	pthread_mutex_unlock(&m_MutexAEC);
