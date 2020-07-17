@@ -11,3 +11,7 @@
 2.（未完成）讲师端，PPT页面允许画笔绘制功能，添加线条、颜色、文字，做为矢量附加在PPT对应的页面上，一起存放，动态生成；
 3.（不处理）udpserver，发生崩溃，捕捉到，但没有coredump，详见 udpserver.c::do_err_crasher()
   （不处理）udpserver，尝试在崩溃退出前，调用fork()再开启一个进程，没有成功；
+  （已完成）https://blog.csdn.net/fuyuande/article/details/89086789
+  （已完成）https://blog.csdn.net/ronsarah/article/details/73776313
+  （已完成）crontab => 使用定时检测脚本的方式来解决这个问题；
+  （已完成）crontab => 需要指定 sh /weike/udpserver/udpcheck.sh >/dev/null 2>&1
